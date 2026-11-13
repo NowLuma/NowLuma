@@ -1,0 +1,16 @@
+.git
+_refs
+_re
+node_modules
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+config
+data
+logs
+deploy/.env
+deploy/nowluma
+**/*.db
+**/*.db-wal
+**/*.db-shm
