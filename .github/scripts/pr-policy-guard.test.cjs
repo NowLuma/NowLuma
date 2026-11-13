@@ -31,7 +31,7 @@ function fixture() {
     requests: 0,
   };
   const context = {
-    repo: { owner: 'Nowluma', repo: 'Nowluma' },
+    repo: { owner: 'WSXYT', repo: 'Nowluma' },
     issue: { number: 100 },
     serverUrl: 'https://github.com',
   };
@@ -103,7 +103,7 @@ for (const body of [
   'This change fixes #42.',
   'CLOSES: #42',
   'Refs WSXYT/Nowluma#42',
-  'Refs nowluma/nowluma#42',
+  'Refs wsxyt/nowluma#42',
   'Refs https://github.com/WSXYT/Nowluma/issues/42',
 ]) {
   test(`accepts a real issue reference: ${body}`, async () => {

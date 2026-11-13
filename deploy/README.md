@@ -12,6 +12,9 @@ bash deploy/install.sh --docker
 ```
 
 首次安装会生成私有的 `deploy/.env`，已有文件不会被覆盖。之后只运行 `manage.sh`，不用编辑 JSON。
+默认 QQ 包固定版本并检查 SHA-256。官方地址不可用时会明确提示使用固定发行镜像，而非静默切换不同版本。
+镜像来源是 `a1515333102/QQ-Releases` 的同名发行资产；校验保证匹配已固定的发行快照，不应把它说成腾讯提供的签名保证。
+高级构建如指定 `QQ_DEB_URL`，必须同时指定该包的 `QQ_DEB_SHA256`，不会把自定义下载失败偷偷回退到默认包。
 
 ```bash
 bash deploy/manage.sh logs
