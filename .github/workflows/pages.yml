@@ -1,0 +1,62 @@
+name: Documentation site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Test the docs builder
+        run: node --test tools/docs.test.mjs
+      - name: Build the documentation site
+        run: node tools/build-docs.mjs
+      - name: Check generated pages, links and anchors
+        run: node tools/check-docs.mjs
+      - name: Build the static simulator demo
+        if: ${{ hashFiles('packages/webui/vite.demo.config.ts') != '' }}
+        run: pnpm --filter webui exec vite build --config vite.demo.config.ts
+      - name: Check the demo route
+        if: ${{ hashFiles('packages/webui/vite.demo.config.ts') != '' }}
+        run: node tools/check-docs.mjs --with-demo
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

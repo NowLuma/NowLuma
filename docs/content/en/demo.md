@@ -1,12 +1,12 @@
 ---
-title: Practice mode (integration pending)
-description: The planned simulated environment for practising console operations — what it is, what you can practise, what it cannot prove, and its current status.
+title: Practice mode
+description: A static practice environment for console operations with simulated data — what you can practise, what it cannot prove, and how to open /demo/.
 ---
 
-# Practice mode (integration pending)
+# Practice mode
 
-> **Status: planned. The page path is reserved at `/demo/` and is not live in this repository yet.**
-> This chapter describes what it will provide and the boundaries you must keep in mind. Once the site is wired up, this page will carry a real, clickable entry.
+> **Status: the static simulated interface is generated with the documentation site at `/demo/` (when that build includes the simulator).**
+> It is rendered from console components and simulated data; it does not connect to a real QQ account. This chapter describes its boundaries.
 
 ## The problem it solves
 
@@ -48,9 +48,9 @@ Those branches are exactly the ones the documentation struggles to explain in pr
 
 ## Current status and follow-up
 
-- Page path: `/demo/` (reserved).
+- Page path: `/demo/`, built together with the documentation site.
 - Data: a separate simulated API layer that never touches the real server.
-- Entry: once site navigation is wired up, the note at the top of this page becomes a clickable link.
-- Upstream dependency: the static-site generator and page shell belong to the publisher, not to this documentation. The documentation's only job is to keep “this is simulated” unmistakable, so no simulated result is mistaken for a real one.
+- Entry: the “Practice demo” link in the site header and this page.
+- Upstream dependency: the simulator and the site build are maintained separately; this documentation only describes the boundaries.
 
-If you just want to see the interface without connecting QQ today: the login page can be viewed on its own (that step connects nothing), while the rest of the console needs a valid session. For real use, walk through [First start](first-run.md) — it usually takes under ten minutes.
+If you just want to see the interface without connecting QQ, use the practice demo in the site header; it connects no real QQ account. For real use, walk through [First start](first-run.md) — it usually takes under ten minutes.

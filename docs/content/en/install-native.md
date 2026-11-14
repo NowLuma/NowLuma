@@ -9,13 +9,13 @@ Native mode does not use a container: the program runs directly on your system a
 
 ## Linux release package
 
-An extracted release package should contain `launcher.sh`, `index.mjs`, `check-node-version.cjs` and `release.json`. Start it with:
+An extracted release package should contain `launcher.sh`, `index.mjs`, `check-node-version.cjs` and `release.json`. Start it from the extracted directory with:
 
 ```bash
 bash launcher.sh
 ```
 
-Or let the installer run the same checks for you:
+`deploy/install.sh` ships only with the **source repository**; it is not part of the release package. If you installed from a repository checkout, run the same checks from the repository root and point `--directory` at the extracted release:
 
 ```bash
 bash deploy/install.sh --native --directory /path/to/release
@@ -48,10 +48,12 @@ Keep those three directories across upgrades and replace only the release files.
 ```bash
 mkdir -p ~/nowluma && cd ~/nowluma
 tar -xzf nowluma-linux-x64.tar.gz
-bash deploy/install.sh --native --directory ~/nowluma  # or just: bash launcher.sh
+bash launcher.sh
 ```
 
-**Expected result**: the terminal reports the console listener, and `http://127.0.0.1:5099` shows the login page. If the port is taken, startup fails with an error instead of silently choosing another port — stop the other process or change the port and restart.
+When installing from a repository checkout, `bash deploy/install.sh --native --directory ~/nowluma` performs the same checks.
+
+**Expected result**: the terminal reports the actual listener, for example `listening http://127.0.0.1:5099`; open that address and the login page appears. If the default port `5099` is taken, the console logs a warning and automatically moves to a nearby free port (up to 50 ports forward); use the `listening ...` address from the log. To pin the port, stop the other process or change the listener port under “Settings → Service → Service listener” and restart. If all 50 nearby ports are unavailable it exits with `No available TCP port found near 5099`.
 
 **When it fails**:
 
@@ -59,7 +61,7 @@ bash deploy/install.sh --native --directory ~/nowluma  # or just: bash launcher.
 | --- | --- |
 | `Release platform mismatch` | The package is for another architecture; use the matching one |
 | “bundled Node or Node.js … is required” | Install Node 24.22.1 or 26.12.1+, or use a package that bundles Node |
-| Console port already in use | Stop the other process, or change the listener port and restart |
+| Console port already in use | Check the log for the port it switched to; to pin it, stop the other process or change the listener port and restart |
 | No QQ process after opening the console | Start QQ and sign in first, then refresh 「QQ 连接」 |
 
 ## Windows

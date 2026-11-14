@@ -40,7 +40,7 @@ The console itself has no language switcher, so the interface is Chinese. Each l
 | [Access and networking](access-network.md) | Local, LAN, SSH, TLS and reverse proxies, desktop authentication |
 | [Data, backup and updates](data-backup.md) | Where data lives, backup and restore, cleanup, upgrades |
 | [Troubleshooting](troubleshooting.md) | Symptom table and recovery ladder |
-| [Practice mode](demo.md) | A simulated environment without a real account (integration pending) |
+| [Practice mode](demo.md) | A static practice environment without a real account |
 | [Planned and unverified](planned.md) | Features not yet shipped or not yet verified |
 | [Contributing](developing.md) | Licence, boundaries, tests, submission workflow |
 

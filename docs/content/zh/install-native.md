@@ -9,19 +9,19 @@ description: 使用 Linux 发行包与启动器，以及 Windows 发行形态尚
 
 ## Linux 发行包
 
-发行包解压后应当有 `launcher.sh`、`index.mjs`、`check-node-version.cjs` 和 `release.json`。启动方式：
+发行包解压后应当有 `launcher.sh`、`index.mjs`、`check-node-version.cjs` 和 `release.json`。在解压目录里直接启动：
 
 ```bash
 bash launcher.sh
 ```
 
-或者让安装脚本替你做同样的检查：
+`deploy/install.sh` 只在**源码仓库**里，不随发行包分发。如果你是从仓库源码安装，可以在仓库根目录用它执行同一套检查，并指向解压后的发行目录：
 
 ```bash
 bash deploy/install.sh --native --directory /发行包目录
 ```
 
-这个模式会：
+安装脚本模式会：
 
 1. 检查目录里存在 `index.mjs` 与 `launcher.sh`，否则提示用 `--directory` 指定解压后的发行目录。
 2. 优先使用随包 `node`，没有则用系统 `node`；都没有时报「需要随包 Node，或 Node.js 24.22.1 / 26.12.1 以上。」
@@ -48,10 +48,12 @@ bash deploy/install.sh --native --directory /发行包目录
 ```bash
 mkdir -p ~/nowluma && cd ~/nowluma
 tar -xzf nowluma-linux-x64.tar.gz
-bash deploy/install.sh --native --directory ~/nowluma  # 或直接 bash launcher.sh
+bash launcher.sh
 ```
 
-**预期结果**：终端打印控制台监听信息；浏览器打开 `http://127.0.0.1:5099` 能看到登录页。若端口被其它程序占用，控制台会启动失败并报错，而不是悄悄换端口——先停掉占用者，或在设置里改端口后重启。
+从仓库源码安装时，也可以用 `bash deploy/install.sh --native --directory ~/nowluma` 做同样的检查。
+
+**预期结果**：终端打印实际监听地址，例如 `listening http://127.0.0.1:5099`；浏览器打开这个地址能看到登录页。默认端口 `5099` 被其它程序占用时，控制台会打印一条警告并自动改用附近一个空闲端口（最多向后尝试 50 个），这时以日志里 `listening ...` 的地址为准；想固定端口就先停掉占用者，或在「系统设置 → 服务 → 服务监听」里改端口后重启。附近 50 个端口都不可用时会报 `No available TCP port found near 5099` 并退出。
 
 **失败怎么办**：
 
@@ -59,7 +61,7 @@ bash deploy/install.sh --native --directory ~/nowluma  # 或直接 bash launcher
 | --- | --- |
 | `Release platform mismatch` | 包与架构不匹配，换对应架构的发行包 |
 | `需要随包 Node…` | 安装 Node 24.22.1 或 26.12.1+，或使用带 Node 的发行包 |
-| 控制台端口被占用 | 停止占用进程，或改监听端口后重启程序 |
+| 控制台端口被占用 | 看日志里自动换用的端口；想固定端口就停止占用进程，或改监听端口后重启程序 |
 | 打开后没有任何 QQ 进程 | 先自己启动 QQ 并登录，再回「QQ 连接」页刷新 |
 
 ## Windows
