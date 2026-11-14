@@ -45,6 +45,53 @@ describe('automatic performance detection', () => {
         expect(samples.at(-1)!.autoLow).toBe(true);
     });
 
+    it('latches on a sustained 3 FPS foreground session', () => {
+        const sampler = new FrameRateSampler();
+        const samples = feed(sampler, timeline([[3, 4000]]));
+
+        expect(samples.at(-1)!.fps).toBeCloseTo(3, 0);
+        expect(samples.at(-1)!.autoLow).toBe(true);
+    });
+
+    it('latches on a sustained 1 FPS foreground session', () => {
+        const sampler = new FrameRateSampler();
+        const samples = feed(sampler, timeline([[1, 5000]]));
+
+        expect(samples.at(-1)!.fps).toBeCloseTo(1, 0);
+        expect(samples.at(-1)!.autoLow).toBe(true);
+    });
+
+    it('latches on sustained foreground cadence below 1 FPS', () => {
+        const sampler = new FrameRateSampler();
+        const samples = feed(sampler, timeline([[0.5, 10_000]]));
+
+        expect(samples.at(-1)!.fps).toBeLessThan(1);
+        expect(samples.at(-1)!.autoLow).toBe(true);
+    });
+
+    it('does not latch after one 30 s suspend followed by normal 60 FPS', () => {
+        const sampler = new FrameRateSampler();
+        const samples = feed(sampler, [
+            ...timeline([[60, 1000]]),
+            ...timeline([[60, 2500]], 30_000),
+        ]);
+
+        expect(samples.at(-1)!.fps).toBeGreaterThan(50);
+        expect(samples.at(-1)!.autoLow).toBe(false);
+    });
+
+    it('keeps measuring a sluggish session across isolated stalls', () => {
+        const sampler = new FrameRateSampler();
+        // 30 FPS with a 400 ms stall every 12 frames: every stall stays isolated.
+        const stamps = timeline([[30, 4000]]).map(
+            (timestamp, index) => timestamp + Math.floor(index / 12) * 400,
+        );
+        const samples = feed(sampler, stamps);
+
+        expect(samples.at(-1)!.fps).toBeCloseTo(30, 0);
+        expect(samples.at(-1)!.autoLow).toBe(true);
+    });
+
     it('ignores a single stalled frame inside an otherwise smooth session', () => {
         const sampler = new FrameRateSampler();
         const stamps = timeline([[60, 3000]]).map((timestamp) =>
