@@ -140,7 +140,7 @@ function ToolButton({ label, onClick, children, active, danger, disabled }: Tool
                     aria-label={label}
                     aria-pressed={active}
                     className={cn(
-                        'inline-flex size-8 items-center justify-center rounded-lg transition-colors cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4',
+                        'ui-button inline-flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4',
                         active
                             ? 'bg-primary/10 text-primary'
                             : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -747,13 +747,13 @@ export function LogsPage() {
                                 onClick={() => toggleLevel(lv)}
                                 aria-pressed={active}
                                 className={cn(
-                                    'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-[background-color,color,box-shadow] duration-150 ease-out cursor-pointer',
+                                    'ui-button inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors duration-150 ease-out cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
                                     active
                                         ? cn(
                                               'bg-card shadow-sm ring-1 ring-border/60',
                                               levelClass[lv],
                                           )
-                                        : 'text-muted-foreground/55 hover:text-foreground',
+                                        : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
                                 )}
                             >
                                 <span

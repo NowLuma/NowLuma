@@ -113,7 +113,7 @@ export function TopBar({
                             onClick={enterKiosk}
                             aria-label="展示模式"
                             title="展示模式（隐藏侧栏与顶栏，Esc 退出）"
-                            className="topbar-control max-[379px]:hidden rounded-full text-popover-foreground hover:text-foreground"
+                            className="topbar-control rounded-full text-popover-foreground hover:text-foreground"
                         >
                             <Monitor className="size-4" />
                         </Button>

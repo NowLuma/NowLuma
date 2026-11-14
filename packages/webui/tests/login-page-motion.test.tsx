@@ -76,6 +76,7 @@ describe('LoginPage line-field preference', () => {
             state.fx = '1';
             state[setting] = true;
             expect(render()).not.toContain('data-line-motion="true"');
+            expect(render()).toContain('系统动效设置优先 · 当前为静态');
         },
     );
 

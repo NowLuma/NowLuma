@@ -741,7 +741,7 @@ function StatTile({
 
     if (to) {
         return (
-            <Link to={to} className="block h-full rounded-xl outline-none">
+            <Link to={to} className="block h-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                 <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                     {body}
                 </Card>
@@ -1515,7 +1515,7 @@ function LinkWidget({ config }: { config: LinkConfig }) {
             href={config.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="block h-full rounded-xl outline-none"
+            className="block h-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
             <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                 <CardContent className="flex h-full items-center gap-3 p-4">

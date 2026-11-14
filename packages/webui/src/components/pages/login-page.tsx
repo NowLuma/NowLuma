@@ -411,7 +411,11 @@ function LoginShell({
                         <div className="min-w-0">
                             <p className="text-sm font-medium">登录页动态背景</p>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                {fxOn ? '已开启 · 关闭后背景为静态' : '已关闭 · 背景为静态'}
+                                {reduce
+                                    ? '系统动效设置优先 · 当前为静态'
+                                    : fxOn
+                                      ? '已开启 · 关闭后背景为静态'
+                                      : '已关闭 · 背景为静态'}
                             </p>
                         </div>
                         <ToggleSwitch

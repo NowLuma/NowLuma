@@ -133,6 +133,7 @@ describe('fused console shell', () => {
         }
 
         expect(opened).toContain('data-glass-renderer="frosted"');
+        expect(opened).not.toContain('max-[379px]:hidden');
     });
 
     it('honours hidden chrome controls without hiding logout or squeezing the line-field', () => {

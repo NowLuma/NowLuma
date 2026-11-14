@@ -922,10 +922,10 @@ html[data-cursor-system='custom'] .adaptive-cursor[data-visible='true'] {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  height: 32px;
+  height: 36px;
   padding: 0 0.625rem;
   border: 0;
-  border-radius: 7px;
+  border-radius: 14px;
   background: transparent;
   color: var(--popover-foreground);
   font: inherit;
@@ -1132,6 +1132,9 @@ html[data-reduce-motion='1'] :is(.ui-button, [data-press-scale]) {
     width: 44px;
     min-width: 44px;
     height: 44px;
+    min-height: 44px;
+  }
+  .global-context-menu-item {
     min-height: 44px;
   }
   input,
