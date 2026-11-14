@@ -31,12 +31,20 @@ export function watchAccountFiles(
     log: Logger = createLogger('QqAccount'),
 ): () => void {
     const watchers = new Map<string, FSWatcher>();
+    const pendingDirectories = new Set<string>();
     let timer: NodeJS.Timeout | undefined;
 
     const changed = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
             timer = undefined;
+
+            // Recursive mkdir may finish before a newly attached ancestor sees
+            // its child event. Settle only those ancestor watches before notifying.
+            for (const dbPath of [...pendingDirectories]) {
+                observe(dbPath);
+            }
+
             onChange();
         }, 250);
         timer.unref();
@@ -45,6 +53,7 @@ export function watchAccountFiles(
     const observe = (dbPath: string) => {
         watchers.get(dbPath)?.close();
         watchers.delete(dbPath);
+        pendingDirectories.delete(dbPath);
         const dbDirectory = path.dirname(dbPath);
         let directory = dbDirectory;
 
@@ -76,9 +85,15 @@ export function watchAccountFiles(
 
                     watcher.close();
                     watchers.delete(dbPath);
+                    pendingDirectories.delete(dbPath);
                     log.warn('account watch failed: path=%s err=%s', dbPath, errorMessage(error));
                 });
                 watchers.set(dbPath, watcher);
+
+                if (directory !== dbDirectory) {
+                    pendingDirectories.add(dbPath);
+                }
+
                 return;
             } catch (error) {
                 const parent = path.dirname(directory);
@@ -111,5 +126,6 @@ export function watchAccountFiles(
         }
 
         watchers.clear();
+        pendingDirectories.clear();
     };
 }

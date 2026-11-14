@@ -181,6 +181,24 @@ describe('account file changes', () => {
         },
     );
 
+    it('rechecks a partial directory tree before publishing the change notification', () => {
+        const dbDirectory = path.join(root, 'QQ', 'global', 'nt_db');
+        const { changed } = subscribe([path.join(dbDirectory, 'login.db')]);
+        directories.add(path.join(root, 'QQ'));
+        watchers[0]!.emit('change', 'rename', 'QQ');
+        // The rest of mkdir({recursive:true}) may finish before any new watcher sees it.
+        directories.add(dbDirectory);
+        vi.advanceTimersByTime(250);
+        expect(files.watch).toHaveBeenLastCalledWith(
+            dbDirectory,
+            { persistent: false },
+            expect.any(Function),
+        );
+        watchers.at(-1)!.emit('change', 'change', 'login.db-wal');
+        vi.advanceTimersByTime(250);
+        expect(changed).toHaveBeenCalledTimes(2);
+    });
+
     it('notifies when the filesystem does not supply a filename', () => {
         const { changed } = subscribe();
         watchers[0]!.emit('change', 'change', null);

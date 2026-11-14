@@ -67,5 +67,5 @@ ENV HOME=/home/nowluma \
 EXPOSE 5099 6080 3000 3001
 HEALTHCHECK --interval=30s --timeout=6s --start-period=90s --retries=3 \
     CMD ["node", "/usr/local/lib/nowluma-healthcheck.cjs"]
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/usr/local/bin/nowluma-entrypoint"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/nowluma-entrypoint"]
 CMD ["node", "./index.mjs"]

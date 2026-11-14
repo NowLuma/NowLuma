@@ -19,7 +19,7 @@ if [[ $(id -u) == 0 ]]; then
     # Keep only the capability needed to attach to the sibling QQ process.
     exec setpriv --reuid=1000 --regid=1000 --clear-groups \
         --inh-caps=+sys_ptrace --ambient-caps=+sys_ptrace \
-        dbus-run-session -- "$0" "$@"
+        "$0" "$@"
 fi
 [[ $(id -u) == 1000 ]] || die '容器需要固定 UID 1000；请不要覆盖 compose 的 user。'
 for directory in "$HOME" "$XDG_RUNTIME_DIR" config data logs; do
@@ -86,11 +86,23 @@ trap shutdown EXIT
 for lock in SingletonLock SingletonSocket SingletonCookie; do
     rm -f "$XDG_CONFIG_HOME/QQ/$lock"
 done
-Xvfb "$DISPLAY" -screen 0 "${SCREEN_GEOMETRY:-1280x800x24}" -nolisten tcp &
+rm -f "$XDG_RUNTIME_DIR/dbus.address"
+dbus-daemon --session --nofork --print-address=3 3>"$XDG_RUNTIME_DIR/dbus.address" &
 pids+=("$!")
 for ((attempt=0; attempt<100; attempt++)); do
+    [[ -s "$XDG_RUNTIME_DIR/dbus.address" ]] && break
+    kill -0 "${pids[0]}" 2>/dev/null || die '会话总线启动失败。'
+    sleep 0.1
+done
+[[ -s "$XDG_RUNTIME_DIR/dbus.address" ]] || die '会话总线启动超时。'
+read -r DBUS_SESSION_BUS_ADDRESS < "$XDG_RUNTIME_DIR/dbus.address"
+export DBUS_SESSION_BUS_ADDRESS
+Xvfb "$DISPLAY" -screen 0 "${SCREEN_GEOMETRY:-1280x800x24}" -nolisten tcp &
+display_pid=$!
+pids+=("$display_pid")
+for ((attempt=0; attempt<100; attempt++)); do
     if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then break; fi
-    kill -0 "${pids[0]}" 2>/dev/null || die '虚拟桌面启动失败。'
+    kill -0 "$display_pid" 2>/dev/null || die '虚拟桌面启动失败。'
     sleep 0.1
 done
 xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 || die '虚拟桌面启动超时。'
