@@ -4,13 +4,12 @@
 // and a 试一下 button that prefills the tester. No hand-maintained docs — this
 // is the live catalog.
 import { useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { BookOpen, ChevronRight, PlayCircle, Search, ShieldCheck, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DebugActionDoc } from '@/types';
 
-const cardCls =
-    'rounded-2xl border border-border/60 bg-card/80 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.10)] backdrop-blur-sm';
+const cardCls = 'ui-card rounded-lg border border-border bg-card';
 
 function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) => void }) {
     const [open, setOpen] = useState(false);
@@ -125,6 +124,7 @@ export function ApiBrowser({
     docs: DebugActionDoc[];
     onTry: (name: string) => void;
 }) {
+    const reduced = useReducedMotionConfig();
     const [query, setQuery] = useState('');
     const [cat, setCat] = useState<string>('');
 
@@ -174,9 +174,9 @@ export function ApiBrowser({
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            initial={reduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: reduced ? 0 : 0.16 }}
             className={cn(cardCls, 'flex min-h-[28rem] flex-col gap-4 p-6')}
         >
             <div className="flex items-center gap-2.5">

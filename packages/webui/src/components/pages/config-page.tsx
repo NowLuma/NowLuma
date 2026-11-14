@@ -7,7 +7,7 @@
 // persist immediately; general-settings edits are debounced (500 ms).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, MousePointerClick, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -426,7 +426,7 @@ function HeaderBar({
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-                <h2 className="text-base font-semibold tracking-tight">OneBot 协议端点</h2>
+                <h2 className="ui-page-title">OneBot 协议端点</h2>
                 <code className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums">
                     UIN {selectedUin}
                 </code>
@@ -488,6 +488,7 @@ interface TabStripProps {
 }
 
 function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
+    const reduced = useReducedMotionConfig();
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const moveTab = (from: number, direction: 1 | -1 | 'home' | 'end') => {
@@ -567,9 +568,13 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
                         )}
                         {active && (
                             <motion.span
-                                layoutId="config-tab-underline"
+                                layoutId={reduced ? undefined : 'config-tab-underline'}
                                 className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"
-                                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                                transition={
+                                    reduced
+                                        ? { duration: 0 }
+                                        : { type: 'spring', stiffness: 350, damping: 30 }
+                                }
                             />
                         )}
                     </button>

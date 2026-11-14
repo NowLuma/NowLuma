@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const EXIT = [0.4, 0, 1, 1] as const;
@@ -9,8 +10,7 @@ const CELL = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 } as cons
 const NUDGE = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 } as const;
 const NONE = { duration: 0 } as const;
 const SLIDE = { type: 'spring', stiffness: 700, damping: 46, mass: 0.5 } as const;
-const ROW_H = 32;
-const OPEN = { type: 'spring', stiffness: 620, damping: 38, mass: 0.6 } as const;
+const ROW_H = 44;
 
 export type DropdownItem = {
     value: string;
@@ -315,7 +315,7 @@ export function Dropdown({
     emptyLabel = 'Nothing to choose',
     className = '',
 }: DropdownProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const {
         open,
         activeIndex,
@@ -333,11 +333,7 @@ export function Dropdown({
         <div ref={rootRef} className={`relative inline-block text-left ${className}`}>
             <button
                 {...triggerProps}
-                className={`flex h-9 w-full select-none items-center gap-2 whitespace-nowrap rounded-[9px] border border-border bg-background px-3 text-[13px] font-medium text-foreground outline-none transition-[box-shadow,border-color] duration-150 disabled:opacity-50 ${
-                    open
-                        ? 'shadow-[inset_0_1px_2px_rgb(0_0_0/0.09)]'
-                        : 'shadow-xs hover:border-foreground/20 hover:shadow-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40'
-                }`}
+                className={`ui-button flex h-11 w-full select-none items-center gap-2 whitespace-nowrap rounded-md border border-border bg-transparent px-3 text-sm font-medium text-foreground outline-none transition-colors duration-150 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring ${open ? 'bg-muted' : 'hover:bg-muted/60'}`}
             >
                 <span className="sr-only">
                     {label}: {selectedItem ? selectedItem.label : placeholder}
@@ -368,26 +364,29 @@ export function Dropdown({
                     <motion.div
                         initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: -8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{
-                            opacity: 0,
-                            scale: 0.97,
-                            y: -6,
-                            transition: reduced ? NONE : { duration: 0.12, ease: EXIT },
-                        }}
-                        transition={
-                            reduced ? NONE : { ...OPEN, opacity: { duration: 0.12, ease: EASE } }
+                        exit={
+                            reduced
+                                ? { opacity: 0, transition: NONE }
+                                : {
+                                      opacity: 0,
+                                      scale: 0.97,
+                                      y: -6,
+                                      transition: { duration: 0.12, ease: EXIT },
+                                  }
                         }
+                        transition={reduced ? NONE : { duration: 0.42, ease: EASE }}
                         style={{ transformOrigin: 'top left' }}
-                        className="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full whitespace-nowrap rounded-[11px] border border-border bg-popover p-[5px] text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_36px_-18px_rgb(0_0_0/0.5)]"
+                        className="ui-glass ui-glass-menu absolute left-0 top-[calc(100%+6px)] z-50 min-w-full whitespace-nowrap rounded-[22px] p-2 text-popover-foreground"
                     >
+                        <GlassMaterial />
                         <ul
                             {...listProps}
                             aria-label={label}
-                            className="relative max-h-[216px] overflow-y-auto overscroll-contain outline-none [scrollbar-gutter:stable]"
+                            className="relative max-h-[264px] overflow-y-auto overscroll-contain outline-none [scrollbar-gutter:stable]"
                         >
                             <motion.span
                                 aria-hidden
-                                className="pointer-events-none absolute inset-x-0 top-0 h-8 rounded-[7px] bg-accent"
+                                className="pointer-events-none absolute inset-x-0 top-0 h-11 rounded-[14px] bg-accent"
                                 initial={false}
                                 animate={{
                                     y: activeIndex < 0 ? 0 : activeIndex * ROW_H,
@@ -406,9 +405,9 @@ export function Dropdown({
                                     <li
                                         key={item.value}
                                         {...getItemProps(index)}
-                                        className={`relative flex h-8 cursor-default select-none items-center rounded-[7px] px-2.5 text-[13px] ${
+                                        className={`relative flex h-11 cursor-default select-none items-center rounded-[14px] px-2.5 text-sm ${
                                             item.disabled
-                                                ? 'text-muted-foreground/70'
+                                                ? 'text-popover-foreground/70'
                                                 : active
                                                   ? 'text-accent-foreground'
                                                   : 'text-popover-foreground'
@@ -417,7 +416,7 @@ export function Dropdown({
                                         <span className="relative flex min-w-0 flex-1 items-center gap-3">
                                             <span className="truncate">{item.label}</span>
                                             {item.hint ? (
-                                                <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground">
+                                                <span className="ml-auto shrink-0 font-mono text-meta text-popover-foreground">
                                                     {item.hint}
                                                 </span>
                                             ) : null}

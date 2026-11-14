@@ -3,7 +3,7 @@
 // nickname + UIN like the original. Selection routes through
 // `requestSwitchUin` so the dirty-modify guard still gates the switch.
 
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -33,13 +33,16 @@ export function AccountSidebar({
     onToggleCollapsed,
 }: AccountSidebarProps) {
     const { appearance } = useTheme();
-    const reduceMotion = appearance.reduceMotion || appearance.disableMotion;
+    const reduced = useReducedMotionConfig();
+    const reduceMotion = reduced || appearance.reduceMotion || appearance.disableMotion;
 
     return (
         <motion.aside
             animate={{ width: collapsed ? 56 : 248 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="shrink-0 rounded-xl border bg-card/40"
+            transition={
+                reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }
+            }
+            className="shrink-0 rounded-lg border bg-card"
         >
             <div
                 className={cn(
@@ -89,11 +92,10 @@ export function AccountSidebar({
                                     <motion.button
                                         key={q.uin}
                                         type="button"
-                                        whileHover={reduceMotion ? undefined : { scale: 1.01 }}
-                                        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                                        aria-pressed={isActive}
                                         onClick={() => onSelect(q.uin)}
                                         className={cn(
-                                            'flex items-center gap-2.5 rounded-lg border text-left transition-colors cursor-pointer',
+                                            'flex min-h-11 items-center gap-2.5 rounded-[4px] border text-left transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
                                             collapsed ? 'justify-center p-1.5' : 'px-2.5 py-2',
                                             isActive
                                                 ? 'border-primary/30 bg-primary/10'

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Check, Loader2, ScrollText, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LineField } from '@/components/ui/line-field';
 import { SegmentedControl } from '@/components/interior/segmented-control';
 import {
     useWizardNavigation,
@@ -152,18 +153,12 @@ export function OnboardingWizardPage({
 
     return (
         <div className="relative flex h-svh min-h-svh flex-col overflow-x-hidden bg-background antialiased">
-            <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        'radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--primary) 18%, transparent) 0%, transparent 70%)',
-                }}
-            />
-            <div className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 sm:right-6">
+            <div className="ui-chrome-scene absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 sm:right-6">
+                <LineField />
                 <ThemeToggle />
             </div>
             <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-14 sm:px-6 sm:pb-5 sm:pt-4">
-                <header className="mx-auto mb-2 w-full max-w-2xl shrink-0 text-center">
+                <header className="mx-auto mb-2 w-full max-w-2xl shrink-0 text-left">
                     <p className="text-xs font-semibold tracking-wide text-primary">
                         Nowluma WebUI
                     </p>
@@ -280,9 +275,9 @@ function AgreementStep({
             <div
                 tabIndex={0}
                 aria-label={active?.title ? `${active.title}正文` : '协议正文'}
-                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-border/80 bg-background/55 p-3 outline-none shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 sm:p-5"
+                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
             >
-                <div className="mx-auto max-w-3xl">
+                <div className="mx-auto max-w-[44.25rem]">
                     {active ? (
                         <Markdown content={active.text} />
                     ) : (

@@ -6,7 +6,7 @@
 // in the app-level task registry). Every call lands in localStorage history
 // with one-click replay. Responses render in a collapsible JsonTree.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     AlertTriangle,
     FlaskConical,
@@ -31,8 +31,7 @@ import { clearHistory, loadHistory, pushHistory, type InvokeRecord } from '@/lib
 import { cn } from '@/lib/utils';
 import type { DebugActionDoc, DebugStreamFrame, QQInfo } from '@/types';
 
-const cardCls =
-    'rounded-2xl border border-border/60 bg-card/80 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.10)] backdrop-blur-sm';
+const cardCls = 'ui-card rounded-lg border border-border bg-card';
 
 // Name patterns for genuinely destructive actions → require a confirm. False
 // positives just add one extra click; false negatives skip a confirm — both low
@@ -65,6 +64,7 @@ export function ActionTester({
     docs: DebugActionDoc[];
     presetAction?: { name: string; nonce: number };
 }) {
+    const reduced = useReducedMotionConfig();
     const api = useApi();
     const tasks = useDebugTasks();
 
@@ -320,9 +320,9 @@ export function ActionTester({
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             {/* tester */}
             <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.16 }}
                 className={cn(cardCls, 'relative z-20 flex flex-col gap-5 p-6 xl:col-span-7')}
             >
                 <div className="flex items-center justify-between gap-2">
@@ -490,7 +490,7 @@ export function ActionTester({
                         onClick={onExecute}
                         disabled={invoking}
                         data-press-scale=""
-                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground shadow-sm transition-[background-color,opacity,scale] duration-150 ease-out hover:bg-primary/90 active:not-disabled:scale-[0.96] motion-reduce:active:scale-100 disabled:opacity-50"
+                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
                     >
                         {invoking ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -515,9 +515,9 @@ export function ActionTester({
 
             {/* response / frames / history */}
             <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.05 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.16 }}
                 className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-3 p-6 xl:col-span-5')}
             >
                 {showHistory ? (

@@ -3,7 +3,7 @@
 // forward nodes goes through the forward-send action; otherwise the plain
 // send_*_msg. The chosen group provides the @-member context to the builder.
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { Loader2, MessageSquarePlus, Send } from 'lucide-react';
 import { Dropdown } from '@/components/interior/dropdown';
 import { Picker } from '@/components/ui/picker';
@@ -22,8 +22,7 @@ import { useApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { DebugInvokeResult, QQInfo } from '@/types';
 
-const cardCls =
-    'rounded-2xl border border-border/60 bg-card/80 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.10)] backdrop-blur-sm';
+const cardCls = 'ui-card rounded-lg border border-border bg-card';
 const looksLikeId = (s: string) => /^\d{3,}$/.test(s.trim());
 
 function TargetPicker({
@@ -56,6 +55,7 @@ function TargetPicker({
 }
 
 export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
+    const reduced = useReducedMotionConfig();
     const api = useApi();
     const [uin, setUin] = useState('');
     const [kind, setKind] = useState<'group' | 'friend'>('group');
@@ -138,9 +138,9 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
     return (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.16 }}
                 className={cn(cardCls, 'flex flex-col gap-5 p-6 xl:col-span-7')}
             >
                 <div className="flex items-center gap-2.5">
@@ -202,7 +202,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                     onClick={send}
                     disabled={sending}
                     data-press-scale=""
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground shadow-sm transition-[background-color,opacity,scale] duration-150 ease-out hover:bg-primary/90 active:not-disabled:scale-[0.96] motion-reduce:active:scale-100 disabled:opacity-50"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
                 >
                     {sending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -214,9 +214,9 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
             </motion.section>
 
             <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.05 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.16 }}
                 className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-3 p-6 xl:col-span-5')}
             >
                 <h3 className="text-[15px] font-semibold tracking-tight">预览</h3>

@@ -3,7 +3,7 @@
 // tab. Filter by kind, keyword-search, pause, clear, and export the buffer as
 // JSON. Rows expand to a JsonTree of the full payload.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     Activity,
     ChevronRight,
@@ -21,8 +21,7 @@ import { cn, downloadBlob } from '@/lib/utils';
 import type { DebugStreamMessage } from '@/types';
 
 const STREAM_CAP = 300;
-const cardCls =
-    'rounded-2xl border border-border/60 bg-card/80 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.10)] backdrop-blur-sm';
+const cardCls = 'ui-card rounded-lg border border-border bg-card';
 
 interface StreamRow {
     id: number;
@@ -175,6 +174,7 @@ function StreamRowItem({ row }: { row: StreamRow }) {
 }
 
 export function LiveActivity() {
+    const reduced = useReducedMotionConfig();
     const api = useApi();
     const [rows, setRows] = useState<StreamRow[]>([]);
     const [paused, setPaused] = useState(false);
@@ -257,9 +257,9 @@ export function LiveActivity() {
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            initial={reduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: reduced ? 0 : 0.16 }}
             className={cn(cardCls, 'flex min-h-[28rem] flex-col p-6')}
         >
             <div className="flex flex-wrap items-center justify-between gap-3">

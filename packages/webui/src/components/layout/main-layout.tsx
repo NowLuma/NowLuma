@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotionConfig } from 'motion/react';
 import { useRouterState } from '@tanstack/react-router';
 import { Minimize2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -26,7 +26,7 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
     // Framer's reducedMotion only suppresses transforms, so the always-present
     // width + page-transition animations need an explicit opt-out to make the
     // “减少动效” setting actually felt.
-    const reduce = appearance.reduceMotion || appearance.disableMotion;
+    const reduce = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const { editing } = useLayout();
     const { kiosk, exit: exitKiosk } = useKiosk();
     // The sidebar rests as a slim icon rail and auto-expands on hover/focus (the
@@ -77,7 +77,7 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
                             setFocused(false);
                         }
                     }}
-                    className="relative h-full shrink-0 overflow-hidden"
+                    className="relative h-full shrink-0 overflow-hidden border-r border-sidebar-border"
                 >
                     {/* Fixed-width inner: the rail's content is ALWAYS laid out at the
               expanded width and the aside simply clips it as `width` animates.
@@ -126,19 +126,12 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
                 </button>
             )}
 
-            {/* Main column — a content "canvas" nested into the chrome. The rounded
-          top-left corner only exists when the desktop rail is beside it; on
-          mobile the rail becomes a sheet, so a leftover corner would float
-          against the full-bleed canvas. It's a flex sibling of the rail, so as
-          the rail expands/collapses the whole canvas is pushed along with it.
-          Depth comes from a soft shadow + the canvas tone sitting on the
-          (sidebar-toned) chrome, not a border. */}
+            {/* Stable document canvas; custom wallpaper stays visible between surfaces. */}
             <div
                 data-ui-surface="canvas"
                 className={cn(
                     'flex min-w-0 flex-1 flex-col overflow-hidden',
-                    !isMobile && !kiosk && 'rounded-tl-2xl',
-                    !customBg && 'bg-background shadow-[0_0_18px_-6px_rgb(0_0_0/0.14)]',
+                    !customBg && 'bg-background',
                 )}
             >
                 {!kiosk && (
@@ -159,14 +152,10 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
                             <AnimatePresence initial={false} mode="wait">
                                 <motion.div
                                     key={pathname}
-                                    initial={reduce ? false : { opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-                                    transition={
-                                        reduce
-                                            ? { duration: 0 }
-                                            : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }
-                                    }
+                                    initial={reduce ? false : { opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={reduce ? { duration: 0 } : { duration: 0.16 }}
                                 >
                                     {children}
                                 </motion.div>

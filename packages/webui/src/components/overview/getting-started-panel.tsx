@@ -4,7 +4,7 @@
 // 位置固定在首次使用提示条那里：它不属于可编辑网格部件，所以隐藏所有卡片后
 // 引导仍然在（这是首用必须能看见的东西）。
 import { useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { Link } from '@tanstack/react-router';
 import {
     AlertCircle,
@@ -39,7 +39,9 @@ export function GettingStartedPanel() {
         refreshQqList,
         refreshConnections,
     } = useAppState();
-    const off = useTheme().appearance.disableMotion;
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig();
+    const off = reduced || appearance.reduceMotion || appearance.disableMotion;
 
     // 面板自己选定的 PID。不放进全局状态：这是引导过程里的临时选择。
     const [selectedPid, setSelectedPid] = useState<number | null>(null);
@@ -127,11 +129,12 @@ export function GettingStartedPanel() {
     return (
         <>
             <motion.div
-                initial={off ? false : { opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={off ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: off ? 0 : 0.16 }}
                 aria-busy={step.id === 'reading'}
                 className={cn(
-                    'rounded-xl border px-4 py-3',
+                    'rounded-[4px] border px-4 py-3',
                     step.done
                         ? 'border-emerald-500/30 bg-emerald-500/5'
                         : 'border-primary/30 bg-primary/5',

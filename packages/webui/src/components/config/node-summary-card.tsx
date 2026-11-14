@@ -3,7 +3,7 @@
 // flags) plus the inline enable toggle. Real editing always goes through
 // the dialog — there are no live-typed inputs here.
 
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { Copy, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,16 +52,18 @@ export function NodeSummaryCard<T extends AdapterCommon>({
 }: NodeSummaryCardProps<T>) {
     const enabled = item.enabled !== false;
     const blankName = !item.name?.trim();
-    const off = useTheme().appearance.disableMotion;
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig();
+    const off = reduced || appearance.reduceMotion || appearance.disableMotion;
 
     return (
         <motion.div
-            initial={off ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={off ? { duration: 0 } : { duration: 0.18 }}
+            initial={off ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: off ? 0 : 0.16 }}
             className={cn(
-                'flex flex-col gap-2 rounded-xl border bg-card/40 p-3.5 transition-[background-color,opacity] duration-150 ease-out hover:bg-accent/20 sm:flex-row sm:items-center sm:gap-3',
-                !enabled && 'opacity-60',
+                'flex flex-col gap-2 rounded-[4px] border bg-card p-3.5 transition-colors duration-150 ease-out hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-3',
+                !enabled && 'bg-muted/40',
             )}
         >
             <div className="min-w-0 flex-1">

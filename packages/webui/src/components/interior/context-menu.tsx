@@ -2,7 +2,8 @@
 
 import { type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const EXIT = [0.4, 0, 1, 1] as const;
@@ -35,7 +36,7 @@ export function ContextMenuSurface({
     label,
     children,
 }: ContextMenuSurfaceProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
 
     return createPortal(
         <AnimatePresence initial={false}>
@@ -67,8 +68,9 @@ export function ContextMenuSurface({
                         visibility: placement.visible === false ? 'hidden' : 'visible',
                         zIndex: 2147483646,
                     }}
-                    className="global-context-menu"
+                    className="ui-glass ui-glass-menu global-context-menu"
                 >
+                    <GlassMaterial />
                     {children}
                 </motion.div>
             ) : null}

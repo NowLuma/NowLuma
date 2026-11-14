@@ -1,7 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import {
+    animate,
+    motion,
+    useMotionValue,
+    useReducedMotionConfig,
+    useTransform,
+} from 'motion/react';
 
 const CELL = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 } as const;
 const SEG =
@@ -47,7 +53,7 @@ export function SegmentedControl({
         emit.current = onValueChange;
     }, [onValueChange]);
 
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const pos = useMotionValue(index);
     const thumbX = useTransform(pos, (next) => `${next * 100}%`);
     const maskX = useTransform(pos, (next) => `${next * -100}%`);

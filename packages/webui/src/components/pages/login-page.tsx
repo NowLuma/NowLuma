@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { ArrowRight, KeyRound, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/interior/modal';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { LoginWaves } from '@/components/login-waves';
+import { LineField } from '@/components/ui/line-field';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { APP_NAME, APP_VERSION } from '@/types';
@@ -25,10 +25,8 @@ interface LoginPageProps {
     initialUseRecovery?: boolean;
 }
 
-// Device-local preference for the (heavy) animated login background. Kept out
-// of the server-synced appearance on purpose: it's a "this device feels laggy"
-// choice, and it must work pre-auth (where settings can't persist to the
-// server). Independent of the system 减弱动效 / 关闭全部动效 settings.
+// Device-local preference for the login chrome's slow line-field motion. It
+// remains usable pre-auth and never overwrites the server appearance settings.
 const LOGIN_FX_KEY = 'nowluma_login_fx';
 
 function readLoginFx(): boolean {
@@ -46,8 +44,8 @@ function readLoginFx(): boolean {
         /* ignore */
     }
 
-    // No explicit choice yet → on by default, unless the OS asks for reduced
-    // motion (an accessibility default; still fully overridable via the toggle).
+    // A new device starts without drift when the OS asks for reduced motion.
+    // Accessibility settings still take precedence over an explicit local choice.
     try {
         return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch {
@@ -63,7 +61,7 @@ export function LoginPage({
 }: LoginPageProps) {
     const { appearance } = useTheme();
     const customBg = appearance.background.type !== 'none';
-    const reduce = appearance.reduceMotion || appearance.disableMotion;
+    const reduce = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
 
     // The login page must never carry operator custom CSS. applyAppearance gates
     // it on a token, but an in-session logout / 401 expiry won't re-run it, so
@@ -258,7 +256,7 @@ export function LoginPage({
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
                         <motion.div
                             key={shake}
-                            animate={shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
+                            animate={!reduce && shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
                             transition={{ duration: 0.4 }}
                             className="relative"
                         >
@@ -268,17 +266,19 @@ export function LoginPage({
                                 name="password"
                                 type={showPwd ? 'text' : 'password'}
                                 placeholder="输入访问令牌"
+                                aria-label="访问密码"
+                                aria-invalid={!!error}
+                                aria-describedby={error ? 'login-error' : undefined}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoFocus
                                 autoComplete="current-password"
-                                className="h-12 rounded-xl bg-background/40 pl-10 pr-11 text-base"
+                                className="h-12 bg-background pl-10 pr-12 text-base"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPwd((v) => !v)}
-                                className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-                                tabIndex={-1}
+                                className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label={showPwd ? '隐藏密码' : '显示密码'}
                             >
                                 <PasswordVisibilityIcon visible={showPwd} reduceMotion={reduce} />
@@ -287,8 +287,10 @@ export function LoginPage({
 
                         {error && (
                             <motion.p
-                                initial={reduce ? false : { opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                id="login-error"
+                                role="alert"
+                                initial={reduce ? false : { opacity: 0 }}
+                                animate={{ opacity: 1 }}
                                 className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive"
                             >
                                 {error}
@@ -298,7 +300,7 @@ export function LoginPage({
                         <Button
                             type="submit"
                             disabled={loading || !password}
-                            className="h-12 rounded-xl text-[15px]"
+                            className="h-12 text-[15px]"
                         >
                             {loading ? (
                                 '验证中…'
@@ -317,12 +319,12 @@ export function LoginPage({
 
 function LoginBrand({ subtitle }: { subtitle: string }) {
     return (
-        <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 shadow-sm ring-1 ring-primary/20">
+        <div className="flex items-center gap-4 text-left">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
                 <img src="/logo.png" alt={APP_NAME} className="size-10 rounded-xl object-cover" />
             </div>
             <div>
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <span className="text-2xl font-semibold tracking-tight">{APP_NAME}</span>
                     <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-micro text-primary tabular-nums">
                         v{APP_VERSION}
@@ -361,31 +363,21 @@ function LoginShell({
                 customBg ? 'bg-transparent' : 'bg-background',
             )}
         >
-            {fxOn && !managedBy && <LoginWaves />}
-
-            <div
-                data-ui-decoration=""
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        'radial-gradient(75% 55% at 50% 0%, color-mix(in oklab, var(--primary) 20%, transparent) 0%, transparent 68%)',
-                }}
-            />
-
-            <div className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20">
+            <div className="ui-chrome-scene absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 min-h-12 min-w-36">
+                <LineField animated={fxOn && !reduce} />
                 <ThemeToggle />
             </div>
 
             <motion.div
-                initial={reduce ? false : { opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.2 }}
                 className={cn(
                     'relative z-10 flex w-full flex-col items-center',
                     wide ? 'max-w-2xl' : 'max-w-md',
                 )}
             >
-                <Card className="w-full overflow-hidden border-border/50 bg-card/75 shadow-2xl shadow-primary/5 backdrop-blur-2xl supports-[backdrop-filter]:bg-card/65">
+                <Card className="w-full overflow-hidden">
                     <CardContent className="px-7 py-9 sm:px-10">
                         {children}
                         <p className="mt-7 text-center text-meta text-muted-foreground">
@@ -394,25 +386,23 @@ function LoginShell({
                     </CardContent>
                 </Card>
 
-                <motion.button
+                <Button
                     style={{ display: managedBy ? 'none' : undefined }}
                     type="button"
+                    variant="ghost"
                     onClick={() => onHelpOpen(true)}
-                    whileHover={reduce ? undefined : { scale: 1.04 }}
-                    whileTap={reduce ? undefined : { scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                    className="mt-5 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/45 px-4 py-2 text-[12px] font-medium text-muted-foreground shadow-lg shadow-black/5 backdrop-blur-xl transition-colors hover:text-foreground supports-[backdrop-filter]:bg-background/35 cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                    className="mt-5 text-xs text-muted-foreground hover:text-foreground"
                 >
                     <Sparkles className="size-3.5 text-primary" />
                     我觉得这个界面很卡怎么办？
-                </motion.button>
+                </Button>
             </motion.div>
 
             <Modal
                 open={helpOpen}
                 onClose={() => onHelpOpen(false)}
                 title="界面有点卡顿？"
-                description="登录页背景是一个跟随鼠标的动态线条效果，在部分设备上可能比较吃性能。可以在这里关掉它——该开关仅作用于本设备的登录页，与系统的动效设置相互独立。"
+                description="登录页只在右上角显示一小块缓慢移动的线场。可以在这里暂停它；该开关仅作用于本设备的登录页。系统的减弱或关闭动效设置始终优先。"
                 closeLabel="关闭性能设置弹窗"
                 maxWidth={384}
             >

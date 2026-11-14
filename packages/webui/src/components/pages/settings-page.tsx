@@ -9,7 +9,7 @@ import {
     type ComponentProps,
     type ReactNode,
 } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     Accessibility,
     AlertTriangle,
@@ -151,6 +151,7 @@ export function SettingsPage() {
             search: t === 'appearance' ? {} : { tab: t },
             replace: true,
         });
+    const reduced = useReducedMotionConfig();
     const active = TABS.find((t) => t.key === tab);
 
     return (
@@ -160,14 +161,12 @@ export function SettingsPage() {
             <div className="min-w-0 flex-1">
                 <motion.div
                     key={tab}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    initial={reduced ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={reduced ? { duration: 0 } : { duration: 0.16 }}
                     className="flex flex-col gap-5"
                 >
-                    <h2 className="px-0.5 text-base font-semibold tracking-tight">
-                        {active?.label}
-                    </h2>
+                    <h2 className="ui-page-title px-0.5">{active?.label}</h2>
                     {tab === 'appearance' && <AppearancePanel />}
                     {tab === 'data' && <DataPanel />}
                     {tab === 'advanced' && <AdvancedPanel />}
@@ -192,7 +191,7 @@ function SettingsNav({ tab, onChange }: { tab: SettingsTab; onChange: (t: Settin
             data-ui-surface="panel"
             aria-label="设置导航"
             className={cn(
-                'flex flex-wrap gap-1 rounded-xl border bg-card p-1.5',
+                'flex flex-wrap gap-1 p-1.5',
                 'lg:w-52 lg:shrink-0 lg:flex-col lg:flex-nowrap lg:self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-y-contain',
             )}
         >
@@ -206,7 +205,7 @@ function SettingsNav({ tab, onChange }: { tab: SettingsTab; onChange: (t: Settin
                     <p
                         id={`settings-nav-group-${gi}`}
                         className={cn(
-                            'hidden select-none px-3 pb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 lg:block',
+                            'hidden select-none px-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground lg:block',
                             gi === 0 ? 'lg:pt-1' : 'lg:pt-3',
                         )}
                     >
@@ -222,9 +221,9 @@ function SettingsNav({ tab, onChange }: { tab: SettingsTab; onChange: (t: Settin
                                 onClick={() => onChange(t.key)}
                                 aria-current={active ? 'page' : undefined}
                                 className={cn(
-                                    'inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 lg:w-full',
+                                    'inline-flex min-h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-full',
                                     active
-                                        ? 'bg-accent text-foreground ring-1 ring-primary/20'
+                                        ? 'bg-accent text-foreground'
                                         : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
                                 )}
                             >
@@ -694,7 +693,7 @@ function AppearancePanel() {
                                         title={spec.label}
                                         aria-label={spec.label}
                                         className={cn(
-                                            'relative flex size-9 items-center justify-center rounded-full border transition-transform cursor-pointer hover:scale-105',
+                                            'relative flex size-9 items-center justify-center rounded-full border transition-colors cursor-pointer',
                                             active
                                                 ? 'border-foreground/30 ring-2 ring-primary'
                                                 : 'border-border',
@@ -713,7 +712,7 @@ function AppearancePanel() {
                             <label
                                 title="自定义颜色"
                                 className={cn(
-                                    'relative flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border transition-transform hover:scale-105',
+                                    'relative flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border transition-colors',
                                     a.accentMode === 'custom'
                                         ? 'border-foreground/30 ring-2 ring-primary'
                                         : 'border-border',
@@ -1036,7 +1035,7 @@ function BackgroundCard({
                                     title={g.label}
                                     aria-label={g.label}
                                     className={cn(
-                                        'h-12 w-20 rounded-lg border transition-transform cursor-pointer hover:scale-105',
+                                        'h-12 w-20 rounded-lg border transition-colors cursor-pointer',
                                         active
                                             ? 'border-foreground/30 ring-2 ring-primary'
                                             : 'border-border',

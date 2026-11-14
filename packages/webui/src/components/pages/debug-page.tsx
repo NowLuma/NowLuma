@@ -3,7 +3,7 @@
 // API browser. The browser's 试一下 prefills the tester and switches to it.
 // Apple-HIG flavour throughout (sliding-indicator tabs, translucent chrome).
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { BookOpen, Bug, FlaskConical, MessageSquarePlus, RadioTower } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs } from '@/components/ui/tabs';
@@ -19,6 +19,7 @@ type Tab = 'tester' | 'compose' | 'activity' | 'api';
 
 export function DebugPage() {
     const api = useApi();
+    const reduced = useReducedMotionConfig();
     const [accounts, setAccounts] = useState<QQInfo[]>([]);
     const [docs, setDocs] = useState<DebugActionDoc[]>([]);
     const [ready, setReady] = useState(false);
@@ -49,10 +50,10 @@ export function DebugPage() {
     return (
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
             <motion.header
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="sticky top-0 z-20 -mx-1 flex flex-col gap-3 rounded-b-2xl bg-background/60 px-1 py-3 backdrop-blur-xl"
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.16 }}
+                className="sticky top-0 z-20 -mx-1 flex flex-col gap-3 border-b border-border bg-background px-1 py-3"
             >
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">

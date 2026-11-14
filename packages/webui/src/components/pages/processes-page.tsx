@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { AlertCircle, Cpu, Loader2, RefreshCw, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DesktopButton } from '@/components/desktop-button';
@@ -65,7 +65,9 @@ export function ProcessesPage() {
     const { processList, processOps, refreshProcesses, resources } = useAppState();
     const { statusOf, banner: processActionStatus, load, unload, refresh } = processOps;
     const { pages, setPages } = useLayout();
-    const off = useTheme().appearance.disableMotion;
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig();
+    const off = reduced || appearance.reduceMotion || appearance.disableMotion;
     const [confirm, setConfirm] = useState<{
         kind: 'load' | 'unload';
         pid: number;
@@ -94,7 +96,7 @@ export function ProcessesPage() {
                         <CardTitle>QQ 连接</CardTitle>
                         <CardDescription>加载后，已登录账号将自动接入 OneBot</CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <DesktopButton />
                         {processList.length > 1 && (
                             <div
@@ -137,8 +139,9 @@ export function ProcessesPage() {
                 <CardContent>
                     {processActionStatus && (
                         <motion.div
-                            initial={off ? false : { opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={off ? false : { opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: off ? 0 : 0.16 }}
                             className="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-primary"
                         >
                             <Loader2 className="size-3.5 shrink-0 animate-spin" />
@@ -185,8 +188,8 @@ export function ProcessesPage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-                                    {sorted.map((proc, idx) => {
+                                <div className="flex flex-col gap-2">
+                                    {sorted.map((proc) => {
                                         const uin = proc.loggedIn ? proc.uin : proc.account?.uin;
                                         const nickname =
                                             proc.account?.uin === uin ? proc.account?.nickname : '';
@@ -206,17 +209,10 @@ export function ProcessesPage() {
                                         return (
                                             <motion.div
                                                 key={proc.pid}
-                                                initial={off ? false : { opacity: 0, y: 6 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={
-                                                    off
-                                                        ? { duration: 0 }
-                                                        : {
-                                                              delay: 0.03 + idx * 0.025,
-                                                              duration: 0.22,
-                                                          }
-                                                }
-                                                className="flex flex-col gap-3 rounded-xl border bg-card/50 p-3.5 transition-colors hover:bg-accent/20 sm:flex-row sm:items-center"
+                                                initial={off ? false : { opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: off ? 0 : 0.16 }}
+                                                className="flex flex-col gap-3 rounded-[4px] border bg-card p-3.5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center"
                                             >
                                                 {/* icon + info stay horizontal; on phones the actions drop to
                         a second row so name / PID / path get the full width

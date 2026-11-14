@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { sanitizeLogLine } from '@nowluma/common/log-sanitize';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotionConfig } from 'motion/react';
 import {
     ArrowDownToLine,
     Download,
@@ -22,6 +22,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { GlassMaterial } from '@/components/ui/glass-material';
+import { LineField } from '@/components/ui/line-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -157,6 +159,7 @@ export function LogsPage() {
     const api = useApi();
     const { runAction } = useActionFeedback();
     const { formatClock, appearance } = useTheme();
+    const reduced = useReducedMotionConfig();
     const { pages, setPages } = useLayout();
     const prefs = pages.logs;
 
@@ -426,7 +429,7 @@ export function LogsPage() {
 
     // Entrance detection lives in the flush (real arrivals only). Here we just keep
     // the flush's motion read live, since it was captured once in the [api] effect.
-    const motionOn = !appearance.reduceMotion && !appearance.disableMotion;
+    const motionOn = !reduced && !appearance.reduceMotion && !appearance.disableMotion;
     useEffect(() => {
         motionOnRef.current = motionOn;
     }, [motionOn]);
@@ -621,20 +624,24 @@ export function LogsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <div className="ui-chrome-scene ui-glass ui-glass-search relative rounded-full">
+                        <LineField />
+                        <GlassMaterial />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-popover-foreground" />
                         <Input
+                            type="search"
+                            aria-label="搜索消息 / 模块 / 级别"
                             placeholder="搜索消息 / 模块 / 级别"
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            className="h-8 w-44 rounded-lg pl-8 pr-7 sm:w-56"
+                            className="h-11 w-44 rounded-full border-0 pl-9 pr-10 text-popover-foreground shadow-none placeholder:text-popover-foreground/80 focus-visible:ring-0 sm:w-56"
                         />
                         {filter && (
                             <button
                                 type="button"
                                 onClick={() => setFilter('')}
                                 aria-label="清除搜索"
-                                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 cursor-pointer"
+                                className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-popover-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
                             >
                                 <X className="size-3.5" />
                             </button>
@@ -770,7 +777,7 @@ export function LogsPage() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: reduced ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
                         className="overflow-hidden"
                     >
                         <div className="mx-5 mb-3 flex flex-col gap-4 rounded-xl border bg-muted/20 p-4">
@@ -941,7 +948,7 @@ export function LogsPage() {
                                                 title={c.label}
                                                 aria-label={c.label}
                                                 className={cn(
-                                                    'size-6 rounded-full border transition-transform hover:scale-110 cursor-pointer',
+                                                    'size-6 rounded-full border transition-colors cursor-pointer',
                                                     newColor === c.id
                                                         ? 'ring-2 ring-offset-1 ring-foreground/40'
                                                         : 'border-border',

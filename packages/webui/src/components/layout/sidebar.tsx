@@ -14,7 +14,7 @@ import {
     SlidersHorizontal,
     Terminal,
 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'motion/react';
+import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -113,6 +113,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
     const { updateInfo } = useAppState();
     const { navItems, setNavItems, editing, setEditing } = useLayout();
     const { appearance, setAppearance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const isDesktop = useDesktopSidebar();
     const pinned = appearance.sidebarPinned;
 
@@ -157,7 +158,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                     )}
                 >
                     <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                        <span className="text-sm font-bold tracking-tight">{APP_NAME}</span>
+                        <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
                         <span className="text-micro font-medium text-muted-foreground tabular-nums">
                             v{APP_VERSION}
                         </span>
@@ -220,7 +221,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                                     onClick={onItemClick}
                                     aria-current={isActive ? 'page' : undefined}
                                     className={cn(
-                                        'ui-nav-item group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer outline-none',
+                                        'ui-nav-item group relative flex min-h-11 items-center rounded-[4px] py-2.5 text-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
                                         isActive
                                             ? 'text-sidebar-accent-foreground'
                                             : 'text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground',
@@ -228,31 +229,40 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                                 >
                                     {isActive && (
                                         <>
-                                            {/* Highlight geometry is the ONLY thing that switches on
-                          collapse: a full-row pill when open, a centred squircle
-                          on the rail. Both are absolutely positioned, so they
-                          morph (layout) without reflowing the row. */}
+                                            {/* Only the selected background moves; labels keep their baseline. */}
                                             <motion.span
-                                                layoutId="sidebar-active-pill"
+                                                layoutId={
+                                                    reduced ? undefined : 'sidebar-active-pill'
+                                                }
                                                 className={cn(
-                                                    'ui-nav-highlight absolute inset-y-0 rounded-lg bg-sidebar-accent',
+                                                    'ui-nav-highlight absolute inset-y-0 rounded-[4px] bg-sidebar-accent',
                                                     collapsed ? 'left-0.5 w-11' : 'inset-x-0',
                                                 )}
-                                                transition={{
-                                                    type: 'spring',
-                                                    stiffness: 380,
-                                                    damping: 32,
-                                                }}
+                                                transition={
+                                                    reduced
+                                                        ? { duration: 0 }
+                                                        : {
+                                                              type: 'spring',
+                                                              stiffness: 380,
+                                                              damping: 32,
+                                                          }
+                                                }
                                             />
                                             {!collapsed && (
                                                 <motion.span
-                                                    layoutId="sidebar-active-bar"
+                                                    layoutId={
+                                                        reduced ? undefined : 'sidebar-active-bar'
+                                                    }
                                                     className="ui-nav-highlight absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
-                                                    transition={{
-                                                        type: 'spring',
-                                                        stiffness: 380,
-                                                        damping: 32,
-                                                    }}
+                                                    transition={
+                                                        reduced
+                                                            ? { duration: 0 }
+                                                            : {
+                                                                  type: 'spring',
+                                                                  stiffness: 380,
+                                                                  damping: 32,
+                                                              }
+                                                    }
                                                 />
                                             )}
                                         </>

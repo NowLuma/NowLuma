@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { motion, Reorder, useDragControls } from 'motion/react';
+import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link } from '@tanstack/react-router';
 import {
     Activity,
@@ -207,32 +207,38 @@ export function OverviewPage() {
           (single-column drag-sort panel). The sidebar nav is drag-sortable in
           edit mode on both — no separate editor panel. Hidden in kiosk mode
           (data-kiosk-hide → CSS) so a wall display has no edit entry. */}
-            <div data-kiosk-hide className="flex items-center justify-end gap-2">
-                {editing && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetLayout}
-                        className="text-muted-foreground"
-                    >
-                        <RotateCcw className="size-3.5" /> 恢复默认
-                    </Button>
-                )}
-                <Button
-                    variant={editing ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setEditing(!editing)}
-                >
-                    {editing ? (
-                        <>
-                            <Check className="size-3.5" /> 完成
-                        </>
-                    ) : (
-                        <>
-                            <Pencil className="size-3.5" /> 编辑布局
-                        </>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 className="ui-page-title">总览</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">主机与服务状态</p>
+                </div>
+                <div data-kiosk-hide className="flex items-center gap-2">
+                    {editing && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetLayout}
+                            className="text-muted-foreground"
+                        >
+                            <RotateCcw className="size-3.5" /> 恢复默认
+                        </Button>
                     )}
-                </Button>
+                    <Button
+                        variant={editing ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEditing(!editing)}
+                    >
+                        {editing ? (
+                            <>
+                                <Check className="size-3.5" /> 完成
+                            </>
+                        ) : (
+                            <>
+                                <Pencil className="size-3.5" /> 编辑布局
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {editing && (
@@ -736,7 +742,7 @@ function StatTile({
     if (to) {
         return (
             <Link to={to} className="block h-full rounded-xl outline-none">
-                <Card className="h-full overflow-hidden transition-colors hover:border-primary/40 hover:bg-accent/30">
+                <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                     {body}
                 </Card>
             </Link>
@@ -1114,7 +1120,9 @@ function HostBlock({ config }: { config: HostConfig }) {
 
 function SessionsBlock({ config }: { config: SessionsConfig }) {
     const { qqList, resources } = useAppState();
-    const off = useTheme().appearance.disableMotion;
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig();
+    const off = reduced || appearance.reduceMotion || appearance.disableMotion;
     const list = useMemo(() => {
         const f = config.filter.trim().toLowerCase();
         let arr = f
@@ -1179,21 +1187,13 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                                 )}
                                 <ScrollArea className="h-full" viewportClassName="[&>div]:!block">
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                                        {list.map((q, idx) => (
+                                        {list.map((q) => (
                                             <motion.div
                                                 key={q.uin}
-                                                initial={off ? false : { opacity: 0, y: 6 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={
-                                                    off
-                                                        ? { duration: 0 }
-                                                        : {
-                                                              delay: 0.03 + idx * 0.04,
-                                                              duration: 0.22,
-                                                          }
-                                                }
-                                                whileHover={off ? undefined : { y: -2 }}
-                                                className="flex items-center gap-3 rounded-xl border bg-card/40 p-3"
+                                                initial={off ? false : { opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: off ? 0 : 0.16 }}
+                                                className="flex items-center gap-3 rounded-[4px] border bg-card p-3"
                                             >
                                                 <Avatar size={40}>
                                                     <AvatarImage
@@ -1212,7 +1212,7 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                                                         {q.uin}
                                                     </div>
                                                 </div>
-                                                <span className="size-2 shrink-0 animate-pulse rounded-full bg-success shadow-[0_0_8px_color-mix(in_oklab,var(--success)_60%,transparent)]" />
+                                                <span className="size-2 shrink-0 rounded-full bg-success" />
                                             </motion.div>
                                         ))}
                                     </div>
@@ -1517,7 +1517,7 @@ function LinkWidget({ config }: { config: LinkConfig }) {
             rel="noreferrer noopener"
             className="block h-full rounded-xl outline-none"
         >
-            <Card className="h-full overflow-hidden transition-colors hover:border-primary/40 hover:bg-accent/30">
+            <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                 <CardContent className="flex h-full items-center gap-3 p-4">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="size-5" />
