@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { LineField } from '@/components/ui/line-field';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { parseSecondFactor } from '@/lib/totp-second-factor';
 
@@ -321,7 +322,7 @@ function LoginBrand({ subtitle }: { subtitle: string }) {
     return (
         <div className="flex items-center gap-4 text-left">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                <img src="/logo.png" alt={APP_NAME} className="size-10 rounded-xl object-cover" />
+                <img src={BRAND_LOGO_URL} alt="" className="size-10 rounded-xl object-cover" />
             </div>
             <div>
                 <div className="flex flex-wrap items-center gap-2">

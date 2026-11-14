@@ -328,7 +328,7 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
         checkRefs(html, page.file, outDir, withDemo, problems);
     }
 
-    const assets = ['style.css', 'site.js', 'search.json'];
+    const assets = ['style.css', 'site.js', 'search.json', 'nowluma-mark.svg'];
     for (const asset of assets) {
         if (!fs.existsSync(path.join(outDir, 'assets', asset))) {
             problems.push(`missing asset assets/${asset}`);

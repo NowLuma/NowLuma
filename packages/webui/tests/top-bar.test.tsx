@@ -100,7 +100,10 @@ describe('fused console shell', () => {
             expect(markup).toContain(item.label);
         }
 
-        expect(markup).toContain('src="/logo.png"');
+        expect(markup).toMatch(
+            /<img src="(?:data:image\/svg\+xml,[^"]*|[^"]*nowluma-mark\.svg[^"]*)" alt=""/,
+        );
+        expect(markup).not.toContain('alt="Nowluma"');
         state.navItems = NAV_ITEMS.map((item) => ({ id: item.to, visible: false }));
         const hidden = renderToStaticMarkup(<Sidebar />);
         expect(hidden).toContain('href="/"');

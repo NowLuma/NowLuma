@@ -1,3 +1,4 @@
+import { BRAND_LOGO_URL } from '@/brand';
 import { APP_VERSION } from '@/types';
 import {
     createContext,
@@ -2101,8 +2102,8 @@ function AboutPanel() {
                                 className="absolute inset-0 -z-10 scale-125 rounded-full bg-primary/20 blur-2xl"
                             />
                             <img
-                                src="/logo.png"
-                                alt="Nowluma"
+                                src={BRAND_LOGO_URL}
+                                alt=""
                                 className="size-20 rounded-2xl object-cover drop-shadow-sm"
                             />
                         </div>

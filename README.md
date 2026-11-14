@@ -1,6 +1,10 @@
 # Nowluma
 
-> 基于 **SnowLuma（SL）** 二次开发。
+> 项目设计借鉴了 **SnowLuma** 的一些想法。
+
+<p align="center">
+  <img src="assets/readme/hero.svg" alt="" width="720" />
+</p>
 
 连接真实 QQ 客户端，向机器人程序提供 OneBot v11 接口，并管理账号、连接和运行日志。
 QQ 登录始终由 QQ 自己完成；程序不会另建 QQ 密码或登录令牌库。Docker 会保留 QQ 自己的用户目录和凭据。

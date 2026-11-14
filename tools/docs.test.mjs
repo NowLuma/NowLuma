@@ -108,7 +108,7 @@ test('build produces 18 chapters per language, a landing page and a search index
     }
 
     assert.ok(fs.existsSync(path.join(outDir, 'index.html')));
-    for (const asset of ['style.css', 'site.js', 'search.json']) {
+    for (const asset of ['style.css', 'site.js', 'search.json', 'nowluma-mark.svg']) {
         assert.ok(fs.existsSync(path.join(outDir, 'assets', asset)), `assets/${asset} should be copied`);
     }
 
@@ -118,7 +118,13 @@ test('build produces 18 chapters per language, a landing page and a search index
     assert.match(page, /href="\.\.\/en\/install-docker\.html"/);
     assert.match(page, /data-search-input/);
     assert.match(page, /data-demo-link/);
+    assert.match(page, /<link rel="icon" type="image\/svg\+xml" href="\.\.\/assets\/nowluma-mark\.svg">/);
+    assert.match(page, /<img class="brand-mark" src="\.\.\/assets\/nowluma-mark\.svg" alt="" width="27" height="27">/);
     assert.doesNotMatch(page, /<访问密码>/);
+
+    const landing = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
+    assert.match(landing, /<link rel="icon" type="image\/svg\+xml" href="assets\/nowluma-mark\.svg">/);
+    assert.match(landing, /<img class="landing-mark" src="assets\/nowluma-mark\.svg" alt="" width="48" height="48">/);
 
     assert.deepEqual(checkSite({ outDir }), []);
 });

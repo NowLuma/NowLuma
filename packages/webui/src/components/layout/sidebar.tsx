@@ -18,6 +18,7 @@ import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion
 import { Link, useRouterState } from '@tanstack/react-router';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { useAppState } from '@/contexts/AppStateContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -148,7 +149,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
             <div className="flex h-16 shrink-0 items-center px-2">
                 <div className="grid w-12 shrink-0 place-items-center">
                     <div className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                        <img src="/logo.png" alt={APP_NAME} className="size-full object-cover" />
+                        <img src={BRAND_LOGO_URL} alt="" className="size-full object-cover" />
                     </div>
                 </div>
                 <div

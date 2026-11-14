@@ -103,7 +103,10 @@ describe('LoginPage line-field preference', () => {
 
     it('retains the password form, keyboard reveal control, brand and performance helper', () => {
         const markup = render();
-        expect(markup).toContain('src="/logo.png"');
+        expect(markup).toMatch(
+            /<img src="(?:data:image\/svg\+xml,[^"]*|[^"]*nowluma-mark\.svg[^"]*)" alt=""/,
+        );
+        expect(markup).not.toContain('alt="Nowluma"');
         expect(markup).toContain('aria-label="访问密码"');
         expect(markup).toContain('autoComplete="current-password"');
         expect(markup).toContain('aria-label="显示密码"');

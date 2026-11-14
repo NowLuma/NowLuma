@@ -498,6 +498,7 @@ function renderPage(locale, entry, chapters) {
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(entry.description)}">
     <link rel="alternate" hreflang="${locale.switchLang}" href="${locale.switchHref(page)}">
+    <link rel="icon" type="image/svg+xml" href="../assets/nowluma-mark.svg">
     <link rel="stylesheet" href="../assets/style.css">
     <script>document.documentElement.classList.add('js')</script>
     <script src="../assets/site.js" defer></script>
@@ -510,7 +511,7 @@ function renderPage(locale, entry, chapters) {
             <span aria-hidden="true">☰</span>
         </button>
         <a class="brand" href="index.html" aria-label="${escapeHtml(strings.homeAria)}">
-            <span class="brand-mark" aria-hidden="true">N</span>
+            <img class="brand-mark" src="../assets/nowluma-mark.svg" alt="" width="27" height="27">
             <span class="brand-name">Nowluma</span>
             <span class="brand-sub">${escapeHtml(strings.brandSub)}</span>
         </a>
@@ -562,12 +563,14 @@ function renderLanding() {
     <meta name="color-scheme" content="light dark">
     <title>Nowluma 文档 / Documentation</title>
     <meta name="description" content="Nowluma bilingual documentation: install, first start, console pages, settings, data and troubleshooting.">
+    <link rel="icon" type="image/svg+xml" href="assets/nowluma-mark.svg">
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="landing">
 <a class="skip-link" href="#main">跳到正文 / Skip to content</a>
 <main class="landing-main" id="main">
     <header class="landing-hero">
+        <img class="landing-mark" src="assets/nowluma-mark.svg" alt="" width="48" height="48">
         <p class="eyebrow">Nowluma</p>
         <h1><span lang="zh-CN">Nowluma 文档</span><span class="landing-slash" aria-hidden="true">/</span><span lang="en">Documentation</span></h1>
         <p class="lede" lang="zh-CN">面向初次使用者的完整中文文档：安装、首次启动、控制台每个页面、设置项、数据持久化与排障。</p>
@@ -663,6 +666,10 @@ export function buildSite({ outDir = path.join(ROOT, '_site'), contentRoot = pat
 
     fs.copyFileSync(path.join(siteRoot, 'style.css'), path.join(outDir, 'assets', 'style.css'));
     fs.copyFileSync(path.join(siteRoot, 'site.js'), path.join(outDir, 'assets', 'site.js'));
+    fs.copyFileSync(
+        path.join(ROOT, 'packages/webui/src/assets/nowluma-mark.svg'),
+        path.join(outDir, 'assets', 'nowluma-mark.svg'),
+    );
 
     const searchEntries = [];
     let pages = 0;

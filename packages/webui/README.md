@@ -5,26 +5,25 @@ status, OneBot configuration, logs, storage, and server settings.
 
 ## Default appearance
 
-New installations and appearance resets use the mascot's lavender accent.
-The light variant uses a deeper purple for readable button labels; dark mode
-uses a softer lavender. Existing saved accents and custom colors are preserved.
-The original sky-blue accent remains available in Settings.
+New installations and appearance resets use a neutral white accent; light mode
+uses dark ink for readable labels. Existing saved accents and custom colors are
+preserved. Named palettes and the original colored accent options remain
+available in Settings.
 
-With the default palette, page, card, input, popover and sidebar surfaces mix a
-small amount of the active accent into neutral light/dark backgrounds. Text stays
-neutral for readability. Sidebar-only accents tint only the sidebar; OLED keeps a
-true-black canvas. Named palettes, custom CSS variables and host appearance
-overlays retain control of their own surfaces.
+With the default palette, page, card, input, popover and sidebar surfaces remain
+neutral. Text stays neutral for readability. Sidebar-only accents tint only the
+sidebar; OLED keeps a true-black canvas. Named palettes, custom CSS variables and
+host appearance overlays retain control of their own surfaces.
 
 Keep the server defaults in `packages/core/src/webui/ui-config.ts`, the frontend
 defaults and preset in `src/contexts/ThemeContext.tsx`, and the pre-mount tokens
 in `src/index.css` aligned when changing the default accent.
 
-The browser favicon, home-screen icon and in-app logo share the mascot avatar
-in [`assets/brand/mascot-avatar.png`](../../assets/brand/mascot-avatar.png).
-Its exported sizes live in `public/`: `logo.png` (512 px), `favicon.png` (64 px),
-and `apple-touch-icon.png` (180 px). Export from the master without redrawing
-individual sizes.
+The browser favicon, home-screen icon and in-app logo use the single monochrome
+mark in [`src/assets/nowluma-mark.svg`](src/assets/nowluma-mark.svg),
+imported through `src/brand.ts` so Vite applies the deployment base. The Apple
+touch fallback is exported at 180 px from the same mark; do not add a second
+master or redraw the mark per size.
 
 ## Host appearance integration
 
