@@ -264,7 +264,7 @@ function readableForeground(color: string): string {
         return '#ffffff';
     }
 
-    return lum > 0.6 ? '#0b0d12' : '#ffffff';
+    return lum >= 0.6 ? '#0b0d12' : '#ffffff';
 }
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;

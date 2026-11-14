@@ -8,8 +8,6 @@ import {
     accentVarsCss,
 } from '../src/contexts/ThemeContext';
 
-const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
-
 function channel(hex: string, index: number): number {
     const value = parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16) / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -53,11 +51,20 @@ describe('neutral appearance defaults', () => {
         const dark = css.slice(css.indexOf('\n.dark{'));
         expect(dark).toContain('--primary:oklch(98% 0 0);--primary-foreground:#0b0d12;');
         expect(dark).toContain('--sidebar-primary-foreground:#0b0d12;');
-        expect(contrastRatio('#ffffff', '#0b0d12')).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio('#f8f8f8', '#0b0d12')).toBeGreaterThanOrEqual(7);
 
         const light = css.slice(css.indexOf(':root{'), css.indexOf('\n.dark{'));
         expect(light).toContain('--primary:oklch(21% 0 0);--primary-foreground:#ffffff;');
-        expect(contrastRatio('#000000', '#ffffff')).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio('#181818', '#ffffff')).toBeGreaterThanOrEqual(7);
+    });
+
+    it('uses dark labels at the 60% lightness boundary for blue and violet', () => {
+        for (const accentPreset of ['blue', 'violet']) {
+            const css = accentVarsCss({ ...DEFAULT_APPEARANCE, accentPreset });
+            const light = css.slice(0, css.indexOf('\n.dark{'));
+            expect(light).toContain('--primary-foreground:#0b0d12;');
+            expect(light).toContain('--sidebar-primary-foreground:#0b0d12;');
+        }
     });
 
     it('keeps every existing palette option', () => {
@@ -84,9 +91,4 @@ describe('neutral appearance defaults', () => {
         expect(base).toContain('--sidebar-accent: oklch(94% 0 0);');
         expect(base).toContain('--sidebar-ring: oklch(98% 0 0);');
     });
-});
-
-// Guard the helper against accidentally accepting a non-hex input.
-it('contrast helper uses hex channels', () => {
-    expect(HEX_RE.test('#ffffff')).toBe(true);
 });
