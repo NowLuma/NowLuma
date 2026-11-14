@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 rem Run from this script's folder: config/, logs/ and native/ are all relative to it.
 cd /d "%~dp0"

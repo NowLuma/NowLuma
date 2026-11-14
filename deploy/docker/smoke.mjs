@@ -90,6 +90,7 @@ async function checkDesktopAndHook() {
   assert.equal(system.deployment.directories.qq, '/home/nowluma/.config/QQ');
   assert.equal(system.deployment.writable.qq, true);
   assert.equal(system.deployment.vncPort, 19080);
+  docker('exec', '--user', '1000:1000', name, 'node', '/usr/local/lib/nowluma-healthcheck.cjs');
   const desktop = await fetch('http://127.0.0.1:19080/vnc.html', {
     signal: AbortSignal.timeout(5000),
   });

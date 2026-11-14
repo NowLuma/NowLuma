@@ -28,12 +28,12 @@ case "${1:-help}" in
     doctor)
         compose config --quiet
         compose ps
-        compose exec -T nowluma node /usr/local/lib/nowluma-healthcheck.cjs
-        compose exec -T nowluma sh -c 'id; printf "HOME=%s\nXDG_CONFIG_HOME=%s\n" "$HOME" "$XDG_CONFIG_HOME"; ls -ld /home/nowluma /home/nowluma/.config/QQ /app/config /app/data /app/logs'
+        compose exec --user 1000:1000 -T nowluma node /usr/local/lib/nowluma-healthcheck.cjs
+        compose exec --user 1000:1000 -T nowluma sh -c 'id; printf "HOME=%s\nXDG_CONFIG_HOME=%s\n" "$HOME" "$XDG_CONFIG_HOME"; ls -ld /home/nowluma /home/nowluma/.config/QQ /app/config /app/data /app/logs'
         ;;
     vnc-password)
         echo '这是远程桌面的访问密码，请勿转发：'
-        compose exec -T nowluma cat /home/nowluma/.vnc/password
+        compose exec --user 1000:1000 -T nowluma cat /home/nowluma/.vnc/password
         ;;
     -h|--help|help) usage ;;
     *) usage >&2; exit 2 ;;
