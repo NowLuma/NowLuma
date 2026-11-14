@@ -10,6 +10,7 @@ const tsconfigRootDir = import.meta.dirname;
 
 export const sourceIgnores = globalIgnores([
     '**/dist/**',
+    '_site/**',
     '**/node_modules/**',
     '**/coverage/**',
     '**/.turbo/**',

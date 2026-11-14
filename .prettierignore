@@ -2,6 +2,7 @@
 node_modules/
 .pnpm-store/
 dist/
+_site/
 coverage/
 .turbo/
 .vite/
