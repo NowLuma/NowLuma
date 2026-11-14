@@ -16,6 +16,7 @@ import { actionErrorMessage, useActionFeedback } from '@/contexts/ActionFeedback
 import { webuiSessionHeaders } from '@/lib/api/session-headers';
 import { useAutoPerformance } from '@/hooks/use-auto-performance';
 import type { Palette, ThemeMode, UiAppearance, UiBackground } from '@/types';
+import { DEFAULT_APPEARANCE, UI_APPEARANCE_CACHE_KEY } from '@nowluma/common/webui-appearance';
 import { WEBUI_TARGETS, type WebuiPresentation } from '@nowluma/common/webui-target';
 import { resolveAppearance } from '@/appearance/registry';
 import {
@@ -40,6 +41,10 @@ export type {
     UiAppearance,
 } from '@/types';
 
+// Re-export the shared default so existing importers (settings page, demo
+// fixtures, tests) keep their import path while the value has one owner.
+export { DEFAULT_APPEARANCE };
+
 /** A partial appearance update; `background` may itself be a partial patch. */
 export type AppearancePatch = Partial<Omit<UiAppearance, 'background'>> & {
     background?: Partial<UiBackground>;
@@ -48,7 +53,7 @@ export type AppearancePatch = Partial<Omit<UiAppearance, 'background'>> & {
 // ─── Frontend catalogues (the server stores only ids; the visuals live here) ───
 
 export type AccentColor =
-    'lavender' | 'sky' | 'blue' | 'violet' | 'rose' | 'emerald' | 'amber' | 'orange';
+    'neutral' | 'lavender' | 'sky' | 'blue' | 'violet' | 'rose' | 'emerald' | 'amber' | 'orange';
 
 export interface AccentSpec {
     id: AccentColor;
@@ -59,6 +64,13 @@ export interface AccentSpec {
 }
 
 export const ACCENTS: AccentSpec[] = [
+    {
+        id: 'neutral',
+        label: '中性',
+        swatch: '#111111',
+        light: { primary: 'oklch(21% 0 0)', ring: 'oklch(21% 0 0)' },
+        dark: { primary: 'oklch(98% 0 0)', ring: 'oklch(98% 0 0)' },
+    },
     {
         id: 'lavender',
         label: '薰衣草',
@@ -202,51 +214,14 @@ export const GRADIENT_OPTIONS: GradientSpec[] = [
 
 export const UI_SCALE = { min: 0.9, max: 1.2, step: 0.05 } as const;
 
-// ─── Defaults (mirror core/src/webui/ui-config.ts) ─────────────────────────
-
-export const DEFAULT_APPEARANCE: UiAppearance = {
-    mode: 'system',
-    accentMode: 'preset',
-    accentPreset: 'lavender',
-    accentCustom: '#8561bd',
-    accentScope: 'global',
-    darkIntensity: 'soft',
-    palette: 'default',
-    sidebarStyle: 'follow',
-    background: {
-        type: 'none',
-        color: '#b99ae6',
-        gradient: 'none',
-        imageOpacity: 0.15,
-        imageBlur: 0,
-        hasImage: false,
-        imageMime: '',
-        imageVersion: 0,
-    },
-    fontSans: 'default',
-    fontSansCustom: '',
-    fontMono: 'default',
-    fontMonoCustom: '',
-    uiScale: 1,
-    radius: 0.75,
-    density: 'cozy',
-    reduceMotion: false,
-    disableMotion: false,
-    performanceMode: 'auto',
-    customPointerSystem: false,
-    customContextMenu: true,
-    highContrast: false,
-    sidebarPinned: false,
-    timeFormat: '24h',
-    pollInterval: 3000,
-    customCss: '',
-    cssVars: {},
-};
+// ─── Defaults ─────────────────────────────────────────────────────────────
+// DEFAULT_APPEARANCE lives in `@nowluma/common/webui-appearance` (shared with
+// the server schema) and is re-exported above.
 
 /** The sentinel `fontSans`/`fontMono` id selecting the free-form custom family. */
 export const FONT_CUSTOM_ID = 'custom';
 
-const LS_CACHE = 'nowluma_ui_appearance';
+const LS_CACHE = UI_APPEARANCE_CACHE_KEY;
 const TOKEN_KEY = 'nowluma_token';
 
 // ─── Colour helpers (custom hex accent → readable foreground) ──────────────
@@ -271,16 +246,24 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
     return null;
 }
 
-/** Pick black or white text for a given accent so labels stay legible. */
-function readableForeground(hex: string): string {
-    const rgb = hexToRgb(hex);
+/** Pick black or white text for a given accent so labels stay legible. Accepts
+ *  the preset oklch colours and custom hex; unknown formats fall back to white. */
+function readableForeground(color: string): string {
+    const rgb = hexToRgb(color);
+    let lum: number | null = rgb ? (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255 : null;
 
-    if (!rgb) {
+    if (lum === null) {
+        const oklch = /^oklch\(\s*([\d.]+)%/i.exec(color.trim());
+
+        if (oklch) {
+            lum = Number(oklch[1]) / 100;
+        }
+    }
+
+    if (lum === null) {
         return '#ffffff';
     }
 
-    // Relative luminance (sRGB approximation).
-    const lum = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
     return lum > 0.6 ? '#0b0d12' : '#ffffff';
 }
 
@@ -331,7 +314,7 @@ function accentSurfaces(hex: string, global: boolean, mode: 'light' | 'dark'): s
     );
 }
 
-function accentVarsCss(a: UiAppearance): string {
+export function accentVarsCss(a: UiAppearance): string {
     const global = a.accentScope === 'global';
     // Only the default palette gets accent-tinted surfaces (others own theirs).
     const surf = a.palette === 'default';
@@ -355,13 +338,16 @@ function accentVarsCss(a: UiAppearance): string {
     }
 
     const spec = ACCENTS.find((x) => x.id === a.accentPreset) ?? ACCENTS[0];
+    // Black/white labels picked from each mode's primary keep preset buttons
+    // readable in both schemes (the neutral dark primary is white).
+    const lightFg = readableForeground(spec.light.primary);
+    const darkFg = readableForeground(spec.dark.primary);
     const lightCore = global
-        ? `--primary:${spec.light.primary};--ring:${spec.light.ring};--sidebar-primary:${spec.light.primary};--sidebar-ring:${spec.light.ring};`
-        : `--sidebar-primary:${spec.light.primary};--sidebar-ring:${spec.light.ring};`;
+        ? `--primary:${spec.light.primary};--primary-foreground:${lightFg};--ring:${spec.light.ring};--sidebar-primary:${spec.light.primary};--sidebar-primary-foreground:${lightFg};--sidebar-ring:${spec.light.ring};`
+        : `--sidebar-primary:${spec.light.primary};--sidebar-primary-foreground:${lightFg};--sidebar-ring:${spec.light.ring};`;
     const darkCore = global
-        ? `--primary:${spec.dark.primary};--ring:${spec.dark.ring};--sidebar-primary:${spec.dark.primary};--sidebar-ring:${spec.dark.ring};`
-        : `--sidebar-primary:${spec.dark.primary};--sidebar-ring:${spec.dark.ring};`;
-    // Presets keep the base token's primary-foreground (designed for these hues).
+        ? `--primary:${spec.dark.primary};--primary-foreground:${darkFg};--ring:${spec.dark.ring};--sidebar-primary:${spec.dark.primary};--sidebar-primary-foreground:${darkFg};--sidebar-ring:${spec.dark.ring};`
+        : `--sidebar-primary:${spec.dark.primary};--sidebar-primary-foreground:${darkFg};--sidebar-ring:${spec.dark.ring};`;
     const light = lightCore + (surf ? accentSurfaces(spec.light.primary, global, 'light') : '');
     const dark = darkCore + (surf ? accentSurfaces(spec.dark.primary, global, 'dark') : '');
     return `:root{${light}}\n.dark{${dark}}`;

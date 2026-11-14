@@ -16,6 +16,10 @@
       "types": "./src/webui-target.ts",
       "default": "./src/webui-target.ts"
     },
+    "./webui-appearance": {
+      "types": "./src/webui-appearance.ts",
+      "default": "./src/webui-appearance.ts"
+    },
     "./update-source": {
       "types": "./src/update-source.ts",
       "default": "./src/update-source.ts"
