@@ -70,7 +70,7 @@ describe('OneBot access token save policy', () => {
     it('rejects a newly changed weak inbound token', () => {
         const previous = makeDefaultOneBotConfig();
         const next = structuredClone(previous);
-        next.networks.httpServers[0].accessToken = 'NowlumaNowluma';
+        next.networks.httpServers[0].accessToken = 'NowlumaNowlumaNowluma';
 
         expect(() => validate(previous, next, '127.0.0.1')).toThrow(/容易被猜中/);
     });

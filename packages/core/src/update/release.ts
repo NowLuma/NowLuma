@@ -59,7 +59,7 @@ export function parseLatestReleasePage(html: string) {
     }
 
     const url = new URL(canonical, 'https://github.com');
-    const tag = /^\/Nowluma\/Nowluma\/releases\/tag\/([^/]+)$/.exec(url.pathname)?.[1];
+    const tag = /^\/WSXYT\/Nowluma\/releases\/tag\/([^/]+)$/.exec(url.pathname)?.[1];
     const decoded = tag && decodeURIComponent(tag);
     const version = decoded?.startsWith('v') ? decoded.slice(1) : undefined;
     const parsed = parseVersion(version);
