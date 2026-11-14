@@ -10,7 +10,8 @@ using System.Runtime.InteropServices;
 internal static class Program
 {
     private static Process? application;
-    private static int stopping;
+    private static Task shutdown = Task.CompletedTask;
+    private static TimeSpan shutdownGrace = TimeSpan.FromSeconds(35);
     private static readonly bool Chinese = System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
     private static readonly ConsoleHandler CloseHandler = HandleConsoleClose;
     private delegate bool ConsoleHandler(uint signal);
@@ -27,77 +28,73 @@ internal static class Program
     {
         Console.OutputEncoding = new UTF8Encoding(false);
         FileStream? lease = null;
-        bool processStarted = false;
+        string? endpointFile = null;
         try
         {
             if (!OperatingSystem.IsWindows() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
                 throw new InvalidOperationException("Windows x64 is required.");
-            bool selfTest = args.Length == 2 && args[0] == "--self-test";
+            if (args.Length != 0 && !(args.Length == 2 && args[0] == "--self-test"))
+                throw new InvalidOperationException("Usage: Nowluma.exe [--self-test <isolated-directory>]");
+            bool selfTest = args.Length == 2;
             string root = selfTest ? Path.GetFullPath(args[1]) : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nowluma");
+            RejectLinks(root);
             Directory.CreateDirectory(root);
-            string endpointFile = Path.Combine(root, ".launcher-endpoint");
+            endpointFile = Path.Combine(root, ".launcher-endpoint");
+            RejectLinks(endpointFile);
+            RejectLinks(Path.Combine(root, ".launcher-lock"));
             try { lease = new FileStream(Path.Combine(root, ".launcher-lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
             catch (IOException error) when ((error.HResult & 0xffff) == 32)
             {
                 Say("Nowluma 已运行，正在打开控制台。", "Nowluma is already running. Opening its console.");
-                if (File.Exists(endpointFile)) OpenConsole(File.ReadAllText(endpointFile));
+                if (!selfTest && File.Exists(endpointFile)) OpenConsole(File.ReadAllText(endpointFile));
                 return 0;
             }
+            File.Delete(endpointFile);
+            InstallPayload(root);
+            if (selfTest)
             {
-                InstallPayload(root);
-                if (selfTest)
+                await SelfTest(root);
+                return 0;
+            }
+            Say("Nowluma 正在启动，无需 Docker、Node 或 .NET 安装。", "Starting Nowluma. No Docker, Node or .NET installation is required.");
+            Say("保存目录：" + root, "Data directory: " + root);
+            Say("运行环境：本机 QQ。浏览器桌面隔离环境需要已有 Linux Docker 引擎。", "Environment: local QQ. An isolated browser desktop requires an existing Linux Docker engine.");
+            string modeFile = Path.Combine(root, ".launcher-mode");
+            RejectLinks(modeFile);
+            string previousMode = File.Exists(modeFile) ? File.ReadAllText(modeFile) : "1";
+            if (previousMode is not ("1" or "2")) throw new InvalidOperationException("Invalid saved environment choice; it was not replaced.");
+            bool dockerAvailable = WindowsContainer.Available();
+            string mode = dockerAvailable
+                ? Choose("选择：1. 本机 QQ  2. 已有 Docker 隔离桌面  0. 退出", "Choose: 1. Local QQ  2. Existing Docker isolated desktop  0. Exit", previousMode)
+                : Choose("未检测到运行中的 Linux Docker：1. 本机 QQ  0. 退出", "No running Linux Docker engine: 1. Local QQ  0. Exit", previousMode == "2" ? "0" : "1");
+            if (mode == "0") return 0;
+            if (mode is not ("1" or "2") || (mode == "2" && !dockerAvailable)) throw new InvalidOperationException("Invalid environment choice.");
+            File.WriteAllText(modeFile, mode);
+            if (mode == "2")
+                return await WindowsContainer.Run(root, endpoint =>
                 {
-                    await SelfTest(root);
-                    return 0;
-                }
-                Say("Nowluma 正在启动，无需 Docker、Node 或 .NET 安装。", "Starting Nowluma. No Docker, Node or .NET installation is required.");
-                Say("保存目录：" + root, "Data directory: " + root);
-                Say("运行环境：本机 QQ（默认）。浏览器桌面隔离环境需要已有 Linux Docker 引擎。", "Environment: local QQ (default). An isolated browser desktop requires an existing Linux Docker engine.");
-                if (WindowsContainer.Available() && Choose("选择：1. 本机 QQ  2. 已有 Docker 隔离桌面", "Choose: 1. Local QQ  2. Existing Docker isolated desktop", "1") == "2")
-                    return await WindowsContainer.Run(root, OpenConsole, Choose, Say);
-                await QqSetup.Prepare(root, Choose, Say);
-                var start = new ProcessStartInfo(Path.Combine(root, "node.exe"))
+                    File.WriteAllText(endpointFile, LocalConsoleUrl(endpoint), new UTF8Encoding(false));
+                    OpenConsole(endpoint);
+                }, Choose, Say);
+            if (!await QqSetup.Prepare(root, Choose, Say)) return 0;
+            Console.CancelKeyPress += CancelKeyPress;
+            SetConsoleCtrlHandler(CloseHandler, true);
+            try
+            {
+                return await RunApplication(root, "index.mjs", endpoint =>
                 {
-                    WorkingDirectory = root,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    RedirectStandardInput = true,
-                    StandardOutputEncoding = Encoding.UTF8,
-                    StandardErrorEncoding = Encoding.UTF8,
-                };
-                start.ArgumentList.Add(Path.Combine(root, "index.mjs"));
-                start.Environment["NOWLUMA_LAUNCHER_CONTROL"] = "1";
-                application = new Process { StartInfo = start };
-                var ready = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-                application.OutputDataReceived += (_, e) =>
-                {
-                    if (e.Data is null) return;
-                    Console.WriteLine(e.Data);
-                    var match = Regex.Match(e.Data, @"listening (https?://\S+)");
-                    if (match.Success) ready.TrySetResult(match.Groups[1].Value);
-                };
-                application.ErrorDataReceived += (_, e) => { if (e.Data is not null) Console.Error.WriteLine(e.Data); };
-                Console.CancelKeyPress += (_, e) => { e.Cancel = true; RequestStop(); };
-                SetConsoleCtrlHandler(CloseHandler, true);
-                if (!application.Start()) throw new InvalidOperationException("Could not start Node.");
-                processStarted = true;
-                application.BeginOutputReadLine(); application.BeginErrorReadLine();
-                var exited = application.WaitForExitAsync();
-                var winner = await Task.WhenAny(ready.Task, exited, Task.Delay(TimeSpan.FromSeconds(45)));
-                if (winner != ready.Task)
-                {
-                    RequestStop();
-                    throw new InvalidOperationException("Console startup failed. See the output above.");
-                }
-                string endpoint = LocalConsoleUrl(await ready.Task);
-                File.WriteAllText(endpointFile, endpoint, new UTF8Encoding(false));
-                Say("控制台地址：" + endpoint, "Console: " + endpoint);
-                OpenConsole(endpoint);
-                Say("首次密码在上方 initial credentials 一行；请在浏览器中完成引导。", "Find the first password in the 'initial credentials' line above, then complete browser setup.");
-                Say("关闭窗口或按 Ctrl+C 会正常停止服务；QQ 用户数据和程序设置会保留。", "Closing this window or pressing Ctrl+C stops the service; QQ data and settings are preserved.");
-                await exited;
-                return application.ExitCode;
+                    File.WriteAllText(endpointFile, endpoint, new UTF8Encoding(false));
+                    Say("控制台地址：" + endpoint, "Console: " + endpoint);
+                    OpenConsole(endpoint);
+                    Say("首次密码在上方 initial credentials 一行；请在浏览器中完成引导。", "Find the first password in the 'initial credentials' line above, then complete browser setup.");
+                    Say("建议按 Ctrl+C 正常停止（最多等待 35 秒）；直接关闭窗口时 Windows 可能提前强制结束。QQ 用户数据和设置不会被删除。", "Use Ctrl+C for graceful shutdown (up to 35 seconds); closing the window lets Windows terminate it sooner. QQ data and settings are not deleted.");
+                    return Task.CompletedTask;
+                }, TimeSpan.FromSeconds(45));
+            }
+            finally
+            {
+                Console.CancelKeyPress -= CancelKeyPress;
+                SetConsoleCtrlHandler(CloseHandler, false);
             }
         }
         catch (Exception error)
@@ -111,40 +108,148 @@ internal static class Program
         finally
         {
             RequestStop();
-            if (processStarted && application is { HasExited: false }) await application.WaitForExitAsync();
-            application?.Dispose();
+            await shutdown;
+            if (lease is not null && endpointFile is not null) File.Delete(endpointFile);
             lease?.Dispose();
+        }
+    }
+
+    private static void CancelKeyPress(object? sender, ConsoleCancelEventArgs args)
+    {
+        args.Cancel = true;
+        RequestStop();
+    }
+
+    private static async Task<int> RunApplication(string root, string entry, Func<string, Task> onReady, TimeSpan startupTimeout)
+    {
+        var start = new ProcessStartInfo(Path.Combine(root, "node.exe"))
+        {
+            WorkingDirectory = root,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        start.ArgumentList.Add(Path.Combine(root, entry));
+        start.Environment["NOWLUMA_LAUNCHER_CONTROL"] = "1";
+        using var child = new Process { StartInfo = start, EnableRaisingEvents = true };
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        child.Exited += (_, _) => exited.TrySetResult();
+        var ready = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        child.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is null) return;
+            Console.WriteLine(e.Data);
+            var match = Regex.Match(e.Data, @"listening (https?://\S+)");
+            if (match.Success) ready.TrySetResult(match.Groups[1].Value);
+        };
+        child.ErrorDataReceived += (_, e) => { if (e.Data is not null) Console.Error.WriteLine(e.Data); };
+        if (!child.Start()) throw new InvalidOperationException("Could not start Node.");
+        application = child;
+        shutdown = Task.CompletedTask;
+        try
+        {
+            child.BeginOutputReadLine(); child.BeginErrorReadLine();
+            var winner = await Task.WhenAny(ready.Task, exited.Task, Task.Delay(startupTimeout));
+            if (winner != ready.Task)
+                throw new InvalidOperationException(winner == exited.Task
+                    ? $"Console exited before startup (exit {child.ExitCode}). See the output above."
+                    : "Console startup timed out. See the output above.");
+            await onReady(LocalConsoleUrl(await ready.Task));
+            await exited.Task;
+            return child.ExitCode;
+        }
+        finally
+        {
+            RequestStop();
+            try
+            {
+                await shutdown;
+                await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(1));
+            }
+            finally
+            {
+                lock (child)
+                {
+                    application = null;
+                    shutdown = Task.CompletedTask;
+                }
+            }
         }
     }
 
     private static void RequestStop()
     {
-        if (application is null) return;
+        var child = application;
+        if (child is null) return;
+        lock (child)
+        {
+            if (application != child || !shutdown.IsCompleted || child.HasExited) return;
+            shutdown = StopApplication(child);
+        }
+    }
+
+    private static async Task StopApplication(Process child)
+    {
+        var exited = child.WaitForExitAsync();
+        var deadline = Task.Delay(shutdownGrace);
+        await Task.WhenAny(SendShutdown(child), deadline);
+        if (await Task.WhenAny(exited, deadline) != exited && !child.HasExited)
+        {
+            Console.Error.WriteLine("Shutdown grace period expired; terminating the launcher runtime process tree.");
+            try { child.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) when (child.HasExited) { }
+        }
+        await exited.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    private static async Task SendShutdown(Process child)
+    {
         try
         {
-            if (application.HasExited || Interlocked.Exchange(ref stopping, 1) != 0) return;
-            application.StandardInput.WriteLine("shutdown");
-            application.StandardInput.Flush();
-            application.StandardInput.Close();
+            await child.StandardInput.WriteLineAsync("shutdown");
+            await child.StandardInput.FlushAsync();
+            child.StandardInput.Close();
         }
         catch (IOException) { }
         catch (InvalidOperationException) { }
     }
+
     private static bool HandleConsoleClose(uint signal)
     {
         if (signal is not (2 or 5 or 6)) return false;
         RequestStop();
-        try { application?.WaitForExit(5000); } catch (InvalidOperationException) { }
+        try
+        {
+            // Windows gives console-close handlers only a short cleanup window.
+            if (!shutdown.Wait(TimeSpan.FromSeconds(3)) && application is { HasExited: false } child)
+            {
+                Console.Error.WriteLine("Console close deadline expired; terminating the launcher runtime process tree.");
+                try { child.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) when (child.HasExited) { }
+            }
+            if (!shutdown.Wait(TimeSpan.FromSeconds(1))) Console.Error.WriteLine("Runtime cleanup did not finish before console close.");
+        }
+        catch (Exception error) { Console.Error.WriteLine("Runtime cleanup failed: " + error.Message); }
         return false;
+    }
+
+    internal static void RejectLinks(string path)
+    {
+        for (string? current = Path.GetFullPath(path); current is not null; current = Path.GetDirectoryName(current))
+            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException("Launcher path uses a link: " + current);
     }
     private static string LocalConsoleUrl(string raw)
     {
         var url = new Uri(raw.Trim());
         if (url.Scheme is not ("http" or "https") || url.UserInfo.Length != 0 || url.Query.Length != 0 || url.Fragment.Length != 0)
             throw new InvalidOperationException("Invalid console address.");
-        if (url.Host is not ("localhost" or "127.0.0.1" or "0.0.0.0" or "[::]" or "[::1]"))
+        if (url.Host is not ("localhost" or "127.0.0.1" or "0.0.0.0" or "[::]" or "[::1]") || url.Port <= 0)
             throw new InvalidOperationException("Console must be on this computer.");
-        return new UriBuilder(url) { Host = "127.0.0.1", Path = "/" }.Uri.AbsoluteUri;
+        return new UriBuilder(url) { Host = url.Host is "[::]" or "[::1]" ? "::1" : "127.0.0.1", Path = "/" }.Uri.AbsoluteUri;
     }
     private static void OpenConsole(string endpoint) => Process.Start(new ProcessStartInfo(LocalConsoleUrl(endpoint)) { UseShellExecute = true });
 
@@ -152,6 +257,8 @@ internal static class Program
     {
         string manifest = Path.Combine(root, "release.json");
         string installedPayload = Path.Combine(root, ".launcher-payload");
+        RejectLinks(manifest);
+        RejectLinks(installedPayload);
         if (File.Exists(manifest))
         {
             using var current = JsonDocument.Parse(File.ReadAllText(manifest));
@@ -207,7 +314,12 @@ internal static class Program
                 changed.Add((target, backup));
                 File.Move(staged, target, true);
             }
-            File.WriteAllText(installedPayload, PayloadInfo.Sha256);
+            string marker = Path.Combine(temporary, "marker");
+            File.WriteAllText(marker, PayloadInfo.Sha256);
+            string? oldMarker = File.Exists(installedPayload) ? Path.Combine(temporary, "old-marker") : null;
+            if (oldMarker is not null) File.Copy(installedPayload, oldMarker);
+            changed.Add((installedPayload, oldMarker));
+            File.Move(marker, installedPayload, true);
             safeToClean = true;
         }
         catch (Exception original)
@@ -265,5 +377,60 @@ internal static class Program
         if (child.ExitCode != 0) throw new InvalidOperationException("Bundled runtime check failed.");
         if (CompareVersions("2.5.0-rc.2", "2.5.0-rc.1") <= 0 || CompareVersions("2.5.0", "2.5.0-rc.2") <= 0)
             throw new InvalidOperationException("Version ordering check failed.");
+        foreach (string invalid in new[] { "https://example.com/", "http://user:secret@localhost:5099/", "http://localhost:5099/?token=secret", "http://localhost:0/", "file:///C:/test" })
+        {
+            try { LocalConsoleUrl(invalid); throw new Exception("Unsafe endpoint accepted."); }
+            catch (InvalidOperationException) { }
+        }
+        if (LocalConsoleUrl("http://[::]:5100/console") != "http://[::1]:5100/" || LocalConsoleUrl("http://[::1]:5101/") != "http://[::1]:5101/")
+            throw new InvalidOperationException("IPv6 console endpoint check failed.");
+        string fixture = Path.Combine(root, ".launcher-fixture.mjs");
+        RejectLinks(fixture);
+        try
+        {
+            shutdownGrace = TimeSpan.FromSeconds(1);
+            File.WriteAllText(fixture, """
+                import http from 'node:http';
+                import { createInterface } from 'node:readline';
+                if (process.env.NOWLUMA_LAUNCHER_CONTROL !== '1') throw Error('Missing launcher control');
+                const server = http.createServer((req, res) => {
+                    res.writeHead(401); res.end('FIXTURE ONLY: authentication required');
+                }).listen(0, '127.0.0.1', () => console.log(`listening http://0.0.0.0:${server.address().port}`));
+                createInterface({ input: process.stdin }).on('line', line => {
+                    if (line !== 'shutdown') throw Error('Unexpected launcher command');
+                    console.log('PASS: fixture received stdin shutdown');
+                    server.close(() => setTimeout(() => console.log('PASS: fixture in-flight cleanup completed'), 250));
+                });
+                """);
+            int result = await RunApplication(root, Path.GetFileName(fixture), async endpoint =>
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                using var response = await client.GetAsync(endpoint);
+                if (response.StatusCode != System.Net.HttpStatusCode.Unauthorized || new Uri(endpoint).Port == 0)
+                    throw new InvalidOperationException("Fixture endpoint check failed.");
+                RequestStop();
+            }, TimeSpan.FromSeconds(5));
+            if (result != 0) throw new InvalidOperationException("Fixture shutdown failed.");
+            Console.WriteLine("PASS: actual launcher startup, auto-port endpoint and graceful shutdown (fixture only)");
+            foreach (bool earlyExit in new[] { true, false })
+            {
+                File.WriteAllText(fixture, earlyExit
+                    ? "console.error('FIXTURE startup error detail'); process.exit(17);"
+                    : "import { spawn } from 'node:child_process'; const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); console.log('FIXTURE stalled runtime pid=' + process.pid + ' child=' + child.pid); setInterval(() => {}, 1000);");
+                try
+                {
+                    await RunApplication(root, Path.GetFileName(fixture), _ => throw new InvalidOperationException("Unexpected readiness"), TimeSpan.FromSeconds(1));
+                    throw new InvalidOperationException("Failed fixture unexpectedly started.");
+                }
+                catch (InvalidOperationException error) when (earlyExit ? error.Message.Contains("exit 17") : error.Message.Contains("timed out")) { }
+            }
+            Console.WriteLine("PASS: startup failure detail and bounded stalled-runtime cleanup (fixture only)");
+        }
+        finally
+        {
+            File.Delete(fixture);
+            shutdownGrace = TimeSpan.FromSeconds(35);
+        }
+        await WindowsContainerSelfTest.Run(root);
     }
 }
