@@ -29,3 +29,9 @@ coverage/
 # deployment scratch produced by deploy/install.sh
 /deploy/nowluma/
 /deploy/.env
+
+# Windows executable build inputs/outputs
+/deploy/windows/bin/
+/deploy/windows/obj/
+/deploy/windows/payload.zip
+/deploy/windows/PayloadInfo.g.cs

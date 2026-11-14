@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <AssemblyName>Nowluma</AssemblyName>
+    <Product>Nowluma</Product>
+    <Description>Nowluma one-click Windows launcher</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="payload.zip" LogicalName="Nowluma.Payload" />
+    <EmbeddedResource Include="compose.yml" LogicalName="Nowluma.WindowsCompose" />
+  </ItemGroup>
+</Project>
