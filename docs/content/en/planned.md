@@ -1,0 +1,102 @@
+---
+title: Planned and unverified
+description: What is not shipped or not verified yet — the Windows release form, performance/Auto UI, fused styles, the site simulator, artifacts and long-term QQ sessions.
+---
+
+# Planned and unverified
+
+This page collects everything that is not yet a fact, so the documentation cannot quietly turn a plan into a promise. Each entry states its current status, what you can see today, and when to check back.
+
+## One-line summary
+
+| Item | Status | What we can say today |
+| --- | --- | --- |
+| Windows single-file exe | Unverified | The installer points Windows users at a one-click exe, but this repository has no package to verify; form and signing unconfirmed |
+| Auto / performance UI | Not implemented | A direction only; no interface to click |
+| Fused styles | Not implemented | Part of the visual work; the interface is still changing |
+| Site practice mode `/demo/` | Integrating | Concepts and boundaries are written in [Practice mode](demo.md); the page is not live |
+| Static site and publishing pipeline | Owned by the publisher | This documentation supplies content only |
+| arm64 Docker | Build inputs exist, unverified | Do not label it a tested platform |
+| Long-term QQ sessions | Cannot be verified in CI | Only you can verify it on your own account |
+| Update mirrors | Supplied by you | No third-party mirror is recommended or verified here |
+| Signed artifacts / official images / npm packages | Nonexistent or unconfirmed | Do not claim they exist |
+
+## The Windows release form
+
+Current state:
+
+1. The installer exits on non-Linux platforms and points at the Windows one-click route.
+2. The root README mentions double-clicking `launcher.bat`.
+3. Whether a published single-file exe exists, what it is called, and whether it is code-signed are **unverified**.
+
+So this documentation only describes the intended shape of a Windows install ([Native install](install-native.md#windows)). It gives no download address, no artifact name and no signing guarantee. This section becomes factual once the release form is confirmed.
+
+**How to judge for yourself**: if the package you received is a single executable with no documentation, confirm the source you got it from and compare it against the checksum in the release notes. Do not run a binary that has no checksum.
+
+## Auto / performance UI
+
+The direction is optional “automatic” interface capabilities — for example selecting an account automatically, or applying a more resource-friendly display strategy.
+
+Current state:
+
+- There is **no** switch to click and no settings group for it.
+- This documentation does not describe specific controls, because describing them would make them look like they exist.
+
+**Integration follow-up (for whoever implements it)**:
+
+1. Which page it appears on (overview? settings? a new tab?).
+2. Default values, storage location, and whether a restart is needed.
+3. How the behaviour rolls back when disabled.
+4. Its relationship to 「自动连接已打开的 QQ」 (auto-connect to an already-open QQ) — the latter means “try to bridge on startup” and is **not** QQ auto-login. Do not conflate the two.
+
+## Fused styles
+
+A visual direction that merges several interface elements into one continuous surface. Current state:
+
+- Not implemented, and there are no screenshots to cite.
+- The existing appearance system (palettes, accent colour, background, theme variables, custom CSS) **is** implemented — see [Settings: console](settings-console.md#appearance).
+- Visual details are still in motion, so this documentation deliberately avoids pixel positions and specific colour values.
+
+**Integration follow-up**: update the appearance chapter's control list once the styles land, and re-check that custom CSS and the host-managed overlay keep their current precedence.
+
+## Practice mode `/demo/`
+
+- The path is reserved as `/demo/`.
+- Approach: render the real interface over an independent simulated API layer, with a permanent “simulated data” marker.
+- No real credentials, no requests to external addresses.
+- The page shell belongs to the publisher's site generator; this documentation supplies content and boundaries.
+
+**Integration follow-up**:
+
+1. Wire `/demo/` into the site and add a navigation entry.
+2. Link to it from this page and from [Practice mode](demo.md).
+3. Confirm a persistent “simulated” marker and that it offers no real token or password fields.
+4. Confirm it never writes simulated results into real configuration files.
+
+## Releases and the publishing pipeline
+
+- The automation is being expanded; this documentation describes nothing beyond what already exists.
+- Known artifact forms: platform-specific Lite release builds, and Docker images built locally (`docker build -f deploy/docker/Dockerfile`).
+- Not configured: npm publishing, registry image publishing, cross-repository automated releases.
+- Therefore: do not claim official registry tags, signed installers or release files that do not exist.
+
+## Things only you can verify
+
+| Item | How |
+| --- | --- |
+| Whether your QQ signs in automatically | Restart and watch the QQ window, as in [Data, backup and updates](data-backup.md#qq-persistence-and-manual-verification) |
+| Whether your bot replies | Real account + real endpoint + the bot's own log |
+| Long-running stability | Observe it yourself; record version and time |
+| Ban or risk-control exposure | This project offers no probability estimate |
+| arm64 usability | Build and run it yourself on that machine |
+
+## How to read any claim
+
+If a statement falls into one of these categories, assume it is unverified:
+
+- Absolute conclusions such as “guaranteed”, “always” or “never”.
+- A claim that a platform is “tested” without saying how.
+- A download address with no checksum.
+- A screenshot with no version attached.
+
+In this documentation set such content is always labelled with its status instead of being mixed into instructions.
