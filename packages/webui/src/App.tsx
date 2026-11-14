@@ -39,9 +39,10 @@ import { onboardingExecution } from '@/lib/onboarding-actions';
 
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
+    client?: ApiClient;
 }
 
-export default function App({ onboardingSteps = [] }: AppProps) {
+export default function App({ onboardingSteps = [], client }: AppProps) {
     return (
         <ActionFeedbackProvider>
             <ThemeProvider>
@@ -49,7 +50,7 @@ export default function App({ onboardingSteps = [] }: AppProps) {
                 <ActionFeedbackViewport />
                 <AdaptivePointer />
                 <GlobalContextMenu />
-                <AuthBoundary onboardingSteps={onboardingSteps} />
+                <AuthBoundary onboardingSteps={onboardingSteps} client={client} />
             </ThemeProvider>
         </ActionFeedbackProvider>
     );
@@ -80,7 +81,17 @@ function consumeUrlToken(): string | null {
     }
 }
 
-function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardingStep[] }) {
+function authLocation() {
+    return import.meta.env.MODE === 'demo' ? appRouter.history.location : window.location;
+}
+
+function AuthBoundary({
+    onboardingSteps,
+    client: injectedClient,
+}: {
+    onboardingSteps: AdditionalOnboardingStep[];
+    client?: ApiClient;
+}) {
     const finePointer = useFinePointer();
     const [authChecked, setAuthChecked] = useState(false);
     const [authed, setAuthed] = useState(false);
@@ -93,7 +104,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     const [needsConsent, setNeedsConsent] = useState(false);
     const [onboardingFinished, setOnboardingFinished] = useState(false);
     const [replayingOnboarding, setReplayingOnboarding] = useState(
-        () => typeof window !== 'undefined' && isDeveloperOnboardingLocation(window.location),
+        () => typeof window !== 'undefined' && isDeveloperOnboardingLocation(authLocation()),
     );
     const onboardingReturnPath = useRef<string | null>(null);
     // The password from *this* session's login, carried into the forced
@@ -108,13 +119,14 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
 
     const client = useMemo<ApiClient>(
         () =>
+            injectedClient ??
             createApiClient({
                 onUnauthorized: () => {
                     setAuthed(false);
                     setStatus('未授权');
                 },
             }),
-        [],
+        [injectedClient],
     );
 
     const refreshAgreements = useCallback(async () => {
@@ -181,7 +193,12 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     const handleLoggedOut = useCallback(() => {
         // Reset the URL so the next login lands on the overview page, matching
         // the pre-router behaviour, and clear every post-auth gate.
-        window.history.replaceState({}, '', '/');
+        if (import.meta.env.MODE === 'demo') {
+            appRouter.history.replace('/');
+        } else {
+            window.history.replaceState({}, '', '/');
+        }
+
         setAuthed(false);
         setStatus('未连接');
         setMustChange(false);
@@ -202,8 +219,8 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     }, [client, handleLoggedOut]);
 
     const restartOnboarding = useCallback(() => {
-        const currentPath = browserPath(window.location);
-        const returnPath = isDeveloperOnboardingLocation(window.location)
+        const currentPath = browserPath(authLocation());
+        const returnPath = isDeveloperOnboardingLocation(authLocation())
             ? DEVELOPER_SETTINGS_URL
             : currentPath;
         onboardingReturnPath.current = returnPath;
@@ -223,7 +240,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
             onboardingReturnPath.current ?? developerOnboardingReturnPath(window.history.state);
         onboardingReturnPath.current = null;
 
-        if (returnPath && isDeveloperOnboardingLocation(window.location)) {
+        if (returnPath && isDeveloperOnboardingLocation(authLocation())) {
             // The developer page pushed the replay entry, so browser Back is the
             // authoritative way to restore both the URL and its router history.
             appRouter.history.back();
