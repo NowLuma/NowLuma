@@ -2,8 +2,14 @@
 
 ## 1. 安装与首次登录
 
-需要 Docker Engine 和 Compose v2。官方安装指南：
-https://docs.docker.com/engine/install/
+安装向导第一步选择简体中文或 English，然后检查 Docker Engine 和 Compose v2。
+缺少 Docker 时可选择：
+
+- 不需要镜像源：显示 `curl -fsSL https://get.docker.com | bash -s docker`，确认后运行官方安装脚本。
+- 需要镜像源：显示 `bash <(curl -sSL https://linuxmirrors.cn/docker.sh)`，确认后运行第三方安装脚本；镜像与防火墙等选项由你自行选择，本项目不要求关闭防火墙或 SELinux。
+
+执行前的确认回车默认 `y`。已有 Docker 不重新安装、不改镜像设置；缺少 Compose v2 时另外询问插件安装。
+官方手动安装指南：https://docs.docker.com/engine/install/
 
 在源码目录执行：
 
@@ -11,7 +17,9 @@ https://docs.docker.com/engine/install/
 bash deploy/install.sh --docker
 ```
 
-首次安装会生成私有的 `deploy/.env`，已有文件不会被覆盖。之后只运行 `manage.sh`，不用编辑 JSON。
+首次可选访问方式、控制台/机器人端口、时区，回车使用默认值。配置保存在私有 `deploy/.env`；已有配置逐字保留。
+安装成功后直接显示本次生成的控制台初始密码与实际地址；已有部署不会重新设置密码。
+需要 sudo 访问 Docker 时，输出的日常命令也会包含 sudo。后续只运行 `manage.sh`，不用编辑 JSON。
 默认 QQ 包固定版本并检查 SHA-256。官方地址不可用时会明确提示使用固定发行镜像，而非静默切换不同版本。
 镜像来源是 `a1515333102/QQ-Releases` 的同名发行资产；校验保证匹配已固定的发行快照，不应把它说成腾讯提供的签名保证。
 高级构建如指定 `QQ_DEB_URL`，必须同时指定该包的 `QQ_DEB_SHA256`，不会把自定义下载失败偷偷回退到默认包。
@@ -121,7 +129,8 @@ location /desktop/ {
 
 ## 6. 机器人连接
 
-默认 HTTP/WS 端口为 3000/3001，客户端分别连接 `http://地址:3000/`、`ws://地址:3001/`。
+默认 HTTP/WS 端口为 3000/3001；安装时选择其他端口后，工厂监听与宿主发布端口一致，控制台复制的端点地址使用实际监听端口。
+客户端分别连接 `http://地址:HTTP端口/`、`ws://地址:WS端口/`。
 Docker 的工厂监听会绑定容器网卡，宿主侧是否开放由 Compose 的发布地址决定。
 默认只在宿主回环发布。每个接入端点仍需要独立访问令牌；控制台密码不能代替 OneBot 令牌。
 

@@ -28,7 +28,7 @@ jobs:
       - run: node tools/check-identity.mjs
       - run: pnpm test
       - run: node tools/check-action-catalog.mjs
-      - run: node --test deploy/docker/healthcheck.test.cjs
+      - run: node --test deploy/docker/healthcheck.test.cjs deploy/install.test.cjs
       - run: bash -n deploy/install.sh && bash -n deploy/manage.sh && bash -n deploy/docker/entrypoint.sh
       - run: docker compose -f deploy/docker-compose.yml config --quiet
       - run: pnpm run build:all
