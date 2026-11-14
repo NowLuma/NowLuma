@@ -507,9 +507,8 @@ export function SystemPanel() {
                                 密码。
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                Docker 桌面密码：运行{' '}
-                                <code>bash deploy/manage.sh vnc-password</code>{' '}
-                                查看。浏览器无法自动代替你登录 QQ。
+                                Docker 桌面使用当前控制台会话，不需要另填桌面密码。 QQ
+                                扫码与自动登录仍在 QQ 窗口内完成。
                             </p>
                         </div>
                         {desktopError && (

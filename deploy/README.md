@@ -18,11 +18,10 @@ bash deploy/install.sh --docker
 
 ```bash
 bash deploy/manage.sh logs
-bash deploy/manage.sh vnc-password
 ```
 
 打开控制台 `http://127.0.0.1:5099`，设置自己的控制台密码，然后点 **打开 QQ 桌面**。
-桌面密码只保护远程桌面，进入后仍需要在 QQ 窗口扫码。勾选的是 **QQ 自己的自动登录设置**。
+桌面复用控制台认证，不需要额外 VNC 密码。进入后仍在 QQ 窗口扫码，勾选 **QQ 自己的自动登录设置**。
 不要把“程序启动”“接入成功”“QQ 登录成功”“机器人会自动回复”当成同一件事；首页会分别提示。
 
 ### 远程服务器
@@ -30,7 +29,7 @@ bash deploy/manage.sh vnc-password
 默认只把服务发布到宿主机回环地址。推荐在自己电脑执行：
 
 ```bash
-ssh -L 5099:127.0.0.1:5099 -L 6080:127.0.0.1:6080 -L 3001:127.0.0.1:3001 用户名@服务器地址
+ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
 ```
 
 保持隧道窗口打开，再访问本机控制台。安装向导也能显式选择局域网访问；不要直接把管理界面和明文 VNC 暴露到公网。
@@ -43,7 +42,6 @@ bash deploy/manage.sh stop
 bash deploy/manage.sh restart
 bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
-bash deploy/manage.sh vnc-password
 ```
 
 `start` 构建并等待健康检查，`restart` 正常结束进程再等待恢复，`stop` 不删除任何数据卷。
@@ -85,35 +83,40 @@ XDG 运行目录是临时的 `/tmp/nowluma-runtime`，不要持久化陈旧进�
 原生组件仅改外部文件名；内部二进制、接口和必要的旧套接字 ABI 保留。
 这些兼容标识不是新的产品名称，也不能据此声称已移除腾讯的风控识别特征。
 
-## 5. 桌面地址和反向代理
+## 5. 桌面认证和反向代理
 
-控制台首页和 QQ 连接页可一键打开已运行的 noVNC；系统设置提供可选地址。
+Docker 的桌面通过控制台同源路径 `/desktop/` 访问，只有一个管理端口 5099，不再单独发布 6080。
 
-- `vncPort=6080`：按浏览器当前主机名生成端口入口。
-- `vncPort=0` 且地址留空：隐藏入口。
-- 通过 HTTPS 同源代理时，地址可填写 `/desktop/vnc.html?path=desktop/websockify`。
-- 地址不允许 `javascript:`、协议相对地址或密码/令牌参数；打开桌面不会转发控制台令牌。
-- 改入口不等于更改 websockify 监听端口。
-- 环境变量覆盖会在设置中标出，界面显示实际入口，不把覆盖值偷偷写回配置文件。
+- 浏览器使用 HttpOnly、SameSite=Strict 的路径限定会话 Cookie；不把控制台令牌或 VNC 密码放进 URL。
+- 桌面 HTTP、脚本和 WebSocket 都检查有效控制台会话；初始改密与协议确认不能绕过。
+- WebSocket 必须携带与当前主机匹配的 Origin。退出、改密、会话到期后不能再发送桌面操作，空闲连接也会关闭。
+- 后台 VNC 仍仅监听环回 5900，并保留独立认证；同源网关在服务器侧完成认证，不返回后台密码。
+- 控制台高级入口配置仍支持外部桌面地址；外部服务由其自己的认证保护，不会自动获得控制台会话。
 
-Nginx 示例（TLS 和代理鉴权请按你的服务器设置）：
+Nginx 示例（先配置 TLS；`Host` 必须保留真实访问端口）：
 
 ```nginx
 location / {
     proxy_pass http://127.0.0.1:5099;
-    proxy_set_header Host $host;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
     # 保留 X-Nowluma-Token；Authorization 可以由代理用于 Basic Auth。
 }
 location /desktop/ {
-    proxy_pass http://127.0.0.1:6080/;
+    proxy_pass http://127.0.0.1:5099;
     proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;
 }
 ```
 
+不要移除桌面路径中的 `/desktop/`，也不要把它代理到旧的 6080 端口。
 只在已配置受信任代理时设置 `trustProxy`；不要无条件信任公网请求的转发头。
 
 ## 6. 机器人连接
@@ -140,7 +143,7 @@ bash deploy/manage.sh logs
 | 现象 | 检查 |
 | --- | --- |
 | 控制台打不开 | 容器健康状态、端口冲突、SSH 隧道或局域网发布地址 |
-| 桌面打不开 | 6080 映射、桌面密码、反向代理 WebSocket 升级路径 |
+| 桌面打不开 | 控制台会话是否有效、首次改密/协议是否完成、反代是否保留 Host 与 WebSocket 升级路径 |
 | 没有 QQ 进程 | QQ 是否启动；Xvfb/QQ 错误日志，不要把空列表当成安装成功 |
 | QQ 无法接入 | 原生组件与架构是否匹配、SYS_PTRACE、QQ 与程序用户是否一致 |
 | 重启后 QQ 自动登录设置消失 | `nowluma_qq-home` 是否复用、HOME/XDG 是否被自定义启动方式覆盖、是否用了 `down -v` |
@@ -166,7 +169,7 @@ CI 可以验证目录/设置标记、机器 ID 和原生连接，但没有你的
 - 升级源代码后运行 `start`，Docker 复用原卷。
 - 原生升级保留 `config/`、`data/`、`logs/`；QQ 的目录不搬动。
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。
-- 桌面访问密码保存在 QQ HOME 卷的私有 `.vnc/password` 中；需要时用 `vnc-password` 查看，勿公开导出。
+- 后台 VNC 凭据保存在 QQ HOME 卷的私有 `.vnc/password`；浏览器和安装向导不需要读取它，勿公开导出。
 
 ## 9. 原生 Linux
 

@@ -40,7 +40,7 @@ Only the root README introduction contains the original project name. Original n
 
 The container uses a fixed UID/GID and complete persistent QQ HOME. Startup does not mint fresh QQ credentials. Required desktop/runtime processes must be supervised and fail visibly.
 Normal stop/restart/recreation preserves every data volume. Destructive cleanup requires explicit user action.
-Desktop access is independently authenticated and locally published by default. Do not place WebUI tokens or QQ credentials in a noVNC URL, disable VNC authentication, or grant privileged/host-process access as a shortcut.
+Desktop access uses the WebUI session through a same-origin gateway; its loopback VNC backend retains independent password authentication. Do not return its private password to browsers, put session/QQ credentials in URLs, disable VNC authentication, or grant privileged/host-process access as a shortcut. Desktop HTTP and WebSocket routes enforce session revocation, consent/password gates and origin checks.
 
 ## Validation
 

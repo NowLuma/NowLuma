@@ -50,6 +50,11 @@ import { Hono, type Context } from 'hono';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+    clearDesktopSessionCookie,
+    createDesktopGateway,
+    setDesktopSessionCookie,
+} from './desktop';
 import { evaluatePasswordRules, isStrongPassword, WebuiAuth } from './auth';
 import { completeWebuiLogin, invalidateOtherSessions } from './webui-login';
 import {
@@ -827,6 +832,31 @@ export async function initWebUI(
         });
     });
 
+    const desktop = createDesktopGateway(app, {
+        enabled: process.env.NOWLUMA_DESKTOP_PROXY === '1',
+        sessionAllowed: (token) => {
+            const session = sessionTokens.get(token);
+            return (
+                !!session &&
+                Date.now() <= session.expiresAt &&
+                !session.mustChangePassword &&
+                !consentGatePending
+            );
+        },
+    });
+    app.post('/api/desktop/session', (c) => {
+        if (process.env.NOWLUMA_DESKTOP_PROXY !== '1') {
+            return c.json({ success: false, message: '桌面服务未启用' }, 404);
+        }
+
+        setDesktopSessionCookie(
+            c,
+            c.get('sessionToken' as never) as string,
+            listener.tlsEnabled === true,
+        );
+        return c.json({ success: true, url: '/desktop/' });
+    });
+
     // ─── Login ───────────────────────────────────────────────────────────────
     app.post('/api/login', async (c) => {
         const ip = getClientIp(c);
@@ -889,6 +919,7 @@ export async function initWebUI(
             mustChangePassword: result.mustChangePassword,
         });
         setAvatarSessionCookie(c, token, listener.tlsEnabled === true);
+        setDesktopSessionCookie(c, token, listener.tlsEnabled === true);
         return c.json({ success: true, token, mustChangePassword: result.mustChangePassword });
     });
 
@@ -900,6 +931,7 @@ export async function initWebUI(
         }
 
         clearAvatarSessionCookie(c, listener.tlsEnabled === true);
+        clearDesktopSessionCookie(c, listener.tlsEnabled === true);
         return c.json({ success: true });
     });
 
@@ -970,6 +1002,7 @@ export async function initWebUI(
         // token; rotating credentials must rotate sessions too.
         sessionTokens.clear();
         clearAvatarSessionCookie(c, listener.tlsEnabled === true);
+        clearDesktopSessionCookie(c, listener.tlsEnabled === true);
         log.info('password updated; all sessions invalidated');
         return c.json({ success: true, requireRelogin: true });
     });
@@ -2332,6 +2365,7 @@ export async function initWebUI(
             },
         );
     });
+    desktop.attach(listeningServer as import('node:http').Server);
     const tokenJanitor = setInterval(purgeExpiredTokens, 60_000);
     tokenJanitor.unref();
     return {
@@ -2339,6 +2373,7 @@ export async function initWebUI(
         async stop() {
             clearInterval(tokenJanitor);
             shutdownStreams.abort();
+            desktop.stop();
             await new Promise<void>((resolve, reject) => {
                 listeningServer.close((err) => (err ? reject(err) : resolve()));
             });

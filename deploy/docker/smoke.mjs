@@ -9,6 +9,7 @@ const volumes = ['config', 'data', 'logs', 'home'].map((part) => `${name}-${part
 const password = `Aa!${randomBytes(24).toString('base64url')}`;
 const base = 'http://127.0.0.1:19099';
 let token;
+let desktopCookie = '';
 function docker(...args) {
   return execFileSync('docker', args, {
     encoding: 'utf8',
@@ -28,16 +29,12 @@ function start() {
     '--shm-size=1g',
     '-p',
     '127.0.0.1:19099:5099',
-    '-p',
-    '127.0.0.1:19080:6080',
     '-e',
     `NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD=${password}`,
     '-e',
     'NOWLUMA_ACCEPT_EULA=1',
     '-e',
     'NOWLUMA_ACCEPT_PRIVACY=1',
-    '-e',
-    'NOWLUMA_VNC_PORT=19080',
     '--mount',
     `type=volume,source=${volumes[0]},target=/app/config`,
     '--mount',
@@ -74,6 +71,10 @@ async function api(route, body) {
     signal: AbortSignal.timeout(15_000),
   });
   assert.equal(response.ok, true, `HTTP ${response.status} on ${route}`);
+  const cookie = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith('nowluma_desktop_session='));
+  if (cookie) desktopCookie = cookie.split(';', 1)[0];
   return response.json();
 }
 async function login() {
@@ -82,6 +83,66 @@ async function login() {
   assert.equal(typeof result.token, 'string');
   token = result.token;
 }
+async function checkAuthenticatedDesktop() {
+  assert.equal((await fetch(`${base}/desktop/`)).status, 401);
+  assert.equal((await fetch(`${base}/desktop/?token=${token}`)).status, 401);
+  const response = await fetch(`${base}/desktop/`, { headers: { Cookie: desktopCookie } });
+  assert.equal(response.status, 200);
+  assert.equal(
+    (await fetch(`${base}/desktop/vendor/core/rfb.js`, { headers: { Cookie: desktopCookie } }))
+      .status,
+    200,
+  );
+  const ws = new WebSocket(base.replace('http:', 'ws:') + '/desktop/socket', {
+    headers: { Cookie: desktopCookie, Origin: base },
+  });
+  ws.binaryType = 'arraybuffer';
+  const messages = [];
+  let receive;
+  ws.addEventListener('message', ({ data }) => {
+    const bytes = Buffer.from(data);
+    if (receive) {
+      const callback = receive;
+      receive = undefined;
+      callback(bytes);
+    } else messages.push(bytes);
+  });
+  const next = () =>
+    messages.length
+      ? Promise.resolve(messages.shift())
+      : new Promise((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('desktop RFB response timed out')),
+            10_000,
+          );
+          receive = (data) => {
+            clearTimeout(timer);
+            resolve(data);
+          };
+        });
+  try {
+    await new Promise((resolve, reject) => {
+      ws.addEventListener('open', resolve, { once: true });
+      ws.addEventListener(
+        'error',
+        () => reject(new Error('authenticated desktop upgrade failed')),
+        { once: true },
+      );
+    });
+    const version = Buffer.from('RFB 003.008\n');
+    assert.deepEqual(await next(), version);
+    ws.send(version);
+    assert.deepEqual(await next(), Buffer.from([1, 1]));
+    ws.send(Buffer.from([1]));
+    assert.deepEqual(await next(), Buffer.alloc(4));
+    ws.send(Buffer.from([1]));
+    const initialization = await next();
+    assert.ok(initialization.length >= 24, 'actual VNC server initialization');
+    assert.ok(initialization.readUInt16BE(0) > 0 && initialization.readUInt16BE(2) > 0);
+  } finally {
+    ws.close();
+  }
+}
 async function checkDesktopAndHook() {
   const system = await api('/api/system');
   assert.equal(system.hostname, 'nowluma');
@@ -89,12 +150,10 @@ async function checkDesktopAndHook() {
   assert.equal(system.deployment.uid, 1000);
   assert.equal(system.deployment.directories.qq, '/home/nowluma/.config/QQ');
   assert.equal(system.deployment.writable.qq, true);
-  assert.equal(system.deployment.vncPort, 19080);
+  assert.equal(system.deployment.vncPort, 0);
+  assert.equal(system.deployment.vncUrl, '/desktop/');
   docker('exec', '--user', '1000:1000', name, 'node', '/usr/local/lib/nowluma-healthcheck.cjs');
-  const desktop = await fetch('http://127.0.0.1:19080/vnc.html', {
-    signal: AbortSignal.timeout(5000),
-  });
-  assert.equal(desktop.ok, true);
+  await checkAuthenticatedDesktop();
   for (let attempt = 0; attempt < 60; attempt++) {
     const { list } = await api('/api/processes');
     assert.ok(Array.isArray(list));
@@ -137,7 +196,7 @@ try {
   assert.equal(docker('exec', name, 'sha256sum', '/home/nowluma/.machine-id'), machineIdHash);
   assert.equal((await api('/api/system/settings')).settings.vncPort, 6123);
   console.log(
-    'PASS: image startup, QQ native hook, desktop, config, complete HOME and machine ID across restart/recreation.',
+    'PASS: image startup, QQ native hook, authenticated same-origin desktop, graceful stop, config, complete HOME and machine ID across restart/recreation.',
   );
   console.log(
     'NOT_RUN: actual QQ account login and server-side session retention; no account was scanned into this test.',

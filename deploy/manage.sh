@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 usage() {
-    printf '%s\n' '用法：./deploy/manage.sh start|stop|restart|logs|doctor|vnc-password'
+    printf '%s\n' '用法：./deploy/manage.sh start|stop|restart|logs|doctor'
 }
 command -v docker >/dev/null 2>&1 || { echo '请先安装 Docker Engine 与 Compose 插件。' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo '需要 Docker Compose v2。' >&2; exit 1; }
@@ -32,8 +32,7 @@ case "${1:-help}" in
         compose exec --user 1000:1000 -T nowluma sh -c 'id; printf "HOME=%s\nXDG_CONFIG_HOME=%s\n" "$HOME" "$XDG_CONFIG_HOME"; ls -ld /home/nowluma /home/nowluma/.config/QQ /app/config /app/data /app/logs'
         ;;
     vnc-password)
-        echo '这是远程桌面的访问密码，请勿转发：'
-        compose exec --user 1000:1000 -T nowluma cat /home/nowluma/.vnc/password
+        echo '桌面已改为控制台认证入口，无需单独密码。登录控制台后点击“打开 QQ 桌面”。'
         ;;
     -h|--help|help) usage ;;
     *) usage >&2; exit 2 ;;

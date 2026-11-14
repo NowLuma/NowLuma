@@ -39,7 +39,7 @@ if [[ ! -f "$password_file" ]]; then
         node -e "process.stdout.write(require('node:crypto').randomBytes(6).toString('base64url')+'\n')" > "$password_file"
     fi
     chmod 600 "$password_file"
-    log '已生成并保存桌面密码；运行 ./deploy/manage.sh vnc-password 查看。'
+    log '已生成并保存内部桌面凭据；登录控制台后可直接打开桌面。'
 fi
 password=$(<"$password_file")
 [[ ${#password} == 8 ]] || die '已保存的桌面密码无效；请检查持久卷，不会自动清除。'
@@ -110,8 +110,6 @@ openbox --sm-disable &
 pids+=("$!")
 x11vnc -display "$DISPLAY" -localhost -forever -shared \
     -rfbauth "$HOME/.vnc/passwd" -rfbport 5900 &
-pids+=("$!")
-websockify --web=/usr/share/novnc 6080 127.0.0.1:5900 &
 pids+=("$!")
 
 /opt/QQ/qq --no-sandbox &

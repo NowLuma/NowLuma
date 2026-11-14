@@ -80,6 +80,19 @@ Late authentication failures from an old session do not sign out a newer session
 Live streams release subscriptions on disconnect and pause with the page.
 Malformed stream data is reported; a debug stream invocation fails instead of silently succeeding.
 
+## Authenticated QQ desktop
+
+Docker serves noVNC at `/desktop/` on the console's origin. The browser uses an
+HttpOnly, Strict, path-scoped session cookie; it never receives the private VNC
+password. The gateway authenticates to loopback VNC before bridging binary RFB.
+Both HTTP assets and WebSocket upgrades enforce the real session, consent and
+password gates. Upgrades require a matching Origin/Host; revoked sessions cannot
+send input or receive new frames, and idle connections are closed.
+
+Keep `/desktop/` and Host (including a non-default port) intact in reverse proxies.
+Do not publish backend VNC or restore the legacy unauthenticated 6080 listener.
+External desktop URLs remain operator-managed and are not given console cookies.
+
 ## First-run guidance panel
 
 The overview page renders `GettingStartedPanel` at a fixed position above the grid.

@@ -60,7 +60,7 @@ if [[ ! -f .env ]]; then
         case "${answer:-1}" in 1) ;; 2) bind_address=0.0.0.0 ;; *) exit 2 ;; esac
     fi
     # Generate deployment config once; every later run keeps it and all volumes.
-    printf '%s\n' "BIND_ADDRESS=$bind_address" 'WEBUI_PORT=5099' 'VNC_PORT=6080' \
+    printf '%s\n' "BIND_ADDRESS=$bind_address" 'WEBUI_PORT=5099' \
         'ONEBOT_HTTP_PORT=3000' 'ONEBOT_WS_PORT=3001' 'TZ=Asia/Shanghai' > .env
     chmod 600 .env
 else
@@ -76,7 +76,7 @@ printf '\n%s\n' \
     '下一步：' \
     '1. 浏览器打开 http://127.0.0.1:5099，按控制台引导设置密码。' \
     '2. 执行 bash deploy/manage.sh logs 查看控制台首次密码。' \
-    '3. 控制台点“打开 QQ 桌面”；执行 bash deploy/manage.sh vnc-password 查看桌面密码。' \
+    '3. 控制台点“打开 QQ 桌面”，无需单独输入桌面密码。' \
     '4. 在 QQ 窗口扫码，并勾选 QQ 自己的自动登录。重启会复用相同用户目录。' \
-    '远程服务器：用 SSH 转发 5099/6080，或访问刚才选定的局域网地址。' \
+    '远程服务器：用 SSH 转发 5099，或访问刚才选定的局域网地址。' \
     '之后启动/停止/查看日志只需 bash deploy/manage.sh start|stop|logs。'
