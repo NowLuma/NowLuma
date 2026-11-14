@@ -106,6 +106,8 @@ export interface UiAppearance {
     reduceMotion: boolean;
     /** Hard-disable all UI animations (stronger than reduceMotion). */
     disableMotion: boolean;
+    /** Slow-device detection is local; only this manual preference is persisted. */
+    performanceMode?: 'auto' | 'high' | 'low';
     /** Use Nowluma's adaptive cursor. */
     customPointerSystem: boolean;
     /** Replace the browser context menu with Nowluma's context menu. */
@@ -236,6 +238,7 @@ const DEFAULT_APPEARANCE: UiAppearance = {
     density: 'cozy',
     reduceMotion: false,
     disableMotion: false,
+    performanceMode: 'auto',
     customPointerSystem: false,
     customContextMenu: true,
     highContrast: false,
@@ -674,6 +677,11 @@ export function normalizeAppearance(
         density: oneOf<Density>(v.density, ['cozy', 'compact'], DEFAULT_APPEARANCE.density),
         reduceMotion: boolOr(v.reduceMotion, DEFAULT_APPEARANCE.reduceMotion),
         disableMotion: boolOr(v.disableMotion, DEFAULT_APPEARANCE.disableMotion),
+        performanceMode: oneOf<'auto' | 'high' | 'low'>(
+            v.performanceMode,
+            ['auto', 'high', 'low'],
+            'auto',
+        ),
         customPointerSystem: boolOr(v.customPointerSystem, DEFAULT_APPEARANCE.customPointerSystem),
         customContextMenu: boolOr(v.customContextMenu, DEFAULT_APPEARANCE.customContextMenu),
         highContrast: boolOr(v.highContrast, DEFAULT_APPEARANCE.highContrast),

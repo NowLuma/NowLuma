@@ -14,6 +14,7 @@ import { flushSync } from 'react-dom';
 import { MotionConfig } from 'motion/react';
 import { actionErrorMessage, useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { webuiSessionHeaders } from '@/lib/api/session-headers';
+import { useAutoPerformance } from '@/hooks/use-auto-performance';
 import type { Palette, ThemeMode, UiAppearance, UiBackground } from '@/types';
 import { WEBUI_TARGETS, type WebuiPresentation } from '@nowluma/common/webui-target';
 import { resolveAppearance } from '@/appearance/registry';
@@ -231,6 +232,7 @@ export const DEFAULT_APPEARANCE: UiAppearance = {
     density: 'cozy',
     reduceMotion: false,
     disableMotion: false,
+    performanceMode: 'auto',
     customPointerSystem: false,
     customContextMenu: true,
     highContrast: false,
@@ -1127,6 +1129,7 @@ interface ThemeContextValue {
     mode: ThemeMode;
     setMode: (m: ThemeMode) => void;
     pollInterval: number;
+    performance: { mode: 'auto' | 'high' | 'low'; low: boolean; fps: number };
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -1146,10 +1149,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         presentationStore.subscribe,
         presentationStore.getSnapshot,
     );
-    const effectiveAppearance = useMemo(
-        () => resolveAppearance(appearance, presentation, getTargetAppearance()),
-        [appearance, presentation],
+    const performanceMode = appearance.performanceMode ?? 'auto';
+    const frameRate = useAutoPerformance(
+        performanceMode === 'auto' && !appearance.disableMotion && !appearance.reduceMotion,
     );
+    const lowPerformance =
+        performanceMode === 'low' || (performanceMode === 'auto' && frameRate.autoLow);
+    const effectiveAppearance = useMemo(() => {
+        const resolved = resolveAppearance(appearance, presentation, getTargetAppearance());
+        return lowPerformance ? { ...resolved, disableMotion: true } : resolved;
+    }, [appearance, presentation, lowPerformance]);
     const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
     const [ready, setReady] = useState(false);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1274,13 +1283,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 (patch.palette !== undefined && patch.palette !== prev.palette) ||
                 (patch.darkIntensity !== undefined && patch.darkIntensity !== prev.darkIntensity);
 
-            if (schemeChange && !prev.reduceMotion && !prev.disableMotion) {
+            if (schemeChange && !prev.reduceMotion && !effectiveAppearance.disableMotion) {
                 runThemeReveal(() => commit(patch));
             } else {
                 commit(patch);
             }
         },
-        [commit],
+        [commit, effectiveAppearance.disableMotion],
     );
 
     const uploadBackground = useMemo(
@@ -1412,6 +1421,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             mode: effectiveAppearance.mode,
             setMode: (m: ThemeMode) => setAppearance({ mode: m }),
             pollInterval: appearance.pollInterval,
+            performance: {
+                mode: performanceMode,
+                low: lowPerformance || appearance.disableMotion,
+                fps: frameRate.fps,
+            },
         }),
         [
             appearance,
@@ -1424,6 +1438,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             removeBackground,
             formatClock,
             reloadAppearance,
+            performanceMode,
+            lowPerformance,
+            frameRate.fps,
         ],
     );
 
@@ -1431,7 +1448,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         <ThemeContext.Provider value={value}>
             <MotionConfig
                 reducedMotion={
-                    appearance.reduceMotion || appearance.disableMotion ? 'always' : 'user'
+                    effectiveAppearance.reduceMotion || effectiveAppearance.disableMotion
+                        ? 'always'
+                        : 'user'
                 }
             >
                 {children}

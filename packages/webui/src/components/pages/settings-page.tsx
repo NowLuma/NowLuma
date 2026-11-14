@@ -525,6 +525,7 @@ function AppearancePanel() {
         removeBackground,
         resolved,
         managedBy,
+        performance: performanceStatus,
     } = useTheme();
     const a = appearance;
     // A Catppuccin flavor fixes its own light/dark + darkness, so the mode and
@@ -862,6 +863,27 @@ function AppearancePanel() {
                         onChange={(customPointerSystem) => setAppearance({ customPointerSystem })}
                         ariaLabel="自定义光标"
                     />
+                </SettingRow>
+                <SettingRow
+                    label="性能模式"
+                    hint="自动模式在前台持续低帧率时关闭动画和实时折射；本机检测结果不会影响其他设备。也可手动选择。"
+                    layout="stack"
+                >
+                    <Segmented<'auto' | 'high' | 'low'>
+                        value={a.performanceMode ?? 'auto'}
+                        onChange={(performanceMode) => setAppearance({ performanceMode })}
+                        options={[
+                            { value: 'auto', label: '自动检测（默认）' },
+                            { value: 'high', label: '完整效果' },
+                            { value: 'low', label: '低性能 / 关闭动效' },
+                        ]}
+                    />
+                    <p className="text-xs text-muted-foreground" role="status">
+                        {performanceStatus?.low ? '当前已使用低性能效果' : '当前使用完整效果'}
+                        {performanceStatus?.mode === 'auto' && performanceStatus.fps > 0
+                            ? ` · 最近检测 ${Math.round(performanceStatus.fps)} FPS`
+                            : ''}
+                    </p>
                 </SettingRow>
                 <SettingRow
                     label="减弱动效"

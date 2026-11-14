@@ -597,6 +597,8 @@ export interface UiAppearance {
     density: Density;
     reduceMotion: boolean;
     disableMotion: boolean;
+    /** Device-local automatic detection, or an explicit high/low rendering preference. */
+    performanceMode?: 'auto' | 'high' | 'low';
     /** Use Nowluma's adaptive cursor. */
     customPointerSystem: boolean;
     /** Replace the browser context menu with Nowluma's context menu. */
