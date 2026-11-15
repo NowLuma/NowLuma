@@ -3,6 +3,8 @@ import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApi } from '@/lib/api';
 import { useHookProcessOps } from '@/hooks/use-hook-process-ops';
+import { useKernelChoice } from '@/hooks/use-kernel-choice';
+import { KernelChoiceDialog } from '@/components/kernel-choice';
 import { MainLayout } from '@/components/layout/main-layout';
 import { NAV_ITEMS } from '@/components/layout/sidebar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -62,18 +64,22 @@ export function AppLayout() {
     const data = useAppResources(pollInterval);
     const { connections, refreshProcesses, systemInfo } = data;
     const [selectedUin, setSelectedUin] = useState<string | null>(null);
+    const { pending: kernelChoice, beforeAttach } = useKernelChoice();
     const {
         ops: processOps,
         unloadFailedAlert,
         dismissUnloadFailedAlert,
+        cancelPending,
     } = useHookProcessOps({
         onAfterOp: refreshProcesses,
+        beforeAttach,
     });
 
     const handleLogout = useCallback(async () => {
+        cancelPending();
         await api.logout();
         session.onLogoutComplete();
-    }, [api, session]);
+    }, [api, cancelPending, session]);
 
     const migrationNotice = useMemo(() => {
         const active = connections.filter((account) => {
@@ -147,6 +153,12 @@ export function AppLayout() {
                 </KioskProvider>
             </LayoutProvider>
 
+            {kernelChoice ? (
+                <KernelChoiceDialog
+                    key={`${kernelChoice.target.pid}:${kernelChoice.target.uin}:${kernelChoice.catalog.riskVersion}`}
+                    choice={kernelChoice}
+                />
+            ) : null}
             <LowIntegrityWarning lowIntegrity={systemInfo?.runtime.lowIntegrity === true} />
             <ConfirmDialog
                 open={!!unloadFailedAlert}

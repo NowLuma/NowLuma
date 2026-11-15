@@ -36,6 +36,7 @@ import {
     isDeveloperOnboardingLocation,
 } from '@/lib/onboarding-navigation';
 import { onboardingExecution } from '@/lib/onboarding-actions';
+import { KernelOnboardingStep } from '@/components/kernel-onboarding-step';
 
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
@@ -103,6 +104,7 @@ function AuthBoundary({
     const [agreementsError, setAgreementsError] = useState<string | null>(null);
     const [needsConsent, setNeedsConsent] = useState(false);
     const [onboardingFinished, setOnboardingFinished] = useState(false);
+    const [onboardingActive, setOnboardingActive] = useState(false);
     const [replayingOnboarding, setReplayingOnboarding] = useState(
         () => typeof window !== 'undefined' && isDeveloperOnboardingLocation(authLocation()),
     );
@@ -137,6 +139,10 @@ function AuthBoundary({
             const payload = await client.agreements.get();
             setAgreements(payload);
             setNeedsConsent(payload.consentRequired);
+
+            if (payload.consentRequired) {
+                setOnboardingActive(true);
+            }
         } catch (error) {
             console.error('agreement status load failed', error);
             setAgreementsError(actionErrorMessage(error));
@@ -179,6 +185,10 @@ function AuthBoundary({
                 ]);
                 setMustChange(nextMustChange);
 
+                if (nextMustChange) {
+                    setOnboardingActive(true);
+                }
+
                 // Carry the URL password into the forced change-password gate so it
                 // needn't re-prompt for the old password (matches the login flow).
                 if (urlPassword) {
@@ -206,6 +216,7 @@ function AuthBoundary({
         setAgreementsError(null);
         setNeedsConsent(false);
         setOnboardingFinished(false);
+        setOnboardingActive(false);
         setReplayingOnboarding(false);
         onboardingReturnPath.current = null;
         setLoginPassword(undefined);
@@ -282,6 +293,7 @@ function AuthBoundary({
                     setUrlLoginPassword(undefined);
                     setUrlNeedsTotp(false);
                     setOnboardingFinished(false);
+                    setOnboardingActive(needsChange);
                     void refreshAgreements();
                 }}
             />
@@ -301,10 +313,12 @@ function AuthBoundary({
     } else if (
         agreements &&
         (replayingOnboarding ||
-            (!onboardingFinished && (needsConsent || mustChange || onboardingSteps.length > 0)))
+            (!onboardingFinished &&
+                (onboardingActive || needsConsent || mustChange || onboardingSteps.length > 0)))
     ) {
         view = (
             <OnboardingGate
+                key={replayingOnboarding ? 'replay' : 'setup'}
                 payload={agreements}
                 needsConsent={replayingOnboarding || needsConsent}
                 mustChangePassword={replayingOnboarding || mustChange}
@@ -323,6 +337,7 @@ function AuthBoundary({
                     }
 
                     setOnboardingFinished(true);
+                    setOnboardingActive(false);
                 }}
                 onStale={refreshAgreements}
                 onDecline={replayingOnboarding ? exitOnboardingReplay : handleDecline}
@@ -486,6 +501,17 @@ function OnboardingGate({
 }) {
     const api = useApi();
     const { runAction } = useActionFeedback();
+    // Snapshot only when a setup/replay gate actually mounts, not on every authenticated tab.
+    const [activeAdditionalSteps] = useState<AdditionalOnboardingStep[]>(() => [
+        {
+            id: 'kernel-choice',
+            label: '选择接入内核',
+            content: <KernelOnboardingStep replay={replay} />,
+            canSkip: false,
+            hideAdvance: true,
+        },
+        ...additionalSteps,
+    ]);
     const execution = onboardingExecution(replay, {
         changePassword: (oldPassword, newPassword) => api.changePassword(oldPassword, newPassword),
         acceptAgreements: async () => {
@@ -527,7 +553,7 @@ function OnboardingGate({
             onConsentComplete={replay ? () => undefined : onConsentComplete}
             onPasswordComplete={replay ? () => undefined : onPasswordComplete}
             onComplete={onComplete}
-            additionalSteps={additionalSteps}
+            additionalSteps={activeAdditionalSteps}
             checkStrength={(password) => api.checkPasswordStrength(password)}
             submitPassword={execution.actions.changePassword}
             onAccept={execution.actions.acceptAgreements}

@@ -51,14 +51,127 @@ async function setup() {
     });
 }
 
+async function chooseCompat() {
+    const catalog = await client.kernel.catalog();
+    return client.kernel.save(DEMO_UIN, {
+        kernel: 'compat',
+        riskAccepted: true,
+        riskVersion: catalog.riskVersion,
+    });
+}
+
 async function ready() {
     await setup();
     api.scan();
+    await chooseCompat();
     await client.processes.load(DEMO_PID);
 }
 
 describe('DEMO API guided journey using the production client', () => {
-    it('requires example login, consent, password rotation, mock scan and explicit load', async () => {
+    it('exposes only the kernel catalog before login, instructions and password gates clear', async () => {
+        const assertPrivateBlocked = async (status: number) => {
+            expect((await client.kernel.catalog()).options).toMatchObject([
+                { id: 'compat', available: true },
+                { id: 'rewrite', available: false },
+            ]);
+            await expect(client.kernel.get(DEMO_UIN)).rejects.toMatchObject({ status });
+        };
+
+        await assertPrivateBlocked(401);
+        await client.login(DEMO_PASSWORD);
+        await assertPrivateBlocked(403);
+        const agreements = await client.agreements.get();
+        await client.agreements.recordConsent(agreements.version);
+        await assertPrivateBlocked(403);
+        await client.changePassword(DEMO_PASSWORD, DEMO_NEW_PASSWORD);
+        expect((await client.kernel.get(DEMO_UIN)).canLoad).toBe(false);
+    });
+
+    it('never creates a kernel acknowledgment in Ready and restores only an explicit current account choice', async () => {
+        api.setScenario('ready');
+        await client.login(DEMO_PASSWORD);
+        expect(api.summary).toMatchObject({
+            consent: true,
+            mustChange: false,
+            scanned: true,
+            online: false,
+        });
+        expect((await client.processes.list())[0]).toMatchObject({
+            injected: false,
+            status: 'available',
+            account: { uin: DEMO_UIN },
+        });
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+        const catalog = await client.kernel.catalog();
+        await expect(
+            client.kernel.save(DEMO_UIN, {
+                kernel: 'compat',
+                riskAccepted: false,
+                riskVersion: catalog.riskVersion,
+            }),
+        ).rejects.toMatchObject({ status: 400 });
+        await expect(
+            client.kernel.save(DEMO_UIN, {
+                kernel: 'rewrite',
+                riskAccepted: true,
+                riskVersion: catalog.riskVersion,
+            }),
+        ).rejects.toMatchObject({ status: 409 });
+        await expect(
+            client.kernel.save(DEMO_UIN, {
+                kernel: 'compat',
+                riskAccepted: true,
+                riskVersion: 'old',
+            }),
+        ).rejects.toMatchObject({ status: 409 });
+        await expect(client.kernel.get('20002')).rejects.toMatchObject({ status: 400 });
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+        await expect(client.processes.refresh(DEMO_PID)).rejects.toMatchObject({ status: 409 });
+        expect((await client.processes.unload(DEMO_PID)).success).toBe(true);
+        api.failNextMutation = true;
+        await expect(chooseCompat()).rejects.toMatchObject({ status: 500 });
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+        await chooseCompat();
+        expect(api.summary.online).toBe(false);
+        api.setScenario('ready');
+        expect(api.summary.online).toBe(true);
+        api.reset();
+        api.setScenario('ready');
+        await client.login(DEMO_PASSWORD);
+        expect(api.summary.online).toBe(false);
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+    });
+
+    it('reset and abort discard kernel saves that are still parsing', async () => {
+        await setup();
+        const catalog = await client.kernel.catalog();
+        const body = JSON.stringify({
+            kernel: 'compat',
+            riskAccepted: true,
+            riskVersion: catalog.riskVersion,
+        });
+        const pending = api.fetch(`/api/kernel/accounts/${DEMO_UIN}`, {
+            method: 'POST',
+            body,
+            headers: { 'X-Nowluma-Token': token! },
+        });
+        api.reset();
+        await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        await setup();
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+        const abort = new AbortController();
+        const cancelled = api.fetch(`/api/kernel/accounts/${DEMO_UIN}`, {
+            method: 'POST',
+            body,
+            signal: abort.signal,
+            headers: { 'X-Nowluma-Token': token! },
+        });
+        abort.abort();
+        await expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+    });
+
+    it('requires example login, consent, password rotation, mock scan, kernel confirmation and explicit load', async () => {
         expect(await client.status()).toBe(false);
         expect(await client.login('not-a-demo-password')).toMatchObject({
             ok: false,
@@ -67,6 +180,10 @@ describe('DEMO API guided journey using the production client', () => {
         await setup();
         await expect(client.processes.load(DEMO_PID)).rejects.toThrow('simulate a scan first');
         api.scan();
+        expect(api.summary.online).toBe(false);
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
+        await expect(client.processes.load(DEMO_PID)).rejects.toMatchObject({ status: 409 });
+        await chooseCompat();
         expect(api.summary.online).toBe(false);
         expect((await client.processes.load(DEMO_PID)).process?.status).toBe('online');
         expect(await client.qqList()).toEqual([{ uin: DEMO_UIN, nickname: 'DEMO 小光' }]);
@@ -415,6 +532,7 @@ describe('DEMO API guided journey using the production client', () => {
         api.scan();
         expect(listener).not.toHaveBeenCalled();
         await setup();
+        expect((await client.kernel.get(DEMO_UIN)).selection).toBeNull();
         expect((await client.config.get(DEMO_UIN)).statusCommand.trigger).toBe('#nl');
         revoke.mockRestore();
     });

@@ -113,6 +113,30 @@ describe('OnboardingWizardPage document workspace', () => {
         expect(html).not.toContain('说明正文保持为主要阅读内容。');
     });
 
+    it('keeps the private kernel step unmounted until the password step completes', () => {
+        const html = renderToStaticMarkup(
+            <OnboardingWizardPage
+                {...callbacks}
+                documents={documents}
+                needsConsent={false}
+                mustChangePassword
+                additionalSteps={[
+                    {
+                        id: 'kernel-choice',
+                        label: '选择接入内核',
+                        content: <p>Kernel private step mounted</p>,
+                        canSkip: false,
+                        hideAdvance: true,
+                    },
+                ]}
+            />,
+        );
+        expect(html).toContain('id="onboarding-cpw-new"');
+        expect(html).toContain('保存并继续');
+        expect(html).not.toContain('Kernel private step mounted');
+        expect(html).not.toContain('跳过');
+    });
+
     it('does not create a shell for completed onboarding and retains optional extension steps', () => {
         expect(
             renderToStaticMarkup(

@@ -91,7 +91,46 @@ export type RecordConsentResult = {
     currentVersion?: string;
 };
 
+export type KernelId = 'compat' | 'rewrite';
+
+export interface KernelOption {
+    id: KernelId;
+    label: string;
+    available: boolean;
+    reason: string;
+}
+
+export interface KernelCatalog {
+    options: KernelOption[];
+    riskVersion: string;
+    riskText: string;
+}
+
+export interface KernelChoiceInput {
+    kernel: KernelId;
+    riskAccepted: boolean;
+    riskVersion: string;
+}
+
+export interface KernelSelection extends KernelChoiceInput {
+    acceptedAt: string;
+}
+
+export interface AccountKernelPolicy {
+    selection: KernelSelection | null;
+    options: KernelOption[];
+    canLoad: boolean;
+}
+
+export interface SaveKernelChoiceResult {
+    success: true;
+    selection: KernelSelection;
+    canLoad: true;
+}
+
 export type ProcessActionResult = {
+    success: boolean;
+    message?: string;
     process?: HookProcessInfo & { error?: string };
 };
 
@@ -166,6 +205,18 @@ export interface ApiClient {
         recordConsent(version: string): Promise<RecordConsentResult>;
     };
 
+    // ---- per-account kernel policy (saving never attaches a process) ----
+    kernel: {
+        /** Public availability and current risk text; never sends session credentials. */
+        catalog(signal?: AbortSignal): Promise<KernelCatalog>;
+        get(uin: string, signal?: AbortSignal): Promise<AccountKernelPolicy>;
+        save(
+            uin: string,
+            choice: KernelChoiceInput,
+            signal?: AbortSignal,
+        ): Promise<SaveKernelChoiceResult>;
+    };
+
     // ---- system ----
     qqList(): Promise<QQInfo[]>;
     system(): Promise<SystemInfo>;
@@ -181,10 +232,10 @@ export interface ApiClient {
 
     // ---- hook processes ----
     processes: {
-        list(): Promise<HookProcessInfo[]>;
-        load(pid: number): Promise<ProcessActionResult>;
-        unload(pid: number): Promise<ProcessActionResult>;
-        refresh(pid: number): Promise<ProcessActionResult>;
+        list(signal?: AbortSignal): Promise<HookProcessInfo[]>;
+        load(pid: number, signal?: AbortSignal): Promise<ProcessActionResult>;
+        unload(pid: number, signal?: AbortSignal): Promise<ProcessActionResult>;
+        refresh(pid: number, signal?: AbortSignal): Promise<ProcessActionResult>;
     };
 
     // ---- OneBotInstance per-UIN config ----

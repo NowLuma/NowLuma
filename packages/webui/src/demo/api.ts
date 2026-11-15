@@ -1,4 +1,6 @@
 import { normalizeOneBotConfig } from '@/lib/onebot-config';
+import { assertKernelChoiceInput } from '@/lib/api/kernel';
+import type { KernelSelection } from '@/lib/api/types';
 import { normalizeUpdateSourceConfig } from '@nowluma/common/update-source';
 import type { UpdateSourceConfig } from '@nowluma/common/update-source';
 import { APP_VERSION, ALL_ACCOUNTS_CONFIRMATION } from '@/types';
@@ -26,6 +28,7 @@ import {
     DEMO_UIN,
     demoActions,
     demoConfig,
+    demoKernelCatalog,
     demoLog,
     demoProcess,
     demoStorage,
@@ -58,6 +61,7 @@ type DemoState = {
     totpPending: boolean;
     recoveryCodes: string[];
     process: HookProcessInfo;
+    kernelSelections: Map<string, KernelSelection>;
     ui: UiConfig;
     config: OneBotConfig;
     settings: SystemSettings;
@@ -337,6 +341,7 @@ function createDemoState(): DemoState {
         totpPending: false,
         recoveryCodes: ['DEMO-RECOVERY-0001', 'DEMO-RECOVERY-0002'],
         process: demoProcess(),
+        kernelSelections: new Map(),
         ui: demoUi(),
         config: demoConfig(),
         settings: demoSystemSettings(),
@@ -483,13 +488,15 @@ export class DemoApi {
             this.state.consent = true;
             this.state.mustChange = false;
             this.scan();
+            const canLoad = this.canLoadKernel(DEMO_UIN);
             this.state.process = {
                 ...this.state.process,
-                injected: true,
-                connected: true,
-                loggedIn: true,
-                uin: DEMO_UIN,
-                status: 'online',
+                injected: canLoad,
+                connected: canLoad,
+                loggedIn: canLoad,
+                uin: canLoad ? DEMO_UIN : '',
+                status: canLoad ? 'online' : 'available',
+                error: '',
             };
         } else if (scenario === 'offline') {
             this.state.process = {
@@ -513,9 +520,7 @@ export class DemoApi {
     scan() {
         this.state.process.account = { uin: DEMO_UIN, nickname: 'DEMO 小光' };
         this.emitState();
-        this.announce(
-            'DEMO scan simulated. Now choose 加载 on process 4242; detection is not QQ delivery.',
-        );
+        this.announce('DEMO scan simulated. 选择内核并连接示例账号；这不证明 QQ 消息投递。');
     }
 
     fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
@@ -528,6 +533,7 @@ export class DemoApi {
                 throw new DOMException('DEMO request cancelled by reset', 'AbortError');
             }
 
+            request.signal?.throwIfAborted();
             return this.handle(request);
         } catch (error) {
             if (this.state !== state) {
@@ -552,6 +558,10 @@ export class DemoApi {
 
     private handle(request: DemoRequest): Response {
         const { path, method } = request;
+
+        if (path === '/api/kernel/catalog' && method === 'GET') {
+            return json(demoKernelCatalog());
+        }
 
         if (path === '/api/ui/public' && method === 'GET') {
             return json({ appearance: this.state.ui.appearance });
@@ -591,11 +601,15 @@ export class DemoApi {
             this.announce(
                 'DEMO: Write failed intentionally. Retry only after inspecting the result.',
             );
-            return fakeError('DEMO: Simulated write failure; nothing changed', 503);
+            return fakeError(
+                'DEMO: Simulated write failure; nothing changed',
+                path.startsWith('/api/kernel/accounts/') ? 500 : 503,
+            );
         }
 
         return (
             this.streamRoute(request) ??
+            this.kernelRoute(request) ??
             this.processRoute(request) ??
             this.uiRoute(request) ??
             this.logRoute(request) ??
@@ -735,6 +749,59 @@ export class DemoApi {
         return null;
     }
 
+    private canLoadKernel(uin: string): boolean {
+        const selection = this.state.kernelSelections.get(uin);
+        return (
+            selection?.kernel === 'compat' &&
+            selection.riskAccepted &&
+            selection.riskVersion === demoKernelCatalog().riskVersion
+        );
+    }
+
+    private kernelRoute({ path, method, body }: DemoRequest): Response | null {
+        const match = path.match(/^\/api\/kernel\/accounts\/([^/]+)$/);
+
+        if (!match) {
+            return null;
+        }
+
+        const uin = decodeURIComponent(match[1]);
+
+        if (uin !== DEMO_UIN) {
+            return fakeError('DEMO: Unknown account', 400);
+        }
+
+        if (method === 'GET') {
+            return json({
+                selection: this.state.kernelSelections.get(uin) ?? null,
+                options: demoKernelCatalog().options,
+                canLoad: this.canLoadKernel(uin),
+            });
+        }
+
+        if (method === 'POST') {
+            assertKernelChoiceInput(body);
+
+            if (body.kernel === 'rewrite') {
+                return fakeError('当前平台的重写内核尚未验证，暂不可使用', 409);
+            }
+
+            if (!body.riskAccepted) {
+                return fakeError('必须主动确认兼容内核风险', 400);
+            }
+
+            if (body.riskVersion !== demoKernelCatalog().riskVersion) {
+                return fakeError('风险说明版本已更新，请重新阅读并确认', 409);
+            }
+
+            const selection: KernelSelection = { ...body, acceptedAt: new Date().toISOString() };
+            this.state.kernelSelections.set(uin, selection);
+            return json({ success: true, selection, canLoad: true });
+        }
+
+        return fakeError('DEMO: Unsupported kernel method', 405);
+    }
+
     private processRoute({ path, method, body }: DemoRequest): Response | null {
         if (path === '/api/processes' && method === 'GET') {
             return json({ list: [this.state.process] });
@@ -757,8 +824,14 @@ export class DemoApi {
 
             const action = processAction[2];
 
-            if (action === 'load' && !this.state.process.account) {
-                return fakeError('DEMO: Open the mock desktop and simulate a scan first', 409);
+            if (action !== 'unload') {
+                if (!this.state.process.account) {
+                    return fakeError('DEMO: Open the mock desktop and simulate a scan first', 409);
+                }
+
+                if (!this.canLoadKernel(this.state.process.account.uin)) {
+                    return fakeError('请为此 QQ 账号选择内核并主动确认兼容内核风险', 409);
+                }
             }
 
             this.state.process = {
@@ -772,7 +845,7 @@ export class DemoApi {
             };
             this.emitState();
             this.addLog(`Process ${action}: in-memory simulation only`, 'success');
-            return json({ process: this.state.process });
+            return json({ success: true, process: this.state.process });
         }
 
         const configAccount = path.match(/^\/api\/config\/([^/]+)$/);

@@ -386,7 +386,7 @@ function PasswordStep({
     ) => Promise<{ success: boolean; message?: string }>;
     onComplete: () => void;
 }) {
-    const { back } = useWizardNavigation();
+    const { back, isLast } = useWizardNavigation();
 
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-start py-2 sm:py-5">
@@ -412,7 +412,9 @@ function PasswordStep({
                 submit={submit}
                 onSuccess={onComplete}
                 idPrefix="onboarding-cpw"
-                submitLabel={mode === 'rehearsal' ? '完成演练' : '保存并完成'}
+                submitLabel={
+                    mode === 'rehearsal' ? '完成演练' : isLast ? '保存并完成' : '保存并继续'
+                }
                 className="gap-5"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
                     <div className="workspace-onboarding-actions grid gap-3 pt-2 sm:flex sm:items-center">
