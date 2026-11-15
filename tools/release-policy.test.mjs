@@ -9,6 +9,13 @@ const workflowDir = path.join(root, '.github/workflows');
 const read = (name) => fs.readFileSync(path.join(workflowDir, name), 'utf8').replace(/\r\n/g, '\n');
 const names = fs.readdirSync(workflowDir).filter((name) => name.endsWith('.yml'));
 
+/** The body of a job block, so assertions cannot accidentally match a sibling job. */
+function job(text, name) {
+  const match = new RegExp(`\\n  ${name}:\\n([\\s\\S]*?)(?=\\n  [a-z][a-z-]*:\\n|$)`).exec(text);
+  assert.ok(match, `workflow must define the ${name} job`);
+  return match[1];
+}
+
 test('no workflow runs fork code with a write token', () => {
   for (const name of names) {
     const text = read(name);
@@ -59,6 +66,26 @@ test('the reusable validation workflow is read-only and runs the container smoke
   assert.match(ci, /permissions:\n {2}contents: read/);
   assert.match(ci, /tags-ignore: \['\*\*'\]/);
   assert.match(ci, /node deploy\/docker\/smoke\.mjs/);
+});
+
+test('the publish job resolves the repository without a checkout', () => {
+  const publish = job(read('release.yml'), 'publish');
+  assert.equal(/uses: actions\/checkout/.test(publish), false, 'publish runs outside a checkout');
+  assert.match(publish, /^ {4}env:\n {6}GH_REPO: \$\{\{ github\.repository \}\}$/m);
+});
+
+test('a stable image is promoted to :latest only after the checksums verify', () => {
+  const release = read('release.yml');
+  const docker = job(release, 'docker');
+  assert.equal(/printf '%s:latest/.test(docker), false, 'the docker job must not move the mutable tag');
+
+  const publish = job(release, 'publish');
+  assert.match(publish, /packages: write/);
+  assert.match(publish, /if: needs\.draft\.outputs\.prerelease == 'false'/);
+  const verified = publish.indexOf('sha256sum --check --strict SHA256SUMS');
+  const promoted = publish.indexOf('imagetools create --tag "$image:latest"');
+  assert.ok(verified !== -1 && promoted !== -1, 'publish must verify checksums and promote the digest');
+  assert.ok(verified < promoted, 'the mutable tag is promoted only after verification');
 });
 
 test('the local release driver targets main and the release workflow', () => {

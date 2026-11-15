@@ -49,6 +49,16 @@ test('rejects a tag that does not match the package version', () => {
   assert.deepEqual(problems, ['tag "v2.5.0" does not match package version "2.5.0-rc.1"']);
 });
 
+test('rejects build metadata at the release preflight', () => {
+  const root = fixture({
+    version: '2.5.0+build.7',
+    changelog: '# 更新记录\n\n## 2.5.0+build.7\n\n- 说明。\n',
+  });
+  assert.deepEqual(checkVersions({ root, tag: 'v2.5.0+build.7' }).problems, [
+    'package.json version "2.5.0+build.7" has build metadata, which release tags and container tags cannot represent; use "2.5.0" instead',
+  ]);
+});
+
 test('rejects a partial bump', () => {
   const { problems } = checkVersions({ root: fixture({ packages: { onebot: '2.4.2' } }) });
   assert.deepEqual(problems, ['packages/onebot/package.json is 2.4.2, expected 2.5.0-rc.1']);

@@ -13,7 +13,8 @@ git add package.json packages/*/package.json CHANGELOG.md
 git commit -m "chore(release): 2.5.0"
 ```
 
-- 版本必须是规范 SemVer（`2.5.0`、`2.5.0-rc.1`）。带 `-` 的预发布版本不会覆盖 `latest`。
+- 版本必须是规范 SemVer（`2.5.0`、`2.5.0-rc.1`）。发行 tag 与容器 tag 都无法表示
+  `+build` 元数据，带 `+` 的版本会在版本门禁被拒绝。带 `-` 的预发布版本不会覆盖 `latest`。
 - `CHANGELOG.md` 必须有与版本完全一致的 `## 2.5.0` 小节，内容就是发行说明；缺失或为空时
   版本门禁会失败。
 - 全部 `packages/*/package.json` 必须与根版本一致，部分 bump 会被拒绝。
@@ -65,29 +66,31 @@ git push origin refs/tags/v2.5.0
 
 ## 3. tag 触发的工作流
 
-| 作业 | 作用 |
-| --- | --- |
-| `draft` | 校验 tag/版本/CHANGELOG，用该小节创建（或刷新）草稿发行；已发布的 tag 会被拒绝重写 |
-| `gates` | 复用 `.github/workflows/ci.yml`：`verify`（类型、lint、测试、发行布局、文档与 demo）、Docker 构建与启动/重建 smoke、Windows 类型检查/exe 构建/启动器测试 |
-| `linux` | 构建 `dist/`、打包 `nowluma-linux-x64-<version>.tar.gz`、生成构建来源证明、上传到草稿 |
-| `windows` | 类型检查、构建、`tools/build-windows-exe.mjs`、运行打包后的 `deploy/windows/launcher.test.cjs`、上传 exe 与 `build.json` |
-| `docker` | 构建 `linux/amd64` 镜像并推送 GHCR，生成镜像来源证明，上传镜像摘要 |
-| `publish` | 下载草稿全部产物，确认齐全，生成并上传 `SHA256SUMS`，重新下载校验，最后发布 |
+| 作业      | 作用                                                                                                                                                     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `draft`   | 校验 tag/版本/CHANGELOG，用该小节创建（或刷新）草稿发行；已发布的 tag 会被拒绝重写                                                                       |
+| `gates`   | 复用 `.github/workflows/ci.yml`：`verify`（类型、lint、测试、发行布局、文档与 demo）、Docker 构建与启动/重建 smoke、Windows 类型检查/exe 构建/启动器测试 |
+| `linux`   | 构建 `dist/`、打包 `nowluma-linux-x64-<version>.tar.gz`、生成构建来源证明、上传到草稿                                                                    |
+| `windows` | 类型检查、构建、`tools/build-windows-exe.mjs`、运行打包后的 `deploy/windows/launcher.test.cjs`、上传 exe 与 `build.json`                                 |
+| `docker`  | 构建 `linux/amd64` 镜像，只推送版本 tag `ghcr.io/<owner>/<repo>:<version>`，生成镜像来源证明，上传镜像摘要                                               |
+| `publish` | 下载草稿全部产物，确认齐全，生成并上传 `SHA256SUMS`，重新下载校验；稳定版在全部校验通过后把已验证摘要提升为 `:latest`；最后发布                          |
 
-`gates` 失败时草稿保持私有，不会发布任何东西；修复后重新运行该 tag 的作业即可
-（`draft` 会刷新草稿，上传使用 `--clobber`）。
+`gates` 失败时草稿保持私有，也不会推送镜像；之后的作业失败时草稿仍保持私有，但已推送的
+版本化镜像 tag 可能已经可见。
 
 ## 4. 产物
 
-| 文件 | 说明 |
-| --- | --- |
-| `nowluma-linux-x64-<version>.tar.gz` | Linux x64 发行包，含 `release.json` 清单与法律文件 |
-| `Nowluma-win32-x64-<version>.exe` | Windows 一键启动器，内嵌同一版本的 payload；**未签名** |
+| 文件                                     | 说明                                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `nowluma-linux-x64-<version>.tar.gz`     | Linux x64 发行包，含 `release.json` 清单与法律文件                           |
+| `Nowluma-win32-x64-<version>.exe`        | Windows 一键启动器，内嵌同一版本的 payload；**未签名**                       |
 | `nowluma-win32-x64-<version>-build.json` | Windows 构建元数据：版本、目标、Node、payload/exe 的 SHA256、`signed: false` |
-| `nowluma-ghcr-linux-x64-<version>.txt` | GHCR 镜像名、版本 tag 与 `sha256:` 摘要 |
-| `SHA256SUMS` | 上述全部文件的 SHA256，发布前重新下载校验 |
+| `nowluma-ghcr-linux-x64-<version>.txt`   | GHCR 镜像名、版本 tag 与 `sha256:` 摘要                                      |
+| `SHA256SUMS`                             | 上述全部文件的 SHA256，发布前重新下载校验                                    |
 
-- 镜像发布到 `ghcr.io/<owner>/<repo>:<version>`；稳定版（不带 `-`）额外更新 `:latest`。
+- 镜像发布到 `ghcr.io/<owner>/<repo>:<version>`。该版本 tag 由 `docker` 作业推送，因此在
+  GitHub 发行仍是草稿时就已可见；稳定版的 `:latest` 只在 `publish` 作业校验完
+  `SHA256SUMS` 之后才移动。
 - Linux 包、Windows 产物与容器镜像都通过 `actions/attest-build-provenance` 生成构建来源证明。
 - 不发布 npm 包，也不使用 Docker Hub。发行说明取自 `CHANGELOG.md` 的对应版本小节。
 - Windows exe 没有代码签名，发行说明与文档都不应声称已签名。
@@ -97,6 +100,7 @@ git push origin refs/tags/v2.5.0
 - Settings → Actions → General → Workflow permissions：允许读写，否则 `contents: write`
   与 `packages: write` 会被仓库策略降级。工作流本身已按作业最小化权限。
 - 首次推送镜像后，在 Packages 中把 `nowluma` 容器包设为 public（或按需限制访问）。
+  版本化 tag 在发行草稿阶段即可见，`:latest` 要等 `publish` 校验通过后才更新。
 - 保护 `main`：要求 `Nowluma PR / pr-check`、`Nowluma CI / verify`、
   `Nowluma CI / docker`、`Nowluma CI / windows` 通过。
 - 保护 `v*` tag，只有维护者能创建；发行作业不会移动已存在的 tag。

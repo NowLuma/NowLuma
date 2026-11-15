@@ -107,10 +107,12 @@ function preflight() {
     if (head !== originMain) {
       fail(`HEAD ${head.slice(0, 12)} is not origin/main ${originMain.slice(0, 12)}; merge and pull first`);
     }
-    try {
-      execFileSync('gh', ['--version'], { stdio: 'ignore' });
-    } catch {
-      fail('gh is required to watch the release workflow; install it or pass --no-wait');
+    if (!noWait) {
+      try {
+        execFileSync('gh', ['--version'], { stdio: 'ignore' });
+      } catch {
+        fail('gh is required to watch the release workflow; install it or pass --no-wait');
+      }
     }
   }
   return head;

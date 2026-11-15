@@ -44,6 +44,14 @@ export function checkVersions({ root, tag = null }) {
     problems.push(`package.json version "${version}" is not canonical SemVer`);
     return { version, problems };
   }
+  // A `+build` suffix is valid SemVer but neither a release tag nor a container
+  // tag can carry it, so reject it here instead of failing mid-release.
+  if (version.includes('+')) {
+    problems.push(
+      `package.json version "${version}" has build metadata, which release tags and container tags cannot represent; use "${version.split('+')[0]}" instead`,
+    );
+    return { version, problems };
+  }
   for (const [file, value] of versions) {
     if (value !== version) problems.push(`${file} is ${value}, expected ${version}`);
   }
