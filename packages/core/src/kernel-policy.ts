@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export { COMPAT_RISK_VERSION };
+export { COMPAT_RISK_TEXT } from '@nowluma/common/kernel-display';
 
 export function kernelCatalog() {
     return kernelDisplayCatalog();

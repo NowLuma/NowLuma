@@ -4,7 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { kernelDisplayCatalog, NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
-import { COMPAT_RISK_VERSION, KernelPolicyStore, kernelCatalog } from '../src/kernel-policy';
+import {
+    COMPAT_RISK_TEXT,
+    COMPAT_RISK_VERSION,
+    KernelPolicyStore,
+    kernelCatalog,
+} from '../src/kernel-policy';
 
 let temporary: string;
 let file: string;
@@ -30,6 +35,7 @@ describe('kernelCatalog', () => {
         });
         expect(kernelCatalog().riskVersion).toBe(COMPAT_RISK_VERSION);
         expect(kernelCatalog().riskVersion).toBe('compat-risk-1');
+        expect(kernelCatalog().riskText).toBe(COMPAT_RISK_TEXT);
         expect(kernelCatalog().riskText).toContain(NATIVE_KERNEL_LABEL);
     });
 });
