@@ -91,7 +91,6 @@ export function ProcessesPage() {
         }
     }, [processList, selectedPid]);
     const [confirm, setConfirm] = useState<{
-        kind: 'load' | 'unload';
         pid: number;
         name: string;
     } | null>(null);
@@ -307,16 +306,9 @@ export function ProcessesPage() {
                                     proc={selected}
                                     statusOf={statusOf}
                                     canCancelAttach={processOps.canCancelAttach}
-                                    onLoad={() =>
-                                        setConfirm({
-                                            kind: 'load',
-                                            pid: selected.pid,
-                                            name: selected.name || `PID ${selected.pid}`,
-                                        })
-                                    }
+                                    onLoad={() => void load(selected.pid)}
                                     onUnload={() =>
                                         setConfirm({
-                                            kind: 'unload',
                                             pid: selected.pid,
                                             name: selected.name || `PID ${selected.pid}`,
                                         })
@@ -347,25 +339,17 @@ export function ProcessesPage() {
             <ConfirmDialog
                 open={!!confirm}
                 onOpenChange={(o) => !o && setConfirm(null)}
-                title={confirm?.kind === 'unload' ? '确认卸载 Nowluma？' : '确认加载 Nowluma？'}
+                title="确认卸载 Nowluma？"
                 description={
                     confirm
-                        ? confirm.kind === 'unload'
-                            ? `将从进程 ${confirm.name} 卸载 Nowluma 注入，可能导致当前会话断开。`
-                            : `将向进程 ${confirm.name} 注入 Nowluma，并开始监听登录状态。`
+                        ? `将从进程 ${confirm.name} 卸载 Nowluma 注入，可能导致当前会话断开。`
                         : ''
                 }
-                confirmText={confirm?.kind === 'unload' ? '卸载' : '加载'}
-                destructive={confirm?.kind === 'unload'}
+                confirmText="卸载"
+                destructive
                 onConfirm={async () => {
-                    if (!confirm) {
-                        return;
-                    }
-
-                    if (confirm.kind === 'unload') {
+                    if (confirm) {
                         await unload(confirm.pid);
-                    } else {
-                        await load(confirm.pid);
                     }
                 }}
             />

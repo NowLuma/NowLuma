@@ -108,17 +108,30 @@ describe('ProcessesPage PID selection', () => {
         expect(state.load).not.toHaveBeenCalled();
     });
 
-    it('retains the chosen PID after sorting and confirms only that process', async () => {
+    it('opens only the shared kernel gate when load is waiting for account choice', () => {
+        state.load.mockReturnValue(new Promise<void>(() => {}));
+        (rows(render())[1].props.onClick as () => void)();
+        (detail(render())!.props.onLoad as () => void)();
+
+        expect(state.load).toHaveBeenCalledExactlyOnceWith(200);
+        const confirmation = elements(render()).find((item) => item.type === ConfirmDialog)!;
+        expect(confirmation.props.open).toBe(false);
+    });
+
+    it('retains the chosen PID after sorting and confirms only its destructive unload', async () => {
         (rows(render())[1].props.onClick as () => void)();
         state.sort = 'name';
         const selected = detail(render())!;
         expect((selected.props.proc as HookProcessInfo).pid).toBe(200);
-        (selected.props.onLoad as () => void)();
+        (selected.props.onUnload as () => void)();
         const confirmation = elements(render()).find((item) => item.type === ConfirmDialog)!;
         expect(confirmation.props.open).toBe(true);
+        expect(confirmation.props.destructive).toBe(true);
+        expect(state.unload).not.toHaveBeenCalled();
         expect(state.load).not.toHaveBeenCalled();
         await (confirmation.props.onConfirm as () => Promise<void>)();
-        expect(state.load).toHaveBeenCalledExactlyOnceWith(200);
+        expect(state.unload).toHaveBeenCalledExactlyOnceWith(200);
+        expect(state.load).not.toHaveBeenCalled();
     });
 
     it('does not retarget a vanished selection to the only remaining process', () => {
