@@ -17,6 +17,9 @@ import {
 import { Markdown } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 import type { AgreementDoc } from '@/lib/api/types';
+import { BRAND_LOGO_URL } from '@/brand';
+import { APP_NAME } from '@/types';
+import '@/styles/workspace.css';
 
 export interface AdditionalOnboardingStep {
     id: string;
@@ -152,37 +155,48 @@ export function OnboardingWizardPage({
     }
 
     return (
-        <div className="relative flex h-svh min-h-svh flex-col overflow-x-hidden bg-background antialiased">
-            <div className="ui-chrome-scene absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 sm:right-6">
-                <LineField />
+        <div className="workspace-onboarding-shell bg-background antialiased">
+            <header className="workspace-auth-masthead">
+                <div className="workspace-auth-wordmark">
+                    <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                    <span>{APP_NAME}</span>
+                </div>
                 <ThemeToggle />
+            </header>
+            <div className="workspace-onboarding-layout">
+                <aside className="workspace-onboarding-identity" aria-label="首次使用设置">
+                    <div className="workspace-auth-artwork">
+                        <LineField />
+                        <div className="workspace-auth-artwork-caption">
+                            <span>{APP_NAME}</span>
+                            <span>开始连接</span>
+                        </div>
+                    </div>
+                    <p className="workspace-eyebrow mt-6">准备就绪，再出发</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        阅读协议，设置密码，然后开始管理你的连接。
+                    </p>
+                </aside>
+                <main className="workspace-onboarding-document">
+                    <header className="workspace-onboarding-heading">
+                        <p className="workspace-eyebrow">欢迎使用 {APP_NAME}</p>
+                        <h1>完成首次使用设置</h1>
+                    </header>
+                    <WizardSteps
+                        steps={steps}
+                        index={index}
+                        onIndexChange={setIndex}
+                        onComplete={onComplete}
+                        label="首次使用设置步骤"
+                        backLabel="上一步"
+                        nextLabel="下一步"
+                        finishLabel="完成"
+                        skipLabel="跳过"
+                        spacious
+                        fill
+                    />
+                </main>
             </div>
-            <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-14 sm:px-6 sm:pb-5 sm:pt-4">
-                <header className="mx-auto mb-2 w-full max-w-2xl shrink-0 text-left">
-                    <p className="text-xs font-semibold tracking-wide text-primary">
-                        Nowluma WebUI
-                    </p>
-                    <h1 className="mt-1 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-                        完成首次使用设置
-                    </h1>
-                    <p className="mx-auto mt-1 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground">
-                        按顺序完成必要步骤后即可进入控制台。
-                    </p>
-                </header>
-                <WizardSteps
-                    steps={steps}
-                    index={index}
-                    onIndexChange={setIndex}
-                    onComplete={onComplete}
-                    label="首次使用设置步骤"
-                    backLabel="上一步"
-                    nextLabel="下一步"
-                    finishLabel="完成"
-                    skipLabel="跳过"
-                    spacious
-                    fill
-                />
-            </main>
         </div>
     );
 }
@@ -273,9 +287,9 @@ function AgreementStep({
             ) : null}
 
             <div
+                className="workspace-agreement-reading mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[4px] border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
                 tabIndex={0}
                 aria-label={active?.title ? `${active.title}正文` : '协议正文'}
-                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
             >
                 <div className="mx-auto max-w-[44.25rem]">
                     {active ? (
@@ -324,7 +338,7 @@ function AgreementStep({
                 <span className="hidden text-micro text-muted-foreground/70 sm:inline">
                     agreements {version.slice(0, 8)}
                 </span>
-                <div className="grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
+                <div className="workspace-onboarding-actions grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                     <Button
                         type="button"
                         variant="outline"
@@ -396,7 +410,7 @@ function PasswordStep({
                 submitLabel={mode === 'rehearsal' ? '完成演练' : '保存并完成'}
                 className="gap-5"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
-                    <div className="grid gap-3 pt-2 sm:flex sm:items-center">
+                    <div className="workspace-onboarding-actions grid gap-3 pt-2 sm:flex sm:items-center">
                         <Button
                             type="button"
                             variant="outline"

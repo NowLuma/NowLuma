@@ -128,23 +128,19 @@ export function GettingStartedPanel() {
 
     return (
         <>
-            <motion.div
+            <motion.section
+                aria-label="连接工作流"
                 initial={off ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: off ? 0 : 0.16 }}
                 aria-busy={step.id === 'reading'}
-                className={cn(
-                    'rounded-[4px] border px-4 py-3',
-                    step.done
-                        ? 'border-emerald-500/30 bg-emerald-500/5'
-                        : 'border-primary/30 bg-primary/5',
-                )}
+                className="workspace-connection-workflow"
             >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className="workspace-workflow-layout">
+                    <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div
                             className={cn(
-                                'flex size-9 shrink-0 items-center justify-center rounded-xl',
+                                'workspace-workflow-icon',
                                 step.done
                                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                                     : 'bg-primary/15 text-primary',
@@ -159,9 +155,7 @@ export function GettingStartedPanel() {
                             )}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
-                                接下来做什么
-                            </p>
+                            <p className="workspace-eyebrow">接下来做什么</p>
                             <SkeletonSwap
                                 ready={step.id !== 'reading'}
                                 lines={1}
@@ -169,10 +163,12 @@ export function GettingStartedPanel() {
                                 reserve={20}
                                 label="下一步提示"
                             >
-                                <p className="mt-0.5 text-sm font-medium">{step.title}</p>
+                                <h3 className="mt-2 text-lg font-medium leading-snug sm:text-xl">
+                                    {step.title}
+                                </h3>
                             </SkeletonSwap>
                             {step.hint && (
-                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
                                     {step.hint}
                                 </p>
                             )}
@@ -187,7 +183,7 @@ export function GettingStartedPanel() {
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                    <div className="workspace-workflow-actions">
                         <DesktopButton />
 
                         {step.action === 'open-config' ? (
@@ -223,7 +219,7 @@ export function GettingStartedPanel() {
                         )}
                     </div>
                 </div>
-            </motion.div>
+            </motion.section>
 
             {/* 多进程选择：不批量接入，只让用户点一个。 */}
             <Modal

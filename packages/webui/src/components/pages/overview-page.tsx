@@ -202,92 +202,99 @@ export function OverviewPage() {
     const configBlock = configId ? overviewBlocks.find((b) => b.id === configId) : null;
 
     return (
-        <div className="flex flex-col gap-5">
-            {/* Toolbar: edit toggle on both desktop (2D grid overlays) and mobile
-          (single-column drag-sort panel). The sidebar nav is drag-sortable in
-          edit mode on both — no separate editor panel. Hidden in kiosk mode
-          (data-kiosk-hide → CSS) so a wall display has no edit entry. */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h2 className="ui-page-title">总览</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">主机与服务状态</p>
-                </div>
-                <div data-kiosk-hide className="flex items-center gap-2">
-                    {editing && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={resetLayout}
-                            className="text-muted-foreground"
-                        >
-                            <RotateCcw className="size-3.5" /> 恢复默认
-                        </Button>
-                    )}
-                    <Button
-                        variant={editing ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setEditing(!editing)}
-                    >
-                        {editing ? (
-                            <>
-                                <Check className="size-3.5" /> 完成
-                            </>
-                        ) : (
-                            <>
-                                <Pencil className="size-3.5" /> 编辑布局
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
-
-            {editing && (
-                <p className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
-                    {isWide
-                        ? '拖动卡片移动位置、拖右下角缩放，右上齿轮改设置；把卡片拖回右侧「部件库」即可移除，从部件库点加号或拖到画布即可添加。左侧导航也可在编辑态拖动手柄排序。'
-                        : '拖动手柄调整卡片顺序，眼睛图标显隐，齿轮改设置。手机为单列布局，与桌面网格各自独立。'}
+        <div className="workspace-overview">
+            <header className="workspace-overview-heading">
+                <p className="workspace-eyebrow">工作台 / 总览</p>
+                <h2 className="workspace-display-title">连接与运行</h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    连接 QQ，配置节点，在这里掌握运行状态。
                 </p>
-            )}
+            </header>
 
-            {/* 首次使用引导：固定位置（不是网格部件），隐藏所有卡片后仍然可见。 */}
             <GettingStartedPanel />
 
-            {isWide ? (
-                <div className="flex items-start gap-4">
-                    <div className="min-w-0 flex-1">
-                        {visibleBlocks.length === 0 ? (
-                            editing ? (
-                                <DropPlaceholder onAdd={addWidget} />
-                            ) : (
-                                <EmptyLayout onReset={resetLayout} />
-                            )
-                        ) : (
-                            <DashboardGrid
-                                blocks={visibleBlocks}
-                                editing={editing}
-                                cols={GRID_COLS}
-                                onChange={onGridChange}
-                                renderWidget={renderWidget}
-                                configurableIds={CONFIGURABLE_WIDGETS}
-                                onConfigOpen={setConfigId}
-                                removableSelector=".widget-gallery"
-                                onAdd={addWidget}
-                            />
-                        )}
+            <section className="workspace-live-section" aria-labelledby="overview-widgets-title">
+                <div className="workspace-section-heading">
+                    <div>
+                        <h3 id="overview-widgets-title" className="text-base font-semibold">
+                            实时工作台
+                        </h3>
+                        <p className="mt-1 text-xs text-muted-foreground">服务、账号与主机概况</p>
                     </div>
-                    {editing && <WidgetGallery hidden={hiddenBlocks} onAdd={addWidget} />}
+                    <div data-kiosk-hide className="flex items-center gap-2">
+                        {editing && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetLayout}
+                                className="text-muted-foreground"
+                            >
+                                <RotateCcw className="size-3.5" /> 恢复默认
+                            </Button>
+                        )}
+                        <Button
+                            variant={editing ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEditing(!editing)}
+                        >
+                            {editing ? (
+                                <>
+                                    <Check className="size-3.5" /> 完成
+                                </>
+                            ) : (
+                                <>
+                                    <Pencil className="size-3.5" /> 编辑布局
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
-            ) : (
-                <MobileOverview
-                    items={mobileItems}
-                    editing={editing}
-                    configById={configById}
-                    onReorder={reorderMobile}
-                    onToggle={toggleMobile}
-                    onConfigOpen={setConfigId}
-                    onReset={resetLayout}
-                />
-            )}
+
+                {editing && (
+                    <p className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                        {isWide
+                            ? '拖动卡片调整位置、拖动右下角缩放；点齿轮修改设置，从部件库添加或移除卡片。打开右上角菜单可调整导航。'
+                            : '拖动手柄调整卡片顺序，眼睛图标显隐，齿轮改设置。手机为单列布局，与桌面网格各自独立。'}
+                    </p>
+                )}
+
+                {isWide ? (
+                    <div className="workspace-widget-layout">
+                        <div className="min-w-0 flex-1">
+                            {visibleBlocks.length === 0 ? (
+                                editing ? (
+                                    <DropPlaceholder onAdd={addWidget} />
+                                ) : (
+                                    <EmptyLayout onReset={resetLayout} />
+                                )
+                            ) : (
+                                <DashboardGrid
+                                    blocks={visibleBlocks}
+                                    editing={editing}
+                                    cols={GRID_COLS}
+                                    onChange={onGridChange}
+                                    renderWidget={renderWidget}
+                                    configurableIds={CONFIGURABLE_WIDGETS}
+                                    onConfigOpen={setConfigId}
+                                    removableSelector=".widget-gallery"
+                                    onAdd={addWidget}
+                                />
+                            )}
+                        </div>
+                        {editing && <WidgetGallery hidden={hiddenBlocks} onAdd={addWidget} />}
+                    </div>
+                ) : (
+                    <MobileOverview
+                        items={mobileItems}
+                        editing={editing}
+                        configById={configById}
+                        onReorder={reorderMobile}
+                        onToggle={toggleMobile}
+                        onConfigOpen={setConfigId}
+                        onReset={resetLayout}
+                    />
+                )}
+            </section>
 
             <Modal
                 open={!!configId}
@@ -741,7 +748,10 @@ function StatTile({
 
     if (to) {
         return (
-            <Link to={to} className="block h-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+            <Link
+                to={to}
+                className="block h-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
                 <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                     {body}
                 </Card>

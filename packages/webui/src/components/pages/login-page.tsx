@@ -4,7 +4,6 @@ import { ArrowRight, KeyRound, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/interior/modal';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
@@ -15,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { parseSecondFactor } from '@/lib/totp-second-factor';
+import '@/styles/workspace.css';
 
 interface LoginPageProps {
     onLogin: (
@@ -173,6 +173,7 @@ export function LoginPage({
             {needsTotp ? (
                 <>
                     <LoginBrand
+                        title={useRecovery ? '使用恢复码' : '验证身份'}
                         subtitle={
                             useRecovery
                                 ? '输入保存的一次性恢复码'
@@ -253,8 +254,11 @@ export function LoginPage({
                 </>
             ) : (
                 <>
-                    <LoginBrand subtitle="OneBot v11 协议网关 · 安全登录" />
+                    <LoginBrand title="登录控制台" subtitle="输入访问密码，继续管理你的连接。" />
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
+                        <label htmlFor="login-password" className="text-sm font-medium">
+                            访问密码
+                        </label>
                         <motion.div
                             key={shake}
                             animate={!reduce && shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
@@ -318,21 +322,12 @@ export function LoginPage({
     );
 }
 
-function LoginBrand({ subtitle }: { subtitle: string }) {
+function LoginBrand({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="flex items-center gap-4 text-left">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                <img src={BRAND_LOGO_URL} alt="" className="size-10 rounded-xl object-cover" />
-            </div>
-            <div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-2xl font-semibold tracking-tight">{APP_NAME}</span>
-                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-micro text-primary tabular-nums">
-                        v{APP_VERSION}
-                    </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-            </div>
+        <div className="workspace-auth-heading">
+            <p className="workspace-eyebrow">安全访问</p>
+            <h1>{title}</h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
         </div>
     );
 }
@@ -358,52 +353,57 @@ function LoginShell({
 }) {
     const { managedBy } = useTheme();
     return (
-        <div
-            className={cn(
-                'relative flex min-h-dvh items-center justify-center overflow-x-hidden px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]',
-                customBg ? 'bg-transparent' : 'bg-background',
-            )}
-        >
-            <div className="ui-chrome-scene absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 min-h-12 min-w-36">
-                <LineField animated={fxOn && !reduce} />
+        <div className={cn('workspace-auth-shell', customBg ? 'bg-transparent' : 'bg-background')}>
+            <header className="workspace-auth-masthead">
+                <div className="workspace-auth-wordmark">
+                    <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                    <span>{APP_NAME}</span>
+                    <span className="workspace-auth-version">v{APP_VERSION}</span>
+                </div>
                 <ThemeToggle />
-            </div>
-
-            <motion.div
-                initial={reduce ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.2 }}
-                className={cn(
-                    'relative z-10 flex w-full flex-col items-center',
-                    wide ? 'max-w-2xl' : 'max-w-md',
-                )}
-            >
-                <Card className="w-full overflow-hidden">
-                    <CardContent className="px-7 py-9 sm:px-10">
-                        {children}
-                        <p className="mt-7 text-center text-meta text-muted-foreground">
-                            {APP_NAME} · QQ 连接控制台
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Button
-                    style={{ display: managedBy ? 'none' : undefined }}
-                    type="button"
-                    variant="ghost"
-                    onClick={() => onHelpOpen(true)}
-                    className="mt-5 text-xs text-muted-foreground hover:text-foreground"
+            </header>
+            <div className={cn('workspace-auth-content', wide && 'workspace-auth-content-wide')}>
+                <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
+                    <div className="workspace-auth-artwork">
+                        <LineField animated={fxOn && !reduce} />
+                        <div className="workspace-auth-artwork-caption">
+                            <span>{APP_NAME}</span>
+                            <span>QQ 连接控制台</span>
+                        </div>
+                    </div>
+                    <div className="workspace-auth-introduction">
+                        <p className="workspace-eyebrow">你的连接，井然有序</p>
+                        <p className="workspace-auth-statement">从一次连接开始。</p>
+                    </div>
+                </aside>
+                <motion.div
+                    initial={reduce ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={reduce ? { duration: 0 } : { duration: 0.2 }}
+                    className={cn('workspace-auth-document', wide ? 'max-w-2xl' : 'max-w-md')}
                 >
-                    <Sparkles className="size-3.5 text-primary" />
-                    我觉得这个界面很卡怎么办？
-                </Button>
-            </motion.div>
+                    <section className="workspace-auth-form" aria-label="登录">
+                        {children}
+                    </section>
+                    <Button
+                        style={{ display: managedBy ? 'none' : undefined }}
+                        type="button"
+                        variant="ghost"
+                        onClick={() => onHelpOpen(true)}
+                        className="workspace-auth-help text-xs text-muted-foreground hover:text-foreground"
+                    >
+                        <Sparkles className="size-3.5" />
+                        我觉得这个界面很卡怎么办？
+                    </Button>
+                </motion.div>
+            </div>
+            <footer className="workspace-auth-footer">{APP_NAME} · QQ 连接控制台</footer>
 
             <Modal
                 open={helpOpen}
                 onClose={() => onHelpOpen(false)}
                 title="界面有点卡顿？"
-                description="登录页只在右上角显示一小块缓慢移动的线场。可以在这里暂停它；该开关仅作用于本设备的登录页。系统的减弱或关闭动效设置始终优先。"
+                description="暂停登录页的动态背景。这个选择仅保存在本设备，系统动效设置始终优先。"
                 closeLabel="关闭性能设置弹窗"
                 maxWidth={384}
             >

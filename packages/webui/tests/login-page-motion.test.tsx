@@ -96,7 +96,8 @@ describe('LoginPage line-field preference', () => {
         state.palette = 'catppuccin-mocha';
         state.fx = '1';
         const markup = render();
-        expect(markup).toContain('min-h-12 min-w-36');
+        expect(markup).toContain('workspace-auth-artwork');
+        expect(markup).toContain('width="144" height="48" viewBox="0 0 144 48"');
         expect(markup).toContain('data-line-motion="true"');
         expect(markup).not.toContain('theme-toggle-pill');
     });

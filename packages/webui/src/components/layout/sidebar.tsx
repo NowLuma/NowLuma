@@ -1,4 +1,6 @@
 import {
+    ArrowDown,
+    ArrowUp,
     Bug,
     Check,
     Eye,
@@ -16,14 +18,13 @@ import {
 } from 'lucide-react';
 import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { cn } from '@/lib/utils';
 import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { useAppState } from '@/contexts/AppStateContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { reconcileLayoutItems, useLayout } from '@/contexts/LayoutContext';
-import { useDesktopSidebar } from '@/hooks/use-media-query';
 import type { AppPath } from '@/router';
 import type { UiLayoutItem } from '@/types';
 
@@ -43,48 +44,90 @@ export const NAV_ITEMS: NavItem[] = [
     { to: '/settings', label: '系统设置', icon: SlidersHorizontal, description: '主题与账号' },
 ];
 
-// Anti-self-lock: these nav items can be reordered but never hidden.
-//   '/'        — hosts the 「编辑布局」 entry point; hiding it would strand the
-//                user with no way back to un-hide anything.
-//   '/settings'— account + appearance.
+// These routes keep the layout editor and account settings reachable.
 export const PINNED_NAV: AppPath[] = ['/', '/settings'];
+
+function useNavigationItems() {
+    const { navItems, setNavItems, editing, setEditing } = useLayout();
+    const reconciled = reconcileLayoutItems(
+        navItems,
+        NAV_ITEMS.map((item) => item.to),
+        PINNED_NAV,
+    );
+    const orderedNav = reconciled
+        .filter((item) => item.visible)
+        .map((item) => NAV_ITEMS.find((meta) => meta.to === item.id))
+        .filter((item): item is NavItem => !!item);
+
+    const reorderNav = (ids: string[]) => {
+        const byId = new Map(reconciled.map((item) => [item.id, item]));
+        setNavItems(ids.map((id) => byId.get(id)).filter((item): item is UiLayoutItem => !!item));
+    };
+
+    const toggleNav = (id: string) =>
+        setNavItems(
+            reconciled.map((item) => (item.id === id ? { ...item, visible: !item.visible } : item)),
+        );
+    return { reconciled, orderedNav, reorderNav, toggleNav, editing, setEditing };
+}
 
 function NavReorderRow({
     item,
     meta,
+    first,
+    last,
     onToggle,
+    onMove,
 }: {
     item: UiLayoutItem;
     meta: NavItem;
+    first: boolean;
+    last: boolean;
     onToggle: (id: string) => void;
+    onMove: (direction: -1 | 1) => void;
 }) {
     const controls = useDragControls();
     const Icon = meta.icon;
-    const itemPinned = (PINNED_NAV as string[]).includes(item.id);
+    const pinned = PINNED_NAV.includes(meta.to);
     return (
         <Reorder.Item
             value={item.id}
             dragListener={false}
             dragControls={controls}
-            className={cn(
-                'flex select-none items-center gap-2 rounded-lg bg-sidebar-accent/40 px-2 py-2',
-                !item.visible && 'opacity-50',
-            )}
+            className={cn('workspace-nav-edit-row', !item.visible && 'opacity-50')}
         >
             <button
                 type="button"
-                aria-label="拖动排序"
-                className="inline-flex size-8 shrink-0 touch-none items-center justify-center text-muted-foreground"
-                onPointerDown={(e) => controls.start(e)}
+                aria-label={`拖动排序：${meta.label}`}
+                className="workspace-icon-button touch-none text-muted-foreground"
+                onPointerDown={(event) => controls.start(event)}
             >
-                <GripVertical className="size-3.5" />
+                <GripVertical className="size-4" />
             </button>
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <Icon className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
             <span className="min-w-0 flex-1 truncate text-sm">{meta.label}</span>
-            {itemPinned ? (
+            <button
+                type="button"
+                aria-label={`上移${meta.label}`}
+                className="workspace-icon-button"
+                disabled={first}
+                onClick={() => onMove(-1)}
+            >
+                <ArrowUp className="size-4" />
+            </button>
+            <button
+                type="button"
+                aria-label={`下移${meta.label}`}
+                className="workspace-icon-button"
+                disabled={last}
+                onClick={() => onMove(1)}
+            >
+                <ArrowDown className="size-4" />
+            </button>
+            {pinned ? (
                 <span
                     title="必选项，不可隐藏"
-                    className="inline-flex size-8 items-center justify-center text-muted-foreground/50"
+                    className="grid size-11 shrink-0 place-items-center text-muted-foreground"
                 >
                     <Lock className="size-3.5" />
                 </span>
@@ -92,281 +135,200 @@ function NavReorderRow({
                 <button
                     type="button"
                     onClick={() => onToggle(item.id)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    title={item.visible ? '隐藏' : '显示'}
-                    aria-label={item.visible ? '隐藏' : '显示'}
-                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-foreground cursor-pointer"
+                    aria-label={`${item.visible ? '隐藏' : '显示'}${meta.label}`}
+                    className="workspace-icon-button"
                 >
-                    {item.visible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                    {item.visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                 </button>
             )}
         </Reorder.Item>
     );
 }
 
-interface SidebarProps {
-    collapsed?: boolean;
-    onItemClick?: () => void;
-}
-
-export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
-    const pathname = useRouterState({ select: (s) => s.location.pathname });
-    const { updateInfo } = useAppState();
-    const { navItems, setNavItems, editing, setEditing } = useLayout();
-    const { appearance, setAppearance } = useTheme();
+export function NavigationDock() {
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const { appearance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
-    const isDesktop = useDesktopSidebar();
-    const pinned = appearance.sidebarPinned;
-
-    // Full reconciled nav (incl. hidden) — pinned forced visible, forward-compat.
-    const reconciled = reconcileLayoutItems(
-        navItems,
-        NAV_ITEMS.map((i) => i.to),
-        PINNED_NAV,
-    );
-    // View mode: configured order, hidden removed.
-    const orderedNav = reconciled
-        .filter((i) => i.visible)
-        .map((i) => NAV_ITEMS.find((n) => n.to === i.id))
-        .filter((n): n is NavItem => !!n);
-
-    const reorderNav = (ids: string[]) => {
-        const byId = new Map(reconciled.map((i) => [i.id, i]));
-        setNavItems(ids.map((id) => byId.get(id)).filter((x): x is NonNullable<typeof x> => !!x));
-    };
-
-    const toggleNav = (id: string) =>
-        setNavItems(reconciled.map((i) => (i.id === id ? { ...i, visible: !i.visible } : i)));
+    const { orderedNav } = useNavigationItems();
 
     return (
-        <div
-            data-ui-surface="chrome"
-            className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground"
-        >
-            {/* Brand — logo sits in a fixed 48px column centred in the collapsed
-          rail; the wordmark to its right is clipped (never unmounted) when the
-          rail narrows. */}
-            <div className="flex h-16 shrink-0 items-center px-2">
-                <div className="grid w-12 shrink-0 place-items-center">
-                    <div className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                        <img src={BRAND_LOGO_URL} alt="" className="size-full object-cover" />
-                    </div>
-                </div>
-                <div
-                    className={cn(
-                        'min-w-0 flex-1 overflow-hidden pr-2 transition-opacity duration-200',
-                        collapsed ? 'opacity-0' : 'opacity-100',
-                    )}
+        <div className="workspace-dock-anchor">
+            <div className="workspace-dock-scene">
+                <nav
+                    aria-label="主导航"
+                    data-ui-surface="chrome"
+                    data-labels-pinned={appearance.sidebarPinned}
+                    className="ui-glass workspace-dock"
+                    style={{ gridTemplateColumns: `repeat(${orderedNav.length}, minmax(0, 1fr))` }}
                 >
-                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                        <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
-                        <span className="text-micro font-medium text-muted-foreground tabular-nums">
+                    <GlassMaterial />
+                    {orderedNav.map(({ to, label, icon: Icon, description }) => {
+                        const active = pathname === to;
+                        return (
+                            <Link
+                                key={to}
+                                to={to}
+                                title={description}
+                                aria-current={active ? 'page' : undefined}
+                                className="ui-nav-item workspace-dock-link"
+                                data-press-scale=""
+                            >
+                                {active && (
+                                    <motion.span
+                                        layoutId={
+                                            reduced ? undefined : 'workspace-active-navigation'
+                                        }
+                                        className="ui-nav-highlight workspace-dock-active"
+                                        transition={
+                                            reduced
+                                                ? { duration: 0 }
+                                                : { type: 'spring', duration: 0.42, bounce: 0.18 }
+                                        }
+                                    />
+                                )}
+                                <Icon className="workspace-dock-icon size-4" />
+                                <span className="workspace-dock-copy">
+                                    <span className="workspace-dock-label">{label}</span>
+                                    <span className="workspace-dock-description">
+                                        {description}
+                                    </span>
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </div>
+        </div>
+    );
+}
+
+export function Sidebar({ onItemClick }: { onItemClick?: () => void }) {
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const { updateInfo } = useAppState();
+    const { appearance, setAppearance } = useTheme();
+    const { reconciled, orderedNav, reorderNav, toggleNav, editing, setEditing } =
+        useNavigationItems();
+
+    const moveNav = (index: number, direction: -1 | 1) => {
+        const ids = reconciled.map((item) => item.id);
+        const target = index + direction;
+
+        if (target < 0 || target >= ids.length) {
+            return;
+        }
+
+        [ids[index], ids[target]] = [ids[target], ids[index]];
+        reorderNav(ids);
+    };
+
+    return (
+        <div data-ui-surface="chrome" className="workspace-navigation-panel">
+            <div className="workspace-navigation-brand">
+                <img src={BRAND_LOGO_URL} alt="" className="size-9 rounded-md" />
+                <div className="min-w-0">
+                    <p className="font-semibold tracking-tight">
+                        {APP_NAME}{' '}
+                        <span className="font-mono text-xs font-normal text-muted-foreground">
                             v{APP_VERSION}
                         </span>
-                    </div>
-                    <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                        OneBot v11 控制台
-                    </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">QQ 连接控制台</p>
                 </div>
             </div>
-
-            {/* Nav */}
-            <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block">
+            <div className="workspace-navigation-scroll">
                 {editing ? (
-                    <div className="flex flex-col gap-2 p-2">
-                        <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-medium text-muted-foreground">
-                                编辑导航
-                            </span>
+                    <div>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <span className="text-sm font-medium">编辑导航</span>
                             <button
                                 type="button"
                                 onClick={() => setEditing(false)}
-                                className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+                                className="workspace-text-button"
                             >
-                                <Check className="size-3" /> 完成
+                                <Check className="size-4" /> 完成
                             </button>
                         </div>
                         <Reorder.Group
                             axis="y"
-                            values={reconciled.map((i) => i.id)}
+                            values={reconciled.map((item) => item.id)}
                             onReorder={reorderNav}
-                            className="flex flex-col gap-1"
+                            className="space-y-1"
                         >
-                            {reconciled.map((item) => {
-                                const meta = NAV_ITEMS.find((n) => n.to === item.id);
-
-                                if (!meta) {
-                                    return null;
-                                }
-
-                                return (
+                            {reconciled.map((item, index) => {
+                                const meta = NAV_ITEMS.find((entry) => entry.to === item.id);
+                                return meta ? (
                                     <NavReorderRow
                                         key={item.id}
                                         item={item}
                                         meta={meta}
+                                        first={index === 0}
+                                        last={index === reconciled.length - 1}
                                         onToggle={toggleNav}
+                                        onMove={(direction) => moveNav(index, direction)}
                                     />
-                                );
+                                ) : null;
                             })}
                         </Reorder.Group>
                     </div>
                 ) : (
-                    <nav data-collapsed={collapsed} className="flex flex-col gap-1 px-2 py-2">
-                        {orderedNav.map(({ to, label, icon: Icon, description }) => {
-                            const isActive = pathname === to;
-                            return (
-                                <Link
-                                    key={to}
-                                    to={to}
-                                    title={collapsed ? label : undefined}
-                                    onClick={onItemClick}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    className={cn(
-                                        'ui-nav-item group relative flex min-h-11 items-center rounded-[4px] py-2.5 text-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
-                                        isActive
-                                            ? 'text-sidebar-accent-foreground'
-                                            : 'text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground',
-                                    )}
-                                >
-                                    {isActive && (
-                                        <>
-                                            {/* Only the selected background moves; labels keep their baseline. */}
-                                            <motion.span
-                                                layoutId={
-                                                    reduced ? undefined : 'sidebar-active-pill'
-                                                }
-                                                className={cn(
-                                                    'ui-nav-highlight absolute inset-y-0 rounded-[4px] bg-sidebar-accent',
-                                                    collapsed ? 'left-0.5 w-11' : 'inset-x-0',
-                                                )}
-                                                transition={
-                                                    reduced
-                                                        ? { duration: 0 }
-                                                        : {
-                                                              type: 'spring',
-                                                              stiffness: 380,
-                                                              damping: 32,
-                                                          }
-                                                }
-                                            />
-                                            {!collapsed && (
-                                                <motion.span
-                                                    layoutId={
-                                                        reduced ? undefined : 'sidebar-active-bar'
-                                                    }
-                                                    className="ui-nav-highlight absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
-                                                    transition={
-                                                        reduced
-                                                            ? { duration: 0 }
-                                                            : {
-                                                                  type: 'spring',
-                                                                  stiffness: 380,
-                                                                  damping: 32,
-                                                              }
-                                                    }
-                                                />
-                                            )}
-                                        </>
-                                    )}
-                                    <span className="relative z-10 grid w-12 shrink-0 place-items-center">
-                                        <Icon
-                                            className={cn('size-4', isActive && 'text-primary')}
-                                        />
+                    <nav aria-label="全部页面" className="space-y-1">
+                        {orderedNav.map(({ to, label, icon: Icon, description }) => (
+                            <Link
+                                key={to}
+                                to={to}
+                                onClick={onItemClick}
+                                aria-current={pathname === to ? 'page' : undefined}
+                                className="ui-nav-item workspace-navigation-link"
+                            >
+                                <Icon className="size-4 shrink-0" />
+                                <span className="min-w-0">
+                                    <span className="block text-sm font-medium">{label}</span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        {description}
                                     </span>
-                                    <span
-                                        className={cn(
-                                            'relative z-10 flex min-w-0 flex-1 flex-col items-start overflow-hidden pr-3 transition-opacity duration-200',
-                                            collapsed ? 'opacity-0' : 'opacity-100',
-                                        )}
-                                    >
-                                        <span className="w-full truncate whitespace-nowrap leading-tight">
-                                            {label}
-                                        </span>
-                                        <span className="w-full truncate whitespace-nowrap text-xs font-normal text-muted-foreground">
-                                            {description}
-                                        </span>
-                                    </span>
-                                </Link>
-                            );
-                        })}
+                                </span>
+                            </Link>
+                        ))}
                     </nav>
                 )}
-            </ScrollArea>
-
-            {updateInfo?.hasUpdate && (
-                <div className="shrink-0 px-2 pb-1">
+                {updateInfo?.hasUpdate && (
                     <Link
                         to="/settings"
                         search={{ tab: 'about' }}
                         onClick={onItemClick}
-                        title={
-                            collapsed
-                                ? updateInfo.latest
-                                    ? `有新版本 v${updateInfo.latest} · 点击查看`
-                                    : '有可用更新'
-                                : undefined
-                        }
                         aria-label="有可用更新"
-                        className="group relative flex items-center py-2"
+                        className="workspace-update-link"
                     >
-                        {/* Background as an absolute layer so the collapsed rail shows a
-                centred squircle, not a full-width bar cut off with a hard edge. */}
-                        <span
-                            className={cn(
-                                'absolute inset-y-0 rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/[0.15]',
-                                collapsed ? 'left-0.5 w-11' : 'inset-x-0',
-                            )}
-                        />
-                        <span className="relative z-10 grid w-12 shrink-0 place-items-center">
-                            <Sparkles className="size-4 text-primary" />
-                        </span>
-                        <span
-                            className={cn(
-                                'relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden pr-3 transition-opacity duration-200',
-                                collapsed ? 'opacity-0' : 'opacity-100',
-                            )}
-                        >
-                            <span className="truncate whitespace-nowrap text-xs font-medium leading-tight text-foreground">
-                                有新版本可用
-                            </span>
-                            <span className="truncate whitespace-nowrap text-xs text-muted-foreground">
-                                v{updateInfo.latest} · 点击查看
-                            </span>
-                        </span>
+                        <Sparkles className="size-4" />
+                        <span>有新版本可用 {updateInfo.latest && `· v${updateInfo.latest}`}</span>
                     </Link>
-                </div>
-            )}
-
-            {/* Footer: © + the pin toggle (desktop only). Pinning keeps the rail
-          expanded; unpinning returns it to the hover-to-peek rail. Mirrors the
-          「钉住侧栏展开」 appearance setting. */}
-            <div
-                className={cn(
-                    'flex shrink-0 items-center gap-2 py-3 pl-4 pr-2.5 transition-opacity duration-200',
-                    collapsed ? 'opacity-0' : 'opacity-100',
                 )}
-            >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap text-micro text-muted-foreground">
-                    {APP_NAME} · QQ 连接控制台
-                </span>
-                {isDesktop && (
+            </div>
+            <div className="workspace-navigation-footer">
+                {!editing && (
                     <button
                         type="button"
-                        onClick={() => setAppearance({ sidebarPinned: !pinned })}
-                        title={pinned ? '取消钉住（恢复悬停展开）' : '钉住侧栏（保持展开）'}
-                        aria-label={pinned ? '取消钉住侧栏' : '钉住侧栏'}
-                        aria-pressed={pinned}
-                        tabIndex={collapsed ? -1 : 0}
-                        className={cn(
-                            'inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
-                            pinned
-                                ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
-                        )}
+                        onClick={() => setEditing(true)}
+                        className="workspace-text-button"
                     >
-                        {pinned ? <Pin className="size-3.5" /> : <PinOff className="size-3.5" />}
+                        <Settings className="size-4" /> 编辑导航
                     </button>
                 )}
+                <button
+                    type="button"
+                    onClick={() => setAppearance({ sidebarPinned: !appearance.sidebarPinned })}
+                    aria-label="显示导航说明"
+                    aria-pressed={appearance.sidebarPinned}
+                    title="在宽屏导航中显示页面用途"
+                    className="workspace-text-button"
+                >
+                    {appearance.sidebarPinned ? (
+                        <Pin className="size-4" />
+                    ) : (
+                        <PinOff className="size-4" />
+                    )}
+                    显示导航说明
+                </button>
             </div>
         </div>
     );

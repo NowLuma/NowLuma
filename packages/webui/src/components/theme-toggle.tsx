@@ -1,67 +1,72 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { motion, useReducedMotionConfig } from 'motion/react';
+import { useDropdown } from '@/components/interior/dropdown';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { GlassMaterial } from '@/components/ui/glass-material';
 import { paletteResolved, useTheme, type ThemeMode } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import '@/styles/workspace.css';
 
-const OPTIONS: { mode: ThemeMode; icon: typeof Sun; label: string }[] = [
-    { mode: 'system', icon: Monitor, label: '跟随系统' },
-    { mode: 'light', icon: Sun, label: '浅色' },
-    { mode: 'dark', icon: Moon, label: '深色' },
+const OPTIONS: { value: ThemeMode; icon: typeof Sun; label: string }[] = [
+    { value: 'system', icon: Monitor, label: '跟随系统' },
+    { value: 'light', icon: Sun, label: '浅色' },
+    { value: 'dark', icon: Moon, label: '深色' },
 ];
 
 export function ThemeToggle({ className }: { className?: string }) {
     const { appearance, mode, setMode, managedBy } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
+    const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
+        items: OPTIONS,
+        value: mode,
+        onChange: (value) => setMode(value as ThemeMode),
+    });
+    const selected = OPTIONS.find((option) => option.value === mode) ?? OPTIONS[0];
+    const Icon = selected.icon;
 
-    // A Catppuccin flavor fixes light/dark, so this quick toggle would be inert
-    // (and its pill would desync from the forced scheme) — hide it. Light/dark is
-    // then changed by switching the palette back to “默认” in settings.
     if (managedBy || paletteResolved(appearance.palette)) {
         return null;
     }
 
     return (
-        <div
-            className={cn(
-                'ui-glass relative inline-flex shrink-0 items-center rounded-full p-0 md:p-0.5',
-                className,
-            )}
-        >
-            <GlassMaterial />
-            {OPTIONS.map(({ mode: m, icon: Icon, label }) => {
-                const active = mode === m;
-                return (
-                    <button
-                        key={m}
-                        type="button"
-                        title={label}
-                        aria-label={label}
-                        aria-pressed={active}
-                        onClick={() => setMode(m)}
-                        data-press-scale=""
-                        className={cn(
-                            'relative flex size-[44px] items-center justify-center rounded-full transition-colors duration-150 ease-out md:size-10 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                            active
-                                ? 'text-primary-foreground'
-                                : 'text-popover-foreground hover:text-foreground',
-                        )}
+        <div ref={rootRef} className={cn('workspace-theme', className)}>
+            <button
+                {...triggerProps}
+                aria-label={`切换主题：${selected.label}`}
+                title={`主题：${selected.label}`}
+                className="workspace-icon-button workspace-theme-trigger"
+                data-press-scale=""
+            >
+                <Icon className="size-4" />
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={reduced ? false : { opacity: 0, y: -4, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={reduced ? { duration: 0 } : { duration: 0.16 }}
+                        className="ui-glass ui-glass-menu workspace-theme-menu"
                     >
-                        {active && (
-                            <motion.span
-                                layoutId={reduced ? undefined : 'theme-toggle-pill'}
-                                className="absolute inset-[8px] rounded-full bg-primary md:inset-1.5"
-                                transition={
-                                    reduced
-                                        ? { duration: 0 }
-                                        : { type: 'spring', stiffness: 380, damping: 30 }
-                                }
-                            />
-                        )}
-                        <Icon className="relative z-10 size-3.5" />
-                    </button>
-                );
-            })}
+                        <GlassMaterial />
+                        <ul {...listProps} aria-label="主题" className="workspace-theme-options">
+                            {OPTIONS.map(({ value, label, icon: OptionIcon }, index) => (
+                                <li
+                                    key={value}
+                                    {...getItemProps(index)}
+                                    data-active={index === activeIndex}
+                                    className="workspace-theme-option"
+                                >
+                                    <OptionIcon className="size-4" aria-hidden="true" />
+                                    <span className="flex-1">{label}</span>
+                                    {value === mode && (
+                                        <Check className="size-4" aria-hidden="true" />
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
