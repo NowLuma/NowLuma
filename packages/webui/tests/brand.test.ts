@@ -10,7 +10,7 @@ const demoHtml = read('../demo.html');
 const logoConsumers = [
     'src/components/layout/sidebar.tsx',
     'src/components/pages/login-page.tsx',
-    'src/components/pages/settings-page.tsx',
+    'src/components/settings/about-panel.tsx',
 ].map((file) => read(`../${file}`));
 
 describe('brand assets', () => {
