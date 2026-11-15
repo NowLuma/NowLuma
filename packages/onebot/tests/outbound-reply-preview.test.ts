@@ -12,7 +12,17 @@ const target = 30003;
 const time = 1700000000;
 const sequence = 42;
 
-async function sendQuote(isGroup: boolean, original: JsonValue | null) {
+async function sendQuote(
+    isGroup: boolean,
+    original: JsonValue | null,
+    metaOverride: Partial<{
+        isGroup: boolean;
+        targetId: number;
+        timestamp: number;
+        random: number;
+        sequenceAuthoritative: boolean;
+    }> | null = {},
+) {
     const packets: Partial<Elem>[] = [];
     const send = vi.fn(async (_target: number, elements: MessageElement[]) => {
         const encoded = await buildSendElems(elements, {
@@ -36,13 +46,17 @@ async function sendQuote(isGroup: boolean, original: JsonValue | null) {
         messageStore: {
             findEvent: () =>
                 original === null ? null : { user_id: sender, time, message: original },
-            findMeta: () => ({
-                isGroup,
-                targetId: target,
-                timestamp: time,
-                random: 7,
-                sequenceAuthoritative: true,
-            }),
+            findMeta: () =>
+                metaOverride === null
+                    ? null
+                    : {
+                          isGroup,
+                          targetId: target,
+                          timestamp: time,
+                          random: 7,
+                          sequenceAuthoritative: true,
+                          ...metaOverride,
+                      },
             resolveReplySequence: () => sequence,
             storeEvent: vi.fn(),
         },
@@ -102,5 +116,43 @@ describe.each([true, false])('outbound quote preview (group=%s)', (isGroup) => {
         expect(src?.origSeqs).toEqual([sequence]);
         expect(src?.senderUin).toBe(10001n);
         expect(src?.elemsRaw?.length ?? 0).toBe(0);
+    });
+});
+
+describe('outbound quote scope ownership', () => {
+    it('rejects a group quote whose cached meta belongs to another conversation', async () => {
+        const src = await sendQuote(true, [{ type: 'text', data: { text: 'wrong group' } }], {
+            targetId: target + 1,
+        });
+        expect(src?.elemsRaw?.length ?? 0).toBe(0);
+    });
+
+    it('rejects a group quote whose cached meta is private', async () => {
+        const src = await sendQuote(true, [{ type: 'text', data: { text: 'private meta' } }], {
+            isGroup: false,
+        });
+        expect(src?.elemsRaw?.length ?? 0).toBe(0);
+    });
+
+    it('rejects a group quote with no cached meta', async () => {
+        const src = await sendQuote(true, [{ type: 'text', data: { text: 'missing meta' } }], null);
+        expect(src?.elemsRaw?.length ?? 0).toBe(0);
+    });
+
+    it('keeps private reply behavior without a conversation scope check', async () => {
+        const src = await sendQuote(
+            false,
+            [{ type: 'text', data: { text: 'cross conversation' } }],
+            { targetId: target + 1 },
+        );
+        expect(src?.origSeqs).toEqual([sequence]);
+        expect(src?.senderUin).toBe(BigInt(sender));
+        expect(preview(src)).toBe('cross conversation');
+    });
+
+    it('keeps private meta fallback when only the event is cached', async () => {
+        const src = await sendQuote(false, [{ type: 'text', data: { text: 'event only' } }], null);
+        expect(src?.senderUin).toBe(BigInt(sender));
+        expect(preview(src)).toBe('event only');
     });
 });
