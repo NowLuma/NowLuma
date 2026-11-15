@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
     processList: [] as HookProcessInfo[],
     ready: true,
     error: '',
+    banner: null as string | null,
     operation: null as 'load' | 'unload' | 'refresh' | null,
     canCancelAttach: undefined as boolean | undefined,
 }));
@@ -16,7 +17,7 @@ vi.mock('@/contexts/AppStateContext', () => ({
         processList: state.processList,
         processOps: {
             statusOf: () => state.operation,
-            banner: null,
+            banner: state.banner,
             canCancelAttach:
                 state.canCancelAttach === undefined ? undefined : () => state.canCancelAttach,
         },
@@ -33,7 +34,13 @@ vi.mock('@/contexts/ThemeContext', () => ({
 vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
 
 beforeEach(() =>
-    Object.assign(state, { ready: true, error: '', operation: null, canCancelAttach: undefined }),
+    Object.assign(state, {
+        ready: true,
+        error: '',
+        operation: null,
+        banner: null,
+        canCancelAttach: undefined,
+    }),
 );
 
 function renderProcess(overrides: Partial<HookProcessInfo>) {
@@ -144,6 +151,16 @@ describe('process account labels', () => {
             .match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
             ?.find((element) => element.includes('卸载'));
         expect(button).toContain('disabled=""');
+    });
+
+    it('announces terminal process messages with a notice icon rather than a busy spinner', () => {
+        state.banner = '已从进程 4242 卸载';
+        const markup = renderProcess({});
+        expect(markup).toContain('role="status"');
+        expect(markup).toContain('已从进程 4242 卸载');
+        expect(markup).toContain('lucide-info');
+        expect(markup).not.toContain('animate-spin');
+        expect(markup).not.toContain('卸载中');
     });
 
     it('does not apply a stale local nickname to a newly logged-in account', () => {

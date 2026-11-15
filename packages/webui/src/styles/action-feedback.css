@@ -1,0 +1,41 @@
+.action-feedback-viewport {
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: min(
+    360px,
+    calc(100vw - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right)))
+  );
+  max-height: calc(
+    100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom))
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.action-feedback-viewport > * {
+  flex-shrink: 0;
+}
+
+/* The fixed workspace dock reserves 70px plus a gap, including on a 375px viewport. */
+body:has(.workspace-dock-anchor) .action-feedback-viewport {
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.25rem);
+  max-height: calc(
+    100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)) - 5.25rem
+  );
+}
+
+html[data-low-performance='1'] .action-feedback-surface,
+html[data-contrast='high'] .action-feedback-surface {
+  background: var(--popover);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .action-feedback-surface {
+    background: var(--popover);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

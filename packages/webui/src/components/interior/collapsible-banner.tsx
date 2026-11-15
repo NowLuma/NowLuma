@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { motion, useReducedMotionConfig } from 'motion/react';
+
+const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const DISCLOSE = { type: 'spring', stiffness: 190, damping: 30, mass: 1 } as const;
@@ -159,7 +161,7 @@ export function CollapsibleBanner({
     dismissedMessage = 'Notice dismissed.',
     className = '',
 }: CollapsibleBannerProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig() === true;
     const uid = useId();
     const bodyId = `${uid}-body`;
     const titleId = `${uid}-title`;
@@ -171,46 +173,87 @@ export function CollapsibleBanner({
         onDismiss,
     });
     const wasVisible = useRef(false);
+    const finishDismissal = useCallback(() => {
+        if (dismissed && wasVisible.current) {
+            wasVisible.current = false;
+            onDismissed?.();
+        }
+    }, [dismissed, onDismissed]);
     useEffect(() => {
         if (!dismissed) {
             wasVisible.current = true;
+        } else if (reduced) {
+            finishDismissal();
         }
-    }, [dismissed]);
+    }, [dismissed, reduced, finishDismissal]);
 
     const hasBody = Boolean(description || children || action);
+    const surfaceRef = useRef<HTMLDivElement>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
+    const [heights, setHeights] = useState<{ open: number; folded: number } | null>(null);
 
-    const disclose = reduced
-        ? INSTANT
-        : {
-              height: DISCLOSE,
-              opacity: { duration: 0.14, ease: EASE, delay: open ? 0.05 : 0 },
-              y: DISCLOSE,
-          };
+    useIsoLayoutEffect(() => {
+        const read = () => {
+            const surface = surfaceRef.current;
+            const body = bodyRef.current;
+
+            if (!surface || surface.offsetHeight <= 0 || surface.offsetWidth <= 0) {
+                return;
+            }
+
+            // Measure natural content once; only the outer shell controls height.
+            const open = surface.offsetHeight;
+            const folded = open - (body?.offsetHeight ?? 0);
+            setHeights((previous) =>
+                previous?.open === open && previous.folded === folded ? previous : { open, folded },
+            );
+        };
+
+        read();
+
+        if (typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(read);
+
+        if (surfaceRef.current) {
+            observer.observe(surfaceRef.current);
+        }
+
+        if (bodyRef.current) {
+            observer.observe(bodyRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [title, description, children, action, hasBody]);
 
     return (
         <>
             <motion.div
-                initial={false}
-                animate={{ height: dismissed ? 0 : 'auto', opacity: dismissed ? 0 : 1 }}
+                initial={reduced ? false : { height: 0, opacity: 0 }}
+                animate={{
+                    height: dismissed ? 0 : (heights?.[open ? 'open' : 'folded'] ?? 'auto'),
+                    opacity: dismissed ? 0 : 1,
+                }}
                 transition={
                     reduced
                         ? INSTANT
                         : { height: DISCLOSE, opacity: { duration: 0.14, ease: EASE } }
                 }
                 style={{ overflow: 'hidden' }}
-                onAnimationComplete={() => {
-                    if (dismissed && wasVisible.current) {
-                        onDismissed?.();
-                    }
-                }}
-                className="rounded-[11px]"
+                onAnimationComplete={finishDismissal}
+                className="rounded-[14px]"
             >
                 <div
+                    ref={surfaceRef}
                     role="region"
                     aria-labelledby={titleId}
-                    className={`rounded-[11px] border border-border/80 bg-popover/95 text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_36px_-18px_rgb(0_0_0/0.5)] backdrop-blur-xl ${className}`}
+                    aria-hidden={dismissed}
+                    inert={dismissed}
+                    className={`action-feedback-surface rounded-[14px] border border-border/80 bg-popover/95 text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_36px_-18px_rgb(0_0_0/0.5)] backdrop-blur-xl ${className}`}
                 >
-                    <div className="flex items-center gap-2.5 p-2.5">
+                    <div className="flex items-center gap-2.5 px-2.5 py-1">
                         <span
                             aria-hidden="true"
                             className="grid size-[26px] shrink-0 place-items-center rounded-[7px] bg-muted/70 text-muted-foreground shadow-[inset_0_1px_2px_rgb(0_0_0/0.08)]"
@@ -232,7 +275,7 @@ export function CollapsibleBanner({
                                 }}
                                 aria-expanded={open}
                                 aria-controls={bodyId}
-                                className="group flex min-w-0 flex-1 items-center gap-2 rounded-[7px] text-left outline-none focus-visible:bg-primary/10 focus-visible:ring-1 focus-visible:ring-primary"
+                                className="group flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[7px] text-left outline-none focus-visible:bg-primary/10 focus-visible:ring-1 focus-visible:ring-primary"
                             >
                                 <span
                                     id={titleId}
@@ -264,7 +307,7 @@ export function CollapsibleBanner({
                                 type="button"
                                 onClick={dismiss}
                                 aria-label={dismissLabel}
-                                className="grid size-[26px] shrink-0 place-items-center rounded-[7px] text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                className="grid size-11 shrink-0 place-items-center rounded-[7px] text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                             >
                                 {CLOSE}
                             </button>
@@ -273,21 +316,17 @@ export function CollapsibleBanner({
 
                     {hasBody ? (
                         <motion.div
+                            ref={bodyRef}
                             id={bodyId}
-                            inert={!open}
+                            aria-hidden={!open || dismissed}
+                            inert={!open || dismissed}
                             initial={false}
-                            animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-                            transition={disclose}
-                            style={{ overflow: 'hidden' }}
+                            animate={{ opacity: open ? 1 : 0 }}
+                            transition={reduced ? INSTANT : { duration: 0.14, ease: EASE }}
                         >
-                            <motion.div
-                                initial={false}
-                                animate={{ y: open ? 0 : -6 }}
-                                transition={reduced ? INSTANT : DISCLOSE}
-                                className="pb-2.5 pl-[46px] pr-2.5"
-                            >
+                            <div className="pb-2.5 pl-[46px] pr-2.5">
                                 {description ? (
-                                    <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                                    <p className="break-words text-[12.5px] leading-relaxed text-muted-foreground">
                                         {description}
                                     </p>
                                 ) : null}
@@ -295,7 +334,7 @@ export function CollapsibleBanner({
                                 {children}
 
                                 {action ? <div className="mt-2">{action}</div> : null}
-                            </motion.div>
+                            </div>
                         </motion.div>
                     ) : null}
                 </div>

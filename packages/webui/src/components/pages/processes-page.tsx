@@ -1,8 +1,8 @@
 // The selected PID owns every detail and action; sorting or a disappearing
 // process must never retarget an operation to another QQ process.
 import { useEffect, useId, useMemo, useState } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
-import { AlertCircle, Cpu, Loader2, PlugZap, RefreshCw, Unplug } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { AlertCircle, Cpu, Info, Loader2, PlugZap, RefreshCw, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/interior/segmented-control';
 import { DesktopButton } from '@/components/desktop-button';
@@ -131,12 +131,30 @@ export function ProcessesPage() {
                         </Button>
                     </div>
                 </div>
-                {processActionStatus && (
-                    <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-primary">
-                        <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                        {processActionStatus}
-                    </div>
-                )}
+                <AnimatePresence initial={false}>
+                    {processActionStatus && (
+                        <motion.div
+                            key="process-action-status"
+                            initial={
+                                reduced ? false : { height: 0, opacity: 0, marginTop: '-0.75rem' }
+                            }
+                            animate={{ height: 'auto', opacity: 1, marginTop: 0 }}
+                            exit={{ height: 0, opacity: 0, marginTop: '-0.75rem' }}
+                            transition={{ duration: reduced ? 0 : 0.2, ease: [0.23, 1, 0.32, 1] }}
+                            className="overflow-hidden"
+                        >
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                aria-atomic="true"
+                                className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-primary"
+                            >
+                                <Info aria-hidden="true" className="size-3.5 shrink-0" />
+                                {processActionStatus}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 {resources.processList.error && processList.length > 0 && (
                     <div
                         role="alert"

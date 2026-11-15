@@ -8,6 +8,8 @@ import { elements, hookHost } from './helpers/hook-host';
 const state = vi.hoisted(() => ({
     processList: [] as HookProcessInfo[],
     sort: 'pid',
+    banner: null as string | null,
+    reduced: true,
     load: vi.fn(),
     unload: vi.fn(),
     refresh: vi.fn(),
@@ -15,14 +17,14 @@ const state = vi.hoisted(() => ({
 vi.mock('react', async (original) => ({ ...(await original<typeof import('react')>()) }));
 vi.mock('motion/react', async (original) => ({
     ...(await original<typeof import('motion/react')>()),
-    useReducedMotionConfig: () => true,
+    useReducedMotionConfig: () => state.reduced,
 }));
 vi.mock('@/contexts/AppStateContext', () => ({
     useAppState: () => ({
         processList: state.processList,
         processOps: {
             statusOf: () => null,
-            banner: null,
+            banner: state.banner,
             load: state.load,
             unload: state.unload,
             refresh: state.refresh,
@@ -59,6 +61,8 @@ const detail = (tree: ReactNode) =>
 beforeEach(() => {
     host = hookHost();
     state.sort = 'pid';
+    state.banner = null;
+    state.reduced = true;
     state.processList = [process(100, 'Z QQ'), process(200, 'A QQ')];
     state.load.mockReset().mockResolvedValue(undefined);
     state.unload.mockReset();
@@ -70,6 +74,35 @@ afterEach(() => {
 });
 
 describe('ProcessesPage PID selection', () => {
+    it.each([false, true])(
+        'keeps terminal banner entry and exit together (reduced=%s)',
+        (reduced) => {
+            state.reduced = reduced;
+            state.banner = '已从进程 100 卸载';
+            const tree = render();
+            const notice = elements(tree).find((item) => item.props.role === 'status')!;
+            expect(
+                elements(notice).some((item) =>
+                    String(item.props.className).includes('animate-spin'),
+                ),
+            ).toBe(false);
+            const shell = elements(tree).find(
+                (item) => item.props.exit && item.props.className === 'overflow-hidden',
+            )!;
+            expect(shell.props.animate).toMatchObject({ height: 'auto', opacity: 1, marginTop: 0 });
+            expect(shell.props.exit).toMatchObject({
+                height: 0,
+                opacity: 0,
+                marginTop: '-0.75rem',
+            });
+            expect(shell.props.transition).toMatchObject({ duration: reduced ? 0 : 0.2 });
+
+            if (reduced) {
+                expect(shell.props.initial).toBe(false);
+            }
+        },
+    );
+
     it('requires a choice when more than one process is present', () => {
         expect(detail(render())).toBeUndefined();
         expect(state.load).not.toHaveBeenCalled();
