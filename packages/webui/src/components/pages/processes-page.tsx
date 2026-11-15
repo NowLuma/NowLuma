@@ -288,6 +288,7 @@ export function ProcessesPage() {
                                     key={selected.pid}
                                     proc={selected}
                                     statusOf={statusOf}
+                                    canCancelAttach={processOps.canCancelAttach}
                                     onLoad={() =>
                                         setConfirm({
                                             kind: 'load',
@@ -359,12 +360,20 @@ export function ProcessesPage() {
 interface ProcessDetailProps {
     proc: HookProcessInfo;
     statusOf: (pid: number) => 'load' | 'unload' | 'refresh' | null | undefined;
+    canCancelAttach?: (pid: number) => boolean;
     onLoad: () => void;
     onUnload: () => void;
     onRefreshPipe: () => void;
 }
 
-function ProcessDetail({ proc, statusOf, onLoad, onUnload, onRefreshPipe }: ProcessDetailProps) {
+function ProcessDetail({
+    proc,
+    statusOf,
+    canCancelAttach,
+    onLoad,
+    onUnload,
+    onRefreshPipe,
+}: ProcessDetailProps) {
     const reduced = useReducedMotionConfig();
     const identity = detectedIdentity(proc);
     const name = identity?.nickname || identity?.uin || proc.name;
@@ -500,7 +509,7 @@ function ProcessDetail({ proc, statusOf, onLoad, onUnload, onRefreshPipe }: Proc
                         <Button
                             size="sm"
                             variant={canUnload ? 'outline' : 'default'}
-                            disabled={busy}
+                            disabled={busy && !(canUnload && canCancelAttach?.(proc.pid))}
                             onClick={canUnload ? onUnload : onLoad}
                             className={cn(
                                 canUnload &&

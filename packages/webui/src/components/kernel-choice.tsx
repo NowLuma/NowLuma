@@ -78,6 +78,7 @@ export function KernelChoiceForm({
     catalog,
     onConfirm,
     onCancel,
+    onStop,
     submitLabel = '确认并接入',
     onSubmittingChange,
 }: {
@@ -85,6 +86,7 @@ export function KernelChoiceForm({
     catalog: KernelCatalog;
     onConfirm: (choice: KernelChoiceInput) => Promise<void>;
     onCancel?: () => void;
+    onStop?: () => Promise<void>;
     submitLabel?: string;
     onSubmittingChange?: (submitting: boolean) => void;
 }) {
@@ -176,6 +178,18 @@ export function KernelChoiceForm({
                         取消
                     </Button>
                 ) : null}
+                {/* Stop can wait for a dispatched save; Cancel must not interrupt it. */}
+                {onStop ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            void onStop();
+                        }}
+                    >
+                        停止接入
+                    </Button>
+                ) : null}
                 <Button
                     type="submit"
                     disabled={!canSubmit || submitting}
@@ -195,7 +209,13 @@ export function KernelChoiceForm({
     );
 }
 
-export function KernelChoiceDialog({ choice }: { choice: PendingKernelChoice }) {
+export function KernelChoiceDialog({
+    choice,
+    onStop,
+}: {
+    choice: PendingKernelChoice;
+    onStop?: () => Promise<void>;
+}) {
     const [submitting, setSubmitting] = useState(false);
 
     return (
@@ -220,6 +240,7 @@ export function KernelChoiceDialog({ choice }: { choice: PendingKernelChoice }) 
                 catalog={choice.catalog}
                 onConfirm={choice.confirm}
                 onCancel={choice.cancel}
+                onStop={choice.target.injected ? onStop : undefined}
                 onSubmittingChange={setSubmitting}
             />
         </Modal>

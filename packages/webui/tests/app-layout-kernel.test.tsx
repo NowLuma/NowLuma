@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     reloadAppearance: vi.fn(),
     useHookProcessOps: vi.fn(),
     pending: {
-        target: { pid: 4242, path: '/DEMO/QQ', uin: '10001', nickname: 'A' },
+        target: { pid: 4242, path: '/DEMO/QQ', uin: '10001', nickname: 'A', injected: true },
         catalog: { riskVersion: 'fixture-current' },
         confirm: vi.fn(),
         cancel: vi.fn(),
@@ -72,6 +72,9 @@ describe('AppLayout shared kernel choice owner', () => {
         expect(dialogs).toHaveLength(1);
         expect(dialogs[0].key).toMatch(/4242.*10001.*fixture-current/);
         expect(dialogs[0].props.choice).toBe(mocks.pending);
+        await (dialogs[0].props.onStop as () => Promise<void>)();
+        expect(mocks.ops.unload).toHaveBeenCalledTimes(1);
+        expect(mocks.ops.unload).toHaveBeenCalledWith(mocks.pending.target.pid);
         await tree.props.value.onLogout();
         expect(mocks.cancelPending.mock.invocationCallOrder[0]).toBeLessThan(
             mocks.logout.mock.invocationCallOrder[0],

@@ -157,6 +157,7 @@ export function AppLayout() {
                 <KernelChoiceDialog
                     key={`${kernelChoice.target.pid}:${kernelChoice.target.uin}:${kernelChoice.catalog.riskVersion}`}
                     choice={kernelChoice}
+                    onStop={() => processOps.unload(kernelChoice.target.pid)}
                 />
             ) : null}
             <LowIntegrityWarning lowIntegrity={systemInfo?.runtime.lowIntegrity === true} />

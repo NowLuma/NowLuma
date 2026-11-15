@@ -7,6 +7,8 @@ export type HookProcessOpKind = 'load' | 'unload' | 'refresh';
 export interface HookProcessOps {
     /** Returns the in-flight op kind for a pid, or null if idle. */
     statusOf(pid: number): HookProcessOpKind | null;
+    /** True only for a read/choice wait that unload can replace without interrupting a write. */
+    canCancelAttach?(pid: number): boolean;
     /** Latest user-facing status; auto-clears a few seconds after the last update. */
     banner: string;
     load(pid: number): Promise<void>;
@@ -50,7 +52,34 @@ const KIND_MESSAGES: Record<HookProcessOpKind, KindMessages> = {
     },
 };
 
+interface ProcessRun {
+    controller: AbortController;
+    phase: 'authorization' | 'policy' | 'native';
+    unloadRequested: boolean;
+    queuedUnload?: Promise<void>;
+    settled: Promise<void>;
+}
+
 const BANNER_CLEAR_MS = 4000;
+
+// Cancellation must settle the gate even if a read's underlying response arrives late.
+async function waitForAuthorization(authorization: Promise<boolean>, signal: AbortSignal) {
+    let cancel!: () => void;
+    const canceled = new Promise<boolean>((resolve) => {
+        cancel = () => resolve(false);
+        signal.addEventListener('abort', cancel, { once: true });
+
+        if (signal.aborted) {
+            cancel();
+        }
+    });
+
+    try {
+        return await Promise.race([authorization, canceled]);
+    } finally {
+        signal.removeEventListener('abort', cancel);
+    }
+}
 
 /**
  * Drives load/unload/refresh actions on Hook-target processes. Owns the
@@ -61,7 +90,11 @@ const BANNER_CLEAR_MS = 4000;
 export function useHookProcessOps(
     opts: {
         onAfterOp?: () => Promise<void> | void;
-        beforeAttach?: (pid: number, signal: AbortSignal) => Promise<boolean>;
+        beforeAttach?: (
+            pid: number,
+            signal: AbortSignal,
+            onPolicyWrite?: (writing: boolean) => void,
+        ) => Promise<boolean>;
     } = {},
 ): UseHookProcessOpsResult {
     const api = useApi();
@@ -72,18 +105,18 @@ export function useHookProcessOps(
 
     // Synchronous inflight guard — protects against rapid double-clicks that
     // would race the byPid setter (state updates are batched, refs are not).
-    const inflightRef = useRef<Set<number>>(new Set());
+    const activeRuns = useRef(new Map<number, ProcessRun>());
     const bannerTimerRef = useRef<number | null>(null);
     const onAfterOpRef = useRef(opts.onAfterOp);
     onAfterOpRef.current = opts.onAfterOp;
     const beforeAttachRef = useRef(opts.beforeAttach);
     beforeAttachRef.current = opts.beforeAttach;
-    const controllers = useRef(new Map<number, AbortController>());
     const mounted = useRef(false);
 
     const cancelPending = useCallback(() => {
-        for (const controller of controllers.current.values()) {
-            controller.abort();
+        for (const current of activeRuns.current.values()) {
+            current.unloadRequested = false;
+            current.controller.abort();
         }
     }, []);
 
@@ -130,15 +163,55 @@ export function useHookProcessOps(
             pid: number,
             kind: HookProcessOpKind,
             action: (signal: AbortSignal) => Promise<ProcessActionResult>,
-        ) => {
-            if (!mounted.current || inflightRef.current.has(pid)) {
+        ): Promise<void> => {
+            if (!mounted.current) {
                 return;
             }
 
-            const controller = new AbortController();
-            const { signal } = controller;
-            controllers.current.set(pid, controller);
-            inflightRef.current.add(pid);
+            const previous = activeRuns.current.get(pid);
+
+            if (previous) {
+                if (kind !== 'unload' || previous.phase === 'native') {
+                    return;
+                }
+
+                if (previous.unloadRequested && previous.queuedUnload) {
+                    return previous.queuedUnload;
+                }
+
+                previous.unloadRequested = true;
+
+                if (previous.phase === 'policy') {
+                    setKind(pid, 'unload');
+                    previous.queuedUnload = previous.settled.then(() => {
+                        if (
+                            !mounted.current ||
+                            !previous.unloadRequested ||
+                            activeRuns.current.get(pid) !== previous
+                        ) {
+                            return;
+                        }
+
+                        activeRuns.current.delete(pid);
+                        return run(pid, 'unload', action);
+                    });
+                    return previous.queuedUnload;
+                }
+
+                previous.controller.abort();
+            }
+
+            let complete!: () => void;
+            const current: ProcessRun = {
+                controller: new AbortController(),
+                phase: 'authorization',
+                unloadRequested: false,
+                settled: new Promise<void>((resolve) => {
+                    complete = resolve;
+                }),
+            };
+            const { signal } = current.controller;
+            activeRuns.current.set(pid, current);
             setKind(pid, kind);
             const messages = KIND_MESSAGES[kind];
             const feedback = {
@@ -157,18 +230,35 @@ export function useHookProcessOps(
             let actionStarted = false;
 
             try {
-                if (
-                    kind !== 'unload' &&
-                    beforeAttachRef.current &&
-                    !(await beforeAttachRef.current(pid, signal))
-                ) {
+                if (kind !== 'unload' && beforeAttachRef.current) {
+                    const allowed = await waitForAuthorization(
+                        beforeAttachRef.current(pid, signal, (writing) => {
+                            if (activeRuns.current.get(pid) !== current || !mounted.current) {
+                                return;
+                            }
+
+                            current.phase = writing ? 'policy' : 'authorization';
+
+                            if (!writing && current.unloadRequested) {
+                                current.controller.abort();
+                            } else {
+                                setKind(pid, kind);
+                            }
+                        }),
+                        signal,
+                    );
+
+                    if (!allowed) {
+                        return;
+                    }
+                }
+
+                if (signal.aborted || !mounted.current || activeRuns.current.get(pid) !== current) {
                     return;
                 }
 
-                if (signal.aborted || !mounted.current) {
-                    return;
-                }
-
+                current.phase = 'native';
+                setKind(pid, kind);
                 setBanner(messages.start(pid));
                 actionStarted = true;
                 const result = await runAction(feedback, async () => {
@@ -203,7 +293,7 @@ export function useHookProcessOps(
 
                 await onAfterOpRef.current?.();
             } catch (e) {
-                if (signal.aborted || !mounted.current) {
+                if (signal.aborted || !mounted.current || activeRuns.current.get(pid) !== current) {
                     return;
                 }
 
@@ -213,16 +303,21 @@ export function useHookProcessOps(
                     }).catch(() => undefined);
                 }
 
-                const msg = e instanceof Error ? e.message : '未知错误';
-                setBanner(messages.fail(msg));
-            } finally {
-                controllers.current.delete(pid);
-                inflightRef.current.delete(pid);
-
-                if (mounted.current) {
-                    setKind(pid, null);
-                    scheduleBannerClear();
+                if (!signal.aborted && mounted.current && activeRuns.current.get(pid) === current) {
+                    const msg = e instanceof Error ? e.message : '未知错误';
+                    setBanner(messages.fail(msg));
                 }
+            } finally {
+                if (activeRuns.current.get(pid) === current && !current.unloadRequested) {
+                    activeRuns.current.delete(pid);
+
+                    if (mounted.current) {
+                        setKind(pid, null);
+                        scheduleBannerClear();
+                    }
+                }
+
+                complete();
             }
         },
         [setKind, scheduleBannerClear, runAction],
@@ -246,11 +341,16 @@ export function useHookProcessOps(
         [byPid],
     );
 
+    const canCancelAttach = useCallback((pid: number): boolean => {
+        const current = activeRuns.current.get(pid);
+        return current?.phase === 'authorization' && !current.unloadRequested;
+    }, []);
+
     const dismissUnloadFailedAlert = useCallback(() => setUnloadFailedAlert(null), []);
 
     const ops = useMemo<HookProcessOps>(
-        () => ({ statusOf, banner, load, unload, refresh }),
-        [statusOf, banner, load, unload, refresh],
+        () => ({ statusOf, canCancelAttach, banner, load, unload, refresh }),
+        [statusOf, canCancelAttach, banner, load, unload, refresh],
     );
 
     return { ops, unloadFailedAlert, dismissUnloadFailedAlert, cancelPending };

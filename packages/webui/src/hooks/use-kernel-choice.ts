@@ -9,6 +9,7 @@ export interface KernelChoiceTarget {
     path: string;
     uin: string;
     nickname: string;
+    injected: boolean;
 }
 
 export interface PendingKernelChoice {
@@ -46,7 +47,13 @@ export function useKernelChoice() {
                 throw new ApiError(409, '尚未识别当前 QQ 账号，请先在 QQ 登录后再选择接入内核');
             }
 
-            return { pid, path: process!.path, uin, nickname: process!.account!.nickname };
+            return {
+                pid,
+                path: process!.path,
+                uin,
+                nickname: process!.account!.nickname,
+                injected: process!.injected,
+            };
         },
         [api],
     );
@@ -63,7 +70,12 @@ export function useKernelChoice() {
     );
 
     const ask = useCallback(
-        (target: KernelChoiceTarget, catalog: KernelCatalog, signal: AbortSignal) => {
+        (
+            target: KernelChoiceTarget,
+            catalog: KernelCatalog,
+            signal: AbortSignal,
+            onPolicyWrite?: (writing: boolean) => void,
+        ) => {
             if (pendingRef.current) {
                 throw new ApiError(409, '请先完成或取消当前账号的内核选择');
             }
@@ -118,23 +130,29 @@ export function useKernelChoice() {
                                 return;
                             }
 
-                            await runAction(
-                                {
-                                    title: '正在保存内核选择',
-                                    detail: `QQ ${target.uin}`,
-                                    successTitle: '内核选择已保存',
-                                    successDetail: `仅对 QQ ${target.uin} 生效`,
-                                    errorTitle: '内核选择保存失败',
-                                },
-                                async () => {
-                                    const result = readSaveKernelChoiceResult(
-                                        await api.kernel.save(target.uin, choice, signal),
-                                        choice,
-                                    );
-                                    signal.throwIfAborted();
-                                    return result;
-                                },
-                            );
+                            onPolicyWrite?.(true);
+
+                            try {
+                                await runAction(
+                                    {
+                                        title: '正在保存内核选择',
+                                        detail: `QQ ${target.uin}`,
+                                        successTitle: '内核选择已保存',
+                                        successDetail: `仅对 QQ ${target.uin} 生效`,
+                                        errorTitle: '内核选择保存失败',
+                                    },
+                                    async () => {
+                                        const result = readSaveKernelChoiceResult(
+                                            await api.kernel.save(target.uin, choice, signal),
+                                            choice,
+                                        );
+                                        signal.throwIfAborted();
+                                        return result;
+                                    },
+                                );
+                            } finally {
+                                onPolicyWrite?.(false);
+                            }
 
                             if (
                                 pendingRef.current === request &&
@@ -157,7 +175,11 @@ export function useKernelChoice() {
     );
 
     const beforeAttach = useCallback(
-        async (pid: number, signal: AbortSignal): Promise<boolean> => {
+        async (
+            pid: number,
+            signal: AbortSignal,
+            onPolicyWrite?: (writing: boolean) => void,
+        ): Promise<boolean> => {
             try {
                 const target = await readTarget(pid, signal);
                 const policy = await api.kernel.get(target.uin, signal);
@@ -173,7 +195,12 @@ export function useKernelChoice() {
 
                     if (
                         !mounted.current ||
-                        !(await ask(target, { ...catalog, options: policy.options }, signal))
+                        !(await ask(
+                            target,
+                            { ...catalog, options: policy.options },
+                            signal,
+                            onPolicyWrite,
+                        ))
                     ) {
                         return false;
                     }

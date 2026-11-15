@@ -14,11 +14,14 @@ vi.mock('react', async (original) => ({ ...(await original<typeof import('react'
 const catalog = demoKernelCatalog();
 afterEach(() => vi.restoreAllMocks());
 
-function formCallbacks(onConfirm = vi.fn(async () => undefined)) {
+function formCallbacks(
+    onConfirm = vi.fn(async (): Promise<void> => undefined),
+    onStop?: () => Promise<void>,
+) {
     const host = hookHost();
     const onCancel = vi.fn();
     const render = () =>
-        host.render(() => KernelChoiceForm({ uin: '10001', catalog, onConfirm, onCancel }));
+        host.render(() => KernelChoiceForm({ uin: '10001', catalog, onConfirm, onCancel, onStop }));
 
     const select = (value: 'compat' | 'rewrite') => {
         const options = elements(render()).find(
@@ -106,6 +109,47 @@ describe('KernelChoiceForm', () => {
         expect(form.submitButton().props.disabled).toBe(false);
     });
 
+    it('keeps Stop distinct from Cancel without accepting or submitting a kernel choice', async () => {
+        const onStop = vi.fn(async () => undefined);
+        const form = formCallbacks(undefined, onStop);
+        const stop = elements(form.render()).find(
+            (element) => element.props.children === '停止接入',
+        )!;
+        expect(stop.props.disabled).not.toBe(true);
+        (stop.props.onClick as () => void)();
+        await vi.waitFor(() => expect(onStop).toHaveBeenCalledTimes(1));
+        expect(form.onCancel).not.toHaveBeenCalled();
+        expect(form.onConfirm).not.toHaveBeenCalled();
+        expect(form.submitButton().props.disabled).toBe(true);
+    });
+
+    it('allows Stop intent during a pending save while ordinary Cancel remains locked', async () => {
+        let finishSave!: () => void;
+        const onStop = vi.fn(async () => undefined);
+        const form = formCallbacks(
+            vi.fn(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishSave = resolve;
+                    }),
+            ),
+            onStop,
+        );
+        form.select('compat');
+        form.acknowledge();
+        form.submit();
+        const controls = elements(form.render());
+        const cancel = controls.find((element) => element.props.onClick === form.onCancel)!;
+        const stop = controls.find((element) => element.props.children === '停止接入')!;
+        expect(cancel.props.disabled).toBe(true);
+        expect(stop.props.disabled).not.toBe(true);
+        (stop.props.onClick as () => void)();
+        await vi.waitFor(() => expect(onStop).toHaveBeenCalledTimes(1));
+        expect(form.onConfirm).toHaveBeenCalledTimes(1);
+        finishSave();
+        await vi.waitFor(() => expect(form.submitButton().props.disabled).toBe(false));
+    });
+
     it('another account form never inherits the previous acknowledgment', () => {
         const form = formCallbacks();
         form.select('compat');
@@ -129,13 +173,36 @@ describe('KernelChoiceForm', () => {
 });
 
 describe('KernelChoiceDialog', () => {
+    it.each([true, false])('offers Stop only for an already injected target (%s)', (injected) => {
+        const host = hookHost();
+        const onStop = vi.fn(async () => undefined);
+        const tree = host.render(() =>
+            KernelChoiceDialog({
+                choice: {
+                    target: { pid: 4242, path: '/DEMO/QQ', uin: '10001', nickname: 'A', injected },
+                    catalog,
+                    cancel: vi.fn(),
+                    confirm: vi.fn(),
+                },
+                onStop,
+            }),
+        );
+        const form = tree.props.children as ReactElement<{ onStop?: () => Promise<void> }>;
+        expect(form.props.onStop).toBe(injected ? onStop : undefined);
+    });
     it('uses the accessible house Modal and routes every close path to the same cancellation', () => {
         const host = hookHost();
         const cancel = vi.fn();
         const tree = host.render(() =>
             KernelChoiceDialog({
                 choice: {
-                    target: { pid: 4242, path: '/DEMO/QQ', uin: '10001', nickname: 'A' },
+                    target: {
+                        pid: 4242,
+                        path: '/DEMO/QQ',
+                        uin: '10001',
+                        nickname: 'A',
+                        injected: false,
+                    },
                     catalog,
                     cancel,
                     confirm: vi.fn(),

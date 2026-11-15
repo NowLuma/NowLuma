@@ -47,7 +47,8 @@ const pendingChoice = async () => {
 };
 
 beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    mocks.runAction.mockImplementation(async (_options, action) => action());
     choiceHost = hookHost();
     opsHost = hookHost();
     vi.stubGlobal('window', { setTimeout, clearTimeout });
@@ -306,6 +307,252 @@ describe('useKernelChoice through the shared useHookProcessOps load/refresh owne
         await expect(confirming).rejects.toMatchObject({ name: 'AbortError' });
         expect(mocks.api.processes.load).not.toHaveBeenCalled();
     });
+
+    it.each(['load', 'refresh'] as const)(
+        'unload cancels a pending %s choice and its late confirmation without releasing the replacement run',
+        async (kind) => {
+            let finishUnload!: (result: unknown) => void;
+            mocks.api.processes.unload.mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        finishUnload = resolve;
+                    }),
+            );
+            const ops = operations().ops;
+            const work = ops[kind](process.pid);
+            const pending = await pendingChoice();
+            expect(operations().ops.canCancelAttach?.(process.pid)).toBe(true);
+            const unloading = ops.unload(process.pid);
+            await vi.waitFor(() => expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1));
+            await work;
+            expect(choice().pending).toBeNull();
+            expect(operations().ops.statusOf(process.pid)).toBe('unload');
+            expect(operations().ops.canCancelAttach?.(process.pid)).toBe(false);
+            await pending.confirm(input);
+            await ops.unload(process.pid);
+            await ops.load(process.pid);
+            await ops.refresh(process.pid);
+            expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1);
+            expect(mocks.api.kernel.save).not.toHaveBeenCalled();
+            expect(mocks.api.processes.load).not.toHaveBeenCalled();
+            expect(mocks.api.processes.refresh).not.toHaveBeenCalled();
+            expect(mocks.runAction).toHaveBeenCalledTimes(1);
+            expect(mocks.runAction.mock.calls[0][0]).toMatchObject({
+                title: '正在从进程 4242 卸载…',
+            });
+            finishUnload({ success: true, process: { ...process, status: 'available' } });
+            await unloading;
+            expect(operations().ops.statusOf(process.pid)).toBeNull();
+            expect(mocks.onAfterOp).toHaveBeenCalledTimes(1);
+        },
+    );
+
+    it('unload settles a canceled policy read before its abort-ignoring response arrives', async () => {
+        let finishPolicy!: (result: unknown) => void;
+        mocks.api.kernel.get.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishPolicy = resolve;
+                }),
+        );
+        const ops = operations().ops;
+        const finished = vi.fn();
+        const work = ops.load(process.pid).then(finished);
+        await vi.waitFor(() => expect(mocks.api.kernel.get).toHaveBeenCalledTimes(1));
+        await ops.unload(process.pid);
+        await vi.waitFor(() => expect(finished).toHaveBeenCalledTimes(1));
+        process = { ...process, account: { uin: '20002', nickname: 'B' } };
+        finishPolicy({ selection: saved, options: catalog.options, canLoad: true });
+        await work;
+        expect(choice().pending).toBeNull();
+        expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1);
+        expect(mocks.api.kernel.save).not.toHaveBeenCalled();
+        expect(mocks.api.processes.load).not.toHaveBeenCalled();
+        expect(mocks.api.kernel.catalog).not.toHaveBeenCalled();
+        expect(mocks.runAction).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['load', 'refresh'] as const)(
+        'unload waits for an already dispatched policy POST, merges repeated intent, and never continues %s',
+        async (kind) => {
+            let finishSave!: (result: unknown) => void;
+            mocks.api.kernel.save.mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        finishSave = resolve;
+                    }),
+            );
+            const ops = operations().ops;
+            const work = ops[kind](process.pid);
+            const pending = await pendingChoice();
+            const confirming = pending.confirm(input);
+            await vi.waitFor(() => expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1));
+            const signal = mocks.api.kernel.save.mock.calls[0][2] as AbortSignal;
+            expect(operations().ops.canCancelAttach?.(process.pid)).toBe(false);
+            const unloading = ops.unload(process.pid);
+            const repeatedUnload = ops.unload(process.pid);
+            expect(signal.aborted).toBe(false);
+            expect(mocks.api.processes.unload).not.toHaveBeenCalled();
+            expect(choice().pending).toBe(pending);
+            selections.set('10001', saved);
+            finishSave({ success: true, selection: saved, canLoad: true });
+            await confirming;
+            await Promise.all([work, unloading, repeatedUnload]);
+            await pending.confirm(input);
+            expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1);
+            expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1);
+            expect(mocks.api.processes.load).not.toHaveBeenCalled();
+            expect(mocks.api.processes.refresh).not.toHaveBeenCalled();
+            expect(selections.get('10001')).toBe(saved);
+            expect(mocks.api.kernel.get).toHaveBeenCalledTimes(1);
+            expect(choice().pending).toBeNull();
+            expect(operations().ops.statusOf(process.pid)).toBeNull();
+            expect(mocks.runAction).toHaveBeenCalledTimes(2);
+        },
+    );
+
+    it('a failed policy POST still settles queued unload without attaching or hiding its save error', async () => {
+        let failSave!: (error: Error) => void;
+        mocks.api.kernel.save.mockImplementationOnce(
+            () =>
+                new Promise((_resolve, reject) => {
+                    failSave = reject;
+                }),
+        );
+        const ops = operations().ops;
+        const work = ops.load(process.pid);
+        const pending = await pendingChoice();
+        const confirming = pending.confirm(input);
+        const failure = expect(confirming).rejects.toThrow('策略存储失败');
+        await vi.waitFor(() => expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1));
+        const signal = mocks.api.kernel.save.mock.calls[0][2] as AbortSignal;
+        const unloading = ops.unload(process.pid);
+        expect(signal.aborted).toBe(false);
+        failSave(new Error('策略存储失败'));
+        await failure;
+        await vi.waitFor(() => expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1));
+        await Promise.all([work, unloading]);
+        expect(mocks.api.processes.load).not.toHaveBeenCalled();
+        expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1);
+        expect(choice().pending).toBeNull();
+        expect(selections.has('10001')).toBe(false);
+    });
+
+    it("an unload for one pending PID does not cancel another PID's dispatched native mutation", async () => {
+        const other = { ...process, pid: 4243, account: { uin: '20002', nickname: 'B' } };
+        selections.set('20002', saved);
+        mocks.api.processes.list.mockImplementation(async () => [process, other]);
+        let finishOther!: (result: unknown) => void;
+        mocks.api.processes.load.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishOther = resolve;
+                }),
+        );
+        const ops = operations().ops;
+        const first = ops.load(process.pid);
+        const pending = await pendingChoice();
+        const second = ops.load(other.pid);
+        await vi.waitFor(() => expect(mocks.api.processes.load).toHaveBeenCalledTimes(1));
+        const otherSignal = mocks.api.processes.load.mock.calls[0][1] as AbortSignal;
+        await ops.unload(process.pid);
+        await vi.waitFor(() => expect(choice().pending).toBeNull());
+        await first;
+        await pending.confirm(input);
+        expect(otherSignal.aborted).toBe(false);
+        expect(operations().ops.statusOf(other.pid)).toBe('load');
+        expect(mocks.api.processes.load.mock.calls[0][0]).toBe(other.pid);
+        expect(mocks.api.processes.unload.mock.calls[0][0]).toBe(process.pid);
+        expect(mocks.api.kernel.save).not.toHaveBeenCalled();
+        finishOther({ success: true, process: { ...other, status: 'connecting' } });
+        await second;
+        expect(operations().ops.statusOf(other.pid)).toBeNull();
+    });
+
+    it('unload does not abort or duplicate a native mutation already dispatched for that PID', async () => {
+        selections.set('10001', saved);
+        let finishLoad!: (result: unknown) => void;
+        mocks.api.processes.load.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishLoad = resolve;
+                }),
+        );
+        const ops = operations().ops;
+        const work = ops.load(process.pid);
+        await vi.waitFor(() => expect(mocks.api.processes.load).toHaveBeenCalledTimes(1));
+        const signal = mocks.api.processes.load.mock.calls[0][1] as AbortSignal;
+        await ops.unload(process.pid);
+        await ops.load(process.pid);
+        expect(signal.aborted).toBe(false);
+        expect(mocks.api.processes.unload).not.toHaveBeenCalled();
+        expect(mocks.api.processes.load).toHaveBeenCalledTimes(1);
+        finishLoad({ success: true, process: { ...process, status: 'connecting' } });
+        await work;
+        await ops.unload(process.pid);
+        expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1);
+    });
+
+    it('unload cancels a confirmation still re-reading identity before any policy POST', async () => {
+        let finishRead!: (result: HookProcessInfo[]) => void;
+        const ops = operations().ops;
+        const work = ops.load(process.pid);
+        const pending = await pendingChoice();
+        mocks.api.processes.list.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishRead = resolve;
+                }),
+        );
+        const confirming = pending.confirm(input);
+        const canceled = expect(confirming).rejects.toMatchObject({ name: 'AbortError' });
+        await vi.waitFor(() => expect(mocks.api.processes.list).toHaveBeenCalledTimes(2));
+        await ops.unload(process.pid);
+        await work;
+        expect(mocks.api.processes.unload).toHaveBeenCalledTimes(1);
+        expect(mocks.api.kernel.save).not.toHaveBeenCalled();
+        expect(choice().pending).toBeNull();
+        finishRead([process]);
+        await canceled;
+        expect(mocks.api.processes.load).not.toHaveBeenCalled();
+        expect(mocks.runAction).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['logout', 'unmount'] as const)(
+        '%s clears queued unload intent during a dispatched policy write',
+        async (reason) => {
+            let finishSave!: (result: unknown) => void;
+            mocks.api.kernel.save.mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        finishSave = resolve;
+                    }),
+            );
+            const controller = operations();
+            const work = controller.ops.load(process.pid);
+            const pending = await pendingChoice();
+            const confirming = pending.confirm(input);
+            const canceled = expect(confirming).rejects.toMatchObject({ name: 'AbortError' });
+            await vi.waitFor(() => expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1));
+            const unloading = controller.ops.unload(process.pid);
+
+            if (reason === 'logout') {
+                controller.cancelPending();
+            } else {
+                opsHost.unmount();
+                choiceHost.unmount();
+            }
+
+            await Promise.all([work, unloading]);
+            finishSave({ success: true, selection: saved, canLoad: true });
+            await canceled;
+            await pending.confirm(input);
+            expect(mocks.api.processes.unload).not.toHaveBeenCalled();
+            expect(mocks.api.processes.load).not.toHaveBeenCalled();
+            expect(mocks.api.kernel.save).toHaveBeenCalledTimes(1);
+            expect(choice().pending).toBeNull();
+        },
+    );
 
     it('unload never asks and preserves the existing still-connected failure alert', async () => {
         mocks.api.processes.unload.mockResolvedValueOnce({

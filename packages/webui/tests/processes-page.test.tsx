@@ -8,12 +8,18 @@ const state = vi.hoisted(() => ({
     ready: true,
     error: '',
     operation: null as 'load' | 'unload' | 'refresh' | null,
+    canCancelAttach: undefined as boolean | undefined,
 }));
 
 vi.mock('@/contexts/AppStateContext', () => ({
     useAppState: () => ({
         processList: state.processList,
-        processOps: { statusOf: () => state.operation, banner: null },
+        processOps: {
+            statusOf: () => state.operation,
+            banner: null,
+            canCancelAttach:
+                state.canCancelAttach === undefined ? undefined : () => state.canCancelAttach,
+        },
         refreshProcesses: vi.fn(),
         resources: { processList: { ready: state.ready, error: state.error } },
     }),
@@ -26,7 +32,9 @@ vi.mock('@/contexts/ThemeContext', () => ({
 }));
 vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
 
-beforeEach(() => Object.assign(state, { ready: true, error: '', operation: null }));
+beforeEach(() =>
+    Object.assign(state, { ready: true, error: '', operation: null, canCancelAttach: undefined }),
+);
 
 function renderProcess(overrides: Partial<HookProcessInfo>) {
     state.processList = [
@@ -103,6 +111,39 @@ describe('process account labels', () => {
         });
         expect(busy).toContain('卸载中');
         expect(busy).toContain('disabled=""');
+    });
+
+    it.each(['load', 'refresh'] as const)(
+        'keeps the injected target unload control usable during a pending %s authorization',
+        (operation) => {
+            state.operation = operation;
+            state.canCancelAttach = true;
+            const markup = renderProcess({ injected: true, status: 'loaded' });
+            const button = markup
+                .match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
+                ?.find((element) => element.includes('卸载'));
+            expect(button).toBeDefined();
+            expect(button).not.toContain('disabled=""');
+        },
+    );
+
+    it('keeps the unload control disabled during an already dispatched native mutation', () => {
+        state.operation = 'refresh';
+        state.canCancelAttach = false;
+        const markup = renderProcess({ injected: true, status: 'loaded' });
+        const button = markup
+            .match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
+            ?.find((element) => element.includes('卸载'));
+        expect(button).toContain('disabled=""');
+    });
+
+    it('does not enable a backend-loading control when there is no cancelable frontend authorization', () => {
+        state.canCancelAttach = false;
+        const markup = renderProcess({ injected: true, status: 'loading' });
+        const button = markup
+            .match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
+            ?.find((element) => element.includes('卸载'));
+        expect(button).toContain('disabled=""');
     });
 
     it('does not apply a stale local nickname to a newly logged-in account', () => {
