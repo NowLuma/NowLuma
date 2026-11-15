@@ -184,6 +184,7 @@ export function demoSystem(): SystemInfo {
                 qq: '/DEMO/home/QQ',
             },
             writable: { config: true, data: true, logs: true, qq: true },
+            desktopAvailable: true,
             vncPort: 0,
             vncUrl: DEMO_DESKTOP_URL,
         },

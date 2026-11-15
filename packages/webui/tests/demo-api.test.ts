@@ -192,6 +192,7 @@ describe('DEMO API guided journey using the production client', () => {
         };
 
         const before = await client.systemSettings.get();
+        expect((await client.system()).deployment?.desktopAvailable).toBe(true);
         expect(before.effective?.vncUrl).toBe(DEMO_DESKTOP_URL);
 
         for (const vncUrl of [

@@ -24,9 +24,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { DesktopButton } from '@/components/desktop-button';
 import { DeploymentDiagnostics } from '@/components/settings/deployment-diagnostics';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
-import { useAppState } from '@/contexts/AppStateContext';
 import { useApi } from '@/lib/api';
 import { useFlashMessage } from '@/hooks/use-flash-message';
 import { cn, downloadBlob } from '@/lib/utils';
@@ -35,7 +35,6 @@ import type { SystemSettingsResponse } from '@/types';
 export function SystemPanel() {
     const id = useId();
     const api = useApi();
-    const { systemInfo } = useAppState();
     const { runAction } = useActionFeedback();
     const [data, setData] = useState<SystemSettingsResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -311,16 +310,10 @@ export function SystemPanel() {
     }
 
     const effectiveDesktop = data.effective ?? data.settings;
-    const desktopAvailable = systemInfo?.deployment?.desktopAvailable === true;
-    let savedDesktopUrl: string | null = null;
     let desktopError = '';
 
     try {
-        savedDesktopUrl = desktopLink(
-            effectiveDesktop.vncPort,
-            effectiveDesktop.vncUrl ?? '',
-            window.location.href,
-        );
+        desktopLink(effectiveDesktop.vncPort, effectiveDesktop.vncUrl ?? '', window.location.href);
     } catch (error) {
         desktopError = error instanceof Error ? error.message : '桌面地址无效';
     }
@@ -522,17 +515,7 @@ export function SystemPanel() {
                             <Button onClick={saveSettings} disabled={saving}>
                                 保存入口设置
                             </Button>
-                            {desktopAvailable && savedDesktopUrl && (
-                                <Button variant="outline" asChild>
-                                    <a
-                                        href={savedDesktopUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <Monitor className="h-4 w-4" /> 打开 QQ 桌面
-                                    </a>
-                                </Button>
-                            )}
+                            <DesktopButton />
                         </div>
                     </div>
                 </Group>
