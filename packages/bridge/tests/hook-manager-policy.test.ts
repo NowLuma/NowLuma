@@ -414,6 +414,50 @@ describe('HookManager auto-load after login', () => {
         expect(ctx.inject).toHaveBeenCalledExactlyOnceWith(4242);
     });
 
+    it('re-arms when a stale unknown result settles after the snapshot knows the account', async () => {
+        const ctx = setup({ auto: true, uin: null, pids: [] });
+        ctx.approved.add('10001');
+        let uin: string | null = null;
+        const stale = Promise.withResolvers<AccountLoginState[]>();
+        let first = true;
+        ctx.detect.mockImplementation(async () => {
+            if (first) {
+                first = false;
+                return stale.promise;
+            }
+
+            return uin ? [{ pid: 4242, uin, uid: 'test', nickname: 'test' }] : [];
+        });
+
+        // Let the watcher's own initial scan settle, then start the automatic
+        // attempt by hand so its detection is the one that stays pending.
+        await ctx.watcher.tickNow();
+        await settle();
+        ctx.watcher.emit('process-discovered', { pid: 4242, name: 'qq', path: '' });
+        await flush();
+        expect(ctx.detect).toHaveBeenCalledTimes(1);
+
+        // The account notification resolves the snapshot first; the attempt is
+        // still in flight, so the ordinary rearm path cannot act on it.
+        uin = '10001';
+        ctx.notify();
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+
+        // The older gate result now settles as unknown. Reconsidering the
+        // current snapshot must attach without a second identity change.
+        stale.resolve([]);
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledExactlyOnceWith(4242);
+        expect(ctx.authorize).toHaveBeenCalledExactlyOnceWith('10001');
+
+        ctx.notify();
+        await ctx.watcher.tickNow();
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledTimes(1);
+        expect(ctx.authorize).toHaveBeenCalledTimes(1);
+    });
+
     it('does not attach a newly known account when auto-load is disabled', async () => {
         const ctx = setup({ auto: false, uin: null });
         ctx.approved.add('10001');

@@ -27,6 +27,9 @@ const AUTO_LOAD_MAX_ATTEMPTS = 3;
 type AutoLoadAttempt = {
     attempts: number;
     inFlight: boolean;
+    /** Account snapshot when the attempt began. A snapshot that changed while
+     *  the attempt was in flight earns one fresh attempt after it settles. */
+    uin: string;
 };
 
 /**
@@ -349,23 +352,33 @@ export class HookManager {
         }
 
         for (const session of this.sessions.values()) {
-            const uin = this.accounts.get(session.pid)?.uin;
-
-            if (!uin || !isRealUin(uin) || session.isManualStopped || !session.isPolicyPending) {
-                continue;
-            }
-
-            if (this.autoLoadAttempts.get(session.pid)?.inFlight) {
-                continue;
-            }
-
-            if (this.autoLoadUin.get(session.pid) === uin) {
-                continue;
-            }
-
-            this.log.info('auto-load re-armed: PID=%d UIN=%s', session.pid, uin);
-            this.runAutoLoad(session);
+            this.attemptAutoLoad(session);
         }
+    }
+
+    /** Reconsider the current account snapshot for one policy-pending session.
+     *  `attemptedUin` is the snapshot the settling attempt started from: a
+     *  snapshot that changed while it was in flight earns one fresh attempt. */
+    private attemptAutoLoad(session: HookSession, attemptedUin = ''): void {
+        const uin = this.accounts.get(session.pid)?.uin;
+
+        if (
+            !this.autoLoadOnDiscovery ||
+            this.disposed ||
+            !uin ||
+            !isRealUin(uin) ||
+            uin === attemptedUin ||
+            session.isDisposed ||
+            session.isManualStopped ||
+            !session.isPolicyPending ||
+            this.autoLoadAttempts.get(session.pid)?.inFlight ||
+            this.autoLoadUin.get(session.pid) === uin
+        ) {
+            return;
+        }
+
+        this.log.info('auto-load re-armed: PID=%d UIN=%s', session.pid, uin);
+        this.runAutoLoad(session);
     }
 
     private bindWatcher(): void {
@@ -493,7 +506,11 @@ export class HookManager {
             return;
         }
 
-        const state = existing ?? { attempts: 0, inFlight: false };
+        const state = existing ?? {
+            attempts: 0,
+            inFlight: false,
+            uin: this.accounts.get(session.pid)?.uin ?? '',
+        };
 
         if (state.inFlight || state.attempts >= AUTO_LOAD_MAX_ATTEMPTS) {
             return;
@@ -561,6 +578,9 @@ export class HookManager {
                         info.error,
                         Date.now() - startedAt,
                     );
+                    // The gate may have decided on an account snapshot that the
+                    // watcher replaced while this attempt was in flight.
+                    this.attemptAutoLoad(session, state.uin);
                     return;
                 }
 
