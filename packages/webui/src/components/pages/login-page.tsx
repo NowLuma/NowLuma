@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
-import { ArrowRight, KeyRound, Sparkles } from 'lucide-react';
-import { Modal } from '@/components/interior/modal';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { ArrowRight, Check, KeyRound, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { useDropdown } from '@/components/interior/dropdown';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LineField } from '@/components/ui/line-field';
@@ -26,8 +26,7 @@ interface LoginPageProps {
     initialUseRecovery?: boolean;
 }
 
-// Device-local preference for the login chrome's slow line-field motion. It
-// remains usable pre-auth and never overwrites the server appearance settings.
+// Device-local login effects; existing 0/1 choices never alter server appearance.
 const LOGIN_FX_KEY = 'nowluma_login_fx';
 
 function readLoginFx(): boolean {
@@ -60,7 +59,7 @@ export function LoginPage({
     initialNeedsTotp = false,
     initialUseRecovery = false,
 }: LoginPageProps) {
-    const { appearance } = useTheme();
+    const { appearance, performance } = useTheme();
     const customBg = appearance.background.type !== 'none';
     const reduce = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
 
@@ -81,15 +80,18 @@ export function LoginPage({
     const [loading, setLoading] = useState(false);
     const [shake, setShake] = useState(0);
     const [fxOn, setFxOn] = useState(readLoginFx);
-    const [helpOpen, setHelpOpen] = useState(false);
+    const [fxSaveError, setFxSaveError] = useState('');
 
     const toggleFx = (v: boolean) => {
         setFxOn(v);
 
         try {
             localStorage.setItem(LOGIN_FX_KEY, v ? '1' : '0');
-        } catch {
-            /* ignore */
+            setFxSaveError('');
+        } catch (error) {
+            setFxSaveError(
+                `本次已生效，无法保存：${error instanceof Error ? error.message : String(error)}`,
+            );
         }
     };
 
@@ -165,8 +167,7 @@ export function LoginPage({
             customBg={customBg}
             reduce={reduce}
             fxOn={fxOn}
-            helpOpen={helpOpen}
-            onHelpOpen={setHelpOpen}
+            fxSaveError={fxSaveError}
             onToggleFx={toggleFx}
             wide={useRecovery}
         >
@@ -254,10 +255,7 @@ export function LoginPage({
                 </>
             ) : (
                 <>
-                    <LoginBrand
-                        title="进入工作台"
-                        subtitle="使用访问密码，继续管理 QQ 与机器人连接。"
-                    />
+                    <LoginBrand title="进入工作台" subtitle="管理 QQ 会话与机器人连接。" />
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
                         <label htmlFor="login-password" className="text-sm font-medium">
                             访问密码
@@ -265,7 +263,7 @@ export function LoginPage({
                         <motion.div
                             key={shake}
                             animate={!reduce && shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
-                            transition={{ duration: 0.4 }}
+                            transition={{ duration: reduce ? 0 : performance?.low ? 0.18 : 0.4 }}
                             className="relative"
                         >
                             <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -339,8 +337,7 @@ function LoginShell({
     customBg,
     reduce,
     fxOn,
-    helpOpen,
-    onHelpOpen,
+    fxSaveError,
     onToggleFx,
     wide = false,
     children,
@@ -348,13 +345,20 @@ function LoginShell({
     customBg: boolean;
     reduce: boolean;
     fxOn: boolean;
-    helpOpen: boolean;
-    onHelpOpen: (open: boolean) => void;
+    fxSaveError: string;
     onToggleFx: (value: boolean) => void;
     wide?: boolean;
     children: ReactNode;
 }) {
-    const { managedBy } = useTheme();
+    const { managedBy, performance } = useTheme();
+    const lowCost = performance?.low ?? false;
+    const effectsStatus = !fxOn
+        ? '简洁'
+        : reduce
+          ? '细腻 · 静态'
+          : lowCost
+            ? '细腻 · 磨砂'
+            : '细腻';
     return (
         <div className={cn('workspace-auth-shell', customBg ? 'bg-transparent' : 'bg-background')}>
             <header className="workspace-auth-masthead">
@@ -369,19 +373,100 @@ function LoginShell({
             </header>
             <div className={cn('workspace-auth-content', wide && 'workspace-auth-content-wide')}>
                 <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
-                    <div className="workspace-auth-artwork">
-                        <LineField animated={fxOn && !reduce} />
+                    <div
+                        className="workspace-auth-artwork"
+                        data-login-effects={fxOn ? 'full' : 'simple'}
+                    >
+                        <svg
+                            className="workspace-auth-diagram"
+                            aria-hidden="true"
+                            focusable="false"
+                            data-ui-decoration=""
+                            data-line-motion={
+                                fxOn && !reduce && !lowCost && !managedBy ? 'true' : undefined
+                            }
+                            width="352"
+                            height="240"
+                            viewBox="0 0 352 240"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <rect
+                                x="30"
+                                y="48"
+                                width="74"
+                                height="116"
+                                rx="14"
+                                strokeWidth="1"
+                                opacity="0.28"
+                            />
+                            <circle cx="55" cy="73" r="9" strokeWidth="2" opacity="0.64" />
+                            <path
+                                d="M74 73h13M44 103h42M44 115h31M44 137h42"
+                                strokeWidth="1"
+                                opacity="0.38"
+                            />
+                            <rect
+                                x="248"
+                                y="72"
+                                width="70"
+                                height="96"
+                                rx="14"
+                                strokeWidth="1"
+                                opacity="0.28"
+                            />
+                            <path d="M264 92h36M264 148h21" strokeWidth="1" opacity="0.42" />
+                            <path d="M264 108h26" strokeWidth="2" opacity="0.55" />
+                            <path d="M264 124h36" strokeWidth="3" opacity="0.64" />
+                            <g className="workspace-auth-stream">
+                                <path
+                                    d="M91 120c39 0 31-48 83-48s49 55 82 55"
+                                    strokeWidth="4"
+                                    opacity="0.78"
+                                />
+                                <path
+                                    d="M92 133c38 0 46-42 80-42s44 48 81 48"
+                                    strokeWidth="2"
+                                    opacity="0.4"
+                                />
+                                <path
+                                    d="M89 147c41 0 49-36 84-36s44 39 79 39"
+                                    strokeWidth="1"
+                                    opacity="0.28"
+                                />
+                            </g>
+                            <path d="M180 174v14M173 181h14" strokeWidth="1" opacity="0.3" />
+                        </svg>
+                        <div className="workspace-auth-signature">
+                            <LineField animated={false} />
+                        </div>
+                        {fxOn && !managedBy && (
+                            <div
+                                className="ui-glass workspace-auth-lens"
+                                aria-hidden="true"
+                                data-ui-decoration=""
+                            >
+                                <GlassMaterial />
+                            </div>
+                        )}
                         <div className="workspace-auth-artwork-caption">
-                            <span>{APP_NAME}</span>
-                            <span>QQ 连接控制台</span>
+                            <span>01 — 连接，从这里开始</span>
+                            <span aria-hidden="true" className="workspace-line-key">
+                                <i />
+                                <i />
+                                <i />
+                                <i />
+                            </span>
                         </div>
                     </div>
                     <div className="workspace-auth-introduction">
-                        <p className="workspace-eyebrow">QQ 与机器人，由此连接</p>
+                        <p className="workspace-eyebrow">QQ 连接控制台</p>
                         <p className="workspace-auth-statement">
-                            让每一次连接，
+                            连接有序，
                             <br />
-                            清晰可见。
+                            结果清晰。
                         </p>
                     </div>
                 </aside>
@@ -389,60 +474,121 @@ function LoginShell({
                     initial={reduce ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={
-                        reduce ? { duration: 0 } : { type: 'spring', duration: 0.42, bounce: 0.1 }
+                        reduce
+                            ? { duration: 0 }
+                            : lowCost
+                              ? { duration: 0.18 }
+                              : { type: 'spring', duration: 0.42, bounce: 0.1 }
                     }
                     className={cn('workspace-auth-document', wide ? 'max-w-2xl' : 'max-w-md')}
                 >
                     <section className="workspace-auth-form" aria-label="登录">
                         {children}
                     </section>
-                    <Button
-                        style={{ display: managedBy ? 'none' : undefined }}
-                        type="button"
-                        variant="ghost"
-                        onClick={() => onHelpOpen(true)}
-                        className="workspace-auth-help text-xs text-muted-foreground hover:text-foreground"
-                    >
-                        <Sparkles className="size-3.5" />
-                        我觉得这个界面很卡怎么办？
-                    </Button>
+                    {!managedBy && (
+                        <LoginEffects
+                            fxOn={fxOn}
+                            status={effectsStatus}
+                            reduce={reduce}
+                            lowCost={lowCost}
+                            onChange={onToggleFx}
+                        />
+                    )}
+                    {fxSaveError && (
+                        <p role="alert" className="mt-2 break-words text-xs text-destructive">
+                            {fxSaveError}
+                        </p>
+                    )}
                 </motion.div>
             </div>
             <footer className="workspace-auth-footer">{APP_NAME} · QQ 连接控制台</footer>
+        </div>
+    );
+}
 
-            <Modal
-                open={helpOpen}
-                onClose={() => onHelpOpen(false)}
-                title="界面有点卡顿？"
-                description="暂停登录页的动态背景。这个选择仅保存在本设备，系统动效设置始终优先。"
-                closeLabel="关闭性能设置弹窗"
-                maxWidth={384}
-            >
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3">
-                        <div className="min-w-0">
-                            <p className="text-sm font-medium">登录页动态背景</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                {reduce
-                                    ? '系统动效设置优先 · 当前为静态'
-                                    : fxOn
-                                      ? '已开启 · 关闭后背景为静态'
-                                      : '已关闭 · 背景为静态'}
-                            </p>
-                        </div>
-                        <ToggleSwitch
-                            value={fxOn}
-                            onChange={onToggleFx}
-                            ariaLabel="登录页动态背景"
-                        />
-                    </div>
+const LOGIN_EFFECTS = [
+    { value: '1', label: '细腻', icon: Sparkles },
+    { value: '0', label: '简洁', icon: SlidersHorizontal },
+];
 
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        登录后，你还可以在「系统设置 →
-                        无障碍」里进一步「减弱动效」或「关闭全部动效」。
-                    </p>
-                </div>
-            </Modal>
+function LoginEffects({
+    fxOn,
+    status,
+    reduce,
+    lowCost,
+    onChange,
+}: {
+    fxOn: boolean;
+    status: string;
+    reduce: boolean;
+    lowCost: boolean;
+    onChange: (value: boolean) => void;
+}) {
+    const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
+        items: LOGIN_EFFECTS,
+        value: fxOn ? '1' : '0',
+        onChange: (value) => onChange(value === '1'),
+    });
+    const transition = reduce
+        ? { duration: 0 }
+        : lowCost
+          ? { duration: 0.18, ease: 'easeOut' as const }
+          : { type: 'spring' as const, duration: 0.42, bounce: 0.12 };
+
+    return (
+        <div className="workspace-auth-effects" ref={rootRef}>
+            <button {...triggerProps} aria-label="显示效果" className="workspace-text-button">
+                <SlidersHorizontal className="size-4" aria-hidden="true" />
+                显示效果
+            </button>
+            <span role="status" aria-live="polite" className="workspace-effects-status">
+                {status}
+            </span>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={reduce ? false : { opacity: 0, y: 6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                        transition={transition}
+                        className="ui-glass ui-glass-menu workspace-effects-menu"
+                    >
+                        <GlassMaterial />
+                        <ul
+                            {...listProps}
+                            aria-label="显示效果"
+                            className="workspace-theme-options"
+                        >
+                            <motion.li
+                                role="presentation"
+                                aria-hidden="true"
+                                initial={false}
+                                animate={{
+                                    y: Math.max(0, activeIndex) * 44,
+                                    opacity: activeIndex < 0 ? 0 : 1,
+                                }}
+                                transition={transition}
+                                className="workspace-theme-active"
+                            />
+                            {LOGIN_EFFECTS.map(({ value, label, icon: Icon }, index) => (
+                                <li
+                                    key={value}
+                                    {...getItemProps(index)}
+                                    data-active={index === activeIndex}
+                                    className="workspace-theme-option"
+                                >
+                                    <Icon className="size-4" aria-hidden="true" />
+                                    <span className="flex-1">{label}</span>
+                                    {value === (fxOn ? '1' : '0') && (
+                                        <Check className="size-4" aria-hidden="true" />
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="workspace-effects-note">仅此设备 · 系统偏好优先</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

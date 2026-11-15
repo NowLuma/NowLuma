@@ -1,10 +1,17 @@
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MotionConfig } from 'motion/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { elements, hookHost } from './helpers/hook-host';
 import { MainLayout } from '../src/components/layout/main-layout';
 
 const state = vi.hoisted(() => ({ kiosk: false, wallpaper: false }));
+vi.mock('react', async (original) => ({ ...(await original<typeof import('react')>()) }));
+vi.mock('motion/react', async (original) => ({
+    ...(await original<typeof import('motion/react')>()),
+    useReducedMotionConfig: () => true,
+}));
 vi.mock('@tanstack/react-router', async (original) => ({
     ...(await original<typeof import('@tanstack/react-router')>()),
     useRouterState: ({
@@ -48,7 +55,16 @@ vi.mock('@/contexts/KioskContext', () => ({
 vi.mock('@/contexts/AppStateContext', () => ({ useAppState: () => ({ updateInfo: null }) }));
 vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
 
-beforeEach(() => Object.assign(state, { kiosk: false, wallpaper: false }));
+let host: ReturnType<typeof hookHost>;
+beforeEach(() => {
+    Object.assign(state, { kiosk: false, wallpaper: false });
+    host = hookHost();
+});
+afterEach(() => {
+    host.unmount();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
 
 function shell() {
     return renderToStaticMarkup(
@@ -69,6 +85,8 @@ describe('MainLayout workspace', () => {
         expect(html).not.toContain('href="#workspace-content"');
         expect(html).toContain('aria-label="主导航"');
         expect(html).toContain('workspace-dock-anchor');
+        expect(html.match(/aria-label="主导航"/g)).toHaveLength(1);
+        expect(html).not.toContain('页面导航');
         expect(html).toContain('当前页面内容');
         expect(html).toContain('账号数据库状态提示');
         expect(html).not.toContain('<aside');
@@ -87,6 +105,63 @@ describe('MainLayout workspace', () => {
         expect(html).not.toContain('workspace-dock-anchor');
         expect(html).not.toContain('账号数据库状态提示');
         expect(html).not.toContain('aria-label="登出"');
+    });
+
+    it('opens workspace management from the session flow and restores keyboard focus on close', () => {
+        const render = () =>
+            host.render(() =>
+                MainLayout({
+                    status: '已连接',
+                    onLogout: vi.fn(),
+                    children: <article>内容</article>,
+                }),
+            );
+        const initial = elements(render());
+        const manage = initial.find((element) => element.props.onManageWorkspace);
+        (manage!.props.onManageWorkspace as () => void)();
+        const opened = elements(render());
+        const sheet = opened.find(
+            (element) => element.props.onOpenChange && element.props.open === true,
+        );
+        expect(sheet).toBeDefined();
+        (sheet!.props.onOpenChange as (open: boolean) => void)(false);
+        const close = opened.find((element) => element.props.onCloseAutoFocus);
+        const focus = vi.fn();
+        const getElementById = vi.fn(() => ({ focus }));
+        vi.stubGlobal('document', { getElementById });
+        const event = { preventDefault: vi.fn() };
+        (close!.props.onCloseAutoFocus as (event: unknown) => void)(event);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(getElementById).toHaveBeenCalledExactlyOnceWith('workspace-session-trigger');
+        expect(focus).toHaveBeenCalledOnce();
+        expect(elements(render()).some((element) => element.props.open === true)).toBe(false);
+    });
+
+    it('does not reopen a stale management sheet after entering and leaving kiosk', () => {
+        const render = () =>
+            host.render(() =>
+                MainLayout({
+                    status: '已连接',
+                    onLogout: vi.fn(),
+                    children: <article>内容</article>,
+                }),
+            );
+        const manage = elements(render()).find((element) => element.props.onManageWorkspace);
+        (manage!.props.onManageWorkspace as () => void)();
+        expect(elements(render()).some((element) => element.props.open === true)).toBe(true);
+        state.kiosk = true;
+        render();
+        state.kiosk = false;
+        expect(elements(render()).some((element) => element.props.open === true)).toBe(false);
+    });
+
+    it('keeps optical response bounded inside the capsule, without the rejected exposed stripe scene', () => {
+        const css = readFileSync(new URL('../src/styles/workspace.css', import.meta.url), 'utf8');
+        expect(css).not.toContain('repeating-linear-gradient');
+        expect(css).not.toContain('workspace-dock-scene::before');
+        expect(css).toContain('translate: 6px 0;');
+        expect(css).toContain('transition-duration: 180ms;');
+        expect(css).toContain('transition-duration: 0ms !important;');
     });
 
     it('retains custom wallpaper between the stable content surfaces', () => {

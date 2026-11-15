@@ -1,5 +1,5 @@
 import { useDropdown } from '@/components/interior/dropdown';
-import { Check, Monitor, Moon, Palette, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { GlassMaterial } from '@/components/ui/glass-material';
 import { paletteResolved, useTheme, type ThemeMode } from '@/contexts/ThemeContext';
@@ -13,7 +13,7 @@ const OPTIONS: { value: ThemeMode; icon: typeof Sun; label: string }[] = [
 ];
 
 export function ThemeToggle({ className }: { className?: string }) {
-    const { appearance, mode, setMode, managedBy } = useTheme();
+    const { appearance, mode, setMode, managedBy, performance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
         items: OPTIONS,
@@ -21,6 +21,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         onChange: (value) => setMode(value as ThemeMode),
     });
     const selected = OPTIONS.find((option) => option.value === mode) ?? OPTIONS[0];
+    const SelectedIcon = selected.icon;
 
     if (managedBy || paletteResolved(appearance.palette)) {
         return null;
@@ -36,7 +37,7 @@ export function ThemeToggle({ className }: { className?: string }) {
                 data-press-scale=""
             >
                 <GlassMaterial />
-                <Palette className="size-4" />
+                <SelectedIcon className="size-4" aria-hidden="true" />
             </button>
             <AnimatePresence>
                 {open && (
@@ -47,7 +48,9 @@ export function ThemeToggle({ className }: { className?: string }) {
                         transition={
                             reduced
                                 ? { duration: 0 }
-                                : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                : performance?.low
+                                  ? { duration: 0.18, ease: 'easeOut' }
+                                  : { type: 'spring', duration: 0.42, bounce: 0.12 }
                         }
                         className="ui-glass ui-glass-menu workspace-theme-menu"
                     >
@@ -64,7 +67,9 @@ export function ThemeToggle({ className }: { className?: string }) {
                                 transition={
                                     reduced
                                         ? { duration: 0 }
-                                        : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                        : performance?.low
+                                          ? { duration: 0.18, ease: 'easeOut' }
+                                          : { type: 'spring', duration: 0.42, bounce: 0.12 }
                                 }
                                 className="workspace-theme-active"
                             />

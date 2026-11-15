@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Ellipsis, Expand, LogOut } from 'lucide-react';
+import { Ellipsis, Expand, LogOut, Settings2 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { useRouterState } from '@tanstack/react-router';
 import { useDropdown } from '@/components/interior/dropdown';
-import { IconMorph } from '@/components/interior/icon-morph';
 import { GlassMaterial } from '@/components/ui/glass-material';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -15,25 +14,24 @@ import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME } from '@/types';
 
 export const TOPBAR_CATALOGUE: { id: string; label: string }[] = [
-    { id: 'status', label: '连接状态' },
+    { id: 'status', label: '控制台连接' },
     { id: 'theme', label: '主题菜单' },
     { id: 'kiosk', label: '展示模式' },
 ];
 
 interface TopBarProps {
     status: string;
-    mobileOpen: boolean;
-    onMobileOpenChange: (open: boolean) => void;
+    onManageWorkspace: () => void;
     onLogout: () => void;
 }
 
-export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: TopBarProps) {
+export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
     const [confirmLogout, setConfirmLogout] = useState(false);
     const pathname = useRouterState({ select: (state) => state.location.pathname });
     const meta = NAV_ITEMS.find((item) => item.to === pathname);
     const { topbarItems } = useLayout();
     const { enter: enterKiosk } = useKiosk();
-    const { appearance } = useTheme();
+    const { appearance, performance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const shown = new Set(
         reconcileLayoutItems(
@@ -44,13 +42,16 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
             .map((item) => item.id),
     );
     const actions = [
+        { value: 'workspace', label: '工作区管理', icon: Settings2 },
         ...(shown.has('kiosk') ? [{ value: 'kiosk', label: '展示模式', icon: Expand }] : []),
         { value: 'logout', label: '退出登录', icon: LogOut },
     ];
     const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
         items: actions,
         onChange: (action) => {
-            if (action === 'kiosk') {
+            if (action === 'workspace') {
+                onManageWorkspace();
+            } else if (action === 'kiosk') {
                 enterKiosk();
             } else if (action === 'logout') {
                 setConfirmLogout(true);
@@ -79,15 +80,17 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                             <span
                                 className="workspace-connection-state"
                                 data-online={status === '已连接'}
-                                title={status}
+                                title={`控制台连接：${status}`}
+                                aria-label={`控制台连接：${status}`}
                                 role="status"
                             >
                                 <span aria-hidden="true" className="workspace-status-dot" />
-                                <span className="workspace-status-label">{status}</span>
+                                <span className="workspace-status-label">
+                                    {status === '已连接' ? '服务在线' : status}
+                                </span>
                             </span>
                         )}
                     </div>
-                    <p className="workspace-page-description">{meta?.description}</p>
                 </div>
                 <div className="workspace-session-actions">
                     <div className="workspace-toolbar-scene">
@@ -95,9 +98,10 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                         <div ref={rootRef} className="workspace-more">
                             <button
                                 {...triggerProps}
-                                aria-label="会话操作"
+                                id="workspace-session-trigger"
+                                aria-label="会话与工作区"
                                 aria-haspopup="menu"
-                                title="会话操作"
+                                title="会话与工作区"
                                 className="ui-glass workspace-icon-button workspace-more-trigger"
                                 data-press-scale=""
                             >
@@ -115,7 +119,9 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                                         transition={
                                             reduced
                                                 ? { duration: 0 }
-                                                : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                                : performance?.low
+                                                  ? { duration: 0.18, ease: 'easeOut' }
+                                                  : { type: 'spring', duration: 0.42, bounce: 0.12 }
                                         }
                                         className="ui-glass ui-glass-menu workspace-session-menu"
                                     >
@@ -123,7 +129,7 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                                         <ul
                                             {...listProps}
                                             role="menu"
-                                            aria-label="会话操作"
+                                            aria-label="会话与工作区"
                                             className="workspace-theme-options"
                                         >
                                             <motion.li
@@ -137,11 +143,13 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                                                 transition={
                                                     reduced
                                                         ? { duration: 0 }
-                                                        : {
-                                                              type: 'spring',
-                                                              duration: 0.42,
-                                                              bounce: 0.12,
-                                                          }
+                                                        : performance?.low
+                                                          ? { duration: 0.18, ease: 'easeOut' }
+                                                          : {
+                                                                type: 'spring',
+                                                                duration: 0.42,
+                                                                bounce: 0.12,
+                                                            }
                                                 }
                                                 className="workspace-theme-active"
                                             />
@@ -164,15 +172,6 @@ export function TopBar({ status, mobileOpen, onMobileOpenChange, onLogout }: Top
                             </AnimatePresence>
                         </div>
                     </div>
-                    <IconMorph
-                        preset="menu-close"
-                        labels={['页面导航', '收起导航']}
-                        semantics="expanded"
-                        showLabel
-                        active={mobileOpen}
-                        onActiveChange={(index) => onMobileOpenChange(index === 1)}
-                        className="workspace-menu-trigger"
-                    />
                 </div>
             </div>
             <ConfirmDialog

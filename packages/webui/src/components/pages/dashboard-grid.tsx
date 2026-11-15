@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { GridStack, type GridStackWidget } from 'gridstack';
+import { GridStack, type GridItemHTMLElement, type GridStackWidget } from 'gridstack';
 import { GripVertical, Settings2 } from 'lucide-react';
 import 'gridstack/dist/gridstack.css';
-import { GRID_CELL_HEIGHT, GRID_MARGIN, minSizeOf } from '@/lib/dashboard-layout';
+import { GRID_CELL_HEIGHT, GRID_MARGIN, minSizeOf, widgetLabel } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 import type { UiLayoutItem } from '@/types';
 
@@ -69,6 +69,7 @@ export function DashboardGrid({
     const elRef = useRef<HTMLDivElement | null>(null);
     const gridRef = useRef<GridStack | null>(null);
     const [contentEls, setContentEls] = useState<Record<string, HTMLElement>>({});
+    const focusAfterHide = useRef<string | null>(null);
 
     // Latest props mirrored into refs so the init effect (keyed only on the
     // id-set + editing) reads current values without re-running on every render.
@@ -154,6 +155,36 @@ export function DashboardGrid({
         };
     }, [idKey, editing, cols, removableSelector]);
 
+    useLayoutEffect(() => {
+        const id = focusAfterHide.current;
+
+        if (id === null) {
+            return;
+        }
+
+        const handles = Array.from(
+            elRef.current?.querySelectorAll<HTMLButtonElement>('.grid-drag-handle') ?? [],
+        );
+        const target = handles.find((handle) => handle.dataset.widgetId === id) ?? handles[0];
+        const gallery = document.querySelector<HTMLElement>('.widget-gallery');
+
+        if (target || gallery) {
+            focusAfterHide.current = null;
+            (target ?? gallery)?.focus();
+        }
+    }, [contentEls]);
+
+    // Hiding the last card unmounts the grid before its next layout effect.
+    useLayoutEffect(
+        () => () => {
+            if (focusAfterHide.current !== null) {
+                document.querySelector<HTMLElement>('.widget-gallery')?.focus();
+                focusAfterHide.current = null;
+            }
+        },
+        [],
+    );
+
     // HTML5 drop from the gallery → add at the computed grid cell.
     const onDrop = (e: React.DragEvent) => {
         if (!editing || !onAdd) {
@@ -176,6 +207,74 @@ export function DashboardGrid({
             Math.floor((e.clientY - rect.top) / (GRID_CELL_HEIGHT + GRID_MARGIN)),
         );
         onAdd(id, x, y);
+    };
+
+    const onHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, id: string) => {
+        if (
+            !editing ||
+            !elRef.current?.contains(event.currentTarget) ||
+            event.target !== event.currentTarget ||
+            event.altKey ||
+            event.ctrlKey ||
+            event.metaKey
+        ) {
+            return;
+        }
+
+        const grid = gridRef.current;
+        const item = event.currentTarget.closest('.grid-stack-item') as GridItemHTMLElement | null;
+        const node = item?.gridstackNode;
+
+        if (
+            !grid ||
+            !item ||
+            !node ||
+            item.classList.contains('ui-draggable-dragging') ||
+            item.classList.contains('ui-resizable-resizing')
+        ) {
+            return;
+        }
+
+        const dx = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+        const dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+
+        if (!dx && !dy && event.key !== 'Delete') {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (event.key === 'Delete') {
+            const handles = Array.from(
+                elRef.current?.querySelectorAll<HTMLButtonElement>('.grid-drag-handle') ?? [],
+            );
+            const index = handles.indexOf(event.currentTarget);
+            focusAfterHide.current =
+                (handles[index + 1] ?? handles[index - 1])?.dataset.widgetId ?? id;
+            grid.removeWidget(item);
+            return;
+        }
+
+        const { x = 0, y = 0, w = 1, h = 1 } = node;
+
+        if (event.shiftKey) {
+            const { minW, minH } = minSizeOf(id);
+            const width = Math.min(cols, Math.max(Math.min(cols, minW), w + dx));
+            const height = Math.max(minH, h + dy);
+            const left = Math.max(0, Math.min(x, cols - width));
+
+            if (width !== w || height !== h || left !== x) {
+                grid.update(item, { x: left, w: width, h: height });
+            }
+        } else {
+            const left = Math.max(0, Math.min(cols - w, x + dx));
+            const top = Math.max(0, y + dy);
+
+            if (left !== x || top !== y) {
+                grid.update(item, { x: left, y: top });
+            }
+        }
     };
 
     return (
@@ -202,8 +301,11 @@ export function DashboardGrid({
                             <>
                                 <button
                                     type="button"
-                                    title="拖动卡片调整位置 · 拖回右侧部件库可移除"
-                                    aria-label="拖动调整位置"
+                                    title="拖动或方向键移动 · Shift+方向键缩放 · Delete隐藏到卡片库"
+                                    aria-label={`调整${widgetLabel(b.id)}卡片布局`}
+                                    aria-description="方向键移动；Shift+方向键缩放；Delete隐藏。"
+                                    data-widget-id={b.id}
+                                    onKeyDown={(event) => onHandleKeyDown(event, b.id)}
                                     className="grid-drag-handle pointer-events-auto absolute left-1.5 top-1.5 z-20 inline-flex size-11 items-center justify-center rounded-md bg-background/80 text-muted-foreground touch-none outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40"
                                 >
                                     <GripVertical className="size-3.5" />
@@ -212,8 +314,8 @@ export function DashboardGrid({
                                     <button
                                         type="button"
                                         onClick={() => onConfigOpen(b.id)}
-                                        title="设置"
-                                        aria-label="设置"
+                                        title={`${widgetLabel(b.id)} · 卡片设置`}
+                                        aria-label={`设置${widgetLabel(b.id)}卡片`}
                                         className="pointer-events-auto absolute right-1.5 top-1.5 z-20 inline-flex size-11 items-center justify-center rounded-md bg-background/80 text-muted-foreground transition-[color,box-shadow] duration-150 ease-out outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 cursor-pointer"
                                     >
                                         <Settings2 className="size-3.5" />

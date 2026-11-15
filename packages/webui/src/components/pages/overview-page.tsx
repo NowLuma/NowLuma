@@ -129,7 +129,7 @@ export function OverviewPage() {
         setEditing,
     } = useLayout();
     const isWide = useMediaQuery('(min-width: 768px)');
-    const { appearance } = useTheme();
+    const { appearance, performance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     // Free-grid 2D editing is desktop-only; on a phone, editing surfaces a
     // single-column drag-sort panel (overviewMobile) instead.
@@ -208,15 +208,18 @@ export function OverviewPage() {
         <div className="workspace-overview">
             <motion.header
                 className="workspace-overview-heading"
-                initial={reduced ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={
-                    reduced ? { duration: 0 } : { type: 'spring', duration: 0.42, bounce: 0.1 }
+                    reduced
+                        ? { duration: 0 }
+                        : performance?.low
+                          ? { duration: 0.18 }
+                          : { duration: 0.32 }
                 }
             >
                 <div>
-                    <h2 className="workspace-display-title">连接工作台</h2>
-                    <p className="workspace-overview-intro">会话、机器人与运行动态，一处掌握。</p>
+                    <h2 className="workspace-display-title">从会话，到结果</h2>
                 </div>
                 <div data-kiosk-hide className="workspace-overview-tools">
                     {editing && (
@@ -252,16 +255,18 @@ export function OverviewPage() {
             <motion.section
                 className="workspace-live-section"
                 aria-labelledby="overview-widgets-title"
-                initial={reduced ? false : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={
                     reduced
                         ? { duration: 0 }
-                        : { type: 'spring', duration: 0.42, bounce: 0.1, delay: 0.08 }
+                        : performance?.low
+                          ? { duration: 0.18 }
+                          : { duration: 0.32 }
                 }
             >
                 <div className="workspace-section-heading">
-                    <h3 id="overview-widgets-title">运行概览</h3>
+                    <h3 id="overview-widgets-title">运行与记录</h3>
                     <Link to="/logs" className="workspace-inline-link">
                         全部运行记录
                         <ArrowRight className="size-3.5" />
@@ -271,8 +276,8 @@ export function OverviewPage() {
                 {editing && (
                     <p className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
                         {isWide
-                            ? '拖动卡片调整位置、拖动右下角缩放；点齿轮修改设置，从部件库添加或移除卡片。打开右上角菜单可调整导航。'
-                            : '拖动手柄调整卡片顺序，眼睛图标显隐，齿轮改设置。手机为单列布局，与桌面网格各自独立。'}
+                            ? '拖动或方向键移动；Shift+方向键缩放，Delete隐藏。卡片库可重新添加，导航在「工作区管理」。'
+                            : '拖动或方向键排序；眼睛显隐、齿轮设置。手机顺序单独保存。'}
                     </p>
                 )}
 
@@ -319,6 +324,7 @@ export function OverviewPage() {
                 onClose={() => setConfigId(null)}
                 title={configBlock ? `${widgetLabel(configBlock.id)} · 设置` : '设置'}
                 closeLabel="关闭卡片设置弹窗"
+                className="workspace-modal"
                 maxWidth={384}
             >
                 <div className="flex flex-col gap-4">
@@ -374,7 +380,7 @@ function EmptyLayout({ onReset }: { onReset: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
             <MonitorCog className="size-8 opacity-40" strokeWidth={1.5} />
-            <p className="text-sm">所有工作台部件都已隐藏</p>
+            <p className="text-sm">所有工作台卡片都已隐藏</p>
             <Button variant="outline" size="sm" onClick={onReset}>
                 恢复默认布局
             </Button>
@@ -386,17 +392,28 @@ function MobileLayoutRow({
     item,
     onToggle,
     onConfigOpen,
+    onMove,
 }: {
     item: UiLayoutItem;
     onToggle: (id: string) => void;
     onConfigOpen: (id: string) => void;
+    onMove: (direction: -1 | 1) => void;
 }) {
     const controls = useDragControls();
+    const { appearance, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     return (
         <Reorder.Item
             value={item.id}
             dragListener={false}
             dragControls={controls}
+            transition={
+                reduced
+                    ? { duration: 0 }
+                    : performance?.low
+                      ? { duration: 0.18 }
+                      : { type: 'spring', duration: 0.42, bounce: 0.1 }
+            }
             className={cn(
                 'flex select-none items-center gap-2 rounded-xl border bg-card/60 px-3 py-2.5',
                 !item.visible && 'opacity-50',
@@ -404,9 +421,28 @@ function MobileLayoutRow({
         >
             <button
                 type="button"
-                aria-label="拖动排序"
+                aria-label={`调整${widgetLabel(item.id)}卡片顺序`}
+                aria-description="方向键排序。"
+                title="拖动或方向键排序"
                 className="inline-flex size-11 shrink-0 touch-none items-center justify-center text-muted-foreground"
                 onPointerDown={(e) => controls.start(e)}
+                onKeyDown={(event) => {
+                    if (
+                        event.target !== event.currentTarget ||
+                        event.altKey ||
+                        event.ctrlKey ||
+                        event.metaKey ||
+                        event.shiftKey
+                    ) {
+                        return;
+                    }
+
+                    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onMove(event.key === 'ArrowUp' ? -1 : 1);
+                    }
+                }}
             >
                 <GripVertical className="size-4" />
             </button>
@@ -418,8 +454,8 @@ function MobileLayoutRow({
                     type="button"
                     onClick={() => onConfigOpen(item.id)}
                     onPointerDown={(e) => e.stopPropagation()}
-                    title="设置"
-                    aria-label="设置"
+                    title={`${widgetLabel(item.id)} · 卡片设置`}
+                    aria-label={`设置${widgetLabel(item.id)}卡片`}
                     className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground cursor-pointer"
                 >
                     <Settings2 className="size-3.5" />
@@ -429,8 +465,8 @@ function MobileLayoutRow({
                 type="button"
                 onClick={() => onToggle(item.id)}
                 onPointerDown={(e) => e.stopPropagation()}
-                title={item.visible ? '隐藏' : '显示'}
-                aria-label={item.visible ? '隐藏' : '显示'}
+                title={`${item.visible ? '隐藏' : '显示'}${widgetLabel(item.id)}卡片`}
+                aria-label={`${item.visible ? '隐藏' : '显示'}${widgetLabel(item.id)}卡片`}
                 className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground cursor-pointer"
             >
                 {item.visible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
@@ -461,6 +497,18 @@ function MobileOverview({
     onReset: () => void;
 }) {
     if (editing) {
+        const move = (index: number, direction: -1 | 1) => {
+            const target = index + direction;
+
+            if (target < 0 || target >= items.length) {
+                return;
+            }
+
+            const ids = items.map((item) => item.id);
+            [ids[index], ids[target]] = [ids[target], ids[index]];
+            onReorder(ids);
+        };
+
         return (
             <Reorder.Group
                 axis="y"
@@ -468,12 +516,13 @@ function MobileOverview({
                 onReorder={onReorder}
                 className="flex flex-col gap-2"
             >
-                {items.map((item) => (
+                {items.map((item, index) => (
                     <MobileLayoutRow
                         key={item.id}
                         item={item}
                         onToggle={onToggle}
                         onConfigOpen={onConfigOpen}
+                        onMove={(direction) => move(index, direction)}
                     />
                 ))}
             </Reorder.Group>
@@ -527,17 +576,22 @@ function WidgetGallery({
     onAdd: (id: string, x: number, y: number) => void;
 }) {
     return (
-        <div className="widget-gallery w-56 shrink-0 self-stretch rounded-xl border border-dashed bg-muted/20 p-3">
+        <div
+            tabIndex={-1}
+            role="region"
+            aria-label="卡片库"
+            className="widget-gallery w-52 shrink-0 self-stretch rounded-lg border border-dashed bg-muted/20 p-3"
+        >
             <div className="mb-1.5 flex items-center gap-1.5 px-1">
                 <LayoutGrid className="size-3.5 text-primary" />
-                <span className="text-xs font-semibold">部件库</span>
+                <span className="text-xs font-semibold">卡片库</span>
             </div>
             <p className="mb-3 px-1 text-xs leading-snug text-muted-foreground">
                 点加号或拖到左侧画布添加；把卡片拖回此处即可移除。
             </p>
             {hidden.length === 0 ? (
                 <div className="rounded-lg border border-dashed px-2 py-8 text-center text-xs text-muted-foreground">
-                    全部部件已添加
+                    全部卡片已添加
                 </div>
             ) : (
                 <div className="flex flex-col gap-1.5">
@@ -558,7 +612,7 @@ function WidgetGallery({
                                 aria-label={`添加 ${widgetLabel(b.id)}`}
                                 onClick={() => onAdd(b.id, 0, 0)}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent/50 hover:text-foreground"
+                                className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                             >
                                 <Plus className="size-3.5" />
                             </button>
@@ -587,7 +641,7 @@ function DropPlaceholder({ onAdd }: { onAdd: (id: string, x: number, y: number) 
             className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-16 text-center text-muted-foreground"
         >
             <LayoutGrid className="size-8 opacity-40" strokeWidth={1.5} />
-            <p className="text-sm">从右侧「部件库」点加号或拖动部件到这里</p>
+            <p className="text-sm">从右侧「卡片库」点加号或拖动卡片到这里</p>
         </div>
     );
 }
@@ -1114,7 +1168,7 @@ function HostBlock({ config }: { config: HostConfig }) {
 // ─────────────── online sessions ───────────────
 
 function SessionsBlock({ config }: { config: SessionsConfig }) {
-    const { qqList, resources } = useAppState();
+    const { qqList, resources, setSelectedUin } = useAppState();
     const list = useMemo(() => {
         const f = config.filter.trim().toLowerCase();
         let arr = f
@@ -1188,7 +1242,13 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                                 )}
                                 <div className="workspace-session-list">
                                     {list.map((q) => (
-                                        <div key={q.uin} className="workspace-session-row">
+                                        <Link
+                                            key={q.uin}
+                                            to="/config"
+                                            onClick={() => setSelectedUin(q.uin)}
+                                            aria-label={`${q.nickname || q.uin}，管理机器人连接`}
+                                            className="workspace-session-row"
+                                        >
                                             <Avatar size={32}>
                                                 <AvatarImage
                                                     src={qqAvatarUrl(q.uin)}
@@ -1208,9 +1268,9 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                                             </div>
                                             <span className="workspace-session-status">
                                                 <span aria-hidden="true" />
-                                                已登录
+                                                {resources.qqList.error ? '上次已登录' : '已登录'}
                                             </span>
-                                        </div>
+                                        </Link>
                                     ))}
                                 </div>
                             </div>
@@ -1232,7 +1292,7 @@ const CONN_STATUS_STYLE: Record<AdapterStatusLevel, string> = {
     disabled: 'bg-muted text-muted-foreground',
 };
 const CONN_STATUS_LABEL: Record<AdapterStatusLevel, string> = {
-    ok: '正常',
+    ok: '已就绪',
     warn: '注意',
     down: '异常',
     degraded: '应用失败',
@@ -1255,7 +1315,7 @@ const CONN_STATUS_RANK: Record<AdapterStatusLevel, number> = {
 };
 
 function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
-    const { connections, resources } = useAppState();
+    const { connections, resources, setSelectedUin } = useAppState();
     const list = useMemo(() => {
         const f = config.filter.trim().toLowerCase();
         // Optionally drop healthy adapters, then accounts left with none.
@@ -1346,9 +1406,14 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
                                 {list.map((acc) => (
                                     <div key={acc.uin} className="workspace-account-connections">
                                         <div className="workspace-account-heading">
-                                            <span className="text-sm font-semibold">
+                                            <Link
+                                                to="/config"
+                                                onClick={() => setSelectedUin(acc.uin)}
+                                                className="workspace-account-heading-link text-sm font-medium"
+                                                aria-label={`${acc.nickname || acc.uin}，管理机器人连接`}
+                                            >
                                                 {acc.nickname || acc.uin}
-                                            </span>
+                                            </Link>
                                             <span className="font-mono text-meta text-muted-foreground tabular-nums">
                                                 {acc.uin}
                                             </span>
@@ -1493,9 +1558,7 @@ function NoteWidget({ config }: { config: NoteConfig }) {
                         {config.text}
                     </p>
                 ) : (
-                    <p className="text-sm text-muted-foreground">
-                        空便签 · 在编辑模式点齿轮填写内容
-                    </p>
+                    <p className="text-sm text-muted-foreground">空便签 · 编辑时填写内容</p>
                 )}
             </CardContent>
         </Card>
@@ -1510,7 +1573,7 @@ function LinkWidget({ config }: { config: LinkConfig }) {
             <Card className="workspace-panel h-full overflow-hidden">
                 <CardContent className="flex h-full items-center gap-3 p-4 text-muted-foreground">
                     <Icon className="size-5 shrink-0" />
-                    <span className="text-sm">未配置链接 · 点齿轮设置</span>
+                    <span className="text-sm">未配置链接 · 编辑时设置</span>
                 </CardContent>
             </Card>
         );
@@ -1550,7 +1613,7 @@ function AccountWidget({ config }: { config: AccountConfig }) {
             <Card className="workspace-panel h-full overflow-hidden">
                 <CardContent className="flex h-full items-center gap-3 p-4 text-muted-foreground">
                     <Users className="size-5 shrink-0" />
-                    <span className="text-sm">未指定账号 · 点齿轮设置</span>
+                    <span className="text-sm">未指定账号 · 编辑时选择</span>
                 </CardContent>
             </Card>
         );

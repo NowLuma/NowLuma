@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { useRouterState } from '@tanstack/react-router';
 import { Minimize2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { NavigationDock, Sidebar } from '@/components/layout/sidebar';
+import { NavigationDock, WorkspaceManagement } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/top-bar';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useKiosk } from '@/contexts/KioskContext';
@@ -23,7 +23,14 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
     const customBg = appearance.background.type !== 'none';
     const reduce = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const { kiosk, exit: exitKiosk } = useKiosk();
-    const [navigationOpen, setNavigationOpen] = useState(false);
+    const [managementOpen, setManagementOpen] = useState(false);
+
+    useEffect(() => {
+        if (kiosk) {
+            setManagementOpen(false);
+        }
+    }, [kiosk]);
+
     const pathname = useRouterState({ select: (state) => state.location.pathname });
 
     return (
@@ -35,17 +42,23 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
                 <>
                     <TopBar
                         status={status}
-                        mobileOpen={navigationOpen}
-                        onMobileOpenChange={setNavigationOpen}
+                        onManageWorkspace={() => setManagementOpen(true)}
                         onLogout={onLogout}
                     />
-                    <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
-                        <SheetContent side="right" className="workspace-navigation-sheet">
-                            <SheetTitle className="sr-only">导航菜单</SheetTitle>
-                            <SheetDescription className="sr-only">
-                                切换页面或调整导航。
-                            </SheetDescription>
-                            <Sidebar onItemClick={() => setNavigationOpen(false)} />
+                    <Sheet open={managementOpen} onOpenChange={setManagementOpen}>
+                        <SheetContent
+                            side="right"
+                            className="workspace-management-sheet"
+                            onCloseAutoFocus={(event) => {
+                                event.preventDefault();
+                                document.getElementById('workspace-session-trigger')?.focus();
+                            }}
+                        >
+                            <div className="workspace-management-heading">
+                                <SheetTitle>工作区管理</SheetTitle>
+                                <SheetDescription>导航、布局与更新。</SheetDescription>
+                            </div>
+                            <WorkspaceManagement onItemClick={() => setManagementOpen(false)} />
                         </SheetContent>
                     </Sheet>
                     {notice}

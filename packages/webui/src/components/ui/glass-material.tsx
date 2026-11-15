@@ -13,6 +13,39 @@ interface GlassImage {
     scale: number;
 }
 
+// Reopened menus reuse the same raster; resizing cannot grow this cache unbounded.
+const GLASS_IMAGE_CACHE = new Map<string, GlassImage>();
+
+function glassImage(geometry: GlassGeometry, key: string): GlassImage | null {
+    const cached = GLASS_IMAGE_CACHE.get(key);
+
+    if (cached) {
+        return cached;
+    }
+
+    const map = glassDisplacementMap(geometry);
+    const canvas = document.createElement('canvas');
+    canvas.width = map.width;
+    canvas.height = map.height;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        return null;
+    }
+
+    const pixels = context.createImageData(map.width, map.height);
+    pixels.data.set(map.pixels);
+    context.putImageData(pixels, 0, 0);
+    const image = { geometry, href: canvas.toDataURL(), scale: map.scale };
+
+    if (GLASS_IMAGE_CACHE.size >= 16) {
+        GLASS_IMAGE_CACHE.delete(GLASS_IMAGE_CACHE.keys().next().value!);
+    }
+
+    GLASS_IMAGE_CACHE.set(key, image);
+    return image;
+}
+
 /** Backdrop-only optics: labels, focus rings and business content are never filtered. */
 export function GlassMaterial() {
     const ref = useRef<HTMLSpanElement>(null);
@@ -72,24 +105,8 @@ export function GlassMaterial() {
             }
 
             try {
-                const map = glassDisplacementMap(geometry);
-                const canvas = document.createElement('canvas');
-                canvas.width = map.width;
-                canvas.height = map.height;
-                const context = canvas.getContext('2d');
-
-                if (!context) {
-                    setMaterial({ renderer: 'frosted', image: null });
-                    return;
-                }
-
-                const pixels = context.createImageData(map.width, map.height);
-                pixels.data.set(map.pixels);
-                context.putImageData(pixels, 0, 0);
-                setMaterial({
-                    renderer: 'refracted',
-                    image: { geometry, href: canvas.toDataURL(), scale: map.scale },
-                });
+                const image = glassImage(geometry, key);
+                setMaterial({ renderer: image ? 'refracted' : 'frosted', image });
             } catch (error) {
                 console.warn('[Nowluma glass] Refraction unavailable; using frost.', error);
                 setMaterial({ renderer: 'frosted', image: null });

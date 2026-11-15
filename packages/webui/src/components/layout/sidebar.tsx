@@ -1,6 +1,7 @@
 import {
     ArrowDown,
     ArrowUp,
+    ChevronRight,
     Cable,
     Check,
     Eye,
@@ -13,7 +14,7 @@ import {
     Pin,
     PinOff,
     ScrollText,
-    Settings,
+    Settings2,
     Sparkles,
     SlidersHorizontal,
     type LucideIcon,
@@ -38,10 +39,10 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-    { to: '/', label: '工作台', icon: PanelsTopLeft, description: '服务、会话与动态' },
-    { to: '/processes', label: 'QQ 会话', icon: MessageCircle, description: '接入 QQ 与完成登录' },
-    { to: '/config', label: '机器人连接', icon: Cable, description: '配置机器人端点' },
-    { to: '/logs', label: '运行记录', icon: ScrollText, description: '查看实时运行事件' },
+    { to: '/', label: '工作台', icon: PanelsTopLeft, description: '会话、连接与结果' },
+    { to: '/processes', label: 'QQ 会话', icon: MessageCircle, description: '选择并接入会话' },
+    { to: '/config', label: '机器人连接', icon: Cable, description: '建立机器人连接' },
+    { to: '/logs', label: '运行记录', icon: ScrollText, description: '查看连接结果' },
     { to: '/debug', label: '调试工具', icon: FlaskConical, description: '测试动作与排查' },
     {
         to: '/settings',
@@ -154,14 +155,15 @@ function NavReorderRow({
 
 export function NavigationDock() {
     const pathname = useRouterState({ select: (state) => state.location.pathname });
-    const { appearance } = useTheme();
+    const { appearance, performance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const { orderedNav } = useNavigationItems();
     const activeIndex = orderedNav.findIndex((item) => item.to === pathname);
+    const dockWidth = orderedNav.length * (appearance.sidebarPinned ? 164 : 120);
 
     return (
         <div className="workspace-dock-anchor">
-            <div className="workspace-dock-scene">
+            <div className="workspace-dock-scene" style={{ maxWidth: dockWidth }}>
                 <nav
                     aria-label="主导航"
                     data-ui-surface="chrome"
@@ -185,7 +187,9 @@ export function NavigationDock() {
                             transition={
                                 reduced
                                     ? { duration: 0 }
-                                    : { type: 'spring', duration: 0.42, bounce: 0.24 }
+                                    : performance?.low
+                                      ? { duration: 0.18, ease: 'easeOut' }
+                                      : { type: 'spring', duration: 0.42, bounce: 0.12 }
                             }
                             style={{ width: `${100 / orderedNav.length}%` }}
                             className="workspace-dock-marker"
@@ -217,12 +221,14 @@ export function NavigationDock() {
     );
 }
 
-export function Sidebar({ onItemClick }: { onItemClick?: () => void }) {
-    const pathname = useRouterState({ select: (state) => state.location.pathname });
+export function WorkspaceManagement({ onItemClick }: { onItemClick?: () => void }) {
     const { updateInfo } = useAppState();
     const { appearance, setAppearance } = useTheme();
-    const { reconciled, orderedNav, reorderNav, toggleNav, editing, setEditing } =
-        useNavigationItems();
+    const { reconciled, reorderNav, toggleNav, editing, setEditing } = useNavigationItems();
+    const hiddenNav = reconciled
+        .filter((item) => !item.visible)
+        .map((item) => NAV_ITEMS.find((meta) => meta.to === item.id))
+        .filter((item): item is NavItem => !!item);
 
     const moveNav = (index: number, direction: -1 | 1) => {
         const ids = reconciled.map((item) => item.id);
@@ -237,75 +243,119 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void }) {
     };
 
     return (
-        <div data-ui-surface="chrome" className="workspace-navigation-panel">
-            <div className="workspace-navigation-brand">
-                <img src={BRAND_LOGO_URL} alt="" className="size-9 rounded-md" />
-                <div className="min-w-0">
-                    <p className="font-semibold tracking-tight">
-                        {APP_NAME}{' '}
-                        <span className="font-mono text-xs font-normal text-muted-foreground">
-                            v{APP_VERSION}
-                        </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">QQ 连接控制台</p>
-                </div>
+        <div data-ui-surface="chrome" className="workspace-management-panel">
+            <div className="workspace-management-brand">
+                <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                <span>{APP_NAME}</span>
+                <span className="font-mono text-xs text-muted-foreground">v{APP_VERSION}</span>
             </div>
-            <div className="workspace-navigation-scroll">
-                {editing ? (
-                    <div>
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                            <span className="text-sm font-medium">编辑导航</span>
-                            <button
-                                type="button"
-                                onClick={() => setEditing(false)}
-                                className="workspace-text-button"
-                            >
-                                <Check className="size-4" /> 完成
-                            </button>
-                        </div>
-                        <Reorder.Group
-                            axis="y"
-                            values={reconciled.map((item) => item.id)}
-                            onReorder={reorderNav}
-                            className="space-y-1"
+            <div className="workspace-management-scroll">
+                <section
+                    aria-labelledby="workspace-nav-settings-title"
+                    className="workspace-management-section"
+                >
+                    <div className="workspace-section-heading">
+                        <h3 id="workspace-nav-settings-title">底栏导航</h3>
+                        <button
+                            type="button"
+                            onClick={() => setEditing(!editing)}
+                            className="workspace-text-button"
                         >
-                            {reconciled.map((item, index) => {
-                                const meta = NAV_ITEMS.find((entry) => entry.to === item.id);
-                                return meta ? (
-                                    <NavReorderRow
-                                        key={item.id}
-                                        item={item}
-                                        meta={meta}
-                                        first={index === 0}
-                                        last={index === reconciled.length - 1}
-                                        onToggle={toggleNav}
-                                        onMove={(direction) => moveNav(index, direction)}
-                                    />
-                                ) : null;
-                            })}
-                        </Reorder.Group>
+                            {editing ? (
+                                <Check className="size-4" />
+                            ) : (
+                                <Settings2 className="size-4" />
+                            )}
+                            {editing ? '完成调整' : '调整导航'}
+                        </button>
                     </div>
-                ) : (
-                    <nav aria-label="全部页面" className="space-y-1">
-                        {orderedNav.map(({ to, label, icon: Icon, description }) => (
-                            <Link
-                                key={to}
-                                to={to}
-                                onClick={onItemClick}
-                                aria-current={pathname === to ? 'page' : undefined}
-                                className="ui-nav-item workspace-navigation-link"
+                    {editing ? (
+                        <>
+                            <p className="workspace-management-note">
+                                拖动或使用箭头排序，眼睛图标调整显示。
+                            </p>
+                            <Reorder.Group
+                                axis="y"
+                                values={reconciled.map((item) => item.id)}
+                                onReorder={reorderNav}
+                                className="space-y-1"
                             >
-                                <Icon className="size-4 shrink-0" />
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-medium">{label}</span>
-                                    <span className="block text-xs text-muted-foreground">
-                                        {description}
-                                    </span>
-                                </span>
-                            </Link>
-                        ))}
-                    </nav>
+                                {reconciled.map((item, index) => {
+                                    const meta = NAV_ITEMS.find((entry) => entry.to === item.id);
+                                    return meta ? (
+                                        <NavReorderRow
+                                            key={item.id}
+                                            item={item}
+                                            meta={meta}
+                                            first={index === 0}
+                                            last={index === reconciled.length - 1}
+                                            onToggle={toggleNav}
+                                            onMove={(direction) => moveNav(index, direction)}
+                                        />
+                                    ) : null;
+                                })}
+                            </Reorder.Group>
+                        </>
+                    ) : (
+                        <p className="workspace-management-note">
+                            保留常用页面，其余页面仍可从这里打开。
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setAppearance({ sidebarPinned: !appearance.sidebarPinned })}
+                        aria-label="显示导航说明"
+                        aria-pressed={appearance.sidebarPinned}
+                        className="workspace-text-button workspace-management-preference"
+                    >
+                        {appearance.sidebarPinned ? (
+                            <Pin className="size-4" />
+                        ) : (
+                            <PinOff className="size-4" />
+                        )}
+                        显示导航说明
+                    </button>
+                </section>
+                {hiddenNav.length > 0 && (
+                    <section
+                        aria-labelledby="workspace-hidden-pages-title"
+                        className="workspace-management-section"
+                    >
+                        <h3 id="workspace-hidden-pages-title">隐藏的页面</h3>
+                        <nav aria-label="隐藏的页面">
+                            {hiddenNav.map(({ to, label, icon: Icon }) => (
+                                <Link
+                                    key={to}
+                                    to={to}
+                                    onClick={onItemClick}
+                                    className="workspace-management-link"
+                                >
+                                    <Icon className="size-4" />
+                                    <span>{label}</span>
+                                    <ChevronRight className="ml-auto size-3.5" />
+                                </Link>
+                            ))}
+                        </nav>
+                    </section>
                 )}
+                <section
+                    aria-labelledby="workspace-layout-title"
+                    className="workspace-management-section"
+                >
+                    <h3 id="workspace-layout-title">工作台布局</h3>
+                    <Link
+                        to="/"
+                        onClick={() => {
+                            setEditing(true);
+                            onItemClick?.();
+                        }}
+                        className="workspace-management-link"
+                    >
+                        <PanelsTopLeft className="size-4" />
+                        <span>编辑卡片布局</span>
+                        <ChevronRight className="ml-auto size-3.5" />
+                    </Link>
+                </section>
                 {updateInfo?.hasUpdate && (
                     <Link
                         to="/settings"
@@ -315,35 +365,9 @@ export function Sidebar({ onItemClick }: { onItemClick?: () => void }) {
                         className="workspace-update-link"
                     >
                         <Sparkles className="size-4" />
-                        <span>有新版本可用 {updateInfo.latest && `· v${updateInfo.latest}`}</span>
+                        <span>有新版本{updateInfo.latest && ` · v${updateInfo.latest}`}</span>
                     </Link>
                 )}
-            </div>
-            <div className="workspace-navigation-footer">
-                {!editing && (
-                    <button
-                        type="button"
-                        onClick={() => setEditing(true)}
-                        className="workspace-text-button"
-                    >
-                        <Settings className="size-4" /> 编辑导航
-                    </button>
-                )}
-                <button
-                    type="button"
-                    onClick={() => setAppearance({ sidebarPinned: !appearance.sidebarPinned })}
-                    aria-label="显示导航说明"
-                    aria-pressed={appearance.sidebarPinned}
-                    title="在宽屏导航中显示页面用途"
-                    className="workspace-text-button"
-                >
-                    {appearance.sidebarPinned ? (
-                        <Pin className="size-4" />
-                    ) : (
-                        <PinOff className="size-4" />
-                    )}
-                    显示导航说明
-                </button>
             </div>
         </div>
     );

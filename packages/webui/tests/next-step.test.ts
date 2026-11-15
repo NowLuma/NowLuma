@@ -132,6 +132,49 @@ describe('nextStep — 进程接入状态', () => {
         expect(step.action).toBeNull();
     });
 
+    it.each(['available', 'disconnected'] as const)(
+        'does not prompt reattachment after an explicit manual stop (%s)',
+        (status) => {
+            const step = nextStep(input({ processList: [proc({ status, manualStopped: true })] }));
+            expect(step).toMatchObject({ id: 'manual-stopped', action: null, done: false });
+            expect(step.actionLabel).toBe('');
+            expect(nextStep(input({ processList: [proc({ status: 'available' })] })).id).toBe(
+                'need-load',
+            );
+        },
+    );
+
+    it('keeps failures and in-flight work visible even when the session was manually stopped', () => {
+        const stopped = input({
+            processList: [proc({ status: 'available', manualStopped: true })],
+        });
+        expect(nextStep({ ...stopped, pendingOp: 'unload' }).id).toBe('busy');
+        expect(
+            nextStep({
+                ...stopped,
+                errors: { processList: '读取被拒绝', qqList: '', connections: '' },
+            }),
+        ).toMatchObject({ id: 'read-error', error: '读取被拒绝' });
+        expect(
+            nextStep(
+                input({
+                    processList: [
+                        proc({ status: 'available', manualStopped: true, error: '停止失败' }),
+                    ],
+                }),
+            ),
+        ).toMatchObject({ id: 'manual-stopped', action: 'details', error: '停止失败' });
+        expect(
+            nextStep(
+                input({
+                    processList: [
+                        proc({ status: 'error', manualStopped: true, error: '连接失败' }),
+                    ],
+                }),
+            ),
+        ).toMatchObject({ id: 'load-failed', error: '连接失败' });
+    });
+
     it('online 但标志不一致时不猜原因', () => {
         const step = nextStep(input({ processList: [proc({ connected: false })] }));
         expect(step.id).toBe('mismatch');
@@ -278,7 +321,8 @@ describe('nextStep — 连接设置', () => {
         expect(step.id).toBe('ready');
         expect(step.done).toBe(true);
         expect(step.title).not.toContain('机器人已连接');
-        expect(step.hint).toContain('回复行为由你的机器人程序决定');
+        expect(step.hint).toContain('回复由机器人程序负责');
+        expect(step.hint).toContain('核对消息');
     });
 
     it('历史消息整理失败但账号可用时不阻塞', () => {

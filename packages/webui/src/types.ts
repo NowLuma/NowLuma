@@ -89,6 +89,8 @@ export interface HookProcessInfo {
     name: string;
     path: string;
     injected: boolean;
+    /** Absent on older servers; an explicit stop must not prompt automatic reattachment. */
+    manualStopped?: boolean;
     connected: boolean;
     loggedIn: boolean;
     uin: string;

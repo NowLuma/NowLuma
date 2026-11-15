@@ -21,6 +21,7 @@ export type StepId =
     | 'load-failed'
     | 'disconnected'
     | 'need-load'
+    | 'manual-stopped'
     | 'waiting-online'
     | 'need-login'
     | 'account-preparing'
@@ -69,19 +70,19 @@ const T = {
     },
     readError: {
         title: '连接状态读取失败',
-        hint: '重试后再继续，下面保留了失败原因。',
+        hint: '',
         action: 'refresh-all' as const,
         actionLabel: '重新检查',
     },
     noQq: {
         title: '先打开并登录 QQ',
-        hint: '在运行 Nowluma 的设备上完成，也可以打开 QQ 桌面。',
+        hint: '在运行 Nowluma 的设备上打开 QQ 并登录。',
         action: 'refresh-all' as const,
         actionLabel: '我已打开 QQ',
     },
     chooseQq: {
-        title: '选择要接入的 QQ 会话',
-        hint: '检测到多个 QQ，一次选择一个账号。',
+        title: '选择 QQ 会话',
+        hint: '多个 QQ 正在运行，请选一个。',
         action: 'choose-qq' as const,
         actionLabel: '选择 QQ',
     },
@@ -122,10 +123,16 @@ const T = {
         actionLabel: '重新连接',
     },
     needLoad: {
-        title: 'QQ 已找到，接入这个会话',
+        title: 'QQ 会话待接入',
         hint: '',
         action: 'load' as const,
-        actionLabel: '接入会话',
+        actionLabel: '选择内核并接入',
+    },
+    manualStopped: {
+        title: 'QQ 会话已停止',
+        hint: '不会自动重新接入。',
+        action: null,
+        actionLabel: '',
     },
     waitingOnline: {
         title: '等待 QQ 会话连接',
@@ -152,8 +159,8 @@ const T = {
         actionLabel: '查看原因',
     },
     noNetwork: {
-        title: 'QQ 已接入，连接你的机器人',
-        hint: '添加连接后，将地址填入机器人程序。',
+        title: '连接你的机器人',
+        hint: '添加连接，按连接方式配置机器人程序。',
         action: 'open-config' as const,
         actionLabel: '配置机器人连接',
     },
@@ -176,8 +183,8 @@ const T = {
         actionLabel: '查看原因',
     },
     ready: {
-        title: 'QQ 与机器人连接已就绪',
-        hint: '回复行为由你的机器人程序决定。',
+        title: '连接已就绪',
+        hint: '请在运行记录核对消息；回复由机器人程序负责。',
         action: 'details' as const,
         actionLabel: '连接说明',
     },
@@ -298,6 +305,17 @@ export function nextStep(input: StepInput, selectedUin: string | null = null): S
     // 5. 进程自身的推进。
     if (pendingOp !== null) {
         return view('busy', 'busy');
+    }
+
+    if (
+        target.manualStopped === true &&
+        (target.status === 'available' || target.status === 'disconnected')
+    ) {
+        return view('manualStopped', 'manual-stopped', {
+            error: target.error || '',
+            action: target.error ? 'details' : null,
+            actionLabel: target.error ? '查看原因' : '',
+        });
     }
 
     switch (target.status) {
