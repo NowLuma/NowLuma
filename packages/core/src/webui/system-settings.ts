@@ -118,3 +118,26 @@ export function evaluateSettingsSave(
 export function tlsCertDeletionBlocked(tlsEnabled: boolean): boolean {
     return tlsEnabled;
 }
+
+/** The seven operator-editable fields, shared by the settings GET and POST. */
+export interface SettingsView {
+    webuiPort: number | undefined;
+    webuiHost: string | undefined;
+    tlsEnabled: boolean;
+    trustProxy: string;
+    vncPort: number;
+    vncUrl: string;
+    hookAutoLoad: boolean;
+}
+
+export function settingsView(config: RuntimeConfig): SettingsView {
+    return {
+        webuiPort: config.webuiPort,
+        webuiHost: config.webuiHost,
+        tlsEnabled: config.webuiTls?.enabled ?? false,
+        trustProxy: config.trustProxy ?? '',
+        vncPort: config.vncPort ?? 0,
+        vncUrl: config.vncUrl ?? '',
+        hookAutoLoad: config.hookAutoLoad === true,
+    };
+}

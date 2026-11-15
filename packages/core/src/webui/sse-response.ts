@@ -1,6 +1,12 @@
 import { createLogger } from '@nowluma/common/logger';
+import type { Context } from 'hono';
 
 const log = createLogger('WebUI.SSE');
+
+export type SseStarter = (channel: SseChannel) => void;
+
+/** Route-level responder: request cancellation plus the WebUI shutdown signal. */
+export type SseResponder = (c: Context, start: SseStarter) => Response;
 
 export interface SseChannel {
     raw(chunk: Uint8Array): void;
@@ -108,4 +114,9 @@ export function sseResponse(
             Connection: 'keep-alive',
         },
     });
+}
+
+/** Bind the shutdown signal once; every streaming route shares this responder. */
+export function createSseResponder(shutdown: AbortSignal): SseResponder {
+    return (c, start) => sseResponse(c.req.raw.signal, start, shutdown);
 }
