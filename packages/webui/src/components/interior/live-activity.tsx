@@ -468,7 +468,6 @@ function PhaseGlyph({ phase, reduced }: { phase: ActivityPhase; reduced: boolean
                     height="13"
                     viewBox="0 0 12 12"
                     style={{ transformOrigin: '50% 50%' }}
-                    initial={false}
                     animate={reduced ? undefined : { rotate: 360 }}
                     transition={reduced ? INSTANT : SPIN}
                     className="text-primary"

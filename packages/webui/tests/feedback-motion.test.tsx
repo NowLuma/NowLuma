@@ -1,3 +1,6 @@
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import * as React from 'react';
 import type { ReactElement, ReactNode, RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -139,6 +142,61 @@ describe('LiveActivity geometry and presence', () => {
         ]);
         expect(geometry(render())[0].props.animate).toMatchObject({ width: 300, height: 96 });
     });
+
+    it.each([false, true])(
+        'schedules running rotation on mount only when motion is enabled (reduced=%s)',
+        async (reduced) => {
+            preferences.reduced = reduced;
+            const require = createRequire(import.meta.url);
+            const motionDom = createRequire(require.resolve('motion')).resolve('motion-dom');
+            const { createAnimationState } = await import(
+                /* @vite-ignore */ pathToFileURL(
+                    resolve(dirname(motionDom), '../es/render/utils/animation-state.mjs'),
+                ).href
+            );
+
+            const spinnerProps = (progress: number) => {
+                const tree = host.render(() => LiveActivity({ activity: activity({ progress }) }));
+                const glyph = elements(tree).find(
+                    (item) => typeof item.type === 'function' && item.type.name === 'PhaseGlyph',
+                )!;
+                const glyphTree = (glyph.type as (props: Record<string, unknown>) => ReactElement)(
+                    glyph.props,
+                );
+                return elements(glyphTree).find((item) => item.props.viewBox === '0 0 12 12')!
+                    .props;
+            };
+
+            const visualElement = {
+                props: spinnerProps(0),
+                getProps: () => visualElement.props,
+                getValue: () => undefined,
+            };
+            const scheduled = vi.fn(() => Promise.resolve());
+            const state = createAnimationState(visualElement);
+            state.setAnimateFunction(() => scheduled);
+            await state.animateChanges();
+            expect(scheduled).toHaveBeenCalledTimes(reduced ? 0 : 1);
+
+            if (reduced) {
+                expect(visualElement.props.animate).toBeUndefined();
+                expect(visualElement.props.transition).toEqual({ duration: 0 });
+            } else {
+                expect(scheduled).toHaveBeenCalledWith([
+                    { animation: { rotate: 360 }, options: { type: 'animate' } },
+                ]);
+                expect(visualElement.props.transition).toEqual({
+                    duration: 0.85,
+                    ease: 'linear',
+                    repeat: Infinity,
+                });
+            }
+
+            visualElement.props = spinnerProps(0.5);
+            await state.animateChanges();
+            expect(scheduled).toHaveBeenCalledTimes(reduced ? 0 : 1);
+        },
+    );
 
     it.each(['success', 'error'] as const)('renders no running spinner for %s', (phase) => {
         const tree = host.render(() => LiveActivity({ activity: activity({ phase }) }));
