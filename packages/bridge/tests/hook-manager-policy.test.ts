@@ -27,22 +27,25 @@ afterEach(() => {
     cleanups.splice(0).forEach((cleanup) => cleanup());
 });
 
-function setup(options: { auto?: boolean; live?: boolean; uin?: string | null } = {}) {
+function setup(
+    options: { auto?: boolean; live?: boolean; uin?: string | null; pids?: number[] } = {},
+) {
     let uin = options.uin === undefined ? '10001' : options.uin;
     let live = options.live ?? false;
+    let pids = options.pids ?? [4242];
 
     let notify = () => {};
 
     const approved = new Set<string>();
     const clients: Client[] = [];
-    const processes = async () => [{ pid: 4242, name: 'qq', path: '' }];
+    const processes = async () => pids.map((pid) => ({ pid, name: 'qq', path: '' }));
     const watcher = new PipeWatcher({
         listProcesses: processes,
-        listLivePipes: async () => new Set(live ? [4242] : []),
+        listLivePipes: async () => new Set(live ? pids : []),
         intervalMs: 60_000,
     });
     const detect = vi.fn(async (): Promise<AccountLoginState[]> =>
-        uin ? [{ pid: 4242, uin, uid: 'test', nickname: 'test' }] : [],
+        uin ? pids.map((pid) => ({ pid, uin: uin!, uid: 'test', nickname: 'test' })) : [],
     );
     const inject = vi.fn(async () => ({
         method: 'loadModuleManual' as const,
@@ -96,6 +99,9 @@ function setup(options: { auto?: boolean; live?: boolean; uin?: string | null } 
         },
         setLive: (next: boolean) => {
             live = next;
+        },
+        setProcesses: (next: number[]) => {
+            pids = next;
         },
         notify: () => notify(),
     };
@@ -330,5 +336,173 @@ describe('HookManager authorization lifecycle', () => {
         await flush();
         expect(ctx.inject).not.toHaveBeenCalled();
         expect(ctx.clients).toHaveLength(0);
+    });
+});
+
+const settle = async () => {
+    for (let i = 0; i < 3; i += 1) {
+        await flush();
+    }
+};
+
+describe('HookManager auto-load after login', () => {
+    it('attaches an approved account that signs in after discovery, once', async () => {
+        const ctx = setup({ auto: true, uin: null });
+        ctx.approved.add('10001');
+        await ctx.manager.listProcesses();
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect(ctx.authorize).not.toHaveBeenCalled();
+        const initial = (await ctx.manager.listProcesses())[0]!;
+        expect(initial.status).toBe('error');
+        expect(initial.error).toContain('内核选择待确认');
+        expect(initial.manualStopped).toBe(false);
+
+        ctx.setUin('10001');
+        ctx.notify();
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledExactlyOnceWith(4242);
+        expect(ctx.authorize).toHaveBeenCalledExactlyOnceWith('10001');
+
+        for (let i = 0; i < 3; i += 1) {
+            await ctx.watcher.tickNow();
+        }
+
+        ctx.notify();
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledTimes(1);
+        expect(ctx.authorize).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps an unconfirmed account waiting after one attempt', async () => {
+        const ctx = setup({ auto: true, uin: '10001' });
+        await ctx.manager.listProcesses();
+        await settle();
+        expect(ctx.authorize).toHaveBeenCalledTimes(1);
+        expect(ctx.inject).not.toHaveBeenCalled();
+
+        ctx.notify();
+
+        for (let i = 0; i < 3; i += 1) {
+            await ctx.watcher.tickNow();
+        }
+
+        await settle();
+        expect(ctx.authorize).toHaveBeenCalledTimes(1);
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect((await ctx.manager.listProcesses())[0]!.error).toContain('内核选择待确认');
+    });
+
+    it('re-arms when the gate could not resolve an identity that later appears', async () => {
+        const ctx = setup({ auto: true, uin: '10001' });
+        ctx.approved.add('10001');
+        let fail = true;
+        ctx.detect.mockImplementation(async () => {
+            if (fail) {
+                throw new Error('identity unavailable');
+            }
+
+            return [{ pid: 4242, uin: '10001', uid: 'test', nickname: 'test' }];
+        });
+        await ctx.manager.listProcesses();
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+
+        fail = false;
+        ctx.notify();
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledExactlyOnceWith(4242);
+    });
+
+    it('does not attach a newly known account when auto-load is disabled', async () => {
+        const ctx = setup({ auto: false, uin: null });
+        ctx.approved.add('10001');
+        await ctx.manager.listProcesses();
+        await settle();
+        ctx.setUin('10001');
+        ctx.notify();
+
+        for (let i = 0; i < 3; i += 1) {
+            await ctx.watcher.tickNow();
+        }
+
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect(ctx.authorize).not.toHaveBeenCalled();
+    });
+});
+
+describe('HookManager manual unload', () => {
+    it('stays stopped across pipe, account and tick events until an explicit load', async () => {
+        const ctx = setup({ auto: true, live: true });
+        ctx.approved.add('10001');
+        await ctx.manager.listProcesses();
+        await settle();
+        expect(ctx.clients).toHaveLength(1);
+        ctx.clients[0]!.login('10001');
+        await settle();
+        const authorizations = ctx.authorize.mock.calls.length;
+
+        const unloaded = await ctx.manager.unloadProcess(4242);
+        expect(unloaded).toMatchObject({ status: 'connecting', manualStopped: true });
+        expect(unloaded.error).toContain('命名管道仍然存在');
+        expect(ctx.clients[0]!.isClosed).toBe(true);
+
+        ctx.notify();
+
+        for (let i = 0; i < 3; i += 1) {
+            await ctx.watcher.tickNow();
+        }
+
+        const refreshed = await ctx.manager.refreshProcess(4242);
+        await settle();
+        expect(ctx.clients).toHaveLength(1);
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect(ctx.authorize).toHaveBeenCalledTimes(authorizations);
+        expect(refreshed).toMatchObject({ status: 'connecting', manualStopped: true });
+        expect(refreshed.error).toContain('命名管道仍然存在');
+
+        const loaded = await ctx.manager.loadProcess(4242);
+        expect(loaded).toMatchObject({ injected: true, manualStopped: false });
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect(await ctx.manager.refreshProcess(4242)).toMatchObject({
+            connected: true,
+            manualStopped: false,
+        });
+        await settle();
+        expect(ctx.clients).toHaveLength(2);
+    });
+
+    it('keeps a policy-pending unload cancelled and auto-loads only the next PID lifecycle', async () => {
+        const ctx = setup({ auto: true, uin: null });
+        ctx.approved.add('10001');
+        await ctx.manager.listProcesses();
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+
+        expect(await ctx.manager.unloadProcess(4242)).toMatchObject({
+            status: 'available',
+            manualStopped: true,
+        });
+
+        ctx.setUin('10001');
+        ctx.notify();
+
+        for (let i = 0; i < 3; i += 1) {
+            await ctx.watcher.tickNow();
+        }
+
+        await settle();
+        expect(ctx.inject).not.toHaveBeenCalled();
+        expect(ctx.clients).toHaveLength(0);
+        expect(ctx.authorize).not.toHaveBeenCalled();
+
+        ctx.setProcesses([]);
+        await ctx.watcher.tickNow();
+        await settle();
+        ctx.setProcesses([5555]);
+        await ctx.watcher.tickNow();
+        await settle();
+        expect(ctx.inject).toHaveBeenCalledExactlyOnceWith(5555);
     });
 });

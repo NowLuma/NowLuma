@@ -1129,6 +1129,31 @@ describe('HookSession — unload', () => {
 
         expect(info.status).toBe('connecting');
         expect(info.error).toContain('命名管道仍然存在');
+        expect(info.manualStopped).toBe(true);
+    });
+
+    it('ignores watcher and auto loads after a manual unload until an explicit load', async () => {
+        const ctx = makeSession({ pipeLive: true });
+        await ctx.session.load();
+        ctx.session.onPipeUp();
+        await flush();
+        expect(ctx.session.toInfo()).toMatchObject({ connected: true, manualStopped: false });
+
+        await ctx.session.unload();
+        expect(await ctx.session.autoLoad()).toMatchObject({
+            status: 'connecting',
+            manualStopped: true,
+        });
+        ctx.session.onPipeUp();
+        await flush();
+        expect(ctx.clients).toHaveLength(1);
+
+        const resumed = await ctx.session.load();
+        expect(resumed).toMatchObject({ injected: true, manualStopped: false });
+        ctx.session.onPipeUp();
+        await flush();
+        expect(ctx.session.toInfo()).toMatchObject({ connected: true, manualStopped: false });
+        expect(ctx.clients).toHaveLength(2);
     });
 
     it('forces a fresh tick before verifying so a stale snapshot does not false-flag a successful unload', async () => {

@@ -121,6 +121,9 @@ export class HookSession extends EventEmitter {
     private authorizationCheckPending = false;
     private processGone = false;
     private disposed = false;
+    /** Operator unloaded this PID. Watcher, tick, refresh and auto-load paths
+     *  must not reconnect until an explicit load(); a new PID is a new session. */
+    private manualStopped = false;
     private initialConnectionWatch: InitialConnectionWatch | null = null;
     private initialConnectionError = '';
     private hasConnected = false;
@@ -172,6 +175,9 @@ export class HookSession extends EventEmitter {
     get isPolicyPending(): boolean {
         return this.policyPending;
     }
+    get isManualStopped(): boolean {
+        return this.manualStopped;
+    }
     get isDisposed(): boolean {
         return this.disposed;
     }
@@ -201,6 +207,7 @@ export class HookSession extends EventEmitter {
             status: this._status,
             error: this._error,
             method: this._method,
+            manualStopped: this.manualStopped,
             // Filled in by HookManager from the client's local account data.
             account: null,
         };
@@ -209,10 +216,23 @@ export class HookSession extends EventEmitter {
     // ─────────────── user-facing commands ───────────────
 
     load(): Promise<HookProcessInfo> {
+        this.manualStopped = false;
         return this.traceCommand('load', () => this.loadInternal());
     }
 
+    /** Watcher/auto-driven load. An operator unload stays stopped; only load() resumes. */
+    autoLoad(): Promise<HookProcessInfo> {
+        return this.traceCommand('load', async () => {
+            if (this.manualStopped) {
+                return this.toInfo();
+            }
+
+            return this.loadInternal();
+        });
+    }
+
     unload(): Promise<HookProcessInfo> {
+        this.manualStopped = true;
         this.authorizationEpoch++;
         this.cancelConnectAttempt?.();
         return this.traceCommand('unload', () => this.unloadInternal());
@@ -228,7 +248,12 @@ export class HookSession extends EventEmitter {
      * attempts and adopts pre-existing hooks. Idempotent; safe to call on
      * every watcher tick where the pipe is live. */
     onPipeUp(): void {
-        if (this.disposed || this.pipeUpPending || this.cancelConnectAttempt) {
+        if (
+            this.disposed ||
+            this.manualStopped ||
+            this.pipeUpPending ||
+            this.cancelConnectAttempt
+        ) {
             return;
         }
 
@@ -541,7 +566,7 @@ export class HookSession extends EventEmitter {
             await this.pipeWatcher.tickNow?.();
 
             if (this.pipeWatcher.isPipeLive(this.pid)) {
-                this._error = 'DLL卸载失败：命名管道仍然存在，watcher将自动重连';
+                this._error = 'DLL卸载失败：命名管道仍然存在，可重试卸载或手动加载';
                 this.setStatus('connecting', this._error);
                 this.log.warn('unload verification failed: PID=%d pipe still up', this.pid);
             } else {
@@ -557,7 +582,8 @@ export class HookSession extends EventEmitter {
     }
 
     private async refreshInternal(): Promise<HookProcessInfo> {
-        if (!this.policyPending) {
+        // A manual stop keeps its unload diagnostic; refresh never resumes it.
+        if (!this.policyPending && !this.manualStopped) {
             this._error = '';
         }
 
@@ -611,6 +637,10 @@ export class HookSession extends EventEmitter {
      * stale client, then (re)connect if needed or just settle the status.
      * Shared by onPipeUp and refresh's pipe-up branch. */
     private async reconcilePipeUp(): Promise<void> {
+        if (this.manualStopped) {
+            return;
+        }
+
         if (this.client?.isClosed) {
             this.tearDownClient();
         }

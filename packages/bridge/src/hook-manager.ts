@@ -117,6 +117,10 @@ export class HookManager {
     private readonly log: Logger;
     private readonly sessions = new Map<number, HookSession>();
     private readonly autoLoadAttempts = new Map<number, AutoLoadAttempt>();
+    /** Identity the account gate last resolved for this PID; absent while
+     *  unknown. Only a changed identity re-arms auto-load, so a UIN that was
+     *  already refused is not retried on every watcher event. */
+    private readonly autoLoadUin = new Map<number, string>();
     private readonly startPromise: Promise<void>;
 
     private accounts = new Map<number, HookProcessAccount>();
@@ -239,6 +243,7 @@ export class HookManager {
         this.sessions.clear();
         this.accounts.clear();
         this.autoLoadAttempts.clear();
+        this.autoLoadUin.clear();
         this.enumerator.dispose();
 
         if (this.ownsPipeWatcher) {
@@ -332,6 +337,34 @@ export class HookManager {
 
         if (changed) {
             this.notifySessionsChanged();
+            this.rearmAutoLoad();
+        }
+    }
+
+    /** A newly known account identity re-arms exactly one auto-load attempt.
+     *  Unknown identity and a UIN already tried keep waiting for the operator. */
+    private rearmAutoLoad(): void {
+        if (!this.autoLoadOnDiscovery || this.disposed) {
+            return;
+        }
+
+        for (const session of this.sessions.values()) {
+            const uin = this.accounts.get(session.pid)?.uin;
+
+            if (!uin || !isRealUin(uin) || session.isManualStopped || !session.isPolicyPending) {
+                continue;
+            }
+
+            if (this.autoLoadAttempts.get(session.pid)?.inFlight) {
+                continue;
+            }
+
+            if (this.autoLoadUin.get(session.pid) === uin) {
+                continue;
+            }
+
+            this.log.info('auto-load re-armed: PID=%d UIN=%s', session.pid, uin);
+            this.runAutoLoad(session);
         }
     }
 
@@ -369,6 +402,7 @@ export class HookManager {
 
             runWithTraceRequest(() => {
                 this.autoLoadAttempts.delete(pid);
+                this.autoLoadUin.delete(pid);
                 const session = this.sessions.get(pid);
                 this.log.trace(
                     'hook_manager_fact event=process_gone pid=%d tracked=%s',
@@ -455,7 +489,7 @@ export class HookManager {
     }
 
     private runAutoLoad(session: HookSession, existing?: AutoLoadAttempt): void {
-        if (this.disposed || session.isDisposed) {
+        if (this.disposed || session.isDisposed || session.isManualStopped) {
             return;
         }
 
@@ -480,7 +514,7 @@ export class HookManager {
             );
 
             try {
-                const info = await session.load();
+                const info = await session.autoLoad();
 
                 if (this.autoLoadAttempts.get(session.pid) !== state) {
                     this.log.trace(
@@ -607,6 +641,9 @@ export class HookManager {
                       }
 
                       const uin = uins[0]!;
+                      // Remember what the gate resolved: a new identity re-arms
+                      // auto-load once, the same one keeps waiting for the operator.
+                      this.autoLoadUin.set(pid, uin);
 
                       if (reportedUin && reportedUin !== uin) {
                           throw new Error('本地 QQ 账号与通信通道账号不一致');
