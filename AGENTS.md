@@ -18,6 +18,7 @@ Use `git status` to preserve unrelated work. Issues should be submitted manually
 - `deploy`: Docker, installation, process supervision, persistence and smoke checks.
 
 QQ connectivity is intentionally not redesigned in the current phase. New product naming is `Nowluma`, workspace imports are `@nowluma/*`, and environment variables use `NOWLUMA_*`.
+The project's own source is GPL-3.0-only: `LICENSE` is the verbatim GNU GPLv3 text, and `LICENSING.md` records the GPLv3 section 7 linking permission plus the supplied-native and third-party boundaries. Never add non-commercial terms or extra restrictions to GPL-covered source, and never claim the supplied native prebuilds or third-party components are GPL.
 Only the root README footer contains the original project name; `tools/check-identity.mjs` derives that name from the footer rather than hardcoding it. Original native bytes and their fallback socket ABI are explicit temporary exceptions; never patch arbitrary prebuild bytes to make a test pass. The six original native prebuilds remain the shipped native components; the separate external rewrite attempt is unfinished and not shipped. The future dual-kernel selector is not implemented; when it arrives the original kernel will require active informed risk acceptance with no pre-checked or silent fallback.
 
 ## Safety and contracts

@@ -1,5 +1,5 @@
 {
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "name": "@nowluma/mcp",
   "version": "2.4.2",
   "description": "MCP server exposing the Nowluma OneBot action catalog (docs + JSON Schemas) and optional execution to LLM clients.",

@@ -1,8 +1,7 @@
 {
   "name": "@nowluma/ui",
   "author": {
-    "name": "Nowluma contributors",
-    "email": "ws675170761@gmail.com"
+    "name": "Nowluma contributors"
   },
   "version": "2.4.2",
   "description": "Shared Nowluma UI primitives — Tailwind 4 theme tokens + shadcn-style atomic components",
@@ -22,7 +21,7 @@
     "url": "git+https://github.com/WSXYT/Nowluma.git",
     "directory": "packages/ui"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "type": "module",
   "sideEffects": [
     "**/*.css"

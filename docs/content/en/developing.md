@@ -11,12 +11,11 @@ This chapter is for people changing code, opening a pull request, or redistribut
 
 | Item | Status |
 | --- | --- |
-| Is the source open source? | **No** — it is not an OSI open-source licence. It is the Nowluma Non-Commercial License (NowlumaNC), a source-available non-commercial licence |
-| Allowed | Reading, studying, personal or otherwise non-commercial use, non-commercial self-hosting, and modification and non-commercial distribution under the stated conditions |
-| Requires prior written permission | Any commercial use; distribution beyond what the licence expressly permits |
-| Distributing a Modified Version | Must retain the complete licence, give prominent Nowluma attribution and mark the Modified Version; must not impersonate an official release |
-| Native binaries | The bundled `nowluma-*.node` / `*.dll` / `*.so` files are a separate proprietary component outside the source licence |
-| Official release packages | Additionally covered by the EULA and privacy notice; where texts conflict, the Chinese version prevails |
+| Is the source open source? | **Yes** — GNU GPL v3 (GPL-3.0-only), a standard OSI open-source licence; `LICENSE` is the verbatim GNU text |
+| Allowed | Use, study, modify and redistribute, including commercially, under GPLv3; no extra permission needed |
+| Distribution conditions | Keep the licence and copyright notices, provide the corresponding source, and mark changes as GPLv3 requires |
+| Native binaries | The precompiled `nowluma-*` / `websocket-*` / `ffmpegAddon-*` files under `packages/runtime/native/` are supplied components outside the GPL source; see `LICENSING.md` |
+| Official release packages | `EULA.md` is a usage notice and `PRIVACY.md` covers data handling; neither adds restrictions to the GPL source, and `LICENSE` prevails on source terms |
 
 The upstream project attribution exists only in the **last line** of the root `README.md`, as the licence and history require. **Do not reintroduce the upstream brand** in the product name, package names, interface, environment variables or new documentation: this renaming round already moved the workspace packages (`@nowluma/*`), environment variables (`NOWLUMA_*`), SDK identifiers and backup application identifier. `tools/check-identity.mjs` derives the old name from that line and checks filenames, text, the native ABI exception and binary skips; do not evade it with split strings.
 

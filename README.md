@@ -4,68 +4,70 @@
   <img src="assets/readme/hero.svg" alt="Nowluma" width="720" />
 </p>
 
-连接真实 QQ 客户端，向机器人程序提供 OneBot v11 接口，并用浏览器控制台管理账号、连接、日志和桌面。
+连接 QQ 客户端，提供 OneBot v11 接口，在一个浏览器控制台里管理账号、连接、日志和桌面。
 
-QQ 登录始终由 QQ 自己完成。Nowluma 不保存 QQ 密码，不伪造设备令牌，也不替你完成扫码或风控验证。
+[下载发行包](https://github.com/WSXYT/Nowluma/releases) · [中文文档](docs/content/zh/index.md) · [English docs](docs/content/en/index.md) · [部署指南](deploy/README.md) · [参与开发](CONTRIBUTING.md)
 
-[中文文档](docs/content/zh/index.md) · [English docs](docs/content/en/index.md) · [部署指南](deploy/README.md) · [开发指南](CONTRIBUTING.md) · [许可](LICENSE)
+## 开始使用
 
-## 快速开始
-
-| 平台 | 发行形态 | 需要 |
+| 环境 | 安装方式 | 运行要求 |
 | --- | --- | --- |
-| Windows x64 | `Nowluma.exe` 单文件，内置 Node 与运行环境 | 无需 Docker、Node 或 .NET；当前构建未签名 |
-| Linux x64 | Lite 发行包 + `launcher.sh` | Node.js `24.22.1`（24.x）或 `>=26.12.1` |
-| Docker（Linux） | 从源码目录运行安装向导 | Docker Engine 与 Compose v2 |
-
-Windows 双击 `Nowluma.exe`，按提示选择本机 QQ；若已有 Linux Docker，也可选择隔离桌面。程序解压到 `%LOCALAPPDATA%\Nowluma` 并在浏览器打开控制台。发行说明应给出 SHA-256；没有校验值的二进制不要直接运行。
-
-Linux 解压 Lite 包后运行 `bash launcher.sh`。`deploy/install.sh` 只存在于源码仓库，**不随 Lite 发行包分发**；从源码安装时可运行：
+| Windows x64 | 双击 `Nowluma.exe`，在浏览器进入控制台 | 已内置运行环境，无需安装 Node、.NET 或 Docker |
+| Linux x64 | 解压 Lite 包，运行 `bash launcher.sh` | Node.js `24.22.1`（24.x）或 `>=26.12.1` |
+| Linux Docker | 从源码目录运行下方安装向导 | Docker Engine 与 Compose v2，向导可协助安装 |
 
 ```bash
-bash deploy/install.sh --docker          # Docker
-bash deploy/install.sh --native --directory /发行包解压目录
+bash deploy/install.sh --docker
 ```
 
-Docker 向导先询问中文/English，检查 Docker 与 Compose，可选官方或 LinuxMirrors 镜像安装脚本，并显示将执行的命令。默认只发布到宿主回环地址：控制台与桌面 **5099**、机器人 HTTP **3000**、WS **3001**。
+向导先选择中文或 English，再检查 Docker、选择安装来源，并配置访问地址、端口和时区。执行安装脚本前会展示命令。`deploy/install.sh` 位于源码仓库，不包含在 Lite 包中。
 
-## 它做什么
+默认通过本机或 SSH 隧道访问：控制台与 QQ 桌面 **5099**、机器人 HTTP **3000**、WebSocket **3001**。
 
-- 发现本机 QQ 进程，按账号加载/卸载接入，保留账号隔离与消息/媒体历史。
-- 提供 OneBot v11 的 HTTP API、HTTP 客户端、WS 服务端、WS 客户端四种端点。
-- 控制台包含总览、QQ 连接、节点配置、日志、调试和系统设置。
-- 桌面通过控制台同源路径 `/desktop/` 打开，复用控制台会话；只发布 5099，不再单独发布 6080。后台 VNC 只监听回环并保留独立密码，浏览器不会拿到该密码。
-- Docker 完整持久化 `/home/nowluma`（QQ 设置、凭据、用户存储与机器 ID）；停止、重启、重建容器都复用同一组卷。
+1. 打开安装结果中的控制台地址，使用初始密码完成首次设置。
+2. 点击 **打开 QQ 桌面**，在 QQ 窗口登录；桌面直接使用控制台会话。
+3. 在 **节点配置** 中选择账号，连接自己的机器人程序。
 
-不要用 `docker compose down -v` 重启：它会删除卷。保留本地状态只避免因重建部署产生新环境，**不保证** QQ 服务端永远接受会话；过期、异地验证或风控要求扫码时，仍需在 QQ 窗口完成。
+Windows 启动器可使用本机 QQ；已有可用的 Linux Docker 引擎时，也可选择容器桌面。程序文件位于 `%LOCALAPPDATA%\Nowluma`。当前 EXE 未签名，下载后可用发行页的 `SHA256SUMS` 核对文件。
 
-## 性能设置
+## 一个控制台，照顾日常操作
 
-外观设置里的「性能模式」提供 **自动检测（默认）**、**完整效果**、**低性能 / 关闭动效** 三档。自动模式只在本机前台持续低帧率时关闭动画和实时折射；检测结果不写回服务器，也不影响其他设备。它是中性的显示设置，不改变消息、账号或网络行为，不承诺帧率、省电或低端设备收益。
+- **总览**：账号、端点与主机状态，带首次使用引导和可编辑布局。
+- **QQ 连接**：选择进程、接入账号、打开桌面、查看连接问题。
+- **节点配置**：HTTP API、HTTP 客户端、WebSocket 服务端与客户端。
+- **日志与调试**：搜索、筛选、导出日志，查看事件和测试动作。
+- **设置**：外观、账号安全、通知、存储、备份、TLS 与更新。
 
-## 文档、站点与演示
+默认采用中性配色，深浅主题、强调色和现有调色板均可调整。性能模式支持自动、完整效果和低性能；检测结果只影响当前设备。
 
-- 文档源码：[`docs/content/zh`](docs/content/zh/index.md) / [`docs/content/en`](docs/content/en/index.md)，共 18 章。
-- 静态站点由 `.github/workflows/pages.yml` 构建，项目路径为 `/Nowluma/`；是否已在线以仓库 Pages 设置为准。
-- 演示路径 `/demo/` 是明确标注的模拟数据练习模式，不连接真实 QQ、不接收真实凭据，也不能用来证明机器人会回复。
-- 文档不提供截图或“已视觉验收”的保证；界面外观仍在调整。
+发送纯文本 `#nl` 可查看版本、平台和运行时间。在 **节点配置 → 选择账号 → 通用设置** 中可关闭内置状态回复。
 
-## 独立性与使用边界
+双语文档共 18 章。站点包含复用真实控制台组件的 `/demo/` 练习模式，使用内存中的示例数据，不连接真实 QQ。
 
-Nowluma 是独立的第三方互操作项目，**与腾讯或 QQ 没有隶属、合作、授权或背书关系**。使用 QQ 客户端、账号、网络和第三方服务时，你须遵守 QQ 用户协议、相关法律以及获得授权的非商业研究边界。
+## 运行与数据
 
-你对自己使用的账号、数据、网络、凭据和操作负责。软件按“现状”提供，不保证 QQ 自动登录、消息投递、机器人回复、长期稳定性或账号安全，也不提供封号/风控概率保证。arm64 Docker 与原生产物有构建输入但未实际验证，不要标成已测试平台。
+```bash
+bash deploy/manage.sh start       # 启动
+bash deploy/manage.sh restart     # 重启并检查状态
+bash deploy/manage.sh stop        # 停止，保留数据
+bash deploy/manage.sh logs        # 查看日志
+bash deploy/manage.sh doctor      # 部署诊断
+```
 
-原生接入仍是当前实现：仓库保留的六份 `nowluma-*` 原始预编译文件（三个平台各 `.node` 加 `.dll`/`.so`）就是当前发行使用的原生组件，内部字节与必要的旧套接字 ABI 保持不变。另有外部重写尝试，尚未完成、未随包发布，也不在本轮验证范围内；本项目没有重写 QQ 接入内核。双内核选择器尚未实现；将来引入时，原内核需要用户主动知情并接受风险，不会预勾选或静默回退。
+程序设置、消息与媒体、日志分别保存在 `config/`、`data/`、`logs/`。Docker 另外完整保留 QQ 的 `/home/nowluma` 用户目录；升级时同时保留程序数据卷和 QQ HOME 卷。
 
-## 许可
+**重启不要使用 `docker compose down -v`，该命令会删除数据卷。** QQ 自动登录由 QQ 自己管理，过期或要求验证时仍需在 QQ 窗口完成。
 
-源码采用 **Nowluma Non-Commercial License (NowlumaNC)**：源码可见、仅限非商业使用，允许在许可条件下修改与非商业传播。传播修改版必须保留完整许可、显著标注 **Nowluma** 归属并标记修改版；商业使用需事先书面授权。它不是 GPL，也不授予任何商业权利。
+桌面通过同源 `/desktop/` 访问，无需输入 VNC 密码，也无需额外开放桌面端口。远程访问、备份与故障恢复见[部署指南](deploy/README.md)。
 
-第三方组件继续受其各自许可证约束；`nowluma-*.node` / `*.dll` / `*.so` 是单独提供、仅可随包运行的专有组件，适用 `EULA.md`。本许可不重新许可、也不删除第三方或原生组件的版权与义务。完整条款以中文文本为准，见 [`LICENSE`](LICENSE)、[`EULA.md`](EULA.md)、[`PRIVACY.md`](PRIVACY.md)。
+## 使用与许可
 
-## 联系与侵权处理
+Nowluma 是独立的第三方项目，与腾讯及 QQ 无隶属、合作、授权或背书关系。使用 QQ 客户端、账号与第三方服务时，请遵守 QQ 用户协议及适用法律。
 
-项目联系、商业授权与侵权处理：**ws675170761@gmail.com**
+软件按现状提供。使用者负责自己的账号、数据与操作；项目不保证自动登录、消息投递或账号不受限制。
+
+源码采用 **GNU 通用公共许可证第 3 版（GPL-3.0-only）**：可自由使用、研究、修改与分发，包括商业用途，无需额外授权；分发时遵守 GPLv3 的源码与许可要求。根目录 [LICENSE](LICENSE) 是 GNU 发布的 GPLv3 标准全文，未作修改。随包的预编译原生组件与第三方组件不属于 GPL 源码，各自条款见 [LICENSING.md](LICENSING.md)；[使用说明](EULA.md)与[隐私说明](PRIVACY.md)分别说明运行边界与数据处理。
+
+侵权投诉：**ws675170761@gmail.com**（仅用于侵权投诉；源码与使用问题请通过 GitHub issues 提出，不要附带个人信息）。
 
 本项目参考了 **SnowLuma** 的实现思路。

@@ -99,4 +99,4 @@ The source workspace also has a build output directory, `dist/`; in a release pa
 
 ## Licence in one line
 
-The source is available but **not** an OSI open-source licence: it uses the Nowluma Non-Commercial License (NowlumaNC), allowing non-commercial use and self-hosting only. Non-commercial distribution of a Modified Version requires the complete license, prominent Nowluma attribution and a Modified Version mark; Commercial Use requires prior written permission. The bundled native binaries are a separate proprietary component. See [Contributing](developing.md) for the details.
+The source is free software under the **GNU General Public License v3 (GPL-3.0-only)**: you may use, study, modify and redistribute it, including commercially, without further permission; distribution must follow GPLv3's source and notice requirements. The root `LICENSE` is the verbatim GNU GPLv3 text. The bundled precompiled native components and third-party components are outside the GPL source and keep their own terms (`LICENSING.md`). See [Contributing](developing.md) for the details.

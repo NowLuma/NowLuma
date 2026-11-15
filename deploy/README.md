@@ -223,4 +223,4 @@ docker compose -f deploy/docker-compose.yml config --quiet
 CI 另外实际构建 Linux/amd64 Docker 镜像、启动官方 QQ/桌面/程序，检查原生连接，并验证停止/重启/重建时完整 HOME 和程序配置保留。
 arm64 下载和原生产物有相应构建输入，未实际验证前不得把它标为已测试的平台。
 
-许可和使用条款见根目录 LICENSE（Nowluma Non-Commercial License, NowlumaNC）、EULA.md、PRIVACY.md；冲突时以中文版本为准。第三方组件继续受其各自许可证约束，原生二进制适用 EULA 的单独条款。
+许可和使用条款见根目录 LICENSE（GNU GPLv3，GPL-3.0-only）、LICENSING.md、EULA.md 与 PRIVACY.md。GPL 源码可自由使用、修改和分发（含商业用途）；随包的预编译原生组件与第三方组件适用各自条款，不属于 GPL 源码范围。

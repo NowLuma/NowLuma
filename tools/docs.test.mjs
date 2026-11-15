@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -146,16 +147,47 @@ test('the demo route is optional by default and required with withDemo', (t) => 
     assert.ok(problems.some((problem) => problem.includes('demo route')));
 });
 
-test('README footer and legal contact metadata stay in sync', () => {
+// Official https://www.gnu.org/licenses/gpl-3.0.txt (35149 bytes).
+const GPL3_SHA256 = '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986';
+
+test('LICENSE is the unmodified GNU GPLv3 text', () => {
+    const licence = fs.readFileSync(new URL('../LICENSE', import.meta.url));
+    assert.equal(createHash('sha256').update(licence).digest('hex'), GPL3_SHA256);
+
+    const text = licence.toString('utf8');
+    assert.match(text, /^ {20}GNU GENERAL PUBLIC LICENSE\n {23}Version 3, 29 June 2007\n/);
+    assert.ok(text.endsWith('why-not-lgpl.html>.\n'));
+    assert.ok(!/Nowluma/i.test(text), 'LICENSE must not carry project-specific additions');
+});
+
+test('licence metadata, recorded GPL hash and infringement contact stay in sync', () => {
     const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
     const lastLine = readme
         .split(/\r?\n/)
         .filter((line) => line.trim() !== '')
         .at(-1);
     assert.match(lastLine, /^本项目参考了 \*\*[A-Za-z]{3,}\*\* 的实现思路。$/);
-    for (const file of ['LICENSE', 'EULA.md', 'PRIVACY.md', 'README.md']) {
+
+    const contact = 'ws675170761@gmail.com';
+    assert.equal(readme.split(contact).length - 1, 1, 'README is the only infringement contact');
+    for (const file of ['LICENSE', 'LICENSING.md', 'EULA.md', 'PRIVACY.md', 'CONTRIBUTING.md', 'deploy/README.md']) {
         const text = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-        assert.ok(text.includes('ws675170761@gmail.com'), `${file} should use the project contact`);
+        assert.ok(!text.includes(contact), `${file} must not carry the contact email`);
+    }
+
+    const licensing = fs.readFileSync(new URL('../LICENSING.md', import.meta.url), 'utf8');
+    assert.ok(licensing.includes(GPL3_SHA256), 'LICENSING.md must record the shipped GPL text hash');
+    assert.ok(licensing.includes('https://www.gnu.org/licenses/gpl-3.0.txt'));
+
+    const root = new URL('../', import.meta.url);
+    const packageFiles = [
+        'package.json',
+        ...fs.readdirSync(new URL('packages', root)).map((name) => `packages/${name}/package.json`),
+    ];
+    for (const file of packageFiles) {
+        const pkg = JSON.parse(fs.readFileSync(new URL(file, root), 'utf8'));
+        assert.equal(pkg.license, 'GPL-3.0-only', `${file} should declare GPL-3.0-only`);
+        assert.ok(!JSON.stringify(pkg).includes(contact), `${file} must not carry the contact email`);
     }
 });
 

@@ -1,5 +1,5 @@
 {
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "name": "@nowluma/websocket",
   "version": "2.4.2",
   "private": true,

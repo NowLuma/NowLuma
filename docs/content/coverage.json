@@ -145,7 +145,7 @@
         { "id": "ui-auto-performance", "group": "计划", "labels": [], "pages": ["planned.md"], "status": "pending-integration" },
         { "id": "ui-fused-styles", "group": "计划", "labels": [], "pages": ["planned.md", "settings-console.md"], "status": "pending-integration" },
 
-        { "id": "dev-licence", "group": "协作", "labels": ["LICENSE", "EULA.md", "PRIVACY.md"], "pages": ["developing.md", "introduction.md"], "status": "implemented" },
+        { "id": "dev-licence", "group": "协作", "labels": ["LICENSE", "LICENSING.md", "EULA.md", "PRIVACY.md"], "pages": ["developing.md", "introduction.md"], "status": "implemented" },
         { "id": "dev-change-boundaries", "group": "协作", "labels": [], "pages": ["developing.md"], "status": "implemented" },
         { "id": "dev-validation", "group": "协作", "labels": ["pnpm typecheck", "pnpm lint", "pnpm test", "pnpm run build:all"], "pages": ["developing.md"], "status": "implemented" },
         { "id": "dev-generated-catalog", "group": "协作", "labels": ["pnpm --filter @nowluma/mcp gen"], "pages": ["developing.md"], "status": "implemented" },
