@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OneBotManager } from '@nowluma/onebot/manager';
+import { NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
 import { initWebUI } from '../src/webui/server';
 import { COMPAT_RISK_VERSION, KernelPolicyStore } from '../src/kernel-policy';
 import { WebuiAuth } from '../src/webui/auth';
@@ -145,7 +146,7 @@ describe('account kernel routes', () => {
         expect(await catalog.json()).toMatchObject({
             riskVersion: COMPAT_RISK_VERSION,
             options: [
-                { id: 'compat', label: '兼容内核', available: true },
+                { id: 'compat', label: NATIVE_KERNEL_LABEL, available: true },
                 { id: 'rewrite', label: '重写内核', available: false },
             ],
         });

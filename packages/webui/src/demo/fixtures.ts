@@ -1,3 +1,4 @@
+import { kernelDisplayCatalog } from '@nowluma/common/kernel-display';
 import { DEFAULT_APPEARANCE } from '@/contexts/ThemeContext';
 import { DEFAULT_LAYOUT, DEFAULT_PAGES } from '@/contexts/LayoutContext';
 import { normalizeOneBotConfig } from '@/lib/onebot-config';
@@ -24,20 +25,7 @@ export {
 import { DEMO_UIN, DEMO_PID, DEMO_DESKTOP_URL } from './constants';
 
 export function demoKernelCatalog(): KernelCatalog {
-    return {
-        options: [
-            { id: 'compat', label: '兼容内核', available: true, reason: '' },
-            {
-                id: 'rewrite',
-                label: '重写内核',
-                available: false,
-                reason: '当前平台的重写内核尚未验证，暂不可使用',
-            },
-        ],
-        riskVersion: 'compat-risk-1',
-        riskText:
-            '兼容内核使用随包提供的原生组件，可能存在账号、数据安全与法律风险。请阅读相关说明，由用户主动确认使用与法律风险；确认不免除依法不可免除的责任，也不改变 GPL 源码许可。',
-    };
+    return kernelDisplayCatalog();
 }
 
 export const demoActions: DebugActionDoc[] = [

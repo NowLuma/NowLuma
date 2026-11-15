@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
+import { NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
 import { Modal } from '@/components/interior/modal';
 import { Button } from '@/components/ui/button';
 import { actionErrorMessage } from '@/contexts/ActionFeedbackContext';
@@ -160,7 +161,7 @@ export function KernelChoiceForm({
                     aria-describedby={riskId}
                     className="mt-1 size-4 shrink-0 accent-current focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <span>我已阅读并主动确认此账号的兼容内核使用与法律风险</span>
+                <span>我已阅读并主动确认此账号的{NATIVE_KERNEL_LABEL}使用与法律风险</span>
             </label>
             {error ? (
                 <p role="alert" className="text-sm text-destructive">

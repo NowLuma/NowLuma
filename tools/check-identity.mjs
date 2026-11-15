@@ -11,6 +11,13 @@ const binaryFile =
 // derives the name from that line so the old brand is never hardcoded here.
 const footerAttribution = /^本项目参考了 \*\*([A-Za-z]{3,})\*\* 的实现思路。$/;
 
+// The compat kernel is the upstream project's supplied native build, so exactly
+// one browser-safe constant may display that source project's name. Only that
+// exact declaration is allowed; any other mention still re-introduces the brand.
+const nativeSourceLabelFile = 'packages/common/src/kernel-display.ts';
+const nativeSourceLabelDeclaration = (name) =>
+  `export const NATIVE_KERNEL_LABEL = '${name} 内核';`;
+
 // Unchanged prebuilds still own these native fallback socket-directory names.
 const nativeAbiFiles = new Set([
   'packages/bridge/src/hook-runtime-dir.ts',
@@ -65,6 +72,9 @@ export function checkIdentity({
       const prefix = previousIdentity.toLowerCase();
       text = text.replaceAll(`/tmp/${prefix}-`, '').replaceAll(`${prefix}-hook`, '');
     }
+    if (file === nativeSourceLabelFile) {
+      text = text.replace(nativeSourceLabelDeclaration(previousIdentity), '');
+    }
     if (oldName.test(text)) forbidden.push(`${file}: old text identity`);
   }
   assert.deepEqual(forbidden, []);
@@ -75,6 +85,6 @@ const invokedDirectly =
 if (invokedDirectly) {
   checkIdentity();
   console.log(
-    'Identity checked: the footer is the sole full-name attribution; native byte contents and documented socket ABI remain unchanged.',
+    'Identity checked: the footer is the sole full-name attribution; the native source display label and documented socket ABI are the only exceptions.',
   );
 }

@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMPAT_RISK_VERSION, KernelPolicyStore } from '../src/kernel-policy';
+import { kernelDisplayCatalog, NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
+import { COMPAT_RISK_VERSION, KernelPolicyStore, kernelCatalog } from '../src/kernel-policy';
 
 let temporary: string;
 let file: string;
@@ -17,6 +18,20 @@ beforeEach(() => {
 afterEach(() => {
     vi.restoreAllMocks();
     rmSync(temporary, { recursive: true, force: true });
+});
+
+describe('kernelCatalog', () => {
+    it('serves the shared display catalog with the native source label and current risk version', () => {
+        expect(kernelCatalog()).toEqual(kernelDisplayCatalog());
+        expect(kernelCatalog().options[0]).toMatchObject({
+            id: 'compat',
+            label: NATIVE_KERNEL_LABEL,
+            available: true,
+        });
+        expect(kernelCatalog().riskVersion).toBe(COMPAT_RISK_VERSION);
+        expect(kernelCatalog().riskVersion).toBe('compat-risk-1');
+        expect(kernelCatalog().riskText).toContain(NATIVE_KERNEL_LABEL);
+    });
 });
 
 describe('KernelPolicyStore', () => {

@@ -1,25 +1,12 @@
+import { COMPAT_RISK_VERSION, kernelDisplayCatalog } from '@nowluma/common/kernel-display';
 import { isRealUin } from '@nowluma/common/uin';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const COMPAT_RISK_VERSION = 'compat-risk-1';
-export const COMPAT_RISK_TEXT =
-    '兼容内核使用随包提供的原生组件，可能存在账号、数据安全与法律风险。请阅读相关说明，由用户主动确认使用与法律风险；确认不免除依法不可免除的责任，也不改变 GPL 源码许可。';
+export { COMPAT_RISK_VERSION };
 
 export function kernelCatalog() {
-    return {
-        options: [
-            { id: 'compat', label: '兼容内核', available: true, reason: '' },
-            {
-                id: 'rewrite',
-                label: '重写内核',
-                available: false,
-                reason: '当前平台的重写内核尚未验证，暂不可使用',
-            },
-        ],
-        riskVersion: COMPAT_RISK_VERSION,
-        riskText: COMPAT_RISK_TEXT,
-    };
+    return kernelDisplayCatalog();
 }
 
 export interface KernelSelection {

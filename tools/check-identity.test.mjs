@@ -122,6 +122,43 @@ test('allows the documented native socket ABI exception only', () => {
   );
 });
 
+test('allows the one native source display label declaration in its owner file', () => {
+  const owner = 'packages/common/src/kernel-display.ts';
+  const declaration = `export const NATIVE_KERNEL_LABEL = '${fullName} 内核';`;
+  assert.doesNotThrow(() =>
+    checkIdentity(options({ files: [owner], readFile: () => Buffer.from(`${declaration}\n`) })),
+  );
+
+  for (const [file, text] of [
+    // the same literal outside the owner file is a private re-introduction
+    ['packages/core/src/kernel-policy.ts', declaration],
+    ['packages/webui/src/components/kernel-choice.tsx', declaration],
+    // prose in the owner file is not covered by the exception
+    [owner, `// ${fullName} provided the native components`],
+    // neither is a different literal around the name
+    [owner, `export const NATIVE_KERNEL_LABEL = '${fullName}';`],
+    // nor a second copy of the allowed declaration
+    [owner, `${declaration}\n${declaration}\n`],
+  ]) {
+    assert.throws(
+      () => checkIdentity(options({ files: [file], readFile: () => Buffer.from(text) })),
+      /old text identity/,
+      `${file} must still be rejected`,
+    );
+  }
+});
+
+test('keeps the real native source owner to one footer-derived label', () => {
+  const owner = 'packages/common/src/kernel-display.ts';
+  const source = readFileSync(new URL(`../${owner}`, import.meta.url), 'utf8');
+  assert.equal(source.split(fullName).length - 1, 1, 'the name may appear exactly once');
+  assert.ok(
+    source.includes(`export const NATIVE_KERNEL_LABEL = '${fullName} 内核';`),
+    'the label must be the exact footer-derived declaration',
+  );
+  assert.doesNotThrow(() => checkIdentity());
+});
+
 test('skips binary files without inspecting their contents', () => {
   assert.doesNotThrow(() =>
     checkIdentity(

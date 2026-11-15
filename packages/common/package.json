@@ -108,6 +108,10 @@
       "types": "./src/uin.ts",
       "default": "./src/uin.ts"
     },
+    "./kernel-display": {
+      "types": "./src/kernel-display.ts",
+      "default": "./src/kernel-display.ts"
+    },
     "./access-token": {
       "types": "./src/access-token.ts",
       "default": "./src/access-token.ts"

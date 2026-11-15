@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FormEvent, ReactElement } from 'react';
+import { kernelDisplayCatalog, NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
 import {
     KernelCatalogPreview,
     KernelChoiceDialog,
@@ -46,13 +47,28 @@ function formCallbacks(
 }
 
 describe('KernelChoiceForm', () => {
+    it('keeps the DEMO catalog identical to the shared display catalog', () => {
+        expect(demoKernelCatalog()).toEqual(kernelDisplayCatalog());
+        expect(demoKernelCatalog().riskVersion).toBe('compat-risk-1');
+    });
+
+    it('shows the shared native source name in the compat option, risk text and acknowledgment', () => {
+        const html = renderToStaticMarkup(
+            <KernelChoiceForm uin="10001" catalog={catalog} onConfirm={vi.fn()} />,
+        );
+        expect(NATIVE_KERNEL_LABEL).not.toBe('兼容内核');
+        expect(html).toContain(NATIVE_KERNEL_LABEL);
+        expect(html).toContain(catalog.riskText);
+        expect(html).toContain(`我已阅读并主动确认此账号的${NATIVE_KERNEL_LABEL}使用与法律风险`);
+    });
+
     it('starts unselected and unchecked, names the real account/risk version and disables rewrite', () => {
         const onConfirm = vi.fn();
         const html = renderToStaticMarkup(
             <KernelChoiceForm uin="10001" catalog={catalog} onConfirm={onConfirm} />,
         );
         expect(html).toContain('选择接入内核');
-        expect(html).toContain('兼容内核');
+        expect(html).toContain(NATIVE_KERNEL_LABEL);
         expect(html).toContain('重写内核');
         expect(html).toContain('暂不可用');
         expect(html).toContain(`风险说明版本 ${catalog.riskVersion} · 仅对 QQ 10001 生效`);

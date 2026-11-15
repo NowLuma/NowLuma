@@ -77,5 +77,5 @@ pnpm exec prettier --write <修改的文件>
 尚未配置 npm、Docker Hub 或跨仓库自动发布；源码中的 SDK/UI/MCP 包可在工作区构建，不能把 npm 示例理解为已经发布的版本。
 公开分发遵循 LICENSE（GNU GPLv3，GPL-3.0-only）与 LICENSING.md；GPL 源码可自由使用、修改和分发（含商业用途），无需另行授权。EULA.md 是使用说明，PRIVACY.md 说明数据处理，二者都不构成 GPL 之外的许可条件。
 贡献代码按仓库的 GPL-3.0-only 许可发布；请只提交你有权授权的代码，并在分发时保留许可与版权声明、标注修改。
-根 README 末尾保留唯一的上游项目归属行，`tools/check-identity.mjs` 会从该行推导旧名称并检查全仓库；不要在其他文件、文件名或拆分字符串中重新引入旧品牌名。
+根 README 末尾保留唯一的上游项目归属行，`tools/check-identity.mjs` 会从该行推导旧名称并检查全仓库；唯一例外是 `packages/common/src/kernel-display.ts` 中兼容内核的显示名（该内核运行上游提供的原生组件，产品名仍为 Nowluma），检查器只放行这一条由归属行推导出的确切声明；不要在其他文件、文件名、说明文字或拆分字符串中重新引入旧品牌名。
 第三方组件继续受其各自许可证约束，随包原生组件适用 LICENSING.md 记录的条款；不要移除或追溯改写任何第三方、上游或贡献者的版权、归属与历史记录。

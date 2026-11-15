@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
 import { isRealUin } from '@nowluma/common/uin';
 import { Dropdown } from '@/components/interior/dropdown';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
@@ -248,7 +249,8 @@ export function KernelOnboardingStep({ replay }: { replay: boolean }) {
                                                 <div className="space-y-4">
                                                     <KernelCatalogPreview catalog={catalog} />
                                                     <p className="text-sm">
-                                                        QQ {selectedUin} 已保存兼容内核选择。
+                                                        QQ {selectedUin} 已保存{' '}
+                                                        {NATIVE_KERNEL_LABEL}选择。
                                                     </p>
                                                     <Button
                                                         type="button"

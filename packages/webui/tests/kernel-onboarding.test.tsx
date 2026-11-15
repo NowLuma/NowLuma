@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
 import App from '../src/App';
 import { KernelOnboardingStep } from '../src/components/kernel-onboarding-step';
 import { KernelChoiceForm } from '../src/components/kernel-choice';
@@ -290,6 +291,13 @@ describe('KernelOnboardingStep account choice', () => {
             ),
         );
         expect(form()).toBeUndefined();
+        expect(
+            elements(step()).some(
+                (element) =>
+                    Array.isArray(element.props.children) &&
+                    element.props.children.includes(NATIVE_KERNEL_LABEL),
+            ),
+        ).toBe(true);
         expect(mocks.api.kernel.save).not.toHaveBeenCalled();
     });
 
