@@ -1,20 +1,22 @@
 import {
     ArrowDown,
     ArrowUp,
-    Bug,
+    Cable,
     Check,
     Eye,
     EyeOff,
+    FlaskConical,
     GripVertical,
-    LayoutDashboard,
     Lock,
+    MessageCircle,
+    PanelsTopLeft,
     Pin,
     PinOff,
-    PlugZap,
+    ScrollText,
     Settings,
     Sparkles,
     SlidersHorizontal,
-    Terminal,
+    type LucideIcon,
 } from 'lucide-react';
 import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link, useRouterState } from '@tanstack/react-router';
@@ -31,17 +33,22 @@ import type { UiLayoutItem } from '@/types';
 export interface NavItem {
     to: AppPath;
     label: string;
-    icon: typeof LayoutDashboard;
+    icon: LucideIcon;
     description: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-    { to: '/', label: '总览', icon: LayoutDashboard, description: '主机与服务状态' },
-    { to: '/processes', label: 'QQ 连接', icon: PlugZap, description: '连接 / 断开 / 登录' },
-    { to: '/config', label: '节点配置', icon: Settings, description: 'OneBot 协议端点' },
-    { to: '/logs', label: '日志', icon: Terminal, description: '实时事件流' },
-    { to: '/debug', label: '调试', icon: Bug, description: '测试台与实时活动' },
-    { to: '/settings', label: '系统设置', icon: SlidersHorizontal, description: '主题与账号' },
+    { to: '/', label: '工作台', icon: PanelsTopLeft, description: '服务、会话与动态' },
+    { to: '/processes', label: 'QQ 会话', icon: MessageCircle, description: '接入 QQ 与完成登录' },
+    { to: '/config', label: '机器人连接', icon: Cable, description: '配置机器人端点' },
+    { to: '/logs', label: '运行记录', icon: ScrollText, description: '查看实时运行事件' },
+    { to: '/debug', label: '调试工具', icon: FlaskConical, description: '测试动作与排查' },
+    {
+        to: '/settings',
+        label: '偏好设置',
+        icon: SlidersHorizontal,
+        description: '外观、账号与设备',
+    },
 ];
 
 // These routes keep the layout editor and account settings reachable.
@@ -150,6 +157,7 @@ export function NavigationDock() {
     const { appearance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const { orderedNav } = useNavigationItems();
+    const activeIndex = orderedNav.findIndex((item) => item.to === pathname);
 
     return (
         <div className="workspace-dock-anchor">
@@ -159,33 +167,40 @@ export function NavigationDock() {
                     data-ui-surface="chrome"
                     data-labels-pinned={appearance.sidebarPinned}
                     className="ui-glass workspace-dock"
-                    style={{ gridTemplateColumns: `repeat(${orderedNav.length}, minmax(0, 1fr))` }}
                 >
                     <GlassMaterial />
-                    {orderedNav.map(({ to, label, icon: Icon, description }) => {
-                        const active = pathname === to;
-                        return (
+                    <div
+                        className="workspace-dock-track"
+                        style={{
+                            gridTemplateColumns: `repeat(${orderedNav.length}, minmax(0, 1fr))`,
+                        }}
+                    >
+                        <motion.div
+                            aria-hidden="true"
+                            initial={false}
+                            animate={{
+                                x: `${Math.max(0, activeIndex) * 100}%`,
+                                opacity: activeIndex < 0 ? 0 : 1,
+                            }}
+                            transition={
+                                reduced
+                                    ? { duration: 0 }
+                                    : { type: 'spring', duration: 0.42, bounce: 0.24 }
+                            }
+                            style={{ width: `${100 / orderedNav.length}%` }}
+                            className="workspace-dock-marker"
+                        >
+                            <span className="ui-nav-highlight workspace-dock-active" />
+                        </motion.div>
+                        {orderedNav.map(({ to, label, icon: Icon, description }) => (
                             <Link
                                 key={to}
                                 to={to}
                                 title={description}
-                                aria-current={active ? 'page' : undefined}
+                                aria-current={pathname === to ? 'page' : undefined}
                                 className="ui-nav-item workspace-dock-link"
                                 data-press-scale=""
                             >
-                                {active && (
-                                    <motion.span
-                                        layoutId={
-                                            reduced ? undefined : 'workspace-active-navigation'
-                                        }
-                                        className="ui-nav-highlight workspace-dock-active"
-                                        transition={
-                                            reduced
-                                                ? { duration: 0 }
-                                                : { type: 'spring', duration: 0.42, bounce: 0.18 }
-                                        }
-                                    />
-                                )}
                                 <Icon className="workspace-dock-icon size-4" />
                                 <span className="workspace-dock-copy">
                                     <span className="workspace-dock-label">{label}</span>
@@ -194,8 +209,8 @@ export function NavigationDock() {
                                     </span>
                                 </span>
                             </Link>
-                        );
-                    })}
+                        ))}
+                    </div>
                 </nav>
             </div>
         </div>

@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
     connections: [] as AccountConnections[],
     ready: { processList: true, qqList: true, connections: true },
     errors: { processList: '', qqList: '', connections: '' },
+    pendingOp: null as 'load' | 'unload' | 'refresh' | null,
 }));
 
 vi.mock('@/contexts/AppStateContext', () => ({
@@ -17,7 +18,10 @@ vi.mock('@/contexts/AppStateContext', () => ({
         qqList: state.qqList,
         connections: state.connections,
         resources: {
-            processList: { ready: state.ready.processList, error: state.errors.processList || null },
+            processList: {
+                ready: state.ready.processList,
+                error: state.errors.processList || null,
+            },
             qqList: { ready: state.ready.qqList, error: state.errors.qqList || null },
             connections: {
                 ready: state.ready.connections,
@@ -25,7 +29,7 @@ vi.mock('@/contexts/AppStateContext', () => ({
             },
         },
         processOps: {
-            statusOf: () => null,
+            statusOf: () => state.pendingOp,
             banner: '',
             load: vi.fn(),
             unload: vi.fn(),
@@ -45,9 +49,7 @@ vi.mock('@/contexts/ThemeContext', () => ({
 vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
 vi.mock('@/components/interior/modal', () => ({ Modal: () => null }));
 
-const { GettingStartedPanel } = await import(
-    '../src/components/overview/getting-started-panel'
-);
+const { GettingStartedPanel } = await import('../src/components/overview/getting-started-panel');
 
 function proc(over: Partial<HookProcessInfo> = {}): HookProcessInfo {
     return {
@@ -81,6 +83,7 @@ function reset() {
     state.connections = [];
     state.ready = { processList: true, qqList: true, connections: true };
     state.errors = { processList: '', qqList: '', connections: '' };
+    state.pendingOp = null;
 }
 
 function render(): string {
@@ -88,6 +91,20 @@ function render(): string {
 }
 
 describe('GettingStartedPanel', () => {
+    it('releases the reserved title box after reading so wrapped headings cannot be clipped', () => {
+        reset();
+        state.processList = [proc()];
+        state.qqList = [{ uin: '10001', nickname: '测试' }];
+        state.connections = [conn()];
+        const html = render();
+        expect(html).toMatch(/aria-label="下一步提示"[^>]*class="[^"]*skeleton-swap-fluid/);
+        expect(html).not.toContain('height:20px');
+        expect(html).toContain('<h3');
+        reset();
+        state.ready = { processList: false, qqList: false, connections: false };
+        expect(render()).not.toContain('skeleton-swap-fluid');
+    });
+
     it('ready 状态显示已完成的一句话与说明入口', () => {
         reset();
         state.processList = [proc()];
@@ -95,9 +112,14 @@ describe('GettingStartedPanel', () => {
         state.connections = [conn()];
 
         const html = render();
-        expect(html).toContain('接下来做什么');
-        expect(html).toContain('QQ 已经接好了');
-        expect(html).toContain('看看说明');
+        expect(html).toContain('连接进度');
+        expect(html).toContain('QQ 与机器人连接已就绪');
+        expect(html).toContain('连接说明');
+        expect(html).toContain('aria-label="连接路径"');
+
+        for (const stage of ['登录 QQ', '接入会话', '连接机器人']) {
+            expect(html).toContain(stage);
+        }
     });
 
     it('未读完时不把空列表当成「没打开 QQ」', () => {
@@ -132,6 +154,7 @@ describe('GettingStartedPanel', () => {
         state.processList = [proc({ status: 'available', injected: false })];
 
         const html = render();
+
         for (const term of ['注入', '管道', 'OneBot']) {
             expect(html).not.toContain(term);
         }
@@ -142,16 +165,18 @@ describe('GettingStartedPanel', () => {
         state.processList = [proc({ pid: 100 }), proc({ pid: 200 })];
 
         const html = render();
-        expect(html).toContain('选一个 QQ');
-        expect(html).not.toContain('连接这个 QQ');
+        expect(html).toContain('选择 QQ');
+        expect(html).not.toContain('QQ 已找到，接入这个会话');
     });
 
-    it('操作进行中时主按钮禁用并显示进行中文案', () => {
+    it('only enables attachment for the selected available session and disables it during an operation', () => {
         reset();
         state.processList = [proc({ status: 'available', injected: false })];
-
-        // statusOf 未返回操作时按钮可用；这里只确认文案存在。
+        expect(render()).toContain('接入会话');
+        state.pendingOp = 'load';
         const html = render();
-        expect(html).toContain('连接这个 QQ');
+        expect(html).toContain('正在处理 QQ 会话');
+        expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?处理中/);
+        expect(html).not.toContain('QQ 已找到，接入这个会话');
     });
 });

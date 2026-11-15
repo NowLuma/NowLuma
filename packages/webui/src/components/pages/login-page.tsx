@@ -185,7 +185,7 @@ export function LoginPage({
                             key={useRecovery ? 'recovery' : 'totp'}
                             ref={otpRef}
                             autoFocus
-                            className="w-full"
+                            className={cn('w-full', useRecovery && 'workspace-recovery-code')}
                             length={useRecovery ? 8 : 6}
                             mode={useRecovery ? 'alphanumeric' : 'numeric'}
                             groupEvery={useRecovery ? 4 : 3}
@@ -254,7 +254,10 @@ export function LoginPage({
                 </>
             ) : (
                 <>
-                    <LoginBrand title="登录控制台" subtitle="输入访问密码，继续管理你的连接。" />
+                    <LoginBrand
+                        title="进入工作台"
+                        subtitle="使用访问密码，继续管理 QQ 与机器人连接。"
+                    />
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
                         <label htmlFor="login-password" className="text-sm font-medium">
                             访问密码
@@ -270,7 +273,7 @@ export function LoginPage({
                                 id="login-password"
                                 name="password"
                                 type={showPwd ? 'text' : 'password'}
-                                placeholder="输入访问令牌"
+                                placeholder="输入访问密码"
                                 aria-label="访问密码"
                                 aria-invalid={!!error}
                                 aria-describedby={error ? 'login-error' : undefined}
@@ -283,7 +286,7 @@ export function LoginPage({
                             <button
                                 type="button"
                                 onClick={() => setShowPwd((v) => !v)}
-                                className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label={showPwd ? '隐藏密码' : '显示密码'}
                             >
                                 <PasswordVisibilityIcon visible={showPwd} reduceMotion={reduce} />
@@ -311,7 +314,7 @@ export function LoginPage({
                                 '验证中…'
                             ) : (
                                 <>
-                                    进入控制台 <ArrowRight className="optical-forward size-4" />
+                                    打开工作台 <ArrowRight className="optical-forward size-4" />
                                 </>
                             )}
                         </Button>
@@ -360,7 +363,9 @@ function LoginShell({
                     <span>{APP_NAME}</span>
                     <span className="workspace-auth-version">v{APP_VERSION}</span>
                 </div>
-                <ThemeToggle />
+                <div className="workspace-toolbar-scene">
+                    <ThemeToggle />
+                </div>
             </header>
             <div className={cn('workspace-auth-content', wide && 'workspace-auth-content-wide')}>
                 <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
@@ -372,14 +377,20 @@ function LoginShell({
                         </div>
                     </div>
                     <div className="workspace-auth-introduction">
-                        <p className="workspace-eyebrow">你的连接，井然有序</p>
-                        <p className="workspace-auth-statement">从一次连接开始。</p>
+                        <p className="workspace-eyebrow">QQ 与机器人，由此连接</p>
+                        <p className="workspace-auth-statement">
+                            让每一次连接，
+                            <br />
+                            清晰可见。
+                        </p>
                     </div>
                 </aside>
                 <motion.div
                     initial={reduce ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={reduce ? { duration: 0 } : { duration: 0.2 }}
+                    transition={
+                        reduce ? { duration: 0 } : { type: 'spring', duration: 0.42, bounce: 0.1 }
+                    }
                     className={cn('workspace-auth-document', wide ? 'max-w-2xl' : 'max-w-md')}
                 >
                     <section className="workspace-auth-form" aria-label="登录">

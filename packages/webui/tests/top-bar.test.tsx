@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import type { useDropdown } from '../src/components/interior/dropdown';
+import type { ConfirmDialog } from '../src/components/confirm-dialog';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MotionConfig } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,6 +18,10 @@ const state = vi.hoisted(() => ({
     mode: 'light',
     managedBy: null as string | null,
     menuOpen: false,
+    sessionMenu: null as ReturnType<typeof useDropdown> | null,
+    confirm: null as ComponentProps<typeof ConfirmDialog> | null,
+    enterKiosk: vi.fn(),
+    onLogout: vi.fn(),
     setMode: vi.fn(),
     setAppearance: vi.fn(),
     setNavItems: vi.fn(),
@@ -74,15 +80,37 @@ vi.mock('@/contexts/ThemeContext', () => ({
     }),
     paletteResolved: (palette: string) => (palette === 'default' ? null : 'dark'),
 }));
+vi.mock('@/components/interior/dropdown', async (original) => {
+    const actual = await original<typeof import('../src/components/interior/dropdown')>();
+    return {
+        ...actual,
+        useDropdown: (options: Parameters<typeof useDropdown>[0]) => {
+            const dropdown = actual.useDropdown(options);
+
+            if (options.items.some((item) => item.value === 'logout')) {
+                state.sessionMenu = dropdown;
+                return { ...dropdown, open: state.menuOpen };
+            }
+
+            return dropdown;
+        },
+    };
+});
 vi.mock('@/contexts/AppStateContext', () => ({ useAppState: () => ({ updateInfo: null }) }));
-vi.mock('@/contexts/KioskContext', () => ({ useKiosk: () => ({ enter: vi.fn() }) }));
+vi.mock('@/contexts/KioskContext', () => ({ useKiosk: () => ({ enter: state.enterKiosk }) }));
 vi.mock('@/hooks/use-media-query', () => ({
     useDesktopSidebar: () => true,
     useMediaQuery: () => true,
 }));
-vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
+vi.mock('@/components/confirm-dialog', () => ({
+    ConfirmDialog: (props: ComponentProps<typeof ConfirmDialog>) => {
+        state.confirm = props;
+        return null;
+    },
+}));
 
-beforeEach(() =>
+beforeEach(() => {
+    vi.clearAllMocks();
     Object.assign(state, {
         pathname: '/',
         navItems: [],
@@ -93,8 +121,10 @@ beforeEach(() =>
         mode: 'light',
         managedBy: null,
         menuOpen: false,
-    }),
-);
+        sessionMenu: null,
+        confirm: null,
+    });
+});
 
 function topbar(mobileOpen = false) {
     return renderToStaticMarkup(
@@ -103,7 +133,7 @@ function topbar(mobileOpen = false) {
                 status="已连接"
                 mobileOpen={mobileOpen}
                 onMobileOpenChange={vi.fn()}
-                onLogout={vi.fn()}
+                onLogout={state.onLogout}
             />
         </MotionConfig>,
     );
@@ -119,6 +149,15 @@ describe('workspace navigation and masthead', () => {
             '/logs',
             '/debug',
             '/settings',
+        ]);
+
+        expect(NAV_ITEMS.map((item) => item.label)).toEqual([
+            '工作台',
+            'QQ 会话',
+            '机器人连接',
+            '运行记录',
+            '调试工具',
+            '偏好设置',
         ]);
 
         for (const item of NAV_ITEMS) {
@@ -151,21 +190,51 @@ describe('workspace navigation and masthead', () => {
         expect(editing).toContain('完成');
     });
 
-    it('preserves controlled menu semantics, a compact theme trigger, kiosk and logout', () => {
+    it('separates page navigation, theme choices and session actions with distinct icons', () => {
         const opened = topbar(true);
-        expect(opened).toContain('aria-label="关闭菜单"');
+        expect(opened).toContain('aria-label="收起导航"');
         expect(opened).toContain('aria-expanded="true"');
+        expect(topbar()).toContain('aria-label="页面导航"');
         expect(topbar()).toContain('aria-expanded="false"');
-
-        for (const label of ['已连接', '切换主题：浅色', '展示模式', '登出']) {
-            expect(opened).toContain(label);
-        }
-
+        expect(opened).toContain('已连接');
+        expect(opened).toContain('切换主题：浅色');
+        expect(opened).toContain('aria-label="会话操作"');
+        expect(opened).toContain('aria-haspopup="menu"');
         expect(opened).toContain('aria-haspopup="listbox"');
+        expect(opened).toContain('lucide-palette');
+        expect(opened).toContain('lucide-ellipsis');
+        expect(opened).not.toContain('lucide-monitor');
         expect(opened.match(/workspace-theme-trigger/g)).toHaveLength(1);
         expect(opened).not.toContain('theme-toggle-pill');
         expect(opened).not.toContain('ui-line-field');
-        expect(opened).not.toContain('max-[379px]:hidden');
+        state.menuOpen = true;
+        const actions = topbar();
+        expect(actions).toContain('role="menu"');
+        expect(actions.match(/role="menuitem"/g)).toHaveLength(2);
+        expect(actions).toContain('展示模式');
+        expect(actions).toContain('退出登录');
+        expect(actions).toContain('lucide-expand');
+    });
+
+    it('keeps kiosk immediate and logout behind the existing destructive confirmation', async () => {
+        topbar();
+        const menu = state.sessionMenu;
+
+        if (!menu || !state.confirm) {
+            throw new Error('Session controls were not rendered');
+        }
+
+        const focus = vi.fn();
+        menu.triggerProps.ref.current = { focus } as unknown as HTMLButtonElement;
+        menu.getItemProps(0).onClick();
+        expect(state.enterKiosk).toHaveBeenCalledOnce();
+        menu.getItemProps(1).onClick();
+        expect(state.onLogout).not.toHaveBeenCalled();
+        expect(focus).toHaveBeenCalledTimes(2);
+        expect(state.confirm.title).toBe('退出登录？');
+        expect(state.confirm.destructive).toBe(true);
+        await state.confirm.onConfirm();
+        expect(state.onLogout).toHaveBeenCalledOnce();
     });
 
     it('keeps visible route labels and a single active destination in the persistent dock', () => {
@@ -173,6 +242,8 @@ describe('workspace navigation and masthead', () => {
         const markup = renderToStaticMarkup(<NavigationDock />);
         expect(markup).toContain('aria-label="主导航"');
         expect(markup).toContain('data-glass-renderer="frosted"');
+        expect(markup.match(/workspace-dock-marker/g)).toHaveLength(1);
+        expect(markup).toContain('workspace-dock-track');
         expect(markup).not.toContain('data-collapsed');
         expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
         expect(markup).toMatch(/href="\/config"[^>]*aria-current="page"/);
@@ -204,10 +275,10 @@ describe('workspace navigation and masthead', () => {
 
         state.editing = true;
         const editor = renderToStaticMarkup(<Sidebar />);
-        expect(editor).toContain('aria-label="上移总览"');
-        expect(editor).toContain('aria-label="下移总览"');
-        expect(editor).toContain('aria-label="显示日志"');
-        expect(editor).not.toContain('aria-label="隐藏总览"');
+        expect(editor).toContain('aria-label="上移工作台"');
+        expect(editor).toContain('aria-label="下移工作台"');
+        expect(editor).toContain('aria-label="显示运行记录"');
+        expect(editor).not.toContain('aria-label="隐藏工作台"');
         expect(editor).toContain('必选项，不可隐藏');
     });
 
@@ -239,12 +310,14 @@ describe('workspace navigation and masthead', () => {
 
     it('honours hidden chrome controls while keeping logout and the navigation menu', () => {
         state.topbarItems = ['status', 'theme', 'kiosk'].map((id) => ({ id, visible: false }));
+        state.menuOpen = true;
         const hidden = topbar();
-        expect(hidden).toContain('aria-label="登出"');
+        expect(hidden).toContain('退出登录');
+        expect(hidden).toContain('aria-label="会话操作"');
         expect(hidden).not.toContain('已连接');
-        expect(hidden).not.toContain('aria-label="展示模式"');
+        expect(hidden).not.toContain('展示模式');
         expect(hidden).not.toContain('workspace-theme-trigger');
-        expect(hidden).toContain('aria-label="打开菜单"');
+        expect(hidden).toContain('aria-label="页面导航"');
         expect(hidden).not.toContain('ui-line-field');
         state.topbarItems = [];
         state.palette = 'catppuccin-mocha';

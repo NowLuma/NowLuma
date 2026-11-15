@@ -278,7 +278,7 @@ describe('nextStep — 连接设置', () => {
         expect(step.id).toBe('ready');
         expect(step.done).toBe(true);
         expect(step.title).not.toContain('机器人已连接');
-        expect(step.hint).toContain('取决于');
+        expect(step.hint).toContain('回复行为由你的机器人程序决定');
     });
 
     it('历史消息整理失败但账号可用时不阻塞', () => {

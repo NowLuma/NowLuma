@@ -1,5 +1,5 @@
 import { useDropdown } from '@/components/interior/dropdown';
-import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Palette, Sun } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { GlassMaterial } from '@/components/ui/glass-material';
 import { paletteResolved, useTheme, type ThemeMode } from '@/contexts/ThemeContext';
@@ -21,7 +21,6 @@ export function ThemeToggle({ className }: { className?: string }) {
         onChange: (value) => setMode(value as ThemeMode),
     });
     const selected = OPTIONS.find((option) => option.value === mode) ?? OPTIONS[0];
-    const Icon = selected.icon;
 
     if (managedBy || paletteResolved(appearance.palette)) {
         return null;
@@ -33,10 +32,11 @@ export function ThemeToggle({ className }: { className?: string }) {
                 {...triggerProps}
                 aria-label={`切换主题：${selected.label}`}
                 title={`主题：${selected.label}`}
-                className="workspace-icon-button workspace-theme-trigger"
+                className="ui-glass workspace-icon-button workspace-theme-trigger"
                 data-press-scale=""
             >
-                <Icon className="size-4" />
+                <GlassMaterial />
+                <Palette className="size-4" />
             </button>
             <AnimatePresence>
                 {open && (
@@ -44,11 +44,30 @@ export function ThemeToggle({ className }: { className?: string }) {
                         initial={reduced ? false : { opacity: 0, y: -4, scale: 0.97 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={reduced ? { duration: 0 } : { duration: 0.16 }}
+                        transition={
+                            reduced
+                                ? { duration: 0 }
+                                : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                        }
                         className="ui-glass ui-glass-menu workspace-theme-menu"
                     >
                         <GlassMaterial />
                         <ul {...listProps} aria-label="主题" className="workspace-theme-options">
+                            <motion.li
+                                aria-hidden="true"
+                                role="presentation"
+                                initial={false}
+                                animate={{
+                                    y: Math.max(0, activeIndex) * 44,
+                                    opacity: activeIndex < 0 ? 0 : 1,
+                                }}
+                                transition={
+                                    reduced
+                                        ? { duration: 0 }
+                                        : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                }
+                                className="workspace-theme-active"
+                            />
                             {OPTIONS.map(({ value, label, icon: OptionIcon }, index) => (
                                 <li
                                     key={value}

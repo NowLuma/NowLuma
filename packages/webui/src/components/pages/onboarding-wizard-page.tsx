@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, ScrollText, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 import type { AgreementDoc } from '@/lib/api/types';
 import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME } from '@/types';
+import { useTheme } from '@/contexts/ThemeContext';
 import '@/styles/workspace.css';
 
 export interface AdditionalOnboardingStep {
@@ -71,6 +73,8 @@ export function OnboardingWizardPage({
     onComplete,
     additionalSteps = [],
 }: OnboardingWizardPageProps) {
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const [requiredStepIds] = useState(() =>
         buildRequiredOnboardingStepIds({
             needsConsent,
@@ -161,20 +165,24 @@ export function OnboardingWizardPage({
                     <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
                     <span>{APP_NAME}</span>
                 </div>
-                <ThemeToggle />
+                <div className="workspace-toolbar-scene">
+                    <ThemeToggle />
+                </div>
             </header>
             <div className="workspace-onboarding-layout">
                 <aside className="workspace-onboarding-identity" aria-label="首次使用设置">
                     <div className="workspace-auth-artwork">
-                        <LineField />
+                        <LineField animated={!reduced} />
                         <div className="workspace-auth-artwork-caption">
                             <span>{APP_NAME}</span>
                             <span>开始连接</span>
                         </div>
                     </div>
-                    <p className="workspace-eyebrow mt-6">准备就绪，再出发</p>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        阅读使用说明，设置密码，然后开始管理你的连接。
+                    <p className="workspace-eyebrow mt-6">从这里开始</p>
+                    <p className="workspace-auth-statement">
+                        连接之前，
+                        <br />
+                        准备就绪。
                     </p>
                 </aside>
                 <main className="workspace-onboarding-document">

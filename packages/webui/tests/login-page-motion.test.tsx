@@ -111,7 +111,7 @@ describe('LoginPage line-field preference', () => {
         expect(markup).toContain('aria-label="访问密码"');
         expect(markup).toContain('autoComplete="current-password"');
         expect(markup).toContain('aria-label="显示密码"');
-        expect(markup).toContain('进入控制台');
+        expect(markup).toContain('打开工作台');
         expect(markup).toContain('我觉得这个界面很卡怎么办');
         expect(markup).not.toContain('login-waves');
         expect(markup).not.toContain('backdrop-blur-2xl');

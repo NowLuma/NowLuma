@@ -46,10 +46,13 @@ export function DeliveriesWidget() {
     }, [api]);
 
     return (
-        <Card className="flex h-full flex-col">
-            <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-                <CardTitle className="flex items-center gap-2">
-                    <Bell className="size-4 text-primary" /> 最近投递
+        <Card className="workspace-panel workspace-deliveries-panel">
+            <CardHeader className="workspace-panel-heading">
+                <CardTitle>
+                    <h4 className="flex items-center gap-2">
+                        <Bell className="size-4" />
+                        通知投递
+                    </h4>
                 </CardTitle>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-auto">
@@ -58,7 +61,7 @@ export function DeliveriesWidget() {
                     reserve={120}
                     lines={5}
                     lineHeight={24}
-                    label="最近投递"
+                    label="通知投递"
                     className={records !== null ? 'skeleton-swap-fluid min-h-[120px]' : ''}
                 >
                     {records !== null ? (
@@ -85,10 +88,7 @@ export function DeliveriesWidget() {
                                     </p>
                                 )}
                                 {records.map((r, i) => (
-                                    <div
-                                        key={i}
-                                        className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent/30"
-                                    >
+                                    <div key={i} className="workspace-delivery-row">
                                         {r.ok ? (
                                             <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
                                         ) : (
@@ -101,8 +101,8 @@ export function DeliveriesWidget() {
                                             className={cn(
                                                 'shrink-0 font-medium',
                                                 r.event === 'online'
-                                                    ? 'text-emerald-600'
-                                                    : 'text-amber-600',
+                                                    ? 'text-success'
+                                                    : 'text-warning-foreground',
                                             )}
                                         >
                                             {r.event === 'online' ? '上线' : '下线'}

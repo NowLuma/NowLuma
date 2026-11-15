@@ -1,8 +1,4 @@
-// 首页「接下来做什么」面板。
-//
-// 只消费 AppStateContext 已有的数据 + 面板自己的选择，新增零个后端接口。
-// 位置固定在首次使用提示条那里：它不属于可编辑网格部件，所以隐藏所有卡片后
-// 引导仍然在（这是首用必须能看见的东西）。
+// The workflow stays outside the editable grid and uses only existing account resources.
 import { useMemo, useState } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { Link } from '@tanstack/react-router';
@@ -11,8 +7,10 @@ import {
     ArrowRight,
     Check,
     ChevronRight,
+    Cable,
+    Laptop,
     Loader2,
-    PlugZap,
+    MessageCircle,
     RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -130,62 +128,80 @@ export function GettingStartedPanel() {
         <>
             <motion.section
                 aria-label="连接工作流"
-                initial={off ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: off ? 0 : 0.16 }}
+                initial={off ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={
+                    off ? { duration: 0 } : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                }
                 aria-busy={step.id === 'reading'}
+                data-ready={step.done}
                 className="workspace-connection-workflow"
             >
+                <div className="workspace-workflow-topline">
+                    <p className="workspace-eyebrow">连接进度</p>
+                    <ol aria-label="连接路径" className="workspace-connection-story">
+                        <li>
+                            <Laptop className="size-3.5" /> 登录 QQ
+                        </li>
+                        <li>
+                            <MessageCircle className="size-3.5" /> 接入会话
+                        </li>
+                        <li>
+                            <Cable className="size-3.5" /> 连接机器人
+                        </li>
+                    </ol>
+                </div>
                 <div className="workspace-workflow-layout">
-                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div className="workspace-workflow-message">
                         <div
                             className={cn(
                                 'workspace-workflow-icon',
-                                step.done
-                                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                    : 'bg-primary/15 text-primary',
+                                alertError
+                                    ? 'text-destructive'
+                                    : step.done
+                                      ? 'text-success'
+                                      : 'text-muted-foreground',
                             )}
                         >
-                            {step.done ? (
+                            {alertError ? (
+                                <AlertCircle className="size-5" />
+                            ) : step.done ? (
                                 <Check className="size-5" />
                             ) : busy ? (
                                 <Loader2 className="size-5 animate-spin" />
                             ) : (
-                                <PlugZap className="size-5" />
+                                <MessageCircle className="size-5" />
                             )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="workspace-eyebrow">接下来做什么</p>
+                        <motion.div
+                            key={step.id}
+                            className="min-w-0 flex-1"
+                            initial={off ? false : { opacity: 0.5, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={off ? { duration: 0 } : { duration: 0.24 }}
+                        >
                             <SkeletonSwap
                                 ready={step.id !== 'reading'}
-                                lines={1}
-                                lineHeight={20}
-                                reserve={20}
+                                lines={2}
+                                lineHeight={28}
+                                reserve={56}
                                 label="下一步提示"
+                                className={step.id !== 'reading' ? 'skeleton-swap-fluid' : ''}
                             >
-                                <h3 className="mt-2 text-lg font-medium leading-snug sm:text-xl">
-                                    {step.title}
-                                </h3>
+                                <h3 className="workspace-workflow-title">{step.title}</h3>
                             </SkeletonSwap>
-                            {step.hint && (
-                                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                                    {step.hint}
-                                </p>
-                            )}
+                            {step.hint && <p className="workspace-workflow-hint">{step.hint}</p>}
                             {alertError && (
                                 <p
                                     role="alert"
-                                    className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-destructive"
+                                    className="mt-2 whitespace-pre-line break-words text-xs leading-relaxed text-destructive"
                                 >
                                     {step.error}
                                 </p>
                             )}
-                        </div>
+                        </motion.div>
                     </div>
-
                     <div className="workspace-workflow-actions">
-                        <DesktopButton />
-
                         {step.action === 'open-config' ? (
                             <Button size="sm" asChild>
                                 <Link
@@ -193,7 +209,7 @@ export function GettingStartedPanel() {
                                     onClick={() => target?.loggedIn && setSelectedUin(target.uin)}
                                 >
                                     {step.actionLabel}
-                                    <ChevronRight className="size-3.5" />
+                                    <ArrowRight className="size-3.5" />
                                 </Link>
                             </Button>
                         ) : step.action ? (
@@ -217,6 +233,7 @@ export function GettingStartedPanel() {
                                 {step.actionLabel}
                             </Button>
                         )}
+                        <DesktopButton />
                     </div>
                 </div>
             </motion.section>
@@ -265,7 +282,7 @@ export function GettingStartedPanel() {
             <Modal
                 open={details !== null}
                 onClose={() => setDetails(null)}
-                title={details?.done ? '接好之后呢' : '这一步的原因'}
+                title={details?.done ? '连接说明' : '检查原因'}
                 description={details?.title}
             >
                 {details?.done ? (
@@ -276,7 +293,7 @@ export function GettingStartedPanel() {
                             —— 回复逻辑写在你的机器人程序里。
                         </p>
                         <p>
-                            如果你的程序还没连上来，去「配置」新建一个连接，把它给出的地址填进你的程序。
+                            如果你的程序还没连上来，去「机器人连接」添加连接，将地址填入机器人程序。
                         </p>
                         <p className="text-xs">
                             提示：连接状态显示正常，只说明服务在监听或已连上，不代表你的程序一定能收到消息。
@@ -287,7 +304,7 @@ export function GettingStartedPanel() {
                         role="alert"
                         className="whitespace-pre-line break-words rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
                     >
-                        {details?.error || '没有更多信息，请查看「日志」页。'}
+                        {details?.error || '没有更多信息，请查看「运行记录」。'}
                     </p>
                 )}
             </Modal>
@@ -295,13 +312,13 @@ export function GettingStartedPanel() {
             <ConfirmDialog
                 open={confirmLoad !== null}
                 onOpenChange={(open) => !open && setConfirmLoad(null)}
-                title="连接这个 QQ？"
+                title="接入这个 QQ 会话？"
                 description={
                     confirmLoad
                         ? `将把 PID ${confirmLoad.pid} 的 QQ 接到本程序，之后它会读取这个账号的消息。`
                         : ''
                 }
-                confirmText="连接"
+                confirmText="接入会话"
                 onConfirm={async () => {
                     if (confirmLoad) {
                         await processOps.load(confirmLoad.pid);
