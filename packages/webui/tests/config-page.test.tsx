@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigPage } from '../src/components/pages/config-page';
 import { AdapterRow } from '../src/components/config/adapter-row';
 import { GeneralSettingsTab } from '../src/components/config/general-settings-tab';
+import { NodeEditDialog } from '../src/components/config/node-edit-dialog';
 import { ConfirmDialog } from '../src/components/confirm-dialog';
 import { Button } from '../src/components/ui/button';
 import { normalizeOneBotConfig } from '../src/lib/onebot-config';
@@ -75,6 +76,20 @@ function view() {
 function rowProps() {
     return find(view(), (item) => item.type === AdapterRow).props as ComponentProps<
         typeof AdapterRow
+    >;
+}
+
+function selectTab(tab: 'general' | 'httpServers') {
+    const tabs = find(
+        page(),
+        (item) => typeof item.type === 'function' && item.type.name === 'TabStrip',
+    );
+    (tabs.props.onChange as (tab: string) => void)(tab);
+}
+
+function generalProps() {
+    return find(page(), (item) => item.type === GeneralSettingsTab).props as ComponentProps<
+        typeof GeneralSettingsTab
     >;
 }
 
@@ -205,6 +220,151 @@ describe('ConfigPage adapter changes', () => {
         vi.advanceTimersByTime(10_000);
         expect(state.api.config.save).toHaveBeenCalledOnce();
     });
+
+    it('blocks edits based on the displayed old adapters until their write settles', async () => {
+        const pending = Promise.withResolvers<ConfigSaveResult>();
+        state.api.config.save
+            .mockReturnValueOnce(pending.promise)
+            .mockImplementation((_uin, target: OneBotConfig) => Promise.resolve(response(target)));
+        selectTab('general');
+        const staleGeneral = generalProps();
+        selectTab('httpServers');
+        rowProps().onToggleEnabled(false);
+        const disabled = state.api.config.save.mock.calls[0][1] as OneBotConfig;
+        expect(disabled.networks.httpServers[0].enabled).toBe(false);
+        selectTab('general');
+        const displayed = generalProps();
+        expect(displayed.config.networks.httpServers[0].enabled).not.toBe(false);
+        displayed.onChange({ ...displayed.config, historySync: { enabled: true } });
+        const pendingTree = page();
+        pending.resolve(response(disabled));
+        await flush();
+        vi.advanceTimersByTime(500);
+        await flush();
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        const fieldset = find(
+            pendingTree,
+            (item) =>
+                item.type === 'fieldset' &&
+                elements(item.props.children as ReactNode).some(
+                    (child) => child.type === GeneralSettingsTab,
+                ),
+        );
+        expect(fieldset.props.disabled).toBe(true);
+        staleGeneral.onChange({ ...staleGeneral.config, historySync: { enabled: true } });
+        vi.advanceTimersByTime(500);
+        await flush();
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        const current = generalProps();
+        expect(current.config.networks.httpServers[0].enabled).toBe(false);
+        expect(current.config.historySync.enabled).toBe(false);
+        current.onChange({ ...current.config, historySync: { enabled: true } });
+        page();
+        vi.advanceTimersByTime(500);
+        await flush();
+        expect(state.api.config.save).toHaveBeenCalledTimes(2);
+        const next = state.api.config.save.mock.calls[1][1] as OneBotConfig;
+        expect(next.networks.httpServers[0].enabled).toBe(false);
+        expect(next.historySync.enabled).toBe(true);
+        expect(generalProps().config).toEqual(next);
+    });
+
+    it('ignores repeat writes from callbacks captured before an adapter mutation', async () => {
+        const pending = Promise.withResolvers<ConfigSaveResult>();
+        state.api.config.save.mockReturnValue(pending.promise);
+        const tree = page();
+        const editor = find(
+            tree,
+            (item) => typeof item.type === 'function' && item.type.name === 'EditorBar',
+        );
+        const network = find(
+            tree,
+            (item) => typeof item.type === 'function' && item.type.name === 'NetworkTabView',
+        );
+        const toggle = network.props.onToggleEnabled as (index: number, enabled: boolean) => void;
+        toggle(0, false);
+        (editor.props.onSave as () => void)();
+        toggle(0, true);
+        await flush();
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        const target = state.api.config.save.mock.calls[0][1] as OneBotConfig;
+        pending.resolve(response(target));
+        await flush();
+        (editor.props.onSave as () => void)();
+        toggle(0, true);
+        await flush();
+        vi.advanceTimersByTime(1000);
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        expect(rowProps().item.enabled).toBe(false);
+    });
+
+    it('keeps an open adapter editor pending when a queued general write starts first', async () => {
+        const pending = Promise.withResolvers<ConfigSaveResult>();
+        state.api.config.save.mockReturnValue(pending.promise);
+        selectTab('general');
+        const general = generalProps();
+        general.onChange({ ...general.config, historySync: { enabled: true } });
+        selectTab('httpServers');
+        rowProps().onEdit();
+        const dialog = find(page(), (item) => item.type === NodeEditDialog).props as ComponentProps<
+            typeof NodeEditDialog
+        >;
+        vi.advanceTimersByTime(500);
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        await expect(dialog.onSubmit({ ...dialog.initial, name: 'edited-server' })).rejects.toThrow(
+            '请重新确认修改',
+        );
+        expect(state.api.config.save).toHaveBeenCalledOnce();
+        expect(find(page(), (item) => item.type === NodeEditDialog).props.open).toBe(true);
+        const target = state.api.config.save.mock.calls[0][1] as OneBotConfig;
+        expect(target.historySync.enabled).toBe(true);
+        pending.resolve(response(target));
+        await flush();
+        expect(rowProps().item.name).toBe('server-a');
+    });
+
+    it.each([true, false])(
+        'preserves earlier queued general edits when an adapter write succeeds=%s',
+        async (succeeds) => {
+            const pending = Promise.withResolvers<ConfigSaveResult>();
+            state.api.config.save.mockReturnValue(pending.promise);
+            selectTab('general');
+            const general = generalProps();
+            general.onChange({ ...general.config, historySync: { enabled: true } });
+            selectTab('httpServers');
+            rowProps().onToggleEnabled(false);
+            const target = state.api.config.save.mock.calls[0][1] as OneBotConfig;
+            expect(target.historySync.enabled).toBe(true);
+            expect(target.networks.httpServers[0].enabled).toBe(false);
+            vi.advanceTimersByTime(500);
+            expect(state.api.config.save).toHaveBeenCalledOnce();
+
+            if (succeeds) {
+                pending.resolve(response(target));
+            } else {
+                pending.reject(new Error('写入结果未知'));
+            }
+
+            await flush();
+            selectTab('general');
+            const retained = generalProps().config;
+            expect(retained.historySync.enabled).toBe(true);
+            expect(retained.networks.httpServers[0].enabled).toBe(succeeds ? false : undefined);
+            const editor = find(
+                page(),
+                (item) => typeof item.type === 'function' && item.type.name === 'EditorBar',
+            );
+            expect(editor.props.dirty).toBe(!succeeds);
+
+            if (!succeeds) {
+                expect(editor.props.saveStatusTone).toBe('error');
+                expect(editor.props.saveStatus).toContain('写入结果未知');
+            }
+
+            vi.advanceTimersByTime(10_000);
+            expect(state.api.config.save).toHaveBeenCalledOnce();
+        },
+    );
 
     it('cancels a pending message-behavior debounce when account context changes', async () => {
         state.configTab = 'general';

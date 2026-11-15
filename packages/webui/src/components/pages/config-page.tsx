@@ -8,7 +8,7 @@
 // are debounced (500 ms). The editor surface reports unsaved state, save
 // results and load errors in place.
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, MousePointerClick, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -112,20 +112,43 @@ export function ConfigPage() {
     }, []);
     useEffect(() => cancelPendingSave, [selectedUin, cancelPendingSave]);
 
+    // Full-config callbacks must still belong to the displayed, editable snapshot.
+    const editContext = { config, selectedUin, saving: saveStatusTone === 'saving' };
+    const editContextRef = useRef<typeof editContext | null>(null);
+    useLayoutEffect(() => {
+        editContextRef.current = editContext;
+
+        return () => {
+            editContextRef.current = null;
+        };
+    });
+    const canEditConfig = () => editContextRef.current === editContext && !editContext.saving;
+
     // Only a new general-setting edit schedules a write; failed saves never retry themselves.
     const updateGeneralSettings = (next: OneBotConfig) => {
+        if (!canEditConfig()) {
+            return;
+        }
+
+        editContextRef.current = null;
         setConfig(next);
         cancelPendingSave();
         debounceRef.current = window.setTimeout(() => {
             debounceRef.current = null;
+            editContextRef.current = null;
             void save(next).catch(() => undefined);
         }, 500);
     };
 
-    const immediateSave = useCallback(() => {
+    const immediateSave = () => {
+        if (!canEditConfig()) {
+            return;
+        }
+
+        editContextRef.current = null;
         cancelPendingSave();
         void save().catch(() => undefined);
-    }, [save, cancelPendingSave]);
+    };
 
     async function commitKind<K extends NetworkKind>(
         kind: K,
@@ -135,6 +158,11 @@ export function ConfigPage() {
             throw new Error('账号配置尚未加载');
         }
 
+        if (!canEditConfig()) {
+            throw new Error('配置正在保存或已更新，请重新确认修改');
+        }
+
+        editContextRef.current = null;
         cancelPendingSave();
         const next = { ...config, networks: { ...config.networks, [kind]: nextList } };
         await save(next);
@@ -195,7 +223,7 @@ export function ConfigPage() {
     }
 
     const openCreate = (kind: NetworkKind) => {
-        if (!config) {
+        if (!config || !canEditConfig()) {
             return;
         }
 
@@ -206,7 +234,7 @@ export function ConfigPage() {
     };
 
     const openEdit = (kind: NetworkKind, index: number) => {
-        if (!config) {
+        if (!config || !canEditConfig()) {
             return;
         }
 
@@ -306,29 +334,36 @@ export function ConfigPage() {
                                             role="tabpanel"
                                             aria-labelledby={`config-tab-${activeTab}`}
                                         >
-                                            {activeTab === 'general' ? (
-                                                <GeneralSettingsTab
-                                                    config={config}
-                                                    onChange={updateGeneralSettings}
-                                                />
-                                            ) : (
-                                                <NetworkTabView
-                                                    kind={activeTab}
-                                                    config={config}
-                                                    statusByName={liveStatusByName}
-                                                    busy={saveStatusTone === 'saving'}
-                                                    onCreateClick={() => openCreate(activeTab)}
-                                                    onEdit={(idx) => openEdit(activeTab, idx)}
-                                                    onDelete={(idx) => handleDelete(activeTab, idx)}
-                                                    onToggleEnabled={(idx, v) =>
-                                                        void handleToggleEnabled(
-                                                            activeTab,
-                                                            idx,
-                                                            v,
-                                                        ).catch(() => undefined)
-                                                    }
-                                                />
-                                            )}
+                                            <fieldset
+                                                disabled={saveStatusTone === 'saving'}
+                                                className="min-w-0"
+                                            >
+                                                {activeTab === 'general' ? (
+                                                    <GeneralSettingsTab
+                                                        config={config}
+                                                        onChange={updateGeneralSettings}
+                                                    />
+                                                ) : (
+                                                    <NetworkTabView
+                                                        kind={activeTab}
+                                                        config={config}
+                                                        statusByName={liveStatusByName}
+                                                        busy={saveStatusTone === 'saving'}
+                                                        onCreateClick={() => openCreate(activeTab)}
+                                                        onEdit={(idx) => openEdit(activeTab, idx)}
+                                                        onDelete={(idx) =>
+                                                            handleDelete(activeTab, idx)
+                                                        }
+                                                        onToggleEnabled={(idx, v) =>
+                                                            void handleToggleEnabled(
+                                                                activeTab,
+                                                                idx,
+                                                                v,
+                                                            ).catch(() => undefined)
+                                                        }
+                                                    />
+                                                )}
+                                            </fieldset>
                                         </div>
                                     </div>
                                 )

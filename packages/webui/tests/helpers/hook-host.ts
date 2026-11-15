@@ -50,7 +50,8 @@ export function hookHost() {
         vi.spyOn(React, 'useId').mockImplementation(
             () => memo(() => `test-${cursor}`, []) as string,
         );
-        vi.spyOn(React, 'useEffect').mockImplementation((effect, deps) => {
+
+        const registerEffect: typeof React.useEffect = (effect, deps) => {
             const index = cursor++;
             const previous = slots[index] as
                 { deps?: React.DependencyList; cleanup?: () => void } | undefined;
@@ -62,7 +63,10 @@ export function hookHost() {
                     slots[index] = { deps, cleanup };
                 });
             }
-        });
+        };
+
+        vi.spyOn(React, 'useEffect').mockImplementation(registerEffect);
+        vi.spyOn(React, 'useLayoutEffect').mockImplementation(registerEffect);
     };
 
     return {
