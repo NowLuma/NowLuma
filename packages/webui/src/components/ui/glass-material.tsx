@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type HTMLAttributes } from 'react';
 import {
     glassDisplacementMap,
     glassGeometry,
     glassRenderer,
     type GlassGeometry,
 } from '@/lib/glass-optics';
+import { cn } from '@/lib/utils';
 
 interface GlassImage {
     geometry: GlassGeometry;
@@ -176,5 +177,15 @@ export function GlassMaterial() {
                 </svg>
             )}
         </span>
+    );
+}
+
+/** Reusable chrome surface for search, menus, segmented controls and suitable buttons. */
+export function GlassSurface({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+    return (
+        <div className={cn('ui-glass', className)} {...props}>
+            <GlassMaterial />
+            {children}
+        </div>
     );
 }

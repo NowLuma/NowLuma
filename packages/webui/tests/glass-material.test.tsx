@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { GlassMaterial } from '../src/components/ui/glass-material';
+import { GlassMaterial, GlassSurface } from '../src/components/ui/glass-material';
 import { Button } from '../src/components/ui/button';
 import { Card } from '../src/components/ui/card';
 
@@ -21,6 +21,18 @@ describe('GlassMaterial', () => {
         expect(markup).toContain('aria-label="保存配置"');
         expect(markup).not.toContain('backdrop-filter:');
         expect(markup).not.toContain('<filter');
+    });
+
+    it('exposes one reusable surface for search, menus, segmented controls and buttons', () => {
+        const markup = renderToStaticMarkup(
+            <GlassSurface className="rounded-xl" data-testid="surface">
+                <button type="button">搜索</button>
+            </GlassSurface>,
+        );
+        expect(markup).toContain('class="ui-glass rounded-xl"');
+        expect(markup).toContain('ui-glass-material');
+        expect(markup).toContain('data-testid="surface"');
+        expect(markup).toContain('<button type="button">搜索</button>');
     });
 
     it('has explicit opaque and host-owned fallbacks, not a misleading blur-only full renderer', () => {
