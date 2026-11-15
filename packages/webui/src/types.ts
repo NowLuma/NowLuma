@@ -89,7 +89,7 @@ export interface HookProcessInfo {
     name: string;
     path: string;
     injected: boolean;
-    /** Absent on older servers; an explicit stop must not prompt automatic reattachment. */
+    /** Absent on older servers; a deliberate stop must not prompt automatic reattachment. */
     manualStopped?: boolean;
     connected: boolean;
     loggedIn: boolean;
@@ -97,8 +97,6 @@ export interface HookProcessInfo {
     status: 'available' | 'loading' | 'connecting' | 'loaded' | 'online' | 'error' | 'disconnected';
     error: string;
     method: string;
-    /** A deliberate unload stays stopped until the operator explicitly loads this PID. */
-    manualStopped?: boolean;
     account: HookProcessAccount | null;
 }
 
