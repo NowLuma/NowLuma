@@ -26,6 +26,7 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DeploymentDiagnostics } from '@/components/settings/deployment-diagnostics';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
+import { useAppState } from '@/contexts/AppStateContext';
 import { useApi } from '@/lib/api';
 import { useFlashMessage } from '@/hooks/use-flash-message';
 import { cn, downloadBlob } from '@/lib/utils';
@@ -34,6 +35,7 @@ import type { SystemSettingsResponse } from '@/types';
 export function SystemPanel() {
     const id = useId();
     const api = useApi();
+    const { systemInfo } = useAppState();
     const { runAction } = useActionFeedback();
     const [data, setData] = useState<SystemSettingsResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -309,6 +311,7 @@ export function SystemPanel() {
     }
 
     const effectiveDesktop = data.effective ?? data.settings;
+    const desktopAvailable = systemInfo?.deployment?.desktopAvailable === true;
     let savedDesktopUrl: string | null = null;
     let desktopError = '';
 
@@ -519,7 +522,7 @@ export function SystemPanel() {
                             <Button onClick={saveSettings} disabled={saving}>
                                 保存入口设置
                             </Button>
-                            {savedDesktopUrl && (
+                            {desktopAvailable && savedDesktopUrl && (
                                 <Button variant="outline" asChild>
                                     <a
                                         href={savedDesktopUrl}

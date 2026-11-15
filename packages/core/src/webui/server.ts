@@ -439,15 +439,18 @@ export async function initWebUI(
         });
     });
 
+    // The applied desktop capability is decided once at boot; the system routes
+    // and the gateway guards read the same value.
+    const desktopEnabled = process.env.NOWLUMA_DESKTOP_PROXY === '1';
     const desktop = createDesktopGateway(app, {
-        enabled: process.env.NOWLUMA_DESKTOP_PROXY === '1',
+        enabled: desktopEnabled,
         sessionAllowed: (token) => {
             const session = sessionTokens.get(token);
             return !!session && !session.mustChangePassword && !consentGatePending;
         },
     });
     app.post('/api/desktop/session', (c) => {
-        if (process.env.NOWLUMA_DESKTOP_PROXY !== '1') {
+        if (!desktopEnabled) {
             return c.json({ success: false, message: '桌面服务未启用' }, 404);
         }
 
@@ -938,7 +941,7 @@ export async function initWebUI(
     });
 
     registerKernelRoutes(app, listener.kernelPolicy);
-    registerSystemRoutes(app, { getBoundPort: () => boundPort });
+    registerSystemRoutes(app, { getBoundPort: () => boundPort, desktopEnabled });
 
     registerStorageRoutes(app, {
         storage: storageManagement,

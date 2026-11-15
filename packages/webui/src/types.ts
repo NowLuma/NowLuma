@@ -497,6 +497,8 @@ export interface SystemInfo {
         writable: Record<string, boolean>;
         vncPort: number;
         vncUrl: string;
+        /** True only when this server actually serves the integrated /desktop/ gateway. */
+        desktopAvailable?: boolean;
     };
     cpu: {
         model: string;

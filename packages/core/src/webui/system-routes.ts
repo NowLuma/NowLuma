@@ -39,6 +39,8 @@ const log = createLogger('WebUI');
 export interface SystemRouteDependencies {
     /** Actual bound listener port; resolved after registration, read per request. */
     getBoundPort(): number;
+    /** Applied at boot: this server constructed the integrated /desktop/ gateway. */
+    desktopEnabled: boolean;
 }
 
 export interface RestoreFailureBody {
@@ -146,10 +148,13 @@ export function registerSystemRoutes(app: Hono, deps: SystemRouteDependencies): 
             uptime: os.uptime(),
             processUptime: process.uptime(),
             nodeVersion: process.version,
-            deployment: deploymentInfo({
-                ...readRuntimeConfig(),
-                ...resolveRuntimeEnvOverrides(process.env),
-            }),
+            deployment: deploymentInfo(
+                {
+                    ...readRuntimeConfig(),
+                    ...resolveRuntimeEnvOverrides(process.env),
+                },
+                deps.desktopEnabled,
+            ),
             cpu: {
                 model: cpus[0]?.model ?? 'unknown',
                 cores: cpus.length,

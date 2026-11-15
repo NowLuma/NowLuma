@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { RuntimeConfig } from '@nowluma/common/runtime';
 
 /** Operational paths only; never return tokens, machine IDs, or QQ database contents. */
-export function deploymentInfo(config: RuntimeConfig) {
+export function deploymentInfo(config: RuntimeConfig, desktopEnabled: boolean) {
     const home = homedir();
     const directories = {
         config: path.resolve('config'),
@@ -31,5 +31,8 @@ export function deploymentInfo(config: RuntimeConfig) {
         writable,
         vncPort: config.vncPort ?? 0,
         vncUrl: config.vncUrl ?? '',
+        // Applied capability, not a setting: the integrated gateway is served only
+        // when this Linux server constructed it. A persisted vncUrl is not proof.
+        desktopAvailable: desktopEnabled && process.platform === 'linux',
     };
 }
