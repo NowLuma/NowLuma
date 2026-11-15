@@ -1,14 +1,14 @@
 import { useState, type ReactNode } from 'react';
-import { motion } from 'motion/react';
 import {
     Bug,
     Check,
     ExternalLink,
     Github,
     Loader2,
+    Mail,
     RefreshCw,
     Sparkles,
-    Star,
+    Scale,
     Tag,
     type Sun,
 } from 'lucide-react';
@@ -18,7 +18,6 @@ import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { UpdateInstaller } from '@/components/settings/update-installer';
 import { UpdateSources } from '@/components/settings/update-sources';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { useAppState } from '@/contexts/AppStateContext';
 import { APP_VERSION } from '@/types';
@@ -174,65 +173,30 @@ function UpdateGroup() {
 
 export function AboutPanel() {
     return (
-        <div className="flex flex-col gap-5">
-            {/* brand hero */}
-            <Card className="overflow-hidden">
-                <CardContent className="flex flex-col items-center gap-3 px-6 py-9 text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                        className="flex flex-col items-center gap-3"
-                    >
-                        <div className="relative">
-                            <div
-                                aria-hidden
-                                className="absolute inset-0 -z-10 scale-125 rounded-full bg-primary/20 blur-2xl"
-                            />
-                            <img
-                                src={BRAND_LOGO_URL}
-                                alt=""
-                                className="size-20 rounded-2xl object-cover drop-shadow-sm"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-semibold tracking-tight">Nowluma</span>
-                            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-meta text-primary tabular-nums">
-                                v{APP_VERSION}
-                            </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Next Remote Protocol Framework · 下一代远程协议框架
-                        </p>
-                    </motion.div>
-                    <p className="max-w-md text-[13px] leading-relaxed text-muted-foreground">
-                        以轻量注入驱动 QQ NT，对外提供标准 OneBot v11
-                        接口，让机器人一次部署、长期稳定运行。
+        <div className="flex min-w-0 flex-col gap-5">
+            <section
+                aria-label="Nowluma"
+                className="cp-panel flex flex-wrap items-center gap-4 p-5 sm:p-6"
+            >
+                <img src={BRAND_LOGO_URL} alt="" className="size-12 shrink-0 object-contain" />
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-semibold tracking-tight">Nowluma</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        连接 QQ NT，提供标准 OneBot v11 接口。
                     </p>
-                </CardContent>
-            </Card>
+                </div>
+                <code className="font-mono text-sm text-muted-foreground tabular-nums">
+                    v{APP_VERSION}
+                </code>
+            </section>
 
-            {/* software update */}
             <UpdateGroup />
 
-            {/* support + links */}
-            <Card className="overflow-hidden">
-                <CardContent className="flex flex-col items-center gap-4 px-6 py-7 text-center">
-                    <Star className="size-7 fill-primary/15 text-primary" />
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-sm font-medium">喜欢 Nowluma？给个 Star 支持一下</p>
-                        <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-                            开源不易，你的 ⭐ 是我们持续维护的最大动力。
-                        </p>
-                    </div>
-                    <Button asChild className="w-full max-w-xs">
-                        <a href={REPO_URL} target="_blank" rel="noreferrer noopener">
-                            <Github className="size-4" /> 去 GitHub 点 Star
-                        </a>
-                    </Button>
-                    <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-1 text-[12px]">
+            <Group title="项目与许可" icon={Scale} description="© 2026 Nowluma contributors">
+                <SettingRow label="源代码" hint="版本、发布说明与问题反馈。" layout="stack">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
                         <AboutLink href={REPO_URL} icon={Github}>
-                            仓库
+                            GitHub
                         </AboutLink>
                         <AboutLink href={`${REPO_URL}/releases`} icon={Tag}>
                             发行版
@@ -241,8 +205,18 @@ export function AboutPanel() {
                             反馈问题
                         </AboutLink>
                     </div>
-                </CardContent>
-            </Card>
+                </SettingRow>
+                <SettingRow label="GPLv3" hint="允许商业使用；第三方组件与原生组件遵循各自的许可。">
+                    <AboutLink href="https://www.gnu.org/licenses/gpl-3.0.html" icon={Scale}>
+                        查看许可
+                    </AboutLink>
+                </SettingRow>
+                <SettingRow label="侵权投诉">
+                    <AboutLink href="mailto:ws675170761@gmail.com" icon={Mail}>
+                        ws675170761@gmail.com
+                    </AboutLink>
+                </SettingRow>
+            </Group>
         </div>
     );
 }
@@ -261,7 +235,7 @@ function AboutLink({
             href={href}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
         >
             <Icon className="size-3.5" />
             {children}

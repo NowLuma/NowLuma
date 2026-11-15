@@ -1,7 +1,6 @@
 import { createContext, useContext, useId, type ComponentProps, type ReactNode } from 'react';
 import type { Sun } from 'lucide-react';
 import { SegmentedControl } from '@/components/interior/segmented-control';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +17,7 @@ export interface Opt<T> {
 const RowLabelContext = createContext<{ id: string; label: string } | undefined>(undefined);
 
 // iOS/macOS segmented control: a recessed track with a raised pill on the
-// selected segment. Single-select → exposed as a radiogroup. Wraps gracefully.
+// selected segment. Single-select → exposed as a radiogroup.
 export function Segmented<T extends string | number>({
     value,
     options,
@@ -38,6 +37,7 @@ export function Segmented<T extends string | number>({
             className={cn('max-w-full overflow-x-auto', disabled && 'opacity-50')}
         >
             <SegmentedControl
+                className="min-w-max"
                 label={rowLabel?.label ?? '选项'}
                 value={String(value)}
                 options={options.map((option) => ({
@@ -112,7 +112,7 @@ export function SettingRow({
     return (
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
             {head}
-            <div className="sm:shrink-0">{control}</div>
+            <div className="min-w-0 sm:shrink-0 sm:max-w-full">{control}</div>
         </div>
     );
 }
@@ -138,7 +138,7 @@ export function SliderSettingRow({
     );
 }
 
-// A settings group: a card whose header sits above a hairline-divided list of rows.
+// Section context stays beside its controls on wide screens.
 export function Group({
     title,
     description,
@@ -146,24 +146,25 @@ export function Group({
     children,
 }: {
     title: string;
-    description?: string;
+    description?: ReactNode;
     icon?: typeof Sun;
     children: ReactNode;
 }) {
+    const titleId = useId();
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="gap-1 pb-4">
-                <CardTitle className="flex items-center gap-2 text-[15px]">
-                    {Icon && <Icon className="size-4 text-primary" />}
+        <section aria-labelledby={titleId} className="cp-settings-group">
+            <header className="flex min-w-0 flex-col gap-2 pt-1">
+                <h2 id={titleId} className="flex items-center gap-2 text-[15px] font-semibold">
+                    {Icon && <Icon className="size-4 text-muted-foreground" />}
                     {title}
-                </CardTitle>
+                </h2>
                 {description && (
-                    <CardDescription className="text-[12px] leading-relaxed">
+                    <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
                         {description}
-                    </CardDescription>
+                    </p>
                 )}
-            </CardHeader>
-            <div className="divide-y divide-border/60 border-t border-border/60">{children}</div>
-        </Card>
+            </header>
+            <div className="cp-settings-rows divide-y divide-border/60">{children}</div>
+        </section>
     );
 }

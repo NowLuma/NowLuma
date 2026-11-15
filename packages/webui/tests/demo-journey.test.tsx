@@ -57,7 +57,16 @@ describe('DEMO journey and real-console seams', () => {
         }
 
         expect(source('../src/components/pages/processes-page.tsx')).toContain("'加载'");
-        expect(source('../src/components/debug/action-tester.tsx')).toContain("'执行'");
+        const tester = source('../src/components/debug/action-tester.tsx');
+
+        for (const label of ['运行调用', '运行流式调用']) {
+            expect(tester).toContain(`'${label}'`);
+            expect(DEMO_JOURNEY.find((step) => step.id === 'action')?.description).toContain(label);
+        }
+
+        expect(DEMO_JOURNEY.find((step) => step.id === 'action')?.control).toBe(
+            '接口调用 → send_private_msg → 运行调用',
+        );
         expect(source('../src/components/pages/logs-page.tsx')).toContain('导出完整 TRACE');
         expect(source('../src/components/pages/settings-page.tsx')).toContain("label: '存储管理'");
         expect(source('../src/router/index.tsx')).toContain("import.meta.env.MODE === 'demo'");

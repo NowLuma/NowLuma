@@ -22,7 +22,7 @@ import { useApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { DebugInvokeResult, QQInfo } from '@/types';
 
-const cardCls = 'ui-card rounded-lg border border-border bg-card';
+const cardCls = 'cp-panel';
 const looksLikeId = (s: string) => /^\d{3,}$/.test(s.trim());
 
 function TargetPicker({
@@ -136,24 +136,12 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
     const resultFailed = !!result && ('error' in result || result.status === 'failed');
 
     return (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-            <motion.section
-                initial={reduced ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: reduced ? 0 : 0.16 }}
-                className={cn(cardCls, 'flex flex-col gap-5 p-6 xl:col-span-7')}
-            >
-                <div className="flex items-center gap-2.5">
-                    <MessageSquarePlus className="h-[18px] w-[18px] text-primary" />
-                    <h2 className="text-[15px] font-semibold tracking-tight">消息构建</h2>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
+        <div className="cp-debug-workbench">
+            <div className="cp-debug-context cp-panel relative z-30 p-5 sm:p-6">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                     <div className="flex flex-col gap-1.5">
-                        {/* Fixed h-8 == the target column's segmented-control height, so both
-                label rows are exactly equal and the two selectors below share a
-                baseline (min-h-7 wasn't enough — the segmented is ~32px). */}
-                        <div className="flex h-8 items-center">
+                        {/* Matching label rows keep both pickers aligned. */}
+                        <div className="flex min-h-12 items-center">
                             <span className="text-xs font-medium text-muted-foreground">账号</span>
                         </div>
                         <Dropdown
@@ -165,13 +153,14 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                                 value: account.uin,
                                 label: account.nickname || account.uin,
                             }))}
-                            className="w-full sm:w-44"
+                            className="w-full"
                         />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <div className="flex h-8 items-center justify-between">
+                        <div className="flex min-h-12 flex-wrap items-center justify-between gap-2">
                             <span className="text-xs font-medium text-muted-foreground">目标</span>
                             <Segmented
+                                label="消息目标类型"
                                 value={kind}
                                 onChange={(k) => {
                                     setKind(k);
@@ -185,6 +174,18 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                         </div>
                         <TargetPicker kind={kind} uin={uin} value={target} onChange={setTarget} />
                     </div>
+                </div>
+            </div>
+
+            <motion.section
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className={cn(cardCls, 'relative z-10 flex flex-col gap-5')}
+            >
+                <div className="flex items-center gap-2.5">
+                    <MessageSquarePlus className="h-[18px] w-[18px] text-primary" />
+                    <h2 className="text-base font-semibold">编写消息</h2>
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -202,7 +203,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                     onClick={send}
                     disabled={sending}
                     data-press-scale=""
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
+                    className="ui-button inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
                 >
                     {sending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -216,10 +217,10 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
             <motion.section
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: reduced ? 0 : 0.16 }}
-                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-3 p-6 xl:col-span-5')}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-4')}
             >
-                <h3 className="text-[15px] font-semibold tracking-tight">预览</h3>
+                <h3 className="text-base font-semibold">内容预览</h3>
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm">
                     {preview ? (
                         <span className="whitespace-pre-wrap break-words">{preview}</span>
@@ -238,10 +239,13 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                                 resultFailed ? 'text-destructive' : 'text-success',
                             )}
                         >
-                            {resultFailed ? '发送失败' : '已发送'}
+                            {resultFailed ? '发送失败' : '请求完成'}
                         </span>
                         {'error' in result ? (
-                            <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                            <div
+                                role="alert"
+                                className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
+                            >
                                 {result.error}
                             </div>
                         ) : (

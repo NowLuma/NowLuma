@@ -300,6 +300,7 @@ function MessageParamField({
         <div className="flex flex-col gap-2">
             <div className="flex justify-end">
                 <Segmented
+                    label="消息编辑方式"
                     value={inputMode}
                     onChange={setInputMode}
                     options={[

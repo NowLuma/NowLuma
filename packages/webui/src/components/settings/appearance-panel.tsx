@@ -60,7 +60,7 @@ const DARK_INTENSITY_OPTIONS: Opt<DarkIntensity>[] = [
 
 const SCOPE_OPTIONS: Opt<AccentScope>[] = [
     { value: 'global', label: '全局' },
-    { value: 'sidebar', label: '仅侧栏' },
+    { value: 'sidebar', label: '仅导航' },
 ];
 
 const SIDEBAR_STYLE_OPTIONS: Opt<SidebarStyle>[] = [
@@ -331,7 +331,7 @@ export function AppearancePanel() {
                                         title={spec.label}
                                         aria-label={spec.label}
                                         className={cn(
-                                            'relative flex size-9 items-center justify-center rounded-full border transition-colors cursor-pointer',
+                                            'relative flex size-11 items-center justify-center rounded-full border transition-colors cursor-pointer',
                                             active
                                                 ? 'border-foreground/30 ring-2 ring-primary'
                                                 : 'border-border',
@@ -350,7 +350,7 @@ export function AppearancePanel() {
                             <label
                                 title="自定义颜色"
                                 className={cn(
-                                    'relative flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border transition-colors',
+                                    'relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border transition-colors',
                                     a.accentMode === 'custom'
                                         ? 'border-foreground/30 ring-2 ring-primary'
                                         : 'border-border',
@@ -378,17 +378,14 @@ export function AppearancePanel() {
                             </label>
                         </div>
                     </SettingRow>
-                    <SettingRow
-                        label="应用范围"
-                        hint="“仅侧栏”时，主区域保持默认色，仅调整侧栏的底色与高亮。"
-                    >
+                    <SettingRow label="应用范围" hint="“仅导航”时，主区域保持默认色。">
                         <Segmented
                             value={a.accentScope}
                             options={SCOPE_OPTIONS}
                             onChange={(accentScope) => setAppearance({ accentScope })}
                         />
                     </SettingRow>
-                    <SettingRow label="侧栏样式">
+                    <SettingRow label="导航样式">
                         <Segmented
                             value={a.sidebarStyle}
                             options={SIDEBAR_STYLE_OPTIONS}
@@ -487,7 +484,7 @@ export function AppearancePanel() {
             <Group
                 title="交互与无障碍"
                 icon={Accessibility}
-                description="光标、动效、对比度与侧栏行为。"
+                description="光标、动效、对比度与导航。"
             >
                 <SettingRow
                     label="自定义光标"
@@ -503,7 +500,7 @@ export function AppearancePanel() {
                 </SettingRow>
                 <SettingRow
                     label="性能模式"
-                    hint="自动模式在前台持续低帧率时关闭动画和实时折射；本机检测结果不会影响其他设备。也可手动选择。"
+                    hint="自动按设备流畅度调整效果；也可手动选择。"
                     layout="stack"
                 >
                     <Segmented<'auto' | 'high' | 'low'>
@@ -512,7 +509,7 @@ export function AppearancePanel() {
                         options={[
                             { value: 'auto', label: '自动检测（默认）' },
                             { value: 'high', label: '完整效果' },
-                            { value: 'low', label: '低性能 / 关闭动效' },
+                            { value: 'low', label: '低性能' },
                         ]}
                     />
                     <p className="text-xs text-muted-foreground" role="status">
@@ -553,14 +550,14 @@ export function AppearancePanel() {
                 </SettingRow>
                 {isDesktop && (
                     <SettingRow
-                        label="钉住侧栏展开"
-                        hint="侧栏常驻展开，不再收成图标轨、也不随悬停自动收起。"
+                        label="显示导航说明"
+                        hint="在宽屏导航中显示页面用途。"
                         layout="inline"
                     >
                         <ToggleSwitch
                             value={a.sidebarPinned}
                             onChange={(sidebarPinned) => setAppearance({ sidebarPinned })}
-                            ariaLabel="钉住侧栏展开"
+                            ariaLabel="显示导航说明"
                         />
                     </SettingRow>
                 )}
@@ -711,7 +708,7 @@ const CSS_VAR_FIELDS: { token: string; label: string }[] = [
     { token: '--primary', label: '主色调' },
     { token: '--muted-foreground', label: '次要文字' },
     { token: '--border', label: '边框' },
-    { token: '--sidebar', label: '侧栏背景' },
+    { token: '--sidebar', label: '导航背景' },
     { token: '--destructive', label: '危险 / 错误' },
     { token: '--success', label: '成功' },
     { token: '--warning', label: '警告' },
@@ -762,7 +759,7 @@ function ThemeVarsPanel({
                             )}
                             <label
                                 title="选择颜色"
-                                className="relative size-7 cursor-pointer overflow-hidden rounded-md border"
+                                className="relative size-11 cursor-pointer overflow-hidden rounded-lg border"
                                 style={
                                     override
                                         ? { backgroundColor: override }

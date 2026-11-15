@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group } from '@/components/settings/settings-controls';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -256,15 +256,13 @@ export function StoragePanel() {
                 className={!loading ? 'skeleton-swap-fluid min-h-[182px]' : ''}
             >
                 {!loading && !data ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-start gap-3 pt-5">
-                            <p className="text-sm text-muted-foreground">存储信息暂时不可用。</p>
-                            <Button variant="outline" onClick={() => void load(true)}>
-                                <RefreshCw className="size-4" />
-                                重试
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <div role="alert" className="cp-panel flex flex-col items-start gap-3 p-5">
+                        <p className="text-sm text-muted-foreground">存储信息暂时不可用。</p>
+                        <Button variant="outline" onClick={() => void load(true)}>
+                            <RefreshCw className="size-4" />
+                            重试
+                        </Button>
+                    </div>
                 ) : null}
             </SkeletonSwap>
         );
@@ -295,7 +293,7 @@ export function StoragePanel() {
             <div className="flex flex-col gap-5">
                 {msg && (
                     <div
-                        role="status"
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
                             'rounded-lg px-3 py-2 text-xs',
                             msg.kind === 'ok'
@@ -307,29 +305,25 @@ export function StoragePanel() {
                     </div>
                 )}
 
-                <Card>
-                    <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <CardTitle className="flex items-center gap-2 text-sm">
-                                <HardDrive className="size-4" />
-                                存储概览
-                            </CardTitle>
-                            <CardDescription className="mt-1">
-                                只统计 Nowluma 管理的日志、账号数据库和文件传输临时数据。
-                            </CardDescription>
+                <Group
+                    title="空间用量"
+                    icon={HardDrive}
+                    description="Nowluma 管理的日志、账号数据库与传输临时数据。"
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
+                        <div className="flex justify-end">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void load(true)}
+                                disabled={refreshing || saving || operation !== null}
+                                className="shrink-0"
+                            >
+                                <RefreshCw className={cn('size-4', refreshing && 'animate-spin')} />
+                                刷新
+                            </Button>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void load(true)}
-                            disabled={refreshing || saving || operation !== null}
-                            className="shrink-0"
-                        >
-                            <RefreshCw className={cn('size-4', refreshing && 'animate-spin')} />
-                            刷新
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-5">
+
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             <Metric
                                 label="受管数据总量"
@@ -378,20 +372,15 @@ export function StoragePanel() {
                         </div>
 
                         {data.lastCleanup && <LastCleanupSummary cleanup={data.lastCleanup} />}
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <FileClock className="size-4" />
-                            日志策略
-                        </CardTitle>
-                        <CardDescription>
-                            总量上限始终生效；保留天数设为 0 时仅按总量淘汰。保存后立即应用。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
+                <Group
+                    title="日志保留"
+                    icon={FileClock}
+                    description="总量上限始终生效；保留天数为 0 时仅按总量淘汰。保存后立即应用。"
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="flex flex-col gap-1.5">
                                 <Label
@@ -472,20 +461,15 @@ export function StoragePanel() {
                                 保存并应用
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <Trash2 className="size-4" />
-                            全局数据清理
-                        </CardTitle>
-                        <CardDescription>
-                            日志清理会轮转活动文件；临时数据清理会自动跳过正在进行的上传和下载。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="divide-y divide-border/60 p-0">
+                <Group
+                    title="清理临时数据"
+                    icon={Trash2}
+                    description="日志清理会轮转活动文件；传输数据清理会跳过正在进行的上传和下载。"
+                >
+                    <div className="divide-y divide-border/60">
                         <CleanupRow
                             icon={FileClock}
                             title="日志"
@@ -516,20 +500,15 @@ export function StoragePanel() {
                                 })
                             }
                         />
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <Database className="size-4" />
-                            账号数据
-                        </CardTitle>
-                        <CardDescription>
-                            仅清理选中的数据库分类。账号必须离线，配置、凭据和聊天内容导出不在此页面提供。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-3">
+                <Group
+                    title="账号数据库"
+                    icon={Database}
+                    description="账号离线后可按分类清理。此处不包含配置、凭据与聊天内容导出。"
+                >
+                    <div className="flex min-w-0 flex-col gap-4 p-5">
                         {snapshot.accounts.length === 0 ? (
                             <div className="rounded-lg bg-muted/35 px-4 py-6 text-center text-sm text-muted-foreground">
                                 尚未发现账号数据库。
@@ -595,8 +574,8 @@ export function StoragePanel() {
                                 </div>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
                 <ConfirmDialog
                     open={pendingCleanup !== null}

@@ -27,9 +27,9 @@ export const DEMO_JOURNEY = [
         id: 'action',
         title: '4 · #nl / Actions & messages',
         route: '/debug',
-        control: '测试台 → send_private_msg → 执行',
+        control: '接口调用 → send_private_msg → 运行调用',
         description:
-            'Choose account 10001, action send_private_msg, friend 10002, and text #nl. Execute in the actual tester, then inspect get_msg with the returned message_id. Results prove simulation, not QQ delivery.',
+            'Choose account 10001, action send_private_msg, friend 10002, and text #nl. Use 运行调用 in the tester (运行流式调用 for streaming actions), then inspect get_msg with the returned message_id. Results prove simulation, not QQ delivery.',
     },
     {
         id: 'logs',

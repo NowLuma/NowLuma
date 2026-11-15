@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group } from '@/components/settings/settings-controls';
 import { Textarea } from '@/components/ui/textarea';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { DEFAULT_LAYOUT, DEFAULT_PAGES } from '@/contexts/LayoutContext';
@@ -223,21 +223,17 @@ export function AdvancedPanel() {
                 </p>
             )}
             <fieldset disabled={!!managedBy} className="contents" aria-label="自定义 CSS">
-                <Card>
-                    <CardHeader className="gap-1">
-                        <CardTitle className="flex items-center gap-2 text-[15px]">
-                            <Code2 className="size-4 text-primary" /> 自定义 CSS
-                        </CardTitle>
-                        <CardDescription className="text-[12px] leading-relaxed">
-                            高级用户可注入自定义样式，登录后全局生效（登录页不受影响）。
-                            若改坏了界面，在地址后加{' '}
-                            <code className="rounded bg-muted px-1 py-0.5 font-mono text-meta">
-                                ?safe-mode=1
-                            </code>{' '}
-                            可临时禁用自定义 CSS 进来修复。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-3">
+                <Group
+                    title="自定义 CSS"
+                    icon={Code2}
+                    description={
+                        <>
+                            登录后应用，不影响登录页。需要修复时，在地址后加{' '}
+                            <code className="font-mono text-xs">?safe-mode=1</code> 临时禁用样式。
+                        </>
+                    }
+                >
+                    <div className="flex min-w-0 flex-col gap-4 p-5">
                         <div className="flex flex-wrap items-center gap-1.5">
                             <span className="mr-1 text-xs text-muted-foreground">插入模板：</span>
                             {CSS_SNIPPETS.map((s) => (
@@ -245,7 +241,7 @@ export function AdvancedPanel() {
                                     key={s.label}
                                     type="button"
                                     onClick={() => insertSnippet(s.css)}
-                                    className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors cursor-pointer outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                                    className="cp-control inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors cursor-pointer outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40"
                                 >
                                     <Plus className="size-3" /> {s.label}
                                 </button>
@@ -253,6 +249,7 @@ export function AdvancedPanel() {
                         </div>
                         <Textarea
                             ref={cssRef}
+                            aria-label="自定义 CSS"
                             value={appearance.customCss}
                             onChange={(e) => {
                                 setAppearance({ customCss: e.target.value });
@@ -291,18 +288,15 @@ export function AdvancedPanel() {
                                 <Trash2 className="size-4" /> 清空
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
             </fieldset>
-            <Card>
-                <CardHeader className="gap-1">
-                    <CardTitle className="text-[15px]">备份与重置</CardTitle>
-                    <CardDescription className="text-[12px] leading-relaxed">
-                        导出 / 导入全部界面配置（外观 + 布局 + 自定义
-                        CSS）。背景图片需另行重新上传。
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
+            <Group
+                title="备份与重置"
+                icon={Download}
+                description="导出或导入外观、布局与自定义 CSS。背景图片需重新上传。"
+            >
+                <div className="flex min-w-0 flex-col gap-4 p-5">
                     <div className="flex flex-wrap items-center gap-2">
                         <input
                             ref={fileRef}
@@ -339,6 +333,7 @@ export function AdvancedPanel() {
                     </div>
                     {msg && (
                         <span
+                            role={msg.kind === 'ok' ? 'status' : 'alert'}
                             className={cn(
                                 'text-xs',
                                 msg.kind === 'ok' ? 'text-success' : 'text-destructive',
@@ -347,8 +342,8 @@ export function AdvancedPanel() {
                             {msg.text}
                         </span>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </Group>
 
             <ConfirmDialog
                 open={confirmReset}

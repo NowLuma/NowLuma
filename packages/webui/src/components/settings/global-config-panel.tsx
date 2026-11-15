@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, KeyRound, Music, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { AlertTriangle, KeyRound, Music, Plus, RefreshCw, Trash2, Video } from 'lucide-react';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Button } from '@/components/ui/button';
+import { Group } from '@/components/settings/settings-controls';
 import { Input } from '@/components/ui/input';
 import { DropdownSelect } from '@/components/ui/dropdown-select';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ function isHttpUrl(value: string): boolean {
 }
 
 export function GlobalConfigPanel() {
+    const id = useId();
     const api = useApi();
     const { runAction } = useActionFeedback();
     const [config, setConfig] = useState<GlobalSettings | null>(null);
@@ -144,17 +146,12 @@ export function GlobalConfigPanel() {
             className="skeleton-swap-fluid min-h-[156px]"
         >
             <div className="flex flex-col gap-4">
-                {/* rkey fallback servers */}
-                <div className="flex flex-col gap-4 rounded-xl border bg-card/40 p-4">
-                    <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                        <KeyRound className="mt-0.5 size-3.5 shrink-0" />
-                        <p>
-                            内核无法获取 <code className="font-mono">rkey</code>{' '}
-                            时，依次请求下列服务器。留空关闭，建议使用自建服务。
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 border-t pt-3">
+                <Group
+                    title="rkey 回退"
+                    icon={KeyRound}
+                    description="内核无法取得 rkey 时，依次请求下列服务。留空关闭，建议使用自建服务。"
+                >
+                    <div className="flex min-w-0 flex-col gap-4 p-5">
                         <div className="flex items-center justify-between">
                             <Label>rkey 回退服务器</Label>
                             <Button
@@ -178,6 +175,7 @@ export function GlobalConfigPanel() {
                                         <div key={i} className="flex items-center gap-2">
                                             <Input
                                                 type="url"
+                                                aria-label={`rkey 回退服务器 ${i + 1}`}
                                                 inputMode="url"
                                                 spellCheck={false}
                                                 placeholder="https://your-rkey-server.example/rkeys"
@@ -199,7 +197,7 @@ export function GlobalConfigPanel() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-sm"
-                                                aria-label="删除"
+                                                aria-label={`移除 rkey 回退服务器 ${i + 1}`}
                                                 className="shrink-0 text-muted-foreground hover:text-destructive"
                                                 onClick={() =>
                                                     setServers(
@@ -222,40 +220,45 @@ export function GlobalConfigPanel() {
                             </div>
                         )}
                     </div>
-                </div>
+                </Group>
 
-                <div className="flex flex-col gap-3 rounded-xl border bg-card/40 p-4">
-                    <Label>视频上传连接数</Label>
-                    <DropdownSelect
-                        ariaLabel="视频上传连接数"
-                        value={String(config.videoUploadConcurrency ?? 1)}
-                        options={[
-                            { value: '1', label: '1 路（默认）' },
-                            { value: '2', label: '2 路' },
-                            { value: '3', label: '3 路' },
-                            { value: '4', label: '4 路' },
-                        ]}
-                        onChange={(value) =>
-                            commit({ ...config, videoUploadConcurrency: Number(value) })
-                        }
-                    />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        对所有账号的下一次视频上传生效。小视频仍使用单连接；多路上传的提速效果取决于网络和服务器，遇到拥塞时会降低并发。
-                    </p>
-                </div>
-
-                {/* music sign URL */}
-                <div className="flex flex-col gap-4 rounded-xl border bg-card/40 p-4">
-                    <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                        <Music className="mt-0.5 size-3.5 shrink-0" />
-                        <p>音乐分享卡片的签名服务，对所有账号统一生效。留空则使用内置默认服务。</p>
+                <Group
+                    title="视频上传"
+                    icon={Video}
+                    description="连接数对所有账号的下一次视频上传生效。"
+                >
+                    <div className="flex min-w-0 flex-col gap-3 p-5">
+                        <Label>视频上传连接数</Label>
+                        <DropdownSelect
+                            ariaLabel="视频上传连接数"
+                            value={String(config.videoUploadConcurrency ?? 1)}
+                            options={[
+                                { value: '1', label: '1 路（默认）' },
+                                { value: '2', label: '2 路' },
+                                { value: '3', label: '3 路' },
+                                { value: '4', label: '4 路' },
+                            ]}
+                            onChange={(value) =>
+                                commit({ ...config, videoUploadConcurrency: Number(value) })
+                            }
+                        />
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            对所有账号的下一次视频上传生效。小视频仍使用单连接；多路上传的提速效果取决于网络和服务器，遇到拥塞时会降低并发。
+                        </p>
                     </div>
-                    <div className="flex flex-col gap-1.5 border-t pt-3">
-                        <Label>音乐签名服务 URL</Label>
+                </Group>
+                <Group
+                    title="音乐分享"
+                    icon={Music}
+                    description="音乐卡片的签名服务，对所有账号生效。留空使用内置服务。"
+                >
+                    <div className="flex min-w-0 flex-col gap-2 p-5">
+                        <Label htmlFor={`${id}-music`}>签名服务地址</Label>
                         <Input
                             type="url"
                             inputMode="url"
                             spellCheck={false}
+                            id={`${id}-music`}
                             placeholder={MUSIC_SIGN_DEFAULT}
                             value={config.musicSignUrl}
                             aria-invalid={
@@ -271,10 +274,11 @@ export function GlobalConfigPanel() {
                             onChange={(e) => commit({ ...config, musicSignUrl: e.target.value })}
                         />
                     </div>
-                </div>
+                </Group>
 
                 {msg && (
                     <p
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
                             'text-xs',
                             msg.kind === 'ok' ? 'text-success' : 'text-destructive',

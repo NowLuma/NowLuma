@@ -1,4 +1,5 @@
 import { Clock, RefreshCw } from 'lucide-react';
+import { Dropdown } from '@/components/interior/dropdown';
 import { NAV_ITEMS } from '@/components/layout/sidebar';
 import { Group, Segmented, SettingRow, type Opt } from '@/components/settings/settings-controls';
 import { useLayout } from '@/contexts/LayoutContext';
@@ -16,11 +17,7 @@ export function DataPanel() {
     const { pages, setPages } = useLayout();
     return (
         <div className="flex flex-col gap-5">
-            <Group
-                title="数据刷新"
-                icon={RefreshCw}
-                description="总览页轮询刷新 QQ 列表、进程列表与系统状态的间隔。"
-            >
+            <Group title="数据刷新" icon={RefreshCw} description="定期更新账号、进程与系统信息。">
                 <SettingRow
                     label="轮询间隔"
                     hint={
@@ -34,7 +31,7 @@ export function DataPanel() {
                         value={appearance.pollInterval}
                         options={POLL_INTERVAL_OPTIONS.map((o) => ({
                             value: o.value,
-                            label: o.label,
+                            label: o.value === 0 ? '暂停' : `${o.value / 1000} 秒`,
                         }))}
                         onChange={(pollInterval) => setAppearance({ pollInterval })}
                     />
@@ -43,10 +40,12 @@ export function DataPanel() {
 
             <Group title="登录后落地页" description="登录后默认打开的页面。">
                 <SettingRow label="默认页面" layout="stack">
-                    <Segmented
+                    <Dropdown
+                        label="默认页面"
                         value={pages.defaultRoute}
-                        options={NAV_ITEMS.map((n) => ({ value: n.to as string, label: n.label }))}
+                        items={NAV_ITEMS.map((n) => ({ value: n.to, label: n.label }))}
                         onChange={(defaultRoute) => setPages({ defaultRoute })}
+                        className="w-full max-w-xs"
                     />
                 </SettingRow>
             </Group>

@@ -1,6 +1,5 @@
 // Listener changes apply after restart; environment overrides remain authoritative.
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { desktopLink, normalizeVncUrl } from '@nowluma/common/desktop-url';
 import {
     AlertTriangle,
@@ -11,11 +10,12 @@ import {
     Monitor,
     Pencil,
     Save,
+    Server,
     ShieldCheck,
     Trash2,
     Upload,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group } from '@/components/settings/settings-controls';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ import { cn, downloadBlob } from '@/lib/utils';
 import type { SystemSettingsResponse } from '@/types';
 
 export function SystemPanel() {
+    const id = useId();
     const api = useApi();
     const { runAction } = useActionFeedback();
     const [data, setData] = useState<SystemSettingsResponse | null>(null);
@@ -337,11 +338,7 @@ export function SystemPanel() {
             label="系统设置"
             className="skeleton-swap-fluid min-h-[182px]"
         >
-            <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-5"
-            >
+            <div className="flex min-w-0 flex-col gap-5">
                 {/* restart-to-apply notice */}
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -353,6 +350,7 @@ export function SystemPanel() {
 
                 {msg && (
                     <div
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
                             'rounded-lg px-3 py-2 text-xs',
                             msg.kind === 'ok'
@@ -364,18 +362,19 @@ export function SystemPanel() {
                     </div>
                 )}
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm">服务监听</CardTitle>
-                        <CardDescription>WebUI 当前监听端口：{data?.listeningPort}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
+                <Group
+                    title="服务监听"
+                    icon={Server}
+                    description={<>WebUI 当前监听端口：{data.listeningPort}</>}
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
                         <div className="flex flex-col gap-1.5">
-                            <Label className="flex items-center">
+                            <Label htmlFor={`${id}-port`} className="flex items-center">
                                 端口
                                 <EnvBadge field="webuiPort" />
                             </Label>
                             <Input
+                                id={`${id}-port`}
                                 value={port}
                                 onChange={(e) => setPort(e.target.value)}
                                 inputMode="numeric"
@@ -383,11 +382,12 @@ export function SystemPanel() {
                             />
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <Label className="flex items-center">
+                            <Label htmlFor={`${id}-host`} className="flex items-center">
                                 绑定地址
                                 <EnvBadge field="webuiHost" />
                             </Label>
                             <Input
+                                id={`${id}-host`}
                                 value={host}
                                 onChange={(event) => setHost(event.target.value)}
                                 placeholder="127.0.0.1"
@@ -425,11 +425,12 @@ export function SystemPanel() {
                             </p>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <Label className="flex items-center">
+                            <Label htmlFor={`${id}-proxy`} className="flex items-center">
                                 信任代理 (trust-proxy)
                                 <EnvBadge field="trustProxy" />
                             </Label>
                             <Input
+                                id={`${id}-proxy`}
                                 value={trustProxy}
                                 onChange={(e) => setTrustProxy(e.target.value)}
                                 placeholder="留空=只信任 socket 对端；1=信任反代头"
@@ -464,37 +465,35 @@ export function SystemPanel() {
                                 保存
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <Monitor className="h-4 w-4" /> QQ 桌面（noVNC）
-                        </CardTitle>
-                        <CardDescription>
-                            在浏览器里直接操作 QQ
-                            窗口，用于扫码登录、勾选「自动登录」，以及处理客户端弹窗。 端口为 0
-                            且地址留空时隐藏入口。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
+                <Group
+                    title="QQ 桌面"
+                    icon={Monitor}
+                    description={
+                        '在浏览器中操作 QQ 登录与客户端弹窗。端口为 0 且地址留空时隐藏入口。'
+                    }
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
                         <div className="flex flex-col gap-1.5">
-                            <Label className="flex items-center">
+                            <Label htmlFor={`${id}-desktop-port`} className="flex items-center">
                                 noVNC 端口
                                 <EnvBadge field="vncPort" />
                             </Label>
                             <Input
+                                id={`${id}-desktop-port`}
                                 value={vncPort}
                                 onChange={(e) => setVncPort(e.target.value)}
                                 inputMode="numeric"
                                 placeholder="0"
                                 disabled={overridden('vncPort')}
                             />
-                            <Label>
+                            <Label htmlFor={`${id}-desktop-url`}>
                                 桌面地址（可选） <EnvBadge field="vncUrl" />
                             </Label>
                             <Input
+                                id={`${id}-desktop-url`}
                                 value={vncUrl}
                                 onChange={(e) => setVncUrl(e.target.value)}
                                 placeholder="/desktop/vnc.html 或 https://地址/vnc.html"
@@ -516,7 +515,7 @@ export function SystemPanel() {
                                 {desktopError}
                             </p>
                         )}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={saveSettings} disabled={saving}>
                                 保存入口设置
                             </Button>
@@ -532,20 +531,20 @@ export function SystemPanel() {
                                 </Button>
                             )}
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <ShieldCheck className="h-4 w-4" /> HTTPS / TLS
-                        </CardTitle>
-                        <CardDescription>
-                            {data?.hasCert ? '已安装证书。' : '尚未安装证书。'} 启用 TLS
-                            需先安装有效的证书与私钥（PEM）。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
+                <Group
+                    title="HTTPS / TLS"
+                    icon={ShieldCheck}
+                    description={
+                        <>
+                            {data.hasCert ? '证书已安装。' : '尚未安装证书。'} 启用 HTTPS
+                            前需安装有效证书与私钥（PEM）。
+                        </>
+                    }
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
                         <div className="flex items-center justify-between">
                             <Label>启用 HTTPS</Label>
                             <ToggleSwitch
@@ -563,7 +562,7 @@ export function SystemPanel() {
                                     <ShieldCheck className="h-4 w-4 text-emerald-500" />
                                     <span>证书与私钥已安装（出于安全不回显，未改变）。</span>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <Button
                                         variant="outline"
                                         onClick={() => setEditingCert(true)}
@@ -584,8 +583,9 @@ export function SystemPanel() {
                         ) : (
                             <>
                                 <div className="flex flex-col gap-1.5">
-                                    <Label>证书 (cert.pem)</Label>
+                                    <Label htmlFor={`${id}-cert`}>证书 (cert.pem)</Label>
                                     <Textarea
+                                        id={`${id}-cert`}
                                         className="min-h-28 font-mono text-xs"
                                         value={certPem}
                                         onChange={(e) => setCertPem(e.target.value)}
@@ -593,15 +593,16 @@ export function SystemPanel() {
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <Label>私钥 (key.pem)</Label>
+                                    <Label htmlFor={`${id}-key`}>私钥 (key.pem)</Label>
                                     <Textarea
+                                        id={`${id}-key`}
                                         className="min-h-28 font-mono text-xs"
                                         value={keyPem}
                                         onChange={(e) => setKeyPem(e.target.value)}
                                         placeholder="-----BEGIN PRIVATE KEY-----"
                                     />
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <Button
                                         onClick={uploadCert}
                                         disabled={saving}
@@ -635,20 +636,17 @@ export function SystemPanel() {
                                 </p>
                             </>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                            <Database className="h-4 w-4" /> 配置备份 / 恢复
-                        </CardTitle>
-                        <CardDescription>
-                            备份外观、系统设置和证书等配置；通知渠道与 OneBot
-                            配置仅在包含敏感配置时导出。不含消息数据库。
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
+                <Group
+                    title="服务配置备份"
+                    icon={Database}
+                    description={
+                        '备份外观、服务设置与证书。不含消息数据库；通知渠道与 OneBot 配置仅随敏感配置导出。'
+                    }
+                >
+                    <div className="flex min-w-0 flex-col gap-5 p-5">
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between">
                                 <Label>导出时包含敏感配置</Label>
@@ -731,8 +729,8 @@ export function SystemPanel() {
                                 恢复前会校验本次要恢复的配置；写入过程中出错会自动回滚，成功后临时快照会删除。恢复后需重启生效。
                             </p>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </Group>
 
                 <DeploymentDiagnostics />
 
@@ -770,7 +768,7 @@ export function SystemPanel() {
                         setPendingBackup(null);
                     }}
                 />
-            </motion.div>
+            </div>
         </SkeletonSwap>
     );
 }

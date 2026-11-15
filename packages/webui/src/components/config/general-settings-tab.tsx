@@ -1,12 +1,9 @@
-// "通用设置" tab — per-account fields that apply to the whole OneBotInstance
-// rather than any specific adapter: the built-in `#nl` status command and the
-// notification opt-in. Edits here mark the config dirty and are auto-saved with
-// debounce by the parent ConfigPage. (Deployment-wide knobs like the music-sign
-// URL live in Settings → 全局配置, not here.)
-
+import { useId } from 'react';
+import { History, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { NotificationOptIn } from '@/components/config/notification-opt-in';
 import type { OneBotConfig, StatusCommandConfig } from '@/types';
 
@@ -16,110 +13,102 @@ interface GeneralSettingsTabProps {
 }
 
 export function GeneralSettingsTab({ config, onChange }: GeneralSettingsTabProps) {
+    const id = useId();
     const sc = config.statusCommand;
     const setStatusCommand = (patch: Partial<StatusCommandConfig>) =>
         onChange({ ...config, statusCommand: { ...sc, ...patch } });
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-3 rounded-lg border bg-card/40 p-4">
-                <div className="min-w-0">
-                    <Label>登录时补齐云端历史记录</Label>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        下次账号登录或重启后生效。只静默写入本地消息库，不重放历史事件，也不改变 QQ
-                        已读状态。 每次最多处理 3 个群和 3 个好友、每个会话 20 条，自动请求至少间隔
-                        2 秒。
-                    </p>
-                </div>
-                <ToggleSwitch
-                    value={config.historySync.enabled}
-                    onChange={(enabled) =>
-                        onChange({
-                            ...config,
-                            historySync: { enabled },
-                        })
-                    }
-                    ariaLabel="登录时补齐云端历史记录"
-                />
-            </div>
+        <div className="flex min-w-0 flex-col gap-5">
+            <Group title="登录与记录" icon={History} description="补齐最近会话的本地历史。">
+                <SettingRow
+                    label="登录时同步云端历史"
+                    hint="下次登录或重启生效。每次最多同步 3 个群和 3 个好友，各 20 条；自动请求间隔至少 2 秒。仅写入本地历史，不重放事件、不改变已读状态。"
+                    layout="inline"
+                >
+                    <ToggleSwitch
+                        value={config.historySync.enabled}
+                        onChange={(enabled) => onChange({ ...config, historySync: { enabled } })}
+                        ariaLabel="登录时补齐云端历史记录"
+                    />
+                </SettingRow>
+            </Group>
 
-            <div className="flex flex-col gap-4 rounded-lg border bg-card/40 p-4">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <Label>
-                            内置状态命令 <code className="font-mono text-xs">{sc.trigger}</code>
-                        </Label>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            收到纯文本 <code className="font-mono">{sc.trigger}</code> 时回复 Nowluma 版本 /
-                            平台 / 运行时长。任何人可触发，关闭后完全不响应。
-                        </p>
-                    </div>
+            <Group
+                title="状态回复"
+                icon={MessageSquare}
+                description="收到触发词时，回复版本、平台与运行时长。"
+            >
+                <SettingRow
+                    label="启用状态回复"
+                    hint="任何人均可触发。关闭后完全不响应。"
+                    layout="inline"
+                >
                     <ToggleSwitch
                         value={sc.enabled}
-                        onChange={(v) => setStatusCommand({ enabled: v })}
+                        onChange={(enabled) => setStatusCommand({ enabled })}
                         ariaLabel={`启用 ${sc.trigger} 状态命令`}
                     />
-                </div>
-
-                <div className="flex flex-col gap-1.5 border-t pt-3">
-                    <Label className={sc.enabled ? undefined : 'text-muted-foreground'}>
-                        触发词
-                    </Label>
-                    <Input
-                        className="w-full font-mono"
-                        value={sc.trigger}
-                        disabled={!sc.enabled}
-                        maxLength={32}
-                        onChange={(e) => setStatusCommand({ trigger: e.target.value })}
-                    />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        自定义触发词，默认 <code className="font-mono">#nl</code>。最长 32
-                        字符，匹配前会去除首尾空格并转为小写。
-                    </p>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 border-t pt-3">
-                    <div className="min-w-0">
-                        <Label className={sc.enabled ? undefined : 'text-muted-foreground'}>
-                            不转发给下游（swallow）
+                </SettingRow>
+                <div className="grid gap-5 px-5 py-4 sm:grid-cols-2">
+                    <div className="flex min-w-0 flex-col gap-2">
+                        <Label
+                            htmlFor={`${id}-trigger`}
+                            className={!sc.enabled ? 'text-muted-foreground' : undefined}
+                        >
+                            触发词
                         </Label>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            开启后，命中的 <code className="font-mono">{sc.trigger}</code> 不再投递给已连接的
-                            Bot（仍会回复并本地记录）。默认关闭即透传。
+                        <Input
+                            id={`${id}-trigger`}
+                            className="font-mono"
+                            value={sc.trigger}
+                            disabled={!sc.enabled}
+                            maxLength={32}
+                            onChange={(e) => setStatusCommand({ trigger: e.target.value })}
+                        />
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            默认 #nl，最长 32 字符。匹配时忽略首尾空格与大小写。
                         </p>
                     </div>
+                    <div className="flex min-w-0 flex-col gap-2">
+                        <Label
+                            htmlFor={`${id}-cooldown`}
+                            className={!sc.enabled ? 'text-muted-foreground' : undefined}
+                        >
+                            回复冷却（秒）
+                        </Label>
+                        <Input
+                            id={`${id}-cooldown`}
+                            type="number"
+                            min={0}
+                            className="tabular-nums"
+                            value={sc.cooldownSeconds}
+                            disabled={!sc.enabled}
+                            onChange={(e) => {
+                                const n = Math.trunc(Number(e.target.value));
+                                setStatusCommand({
+                                    cooldownSeconds: Number.isFinite(n) && n >= 0 ? n : 0,
+                                });
+                            }}
+                        />
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            同一会话在冷却期间不重复回复。0 表示不限。
+                        </p>
+                    </div>
+                </div>
+                <SettingRow
+                    label="拦截已命中的消息"
+                    hint="不再转发给下游 Bot，仍会回复并记录。"
+                    layout="inline"
+                >
                     <ToggleSwitch
                         value={sc.swallow}
-                        onChange={(v) => setStatusCommand({ swallow: v })}
+                        onChange={(swallow) => setStatusCommand({ swallow })}
                         ariaLabel={`吞掉 ${sc.trigger} 不转发给下游`}
                         disabled={!sc.enabled}
                     />
-                </div>
-
-                <div className="flex flex-col gap-1.5 border-t pt-3">
-                    <Label className={sc.enabled ? undefined : 'text-muted-foreground'}>
-                        回复冷却（秒）
-                    </Label>
-                    <Input
-                        type="number"
-                        min={0}
-                        className="w-32 tabular-nums"
-                        value={sc.cooldownSeconds}
-                        disabled={!sc.enabled}
-                        onChange={(e) => {
-                            const n = Math.trunc(Number(e.target.value));
-                            setStatusCommand({
-                                cooldownSeconds: Number.isFinite(n) && n >= 0 ? n : 0,
-                            });
-                        }}
-                    />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        同一会话在该秒数内重复 <code className="font-mono">{sc.trigger}</code>{' '}
-                        不再回复，防刷屏。
-                        <code className="font-mono">0</code> 表示不限制。
-                    </p>
-                </div>
-            </div>
+                </SettingRow>
+            </Group>
 
             <NotificationOptIn
                 selectedIds={config.notifications?.channelIds ?? []}

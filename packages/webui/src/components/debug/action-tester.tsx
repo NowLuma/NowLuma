@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     AlertTriangle,
-    FlaskConical,
+    Braces,
     History,
     Loader2,
     Play,
@@ -31,9 +31,9 @@ import { clearHistory, loadHistory, pushHistory, type InvokeRecord } from '@/lib
 import { cn } from '@/lib/utils';
 import type { DebugActionDoc, DebugStreamFrame, QQInfo } from '@/types';
 
-const cardCls = 'ui-card rounded-lg border border-border bg-card';
+const cardCls = 'cp-panel';
 
-// Name patterns for genuinely destructive actions → require a confirm. False
+// Name patterns for destructive actions → require a confirm. False
 // positives just add one extra click; false negatives skip a confirm — both low
 // stakes (the amber banner already warns that any write is real).
 const DESTRUCTIVE_RE =
@@ -131,11 +131,11 @@ export function ActionTester({
             try {
                 parsed = JSON.parse(rawJson || '{}');
             } catch {
-                return { __error: 'params JSON 无效' };
+                return { __error: '参数 JSON 格式无效' };
             }
 
             if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-                return { __error: 'params 必须是对象' };
+                return { __error: '参数必须是 JSON 对象' };
             }
 
             return parsed as Record<string, unknown>;
@@ -155,7 +155,7 @@ export function ActionTester({
         }
 
         if (!actionName.trim()) {
-            setResult({ error: '请填写 action' });
+            setResult({ error: '请选择或输入接口名称' });
             return;
         }
 
@@ -224,7 +224,11 @@ export function ActionTester({
                     !!term &&
                     term.status === 'ok' &&
                     (term.data as { type?: string } | undefined)?.type === 'response';
-                setResult(last);
+                setResult(
+                    ok || term?.status === 'failed'
+                        ? term
+                        : { error: '流已结束，但未收到完成响应' },
+                );
                 tasks.finish(taskId, ok ? 'done' : 'failed');
                 setHistory(
                     pushHistory({
@@ -317,39 +321,8 @@ export function ActionTester({
     const resultFailed = !!result && ('error' in result || result.status === 'failed');
 
     return (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-            {/* tester */}
-            <motion.section
-                initial={reduced ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: reduced ? 0 : 0.16 }}
-                className={cn(cardCls, 'relative z-20 flex flex-col gap-5 p-6 xl:col-span-7')}
-            >
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                        <FlaskConical className="h-[18px] w-[18px] text-primary" />
-                        <h2 className="text-[15px] font-semibold tracking-tight">Action 测试台</h2>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowHistory((v) => !v)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                        <History className="h-3.5 w-3.5" /> 历史{' '}
-                        {history.length > 0 && (
-                            <span className="tabular-nums">{history.length}</span>
-                        )}
-                    </button>
-                </div>
-
-                <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>
-                        调用会<strong className="font-semibold">真实生效</strong>(真发消息 /
-                        真踢人等),请谨慎。
-                    </span>
-                </div>
-
+        <div className="cp-debug-workbench">
+            <div className="cp-debug-context cp-panel relative z-30 flex min-w-0 flex-col gap-4 p-5 sm:p-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="账号">
                         <Picker
@@ -362,9 +335,9 @@ export function ActionTester({
                             disabled={accounts.length === 0}
                         />
                     </Field>
-                    <Field label="Action">
+                    <Field label="接口">
                         <Picker
-                            ariaLabel="选择 action"
+                            ariaLabel="选择接口"
                             value={actionName}
                             onChange={(v) => {
                                 setActionName(v);
@@ -373,7 +346,7 @@ export function ActionTester({
                                 setFrames([]);
                             }}
                             options={actionOptions}
-                            placeholder="search action…"
+                            placeholder="搜索接口…"
                             validateRaw={(s) => s.trim().length > 0}
                         />
                     </Field>
@@ -383,7 +356,7 @@ export function ActionTester({
                     <div className="-mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                         {doc.readOnly ? (
                             <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                <ShieldCheck className="h-3 w-3" /> 只读·安全
+                                <ShieldCheck className="h-3 w-3" /> 只读
                             </span>
                         ) : (
                             <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/12 px-2 py-0.5 text-sm font-semibold text-amber-700 dark:text-amber-300">
@@ -407,10 +380,29 @@ export function ActionTester({
                         </span>
                     </div>
                 )}
+            </div>
+
+            {/* tester */}
+            <motion.section
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className={cn(cardCls, 'relative z-20 flex flex-col gap-5')}
+            >
+                <div className="flex items-center gap-2.5">
+                    <Braces className="size-4 text-muted-foreground" />
+                    <h2 className="text-base font-semibold">请求参数</h2>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>写入类调用会直接影响当前账号。</span>
+                </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">参数</span>
                     <Segmented
+                        label="参数编辑方式"
                         value={effectiveMode}
                         onChange={setParamMode}
                         options={[
@@ -422,7 +414,8 @@ export function ActionTester({
 
                 {effectiveMode === 'json' ? (
                     <Textarea
-                        className="min-h-28 rounded-xl font-mono text-xs"
+                        aria-label="参数 JSON"
+                        className="min-h-40 rounded-xl font-mono text-sm"
                         value={rawJson}
                         onChange={(e) => setRawJson(e.target.value)}
                         placeholder='{ "group_id": 12345, "message": "hi" }'
@@ -490,7 +483,7 @@ export function ActionTester({
                         onClick={onExecute}
                         disabled={invoking}
                         data-press-scale=""
-                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
+                        className="ui-button inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
                     >
                         {invoking ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -499,13 +492,13 @@ export function ActionTester({
                         ) : (
                             <Play className="optical-forward h-4 w-4" />
                         )}
-                        {invoking ? '执行中…' : isStream ? '流式执行' : '执行'}
+                        {invoking ? '运行中…' : isStream ? '运行流式调用' : '运行调用'}
                     </button>
                     {invoking && isStream && streamAbort.current && (
                         <button
                             type="button"
                             onClick={() => streamAbort.current?.abort()}
-                            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
+                            className="ui-button inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
                         >
                             取消
                         </button>
@@ -517,122 +510,147 @@ export function ActionTester({
             <motion.section
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: reduced ? 0 : 0.16 }}
-                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-3 p-6 xl:col-span-5')}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-4')}
             >
-                {showHistory ? (
-                    <>
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-[15px] font-semibold tracking-tight">调用历史</h3>
-                            {history.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        clearHistory();
-                                        setHistory([]);
-                                    }}
-                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" /> 清空
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex flex-col gap-1 overflow-auto">
-                            {history.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
-                                    暂无历史
-                                </p>
-                            ) : (
-                                history.map((rec) => (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                    <span className="text-xs font-medium text-muted-foreground">运行结果</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowHistory((v) => !v)}
+                        aria-pressed={showHistory}
+                        className="cp-control inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        <History className="h-3.5 w-3.5" /> 历史{' '}
+                        {history.length > 0 && (
+                            <span className="tabular-nums">{history.length}</span>
+                        )}
+                    </button>
+                </div>
+                <div
+                    key={showHistory ? 'history' : 'result'}
+                    className="cp-fade flex min-w-0 flex-col gap-4"
+                >
+                    {showHistory ? (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[15px] font-semibold tracking-tight">
+                                    调用历史
+                                </h3>
+                                {history.length > 0 && (
                                     <button
-                                        key={rec.id}
                                         type="button"
-                                        onClick={() => replay(rec)}
-                                        className="group flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-muted/50"
+                                        onClick={() => {
+                                            clearHistory();
+                                            setHistory([]);
+                                        }}
+                                        className="cp-control inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
                                     >
-                                        <span
-                                            className={cn(
-                                                'h-1.5 w-1.5 shrink-0 rounded-full',
-                                                rec.ok ? 'bg-emerald-500' : 'bg-destructive',
-                                            )}
-                                        />
-                                        <span className="min-w-0 flex-1 truncate font-mono">
-                                            {rec.action}
-                                        </span>
-                                        <span className="shrink-0 font-mono text-meta text-muted-foreground tabular-nums">
-                                            {rec.uin}
-                                        </span>
-                                        <span className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-                                            <RotateCcw className="h-3.5 w-3.5" />
-                                        </span>
+                                        <Trash2 className="h-3.5 w-3.5" /> 清空
                                     </button>
-                                ))
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-[15px] font-semibold tracking-tight">
-                                {isStream ? '帧流' : '响应'}
-                            </h3>
-                            {result && (
-                                <span
-                                    className={cn(
-                                        'text-xs font-medium',
-                                        resultFailed ? 'text-destructive' : 'text-success',
-                                    )}
-                                >
-                                    {resultFailed ? '失败' : '成功'}
-                                    {!('error' in result) &&
-                                    resultFailed &&
-                                    (result.message || result.wording)
-                                        ? ` · ${result.message || result.wording}`
-                                        : ''}
-                                </span>
-                            )}
-                        </div>
-                        {frames.length > 0 && (
-                            <div className="flex flex-col gap-1.5 overflow-auto">
-                                <span className="text-xs text-muted-foreground tabular-nums">
-                                    {frames.length} 帧
-                                </span>
-                                {frames.map((f, i) => {
-                                    // On a failed frame the action's `data` is replaced with an
-                                    // {type:'error'} marker and the reason moves to message/wording
-                                    // — render the whole frame so the reason stays visible.
-                                    const failed =
-                                        f.status === 'failed' ||
-                                        (f.data as { type?: string } | undefined)?.type === 'error';
-                                    return (
-                                        <div
-                                            key={i}
-                                            className="rounded-lg border border-border/50 bg-muted/20 p-2"
+                                )}
+                            </div>
+                            <div className="flex flex-col gap-1 overflow-auto">
+                                {history.length === 0 ? (
+                                    <p className="py-8 text-center text-sm text-muted-foreground">
+                                        暂无历史
+                                    </p>
+                                ) : (
+                                    history.map((rec) => (
+                                        <button
+                                            key={rec.id}
+                                            type="button"
+                                            onClick={() => replay(rec)}
+                                            className="group flex min-h-14 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-muted/50"
                                         >
-                                            <JsonTree
-                                                data={failed ? f : (f.data ?? f)}
-                                                maxHeight="12rem"
+                                            <span
+                                                className={cn(
+                                                    'h-1.5 w-1.5 shrink-0 rounded-full',
+                                                    rec.ok ? 'bg-emerald-500' : 'bg-destructive',
+                                                )}
                                             />
-                                        </div>
-                                    );
-                                })}
+                                            <span className="min-w-0 flex-1 truncate font-mono">
+                                                {rec.action}
+                                            </span>
+                                            <span className="shrink-0 font-mono text-meta text-muted-foreground tabular-nums">
+                                                {rec.uin}
+                                            </span>
+                                            <span className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                            </span>
+                                        </button>
+                                    ))
+                                )}
                             </div>
-                        )}
-                        {result && !('error' in result) && frames.length === 0 && (
-                            <JsonTree data={result} maxHeight="28rem" />
-                        )}
-                        {result && 'error' in result && (
-                            <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-                                {result.error}
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-[15px] font-semibold tracking-tight">
+                                    {isStream ? '实时帧' : '响应内容'}
+                                </h3>
+                                {result && (
+                                    <span
+                                        className={cn(
+                                            'text-xs font-medium',
+                                            resultFailed ? 'text-destructive' : 'text-success',
+                                        )}
+                                    >
+                                        {resultFailed ? '调用失败' : '调用完成'}
+                                        {!('error' in result) &&
+                                        resultFailed &&
+                                        (result.message || result.wording)
+                                            ? ` · ${result.message || result.wording}`
+                                            : ''}
+                                    </span>
+                                )}
                             </div>
-                        )}
-                        {!result && frames.length === 0 && (
-                            <p className="flex flex-1 items-center justify-center py-12 text-center text-sm text-muted-foreground">
-                                执行后在此查看结果
-                            </p>
-                        )}
-                    </>
-                )}
+                            {frames.length > 0 && (
+                                <div className="flex flex-col gap-1.5 overflow-auto">
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {frames.length} 帧
+                                    </span>
+                                    {frames.map((f, i) => {
+                                        // On a failed frame the action's `data` is replaced with an
+                                        // {type:'error'} marker and the reason moves to message/wording
+                                        // — render the whole frame so the reason stays visible.
+                                        const failed =
+                                            f.status === 'failed' ||
+                                            (f.data as { type?: string } | undefined)?.type ===
+                                                'error';
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="rounded-lg border border-border/50 bg-muted/20 p-2"
+                                            >
+                                                <JsonTree
+                                                    data={failed ? f : (f.data ?? f)}
+                                                    maxHeight="12rem"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {result && !('error' in result) && frames.length === 0 && (
+                                <JsonTree data={result} maxHeight="28rem" />
+                            )}
+                            {result && 'error' in result && (
+                                <div
+                                    role="alert"
+                                    className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
+                                >
+                                    {result.error}
+                                </div>
+                            )}
+                            {!result && frames.length === 0 && (
+                                <p className="flex flex-1 items-center justify-center py-12 text-center text-sm text-muted-foreground">
+                                    执行后在此查看结果
+                                </p>
+                            )}
+                        </>
+                    )}
+                </div>
             </motion.section>
 
             <ConfirmDialog

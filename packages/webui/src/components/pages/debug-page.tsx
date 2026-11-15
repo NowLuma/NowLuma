@@ -1,12 +1,13 @@
-// Debug — a multi-tab developer console over /api/debug/*. Tabs: the action
-// tester, the visual message composer, the live activity feed, and an embedded
-// API browser. The browser's 试一下 prefills the tester and switches to it.
-// Apple-HIG flavour throughout (sliding-indicator tabs, translucent chrome).
+// Debug — a multi-tab developer workspace over /api/debug/*. Workspaces: the
+// action tester, the visual message composer, the live activity feed, and an
+// embedded API reference (the action library). The browser's 试一下 prefills
+// the tester and switches to it. Tester / composer / activity stay MOUNTED so
+// the live SSE feed and in-progress edits survive tab switches.
 import { useEffect, useState } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
-import { BookOpen, Bug, FlaskConical, MessageSquarePlus, RadioTower } from 'lucide-react';
+import { Activity, Library, Send, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs } from '@/components/ui/tabs';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { ActionTester } from '@/components/debug/action-tester';
 import { MessageComposer } from '@/components/debug/message-composer';
 import { LiveActivity } from '@/components/debug/live-activity';
@@ -14,12 +15,12 @@ import { ApiBrowser } from '@/components/debug/api-browser';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { useApi } from '@/lib/api';
 import type { DebugActionDoc, QQInfo } from '@/types';
+import '@/styles/console-pages.css';
 
 type Tab = 'tester' | 'compose' | 'activity' | 'api';
 
 export function DebugPage() {
     const api = useApi();
-    const reduced = useReducedMotionConfig();
     const [accounts, setAccounts] = useState<QQInfo[]>([]);
     const [docs, setDocs] = useState<DebugActionDoc[]>([]);
     const [ready, setReady] = useState(false);
@@ -48,62 +49,57 @@ export function DebugPage() {
     };
 
     return (
-        <div className="mx-auto flex max-w-6xl flex-col gap-6">
-            <motion.header
-                initial={reduced ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: reduced ? 0 : 0.16 }}
-                className="sticky top-0 z-20 -mx-1 flex flex-col gap-3 border-b border-border bg-background px-1 py-3"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                        <Bug className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-semibold tracking-tight">开发者工具</h2>
-                        <p className="text-sm text-muted-foreground">
-                            接口测试 · 消息构建 · 实时观测 · API 参考
-                        </p>
-                    </div>
+        <div className="cp-page">
+            <header className="flex flex-col gap-3">
+                <div className="cp-toolbar text-sm text-muted-foreground">
+                    <p>选择账号与接口，构建消息并查看实时结果。</p>
+                    {ready && (
+                        <span className="font-mono text-xs tabular-nums">
+                            {accounts.length} 个账号 · {docs.length} 个接口
+                        </span>
+                    )}
                 </div>
-                <Tabs
-                    aria-label="调试工具"
-                    value={tab}
-                    onChange={setTab}
-                    items={[
-                        {
-                            value: 'tester',
-                            label: '测试台',
-                            icon: <FlaskConical className="h-4 w-4" />,
-                        },
-                        {
-                            value: 'compose',
-                            label: '消息构建',
-                            icon: <MessageSquarePlus className="h-4 w-4" />,
-                        },
-                        {
-                            value: 'activity',
-                            label: '实时活动',
-                            icon: <RadioTower className="h-4 w-4" />,
-                        },
-                        {
-                            value: 'api',
-                            label: 'API 浏览器',
-                            icon: <BookOpen className="h-4 w-4" />,
-                            badge: docs.length || undefined,
-                        },
-                    ]}
-                />
-            </motion.header>
-
-            {loadError && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                >
-                    {loadError}
+                {loadError && (
+                    <div
+                        role="alert"
+                        className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                    >
+                        {loadError}
+                    </div>
+                )}
+                <div className="ui-glass cp-category-chrome">
+                    <GlassMaterial />
+                    <Tabs
+                        className="border-0"
+                        aria-label="调试工具"
+                        value={tab}
+                        onChange={setTab}
+                        items={[
+                            {
+                                value: 'tester',
+                                label: '接口调用',
+                                icon: <Terminal className="size-4" />,
+                            },
+                            {
+                                value: 'compose',
+                                label: '发送消息',
+                                icon: <Send className="size-4" />,
+                            },
+                            {
+                                value: 'activity',
+                                label: '活动记录',
+                                icon: <Activity className="size-4" />,
+                            },
+                            {
+                                value: 'api',
+                                label: '接口库',
+                                icon: <Library className="size-4" />,
+                                badge: docs.length || undefined,
+                            },
+                        ]}
+                    />
                 </div>
-            )}
+            </header>
 
             <SkeletonSwap
                 ready={ready}
@@ -121,16 +117,32 @@ export function DebugPage() {
                 tabs) and in-progress params/messages survive a peek at another tab.
                 ApiBrowser has no state worth preserving and is heavy (~520 rows), so
                 it mounts on demand. */}
-                        <div className={cn(tab !== 'tester' && 'hidden')}>
+                        <div
+                            role="tabpanel"
+                            aria-label="接口调用"
+                            className={cn('min-w-0', tab === 'tester' ? 'cp-fade' : 'hidden')}
+                        >
                             <ActionTester accounts={accounts} docs={docs} presetAction={preset} />
                         </div>
-                        <div className={cn(tab !== 'compose' && 'hidden')}>
+                        <div
+                            role="tabpanel"
+                            aria-label="发送消息"
+                            className={cn('min-w-0', tab === 'compose' ? 'cp-fade' : 'hidden')}
+                        >
                             <MessageComposer accounts={accounts} />
                         </div>
-                        <div className={cn(tab !== 'activity' && 'hidden')}>
+                        <div
+                            role="tabpanel"
+                            aria-label="活动记录"
+                            className={cn('min-w-0', tab === 'activity' ? 'cp-fade' : 'hidden')}
+                        >
                             <LiveActivity />
                         </div>
-                        {tab === 'api' && <ApiBrowser docs={docs} onTry={tryAction} />}
+                        {tab === 'api' && (
+                            <div role="tabpanel" aria-label="接口库">
+                                <ApiBrowser docs={docs} onTry={tryAction} />
+                            </div>
+                        )}
                     </>
                 ) : null}
             </SkeletonSwap>

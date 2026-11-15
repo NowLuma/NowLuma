@@ -8,7 +8,7 @@
 // left and a control (toggle / custom dropdown) on the right.
 
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     ArrowLeftRight,
     ArrowUpRight,
@@ -16,6 +16,7 @@ import {
     Copy,
     Eye,
     EyeOff,
+    Loader2,
     Radio,
     RefreshCw,
     Server,
@@ -64,7 +65,7 @@ interface NodeEditDialogProps<K extends NetworkKind> {
     otherNames: string[];
     /** Account context used when evaluating user-chosen access tokens. */
     uin: string;
-    onSubmit: (item: AnyAdapter<K>) => void;
+    onSubmit: (item: AnyAdapter<K>) => Promise<void>;
 }
 
 export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps<K>) {
@@ -76,6 +77,9 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
     // open gets a fresh `initial` via useState's lazy init — no effect-based
     // resync needed, which keeps the lifecycle linear.
     const [draft, setDraft] = useState<AnyAdapter<K>>(initial);
+    const [busy, setBusy] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const reduced = useReducedMotionConfig();
 
     const trimmedName = draft.name?.trim() ?? '';
     const blankName = trimmedName.length === 0;
@@ -121,7 +125,10 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
     return (
         <Modal
             open={open}
-            onClose={() => onOpenChange(false)}
+            onClose={() => !busy && onOpenChange(false)}
+            closeOnBackdrop={!busy}
+            closeOnEscape={!busy}
+            className="cp-dialog"
             title={
                 <span className="inline-flex items-center gap-2">
                     <span className="grid size-8 place-items-center rounded-[10px] bg-primary/10 text-primary">
@@ -136,27 +143,47 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
             maxHeight="calc(100dvh - 2rem)"
             footer={
                 <>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
                         取消
                     </Button>
                     <Button
-                        disabled={!canSave}
-                        onClick={() => {
-                            const cleaned = { ...draft, name: trimmedName } as AnyAdapter<K>;
-                            onSubmit(cleaned);
-                            onOpenChange(false);
+                        disabled={!canSave || busy}
+                        onClick={async () => {
+                            setBusy(true);
+                            setSaveError('');
+
+                            try {
+                                const cleaned = { ...draft, name: trimmedName } as AnyAdapter<K>;
+                                await onSubmit(cleaned);
+                                onOpenChange(false);
+                            } catch (error) {
+                                setSaveError(
+                                    error instanceof Error ? error.message : '保存连接失败',
+                                );
+                            } finally {
+                                setBusy(false);
+                            }
                         }}
                     >
-                        {isEdit ? '保存修改' : '创建节点'}
+                        {busy && <Loader2 className="size-4 animate-spin" />}
+                        {busy ? '保存中…' : isEdit ? '保存连接' : '添加连接'}
                     </Button>
                 </>
             }
         >
-            <div className="flex flex-col gap-5">
+            {saveError && (
+                <p
+                    role="alert"
+                    className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                    {saveError}
+                </p>
+            )}
+            <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
                 <motion.div
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={reduced ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0 }}
+                    transition={{ duration: reduced ? 0 : 0.42, ease: [0.16, 1, 0.3, 1] }}
                     className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card/60 px-4 py-3.5 shadow-[0_1px_2px_rgb(0_0_0/0.04)]"
                 >
                     <div className="min-w-0">
@@ -288,7 +315,7 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
                         </SettingRow>
                     </div>
                 </Section>
-            </div>
+            </fieldset>
         </Modal>
     );
 }
@@ -305,11 +332,12 @@ function Section({
     delay: number;
     children: ReactNode;
 }) {
+    const reduced = useReducedMotionConfig();
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
+            initial={reduced ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay }}
+            transition={{ duration: reduced ? 0 : 0.2, delay: reduced ? 0 : delay }}
             className="flex flex-col gap-1.5"
         >
             <span className="px-1 text-xs font-medium text-muted-foreground">{caption}</span>
@@ -526,10 +554,14 @@ function Field({
     step,
     error,
 }: FieldProps) {
+    const id = useId();
     return (
         <div className="flex flex-col gap-1.5">
-            <Label>{label}</Label>
+            <Label htmlFor={id}>{label}</Label>
             <Input
+                id={id}
+                aria-invalid={!!error || undefined}
+                aria-describedby={error ? `${id}-error` : undefined}
                 type={type}
                 value={value ?? ''}
                 onChange={(e) => onChange(e.target.value)}
@@ -539,7 +571,11 @@ function Field({
                 step={step}
                 className={cn(error && 'border-destructive focus-visible:ring-destructive/40')}
             />
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && (
+                <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
+                    {error}
+                </p>
+            )}
         </div>
     );
 }
@@ -570,7 +606,8 @@ function TokenField({
     const [visible, setVisible] = useState(false);
     const [copied, setCopied] = useState(false);
     const copiedTimerRef = useRef<number | null>(null);
-    const feedbackId = useId();
+    const id = useId();
+    const feedbackId = `${id}-feedback`;
 
     const handleCopy = async () => {
         if (!value) {
@@ -595,9 +632,10 @@ function TokenField({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <Label>{label}</Label>
-            <div className="flex gap-1.5">
+            <Label htmlFor={id}>{label}</Label>
+            <div className="flex min-w-0 flex-wrap gap-1.5">
                 <Input
+                    id={id}
                     // Switch input type rather than masking the string so paste /
                     // selection / autofill all behave like a native password field.
                     type={visible ? 'text' : 'password'}
@@ -608,7 +646,7 @@ function TokenField({
                     spellCheck={false}
                     aria-invalid={feedback?.tone === 'error' || undefined}
                     aria-describedby={feedback ? feedbackId : undefined}
-                    className="flex-1 font-mono"
+                    className="min-w-0 flex-1 basis-40 font-mono"
                 />
                 <Button
                     type="button"

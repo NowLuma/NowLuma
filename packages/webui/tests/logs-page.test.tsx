@@ -64,8 +64,8 @@ describe('LogsPage fused search chrome', () => {
 
         expect(markup).toContain('aria-busy="true" aria-label="运行日志"');
         expect(markup).not.toContain('log-row-in');
-        expect(markup).toContain('ui-button inline-flex size-9');
-        expect(markup).toContain('ui-button inline-flex min-h-9');
+        expect(markup).toContain('ui-button inline-flex size-11');
+        expect(markup).toContain('ui-button inline-flex min-h-11');
         expect(markup).toContain('focus-visible:ring-2 focus-visible:ring-ring');
     });
 });

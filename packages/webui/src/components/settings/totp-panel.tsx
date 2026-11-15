@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Modal } from '@/components/interior/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,28 +10,6 @@ import { parseSecondFactor } from '@/lib/totp-second-factor';
 import { TotpQr } from '@/components/settings/totp-qr';
 import { TotpRecoveryCodes } from '@/components/settings/totp-recovery-codes';
 import { copyText } from '@/lib/utils';
-
-function SettingRow({
-    label,
-    hint,
-    children,
-}: {
-    label: string;
-    hint?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-            <div className="min-w-0">
-                <p className="text-sm font-medium">{label}</p>
-                {hint && (
-                    <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{hint}</p>
-                )}
-            </div>
-            <div className="sm:shrink-0">{children}</div>
-        </div>
-    );
-}
 
 export function TotpPanel() {
     const api = useApi();
@@ -57,59 +35,52 @@ export function TotpPanel() {
     }
 
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="gap-1 pb-4">
-                <CardTitle className="flex items-center gap-2 text-[15px]">
-                    <ShieldCheck className="size-4 text-primary" />
-                    双重验证
-                </CardTitle>
-                <CardDescription className="text-[12px] leading-relaxed">
-                    登录时在访问密码之外再验证 Authenticator 一次性密码。默认关闭。
-                </CardDescription>
-            </CardHeader>
-            <div className="divide-y divide-border/60 border-t border-border/60">
-                {status === 'loading' ? (
-                    <SettingRow label="2FA" hint="正在读取…">
-                        <span className="text-sm text-muted-foreground">…</span>
-                    </SettingRow>
-                ) : status.enabled ? (
-                    <>
-                        <SettingRow
-                            label="状态"
-                            hint={`已绑定 ${status.label} · 剩余 ${status.remainingRecoveryCodes} 个恢复码`}
-                        >
-                            <span className="text-sm text-success">已开启</span>
-                        </SettingRow>
-                        <SettingRow label="恢复码" hint="重新生成后旧码立即作废。">
-                            <Button variant="outline" size="sm" onClick={() => setRegenOpen(true)}>
-                                重新生成
-                            </Button>
-                        </SettingRow>
-                        <SettingRow
-                            label="关闭 2FA"
-                            hint="需要当前密码，以及验证码或恢复码。其他设备的会话将失效。"
-                        >
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setDisableOpen(true)}
-                            >
-                                关闭
-                            </Button>
-                        </SettingRow>
-                    </>
-                ) : (
+        <Group
+            title="双重验证"
+            icon={ShieldCheck}
+            description="登录时额外验证 Authenticator 一次性密码。默认关闭。"
+        >
+            {status === 'loading' ? (
+                <SettingRow label="2FA" hint="正在读取…">
+                    <span className="text-sm text-muted-foreground">…</span>
+                </SettingRow>
+            ) : status.enabled ? (
+                <>
                     <SettingRow
-                        label="Authenticator"
-                        hint="扫描二维码或手动输入密钥，再用 6 位验证码确认。"
+                        label="状态"
+                        hint={`已绑定 ${status.label} · 剩余 ${status.remainingRecoveryCodes} 个恢复码`}
                     >
-                        <Button variant="outline" size="sm" onClick={() => setSetupOpen(true)}>
-                            <KeyRound className="size-4" /> 开启 2FA
+                        <span className="text-sm text-success">已开启</span>
+                    </SettingRow>
+                    <SettingRow label="恢复码" hint="重新生成后旧码立即作废。">
+                        <Button variant="outline" size="sm" onClick={() => setRegenOpen(true)}>
+                            重新生成
                         </Button>
                     </SettingRow>
-                )}
-            </div>
+                    <SettingRow
+                        label="关闭 2FA"
+                        hint="需要当前密码，以及验证码或恢复码。其他设备的会话将失效。"
+                    >
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDisableOpen(true)}
+                        >
+                            关闭
+                        </Button>
+                    </SettingRow>
+                </>
+            ) : (
+                <SettingRow
+                    label="Authenticator"
+                    hint="扫描二维码或手动输入密钥，再用 6 位验证码确认。"
+                >
+                    <Button variant="outline" size="sm" onClick={() => setSetupOpen(true)}>
+                        <KeyRound className="size-4" /> 开启 2FA
+                    </Button>
+                </SettingRow>
+            )}
 
             <TotpSetupDialog
                 open={setupOpen}
@@ -129,7 +100,7 @@ export function TotpPanel() {
                 onDone={refresh}
             />
             <TotpRegenDialog open={regenOpen} onOpenChange={setRegenOpen} onDone={refresh} />
-        </Card>
+        </Group>
     );
 }
 
@@ -224,6 +195,7 @@ function TotpSetupDialog({
                     : '用 Authenticator 扫描二维码，或手动输入密钥，然后输入当前访问密码和 6 位验证码。'
             }
             closeLabel="关闭 2FA 绑定"
+            className="cp-dialog"
             maxWidth={440}
         >
             {recoveryCodes ? (
@@ -249,7 +221,7 @@ function TotpSetupDialog({
                                 </Button>
                                 <a
                                     href={enrollment.otpauthUrl}
-                                    className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground"
+                                    className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground"
                                 >
                                     在验证器中打开
                                 </a>
@@ -280,6 +252,7 @@ function TotpSetupDialog({
                     </div>
                     <Input
                         type="password"
+                        aria-label="当前访问密码"
                         placeholder="当前访问密码"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -290,11 +263,16 @@ function TotpSetupDialog({
                         autoComplete="one-time-code"
                         maxLength={6}
                         pattern="[0-9]*"
+                        aria-label="6 位验证码"
                         placeholder="6 位验证码"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                     />
-                    {error && <p className="text-xs text-destructive">{error}</p>}
+                    {error && (
+                        <p role="alert" className="text-xs text-destructive">
+                            {error}
+                        </p>
+                    )}
                     <Button
                         type="button"
                         disabled={busy || !password || !code}
@@ -367,23 +345,30 @@ function TotpChallengeDialog({
             title={title}
             description={description}
             closeLabel={`关闭${title}`}
+            className="cp-dialog"
             maxWidth={400}
         >
             <div className="flex flex-col gap-3">
                 <Input
                     type="password"
+                    aria-label="当前访问密码"
                     placeholder="当前访问密码"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
                 />
                 <Input
+                    aria-label="6 位验证码或恢复码"
                     placeholder="6 位验证码或恢复码"
                     value={second}
                     onChange={(e) => setSecond(e.target.value)}
                     autoComplete="one-time-code"
                 />
-                {error && <p className="text-xs text-destructive">{error}</p>}
+                {error && (
+                    <p role="alert" className="text-xs text-destructive">
+                        {error}
+                    </p>
+                )}
                 <Button
                     type="button"
                     variant={destructive ? 'destructive' : 'default'}
@@ -454,6 +439,7 @@ function TotpRegenDialog({
                     : '需要当前密码和 Authenticator 验证码。旧恢复码会立即作废。'
             }
             closeLabel="关闭恢复码"
+            className="cp-dialog"
             maxWidth={440}
         >
             {codes ? (
@@ -462,6 +448,7 @@ function TotpRegenDialog({
                 <div className="flex flex-col gap-3">
                     <Input
                         type="password"
+                        aria-label="当前访问密码"
                         placeholder="当前访问密码"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -469,12 +456,17 @@ function TotpRegenDialog({
                     />
                     <Input
                         inputMode="numeric"
+                        aria-label="6 位验证码"
                         placeholder="6 位验证码"
                         value={totp}
                         onChange={(e) => setTotp(e.target.value)}
                         autoComplete="one-time-code"
                     />
-                    {error && <p className="text-xs text-destructive">{error}</p>}
+                    {error && (
+                        <p role="alert" className="text-xs text-destructive">
+                            {error}
+                        </p>
+                    )}
                     <Button
                         type="button"
                         disabled={busy || !password || !totp.trim()}

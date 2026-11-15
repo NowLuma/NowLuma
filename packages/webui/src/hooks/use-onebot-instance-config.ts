@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import type { OneBotConfig, QQInfo } from '@/types';
 import { useApi } from '@/lib/api';
+import type { ConfigSaveResult } from '@/lib/api/types';
 
 /** Account-scoped editing, persistence, and unsaved-change confirmation. */
 export interface UseOneBotInstanceConfig {
@@ -22,11 +23,10 @@ export interface UseOneBotInstanceConfig {
     cancelSwitch: () => void;
     /**
      * Persist to the backend. Pass an explicit config to save it directly —
-     * the node dialog / enable-toggle / delete persist their freshly-computed
-     * config in the same tick, before React has flushed `setConfig`, so they
-     * can't rely on the (still-stale) closed-over `config`.
+     * adapter edits persist their fresh draft once and replace the visible
+     * configuration only after the server confirms persistence.
      */
-    save: (override?: OneBotConfig) => Promise<void>;
+    save: (override?: OneBotConfig) => Promise<ConfigSaveResult>;
     saveStatus: string;
     saveStatusTone: 'idle' | 'saving' | 'success' | 'warning' | 'error';
 }
@@ -212,7 +212,7 @@ export function useOneBotInstanceConfig(
             const target = override ?? currentConfig;
 
             if (!selectedUin || !target) {
-                return;
+                throw new Error('账号配置尚未加载');
             }
 
             const uin = selectedUin;
@@ -248,18 +248,21 @@ export function useOneBotInstanceConfig(
                     () => api.config.save(uin, target),
                 );
 
-                if (selectedUinRef.current !== uin || saveGenerationRef.current !== generation) {
-                    return;
-                }
-
                 if (!result.saved) {
-                    setSaveFeedback({
-                        text: `保存失败：${result.message || '服务器未确认配置已保存'}`,
-                        tone: 'error',
-                    });
-                    return;
+                    throw new Error(result.message || '服务器未确认配置已保存');
                 }
 
+                if (selectedUinRef.current !== uin || saveGenerationRef.current !== generation) {
+                    return result;
+                }
+
+                const applyErrors = result.errors
+                    .map((error) => `${error.name}：${error.message}`)
+                    .join('；');
+                const applyFailure =
+                    result.online && !result.applied
+                        ? `热重载失败${applyErrors ? `：${applyErrors}` : ''}`
+                        : null;
                 const unchanged = editRevisionRef.current === editRevision;
                 setState((previous) =>
                     previous.status === 'ready' && previous.uin === uin
@@ -272,8 +275,11 @@ export function useOneBotInstanceConfig(
                 );
 
                 if (!unchanged) {
-                    setSaveFeedback({ text: '上一版本已保存，当前修改待保存', tone: 'warning' });
-                    return;
+                    setSaveFeedback({
+                        text: `上一版本已保存，当前修改待保存${applyFailure ? `；${applyFailure}` : ''}`,
+                        tone: 'warning',
+                    });
+                    return result;
                 }
 
                 if (!result.online) {
@@ -281,25 +287,26 @@ export function useOneBotInstanceConfig(
                 } else if (result.applied) {
                     setSaveFeedback({ text: '已保存并应用', tone: 'success' });
                 } else {
-                    const first = result.errors[0]?.message;
                     setSaveFeedback({
-                        text: `已保存，但热重载失败${first ? `：${first}` : ''}`,
+                        text: `已保存，但${applyFailure}`,
                         tone: 'warning',
                     });
                 }
-            } catch (e) {
-                if (selectedUinRef.current !== uin || saveGenerationRef.current !== generation) {
-                    return;
-                }
 
-                setSaveFeedback({
-                    text: `保存失败：${e instanceof Error ? e.message : '未知错误'}`,
-                    tone: 'error',
-                });
-            } finally {
-                if (selectedUinRef.current === uin && saveGenerationRef.current === generation) {
+                if (!result.online || result.applied) {
                     scheduleStatusClear(uin, generation);
                 }
+
+                return result;
+            } catch (e) {
+                if (selectedUinRef.current === uin && saveGenerationRef.current === generation) {
+                    setSaveFeedback({
+                        text: `保存失败：${e instanceof Error ? e.message : '未知错误'}`,
+                        tone: 'error',
+                    });
+                }
+
+                throw e;
             }
         },
         [api, selectedUin, currentConfig, scheduleStatusClear, runAction],
