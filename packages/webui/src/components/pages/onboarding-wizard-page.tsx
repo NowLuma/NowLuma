@@ -50,9 +50,9 @@ interface OnboardingWizardPageProps {
     additionalSteps?: AdditionalOnboardingStep[];
 }
 
-const TAB_FALLBACK_TITLE: Record<string, string> = {
-    eula: '用户协议 / EULA',
-    privacy: '隐私政策 / Privacy',
+const DOCUMENT_LABELS: Record<AgreementDoc['id'], string> = {
+    eula: '使用说明',
+    privacy: '隐私说明',
 };
 
 export function OnboardingWizardPage({
@@ -97,7 +97,7 @@ export function OnboardingWizardPage({
         if (stepId === 'agreements') {
             return {
                 id: stepId,
-                label: '阅读并同意协议',
+                label: '阅读使用说明',
                 canSkip: false,
                 hideAdvance: true,
                 hideBack: true,
@@ -174,7 +174,7 @@ export function OnboardingWizardPage({
                     </div>
                     <p className="workspace-eyebrow mt-6">准备就绪，再出发</p>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        阅读协议，设置密码，然后开始管理你的连接。
+                        阅读使用说明，设置密码，然后开始管理你的连接。
                     </p>
                 </aside>
                 <main className="workspace-onboarding-document">
@@ -253,10 +253,10 @@ function AgreementStep({
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
-                        请阅读并同意以下协议
+                        阅读使用说明
                     </h2>
                     <p className="mt-0.5 max-w-2xl text-pretty text-xs leading-relaxed text-muted-foreground sm:mt-1 sm:text-sm">
-                        同意一次后无需重复确认；仅当协议内容更新时才会再次请求确认。
+                        阅读后确认，即可继续设置。
                     </p>
                 </div>
             </div>
@@ -264,15 +264,12 @@ function AgreementStep({
             {documents.length > 1 ? (
                 <div className="mt-3 max-w-full overflow-x-auto pb-1 sm:mt-4">
                     <SegmentedControl
-                        label="协议文档"
+                        label="说明文档"
                         value={activeId}
                         onValueChange={(next) => setActiveId(next as AgreementDoc['id'])}
                         options={documents.map((document) => ({
                             value: document.id,
-                            label:
-                                document.title?.split('/')[0]?.trim() ||
-                                TAB_FALLBACK_TITLE[document.id] ||
-                                document.id,
+                            label: DOCUMENT_LABELS[document.id],
                         }))}
                     />
                 </div>
@@ -289,14 +286,14 @@ function AgreementStep({
             <div
                 className="workspace-agreement-reading mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[4px] border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
                 tabIndex={0}
-                aria-label={active?.title ? `${active.title}正文` : '协议正文'}
+                aria-label={active ? `${DOCUMENT_LABELS[active.id]}正文` : '说明正文'}
             >
                 <div className="mx-auto max-w-[44.25rem]">
                     {active ? (
                         <Markdown content={active.text} />
                     ) : (
                         <p className="text-sm text-muted-foreground">
-                            未能加载协议文本，请刷新页面重试。
+                            未能加载说明文本，请刷新页面重试。
                         </p>
                     )}
                 </div>
@@ -324,7 +321,7 @@ function AgreementStep({
                     {agreed ? <Check className="size-3.5" strokeWidth={3} /> : null}
                 </span>
                 <span className="text-sm font-medium leading-relaxed">
-                    我已阅读并同意《用户协议》与《隐私政策》
+                    我已阅读《使用说明》和《隐私说明》
                 </span>
             </button>
 
@@ -336,7 +333,7 @@ function AgreementStep({
 
             <div className="mt-3 flex items-center gap-3 sm:justify-between">
                 <span className="hidden text-micro text-muted-foreground/70 sm:inline">
-                    agreements {version.slice(0, 8)}
+                    说明版本 {version.slice(0, 8)}
                 </span>
                 <div className="workspace-onboarding-actions grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                     <Button
@@ -346,7 +343,7 @@ function AgreementStep({
                         disabled={submitting}
                         className="h-11 w-full sm:w-auto"
                     >
-                        不同意并退出
+                        退出
                     </Button>
                     <Button
                         type="button"
@@ -357,7 +354,7 @@ function AgreementStep({
                         className="h-11 w-full sm:min-w-36 sm:w-auto"
                     >
                         <ShieldCheck className="size-4" />
-                        {submitting ? '提交中…' : '同意并继续'}
+                        {submitting ? '提交中…' : '确认并继续'}
                     </Button>
                 </div>
             </div>

@@ -28,22 +28,22 @@ const callbacks = {
 const documents = [
     {
         id: 'eula' as const,
-        title: '用户协议 / EULA',
+        title: '使用说明',
         declaredVersion: '1.0',
         effectiveDate: '2026-06-19',
-        text: '# 阅读用户协议\n\n协议正文保持为主要阅读内容。',
+        text: '# 阅读使用说明\n\n说明正文保持为主要阅读内容。',
     },
     {
         id: 'privacy' as const,
-        title: '隐私政策 / Privacy',
+        title: '隐私说明',
         declaredVersion: '1.0',
         effectiveDate: '2026-06-19',
-        text: '# 阅读隐私政策',
+        text: '# 阅读隐私说明',
     },
 ];
 
 describe('OnboardingWizardPage document workspace', () => {
-    it('starts with readable consent and keeps the accept/decline gate before passwords', () => {
+    it('starts with readable instructions and keeps acknowledgment before passwords', () => {
         const html = renderToStaticMarkup(
             <OnboardingWizardPage
                 {...callbacks}
@@ -57,16 +57,39 @@ describe('OnboardingWizardPage document workspace', () => {
         expect(html).toContain('完成首次使用设置');
         expect(html).toContain('aria-label="首次使用设置步骤"');
         expect(html).toContain('aria-current="step"');
-        expect(html).toContain('阅读用户协议');
-        expect(html).toContain('协议正文保持为主要阅读内容。');
-        expect(html).toContain('aria-label="用户协议 / EULA正文"');
+        expect(html).toContain('阅读使用说明');
+        expect(html).toContain('说明正文保持为主要阅读内容。');
+        expect(html).toContain('aria-label="使用说明正文"');
+        expect(html).toContain('aria-label="说明文档"');
+        expect(html).toContain('隐私说明');
         expect(html).toContain('tabindex="0"');
         expect(html).toContain('aria-pressed="false"');
-        expect(html).toContain('我已阅读并同意《用户协议》与《隐私政策》');
-        expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?同意并继续/);
-        expect(html).toContain('不同意并退出');
+        expect(html).toContain('我已阅读《使用说明》和《隐私说明》');
+        expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?确认并继续/);
+        expect(html).toContain('退出');
+        expect(html).not.toContain('同意并继续');
+        expect(html).not.toContain('不同意并退出');
         expect(html).not.toContain('跳过');
         expect(html).not.toContain('id="onboarding-cpw-new"');
+    });
+
+    it('uses instruction labels with the existing eula and privacy identifiers', () => {
+        const html = renderToStaticMarkup(
+            <OnboardingWizardPage
+                {...callbacks}
+                documents={documents.map((document) => ({
+                    ...document,
+                    title: document.id === 'eula' ? '用户协议 / EULA' : '隐私政策 / Privacy',
+                }))}
+                needsConsent
+                mustChangePassword={false}
+            />,
+        );
+        expect(html).toContain('aria-label="说明文档"');
+        expect(html).toContain('aria-label="使用说明正文"');
+        expect(html).toContain('我已阅读《使用说明》和《隐私说明》');
+        expect(html).not.toContain('用户协议');
+        expect(html).not.toContain('隐私政策');
     });
 
     it('keeps password fields, validation owner and the responsive action footer after consent', () => {
@@ -87,7 +110,7 @@ describe('OnboardingWizardPage document workspace', () => {
         expect(html).toContain('workspace-onboarding-actions');
         expect(html).toContain('保存并完成');
         expect(html).not.toContain('跳过');
-        expect(html).not.toContain('协议正文保持为主要阅读内容。');
+        expect(html).not.toContain('说明正文保持为主要阅读内容。');
     });
 
     it('does not create a shell for completed onboarding and retains optional extension steps', () => {
