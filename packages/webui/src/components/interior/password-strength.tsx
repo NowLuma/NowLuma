@@ -28,9 +28,11 @@ export type UsePasswordStrengthOptions = {
 };
 
 export type PasswordStrengthState = {
+    /** Display steps, independent of the number of password rules. */
     score: number;
     max: number;
     label: string;
+    labels: readonly string[];
     rules: EvaluatedRule[];
     guessable: boolean;
     announcement: string;
@@ -63,10 +65,17 @@ export function usePasswordStrength(
         const guessable =
             value.length > 0 && (COMMON.test(value) || RUN.test(value) || RUN_UP.test(value));
 
+        // A weak step must remain below full, including for custom label lists.
+        const strengthLabels = labels.length >= 3 ? labels : defaultLabels;
+        const max = strengthLabels.length - 1;
         const score =
-            value.length === 0 ? 0 : guessable ? 1 : Math.min(rules.length, Math.max(1, passed));
+            value.length === 0
+                ? 0
+                : guessable || rules.length === 0
+                  ? 1
+                  : Math.max(1, Math.floor((passed / rules.length) * max));
 
-        const label = labels[Math.min(score, labels.length - 1)] ?? '';
+        const label = strengthLabels[score];
         const unmet = evaluated.filter((r) => !r.met);
 
         const announcement =
@@ -75,14 +84,24 @@ export function usePasswordStrength(
                 : [
                       `密码强度${label}。`,
                       guessable ? '这是容易被猜中的常见模式。' : '',
-                      unmet.length === 0
-                          ? '已满足全部要求。'
-                          : `仍需满足：${unmet.map((r) => r.label).join('、')}。`,
+                      evaluated.length === 0
+                          ? '尚未获取密码要求。'
+                          : unmet.length === 0
+                            ? '已满足全部要求。'
+                            : `仍需满足：${unmet.map((r) => r.label).join('、')}。`,
                   ]
                       .filter(Boolean)
                       .join(' ');
 
-        return { score, max: rules.length, label, rules: evaluated, guessable, announcement };
+        return {
+            score,
+            max,
+            label,
+            labels: strengthLabels,
+            rules: evaluated,
+            guessable,
+            announcement,
+        };
     }, [value, rules, labels]);
 
     const [settled, setSettled] = useState('');
@@ -150,6 +169,7 @@ export function PasswordStrength({
         score,
         max,
         label,
+        labels: strengthLabels,
         rules: evaluated,
         guessable,
         announcement,
@@ -200,14 +220,14 @@ export function PasswordStrength({
 
                     <div className="mt-2 flex h-5 items-center justify-between gap-3">
                         <span className="inline-grid text-[12.5px] font-medium leading-5">
-                            {labels.map((text, i) => (
+                            {strengthLabels.map((text, i) => (
                                 <motion.span
                                     key={text}
                                     aria-hidden
                                     className={`col-start-1 row-start-1 whitespace-nowrap transition-colors duration-200 ${tone.text}`}
                                     initial={false}
                                     animate={{
-                                        opacity: i === Math.min(score, labels.length - 1) ? 1 : 0,
+                                        opacity: i === score ? 1 : 0,
                                     }}
                                     transition={reduced ? INSTANT : CROSSFADE}
                                 >
