@@ -1,6 +1,8 @@
 import { APP_VERSION } from '@nowluma/common/version';
 import { serve } from '@hono/node-server';
 import { resolveWebuiTarget } from '@nowluma/common/webui-target';
+import { registerKernelRoutes } from '../kernel-routes';
+import type { KernelPolicyStore } from '../kernel-policy';
 import { registerStaticFrontend } from './static-frontend';
 import type { HookManager, HookProcessInfo } from '@nowluma/bridge';
 import {
@@ -239,6 +241,7 @@ export async function initWebUI(
         stateBus?: StateBus;
         restart?: () => void;
         updateRoot?: string;
+        kernelPolicy?: KernelPolicyStore;
     } = {},
 ): Promise<{ port: number; stop: () => Promise<void> }> {
     const webuiTarget = resolveWebuiTarget(process.env.NOWLUMA_WEBUI_TARGET);
@@ -387,7 +390,11 @@ export async function initWebUI(
         // `/api/ui/public` serves the cosmetic appearance subset to the
         // pre-auth login page, so it must skip the bearer check. It exposes
         // nothing sensitive (no layout, no secrets) — see ui-config.ts.
-        if (reqPath === '/api/login' || reqPath === '/api/ui/public') {
+        if (
+            reqPath === '/api/login' ||
+            reqPath === '/api/ui/public' ||
+            (c.req.method === 'GET' && reqPath === '/api/kernel/catalog')
+        ) {
             return next();
         }
 
@@ -930,6 +937,7 @@ export async function initWebUI(
         return c.json(await getUpdateInfo(force));
     });
 
+    registerKernelRoutes(app, listener.kernelPolicy);
     registerSystemRoutes(app, { getBoundPort: () => boundPort });
 
     registerStorageRoutes(app, {

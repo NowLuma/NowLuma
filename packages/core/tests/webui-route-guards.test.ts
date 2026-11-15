@@ -1,10 +1,12 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OneBotManager } from '@nowluma/onebot/manager';
 import { initWebUI } from '../src/webui/server';
+import { COMPAT_RISK_VERSION, KernelPolicyStore } from '../src/kernel-policy';
+import { WebuiAuth } from '../src/webui/auth';
 
 const capture = vi.hoisted(() => ({
     fetch: undefined as ((req: Request) => Response | Promise<Response>) | undefined,
@@ -118,5 +120,103 @@ describe('moved route groups stay behind the WebUI guards', () => {
         });
         expect(badInvoke.status).toBe(400);
         expect(await badInvoke.json()).toEqual({ status: 'failed', message: 'action 必填' });
+    });
+});
+
+const KERNEL_ACCOUNT = '/api/kernel/accounts/10001';
+const KERNEL_CHOICE = { kernel: 'compat', riskAccepted: true, riskVersion: COMPAT_RISK_VERSION };
+
+async function acceptConsent(token: string) {
+    const agreements = (await (await call('/api/agreements', token)).json()) as { version: string };
+    expect(
+        (await call('/api/agreements/record-consent', token, { version: agreements.version }))
+            .status,
+    ).toBe(200);
+}
+
+describe('account kernel routes', () => {
+    it('exposes only the safe catalog publicly and guards account reads and writes through consent and revocation', async () => {
+        const store = new KernelPolicyStore();
+        server = await initWebUI(5099, {} as OneBotManager, undefined, undefined, {
+            kernelPolicy: store,
+        });
+        const catalog = await call('/api/kernel/catalog');
+        expect(catalog.status).toBe(200);
+        expect(await catalog.json()).toMatchObject({
+            riskVersion: COMPAT_RISK_VERSION,
+            options: [
+                { id: 'compat', label: '兼容内核', available: true },
+                { id: 'rewrite', label: '重写内核', available: false },
+            ],
+        });
+        expect((await call('/api/kernel/catalog', '', {})).status).toBe(401);
+        expect((await call(KERNEL_ACCOUNT)).status).toBe(401);
+        expect((await call(KERNEL_ACCOUNT, '', KERNEL_CHOICE)).status).toBe(401);
+        const token = await login();
+        expect((await call(KERNEL_ACCOUNT, token)).status).toBe(403);
+        expect((await call(KERNEL_ACCOUNT, token, KERNEL_CHOICE)).status).toBe(403);
+        await acceptConsent(token);
+        expect(await (await call(KERNEL_ACCOUNT, token)).json()).toMatchObject({
+            selection: null,
+            canLoad: false,
+        });
+        const saved = await call(KERNEL_ACCOUNT, token, KERNEL_CHOICE);
+        expect(saved.status).toBe(200);
+        expect(await saved.json()).toMatchObject({
+            success: true,
+            selection: KERNEL_CHOICE,
+            canLoad: true,
+        });
+        expect(await (await call('/api/kernel/accounts/20002', token)).json()).toMatchObject({
+            selection: null,
+            canLoad: false,
+        });
+        expect((await call('/api/logout', token, {})).status).toBe(200);
+        expect((await call(KERNEL_ACCOUNT, token)).status).toBe(401);
+        expect((await call(KERNEL_ACCOUNT, token, KERNEL_CHOICE)).status).toBe(401);
+    });
+
+    it('blocks account policy while the password must change', async () => {
+        vi.spyOn(WebuiAuth.prototype, 'mustChangePassword').mockReturnValue(true);
+        server = await initWebUI(5099, {} as OneBotManager, undefined, undefined, {
+            kernelPolicy: new KernelPolicyStore(),
+        });
+        const token = await login();
+        await acceptConsent(token);
+
+        for (const body of [undefined, KERNEL_CHOICE]) {
+            const response = await call(KERNEL_ACCOUNT, token, body);
+            expect(response.status).toBe(403);
+            expect(await response.json()).toMatchObject({ mustChangePassword: true });
+        }
+    });
+
+    it('rejects invalid choices and reports corrupt storage without overwriting it', async () => {
+        const store = new KernelPolicyStore();
+        server = await initWebUI(5099, {} as OneBotManager, undefined, undefined, {
+            kernelPolicy: store,
+        });
+        const token = await login();
+        await acceptConsent(token);
+
+        for (const [body, status] of [
+            [{ ...KERNEL_CHOICE, kernel: 'rewrite' }, 409],
+            [{ ...KERNEL_CHOICE, riskAccepted: false }, 400],
+            [{ ...KERNEL_CHOICE, riskVersion: 'stale' }, 409],
+            [{ ...KERNEL_CHOICE, extra: true }, 400],
+        ] as const) {
+            expect((await call(KERNEL_ACCOUNT, token, body)).status).toBe(status);
+        }
+
+        expect((await call('/api/kernel/accounts/0', token, KERNEL_CHOICE)).status).toBe(400);
+        expect(
+            (await call(KERNEL_ACCOUNT, token, { ...KERNEL_CHOICE, data: 'x'.repeat(5000) }))
+                .status,
+        ).toBe(413);
+        store.save('10001', KERNEL_CHOICE);
+        writeFileSync(path.join('config', 'kernel-selections.json'), '{broken');
+        expect((await call(KERNEL_ACCOUNT, token)).status).toBe(500);
+        expect((await call(KERNEL_ACCOUNT, token, KERNEL_CHOICE)).status).toBe(500);
+        expect(() => store.get('10001')).toThrow('损坏');
     });
 });

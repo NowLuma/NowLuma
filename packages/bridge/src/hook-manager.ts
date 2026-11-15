@@ -3,6 +3,7 @@ import { createLogger, runWithTraceRequest, type Logger } from '@nowluma/common/
 import { renderParamsVerbose } from '@nowluma/common/log-summary';
 import type { PacketSender } from '@nowluma/common/packet-sender';
 import type { PacketInfo, PacketSink } from '@nowluma/common/protocol-types';
+import { isRealUin } from '@nowluma/common/uin';
 import fs from 'fs';
 import { HookSession, type HookSessionDeps } from './hook-session';
 import {
@@ -65,6 +66,8 @@ export type HookManagerDeps = {
     detectAccounts?: (pids: readonly number[]) => Promise<AccountLoginState[]>;
     /** Subscribe to login database changes. Returns the subscription cleanup. */
     watchAccounts?: (pids: readonly number[], onChange: () => void) => () => void;
+    /** Account-scoped application authorization; omitted for standalone bridge consumers. */
+    authorizeAccount?: (uin: string) => Promise<void>;
     /** When true, every newly-discovered QQ process is auto-injected (fires
      * `loadProcess(pid)` from the watcher's 'process-discovered' handler).
      * Failed loads are logged and leave the session in the 'error' state.
@@ -108,6 +111,7 @@ export class HookManager {
     private readonly enumerator: ProcessEnumerator;
     private readonly detectAccounts: (pids: readonly number[]) => Promise<AccountLoginState[]>;
     private readonly watchAccounts: NonNullable<HookManagerDeps['watchAccounts']>;
+    private readonly authorizeAccount?: HookManagerDeps['authorizeAccount'];
     private readonly autoLoadOnDiscovery: boolean;
     private readonly onSessionsChangedRaw?: () => void;
     private readonly log: Logger;
@@ -117,6 +121,7 @@ export class HookManager {
 
     private accounts = new Map<number, HookProcessAccount>();
     private accountProbe: Promise<void> | null = null;
+    private authorizationRevision = 0;
     private accountsDirty = true;
     private stopWatchingAccounts?: () => void;
     private lastAccountProbeFailure = '';
@@ -138,6 +143,7 @@ export class HookManager {
         this.watchAccounts =
             deps.watchAccounts ??
             ((pids, onChange) => watchAccountChangesForPids(pids, onChange, this.log));
+        this.authorizeAccount = deps.authorizeAccount;
         this.autoLoadOnDiscovery = deps.autoLoadOnDiscovery ?? false;
 
         this.enumerator = createProcessEnumerator({
@@ -253,7 +259,13 @@ export class HookManager {
     private updateAccountWatcher(): void {
         this.stopWatchingAccounts?.();
         this.stopWatchingAccounts = this.watchAccounts([...this.sessions.keys()], () => {
+            this.authorizationRevision++;
             this.invalidateAccounts();
+
+            for (const session of this.sessions.values()) {
+                session.recheckAuthorization();
+            }
+
             void this.refreshAccounts();
         });
     }
@@ -430,6 +442,7 @@ export class HookManager {
                 }
 
                 if (
+                    !session.isPolicyPending &&
                     (session.status === 'connecting' ||
                         session.status === 'disconnected' ||
                         session.status === 'error') &&
@@ -578,6 +591,40 @@ export class HookManager {
             makeClient: this.makeClient,
             pipeWatcher: this.pipeWatcher,
             onPacket: this.onPacket,
+            authorizeAttach: this.authorizeAccount
+                ? async (_pid, reportedUin) => {
+                      const revision = this.authorizationRevision;
+                      // Authorization never consumes the UI snapshot or its best-effort error handling.
+                      const states = await this.detectAccounts([pid]);
+                      const uins = [
+                          ...new Set(
+                              states.filter((state) => state.pid === pid).map((state) => state.uin),
+                          ),
+                      ];
+
+                      if (uins.length !== 1 || !isRealUin(uins[0]!)) {
+                          throw new Error('尚未识别当前 QQ 账号，请先在 QQ 桌面登录后选择内核');
+                      }
+
+                      const uin = uins[0]!;
+
+                      if (reportedUin && reportedUin !== uin) {
+                          throw new Error('本地 QQ 账号与通信通道账号不一致');
+                      }
+
+                      await this.authorizeAccount!(uin);
+
+                      if (
+                          this.disposed ||
+                          this.sessions.get(pid) !== session ||
+                          revision !== this.authorizationRevision
+                      ) {
+                          throw new Error('QQ 账号检测已变化，请重新确认当前账号');
+                      }
+
+                      return uin;
+                  }
+                : undefined,
             detectLoginUin: async () => {
                 await this.refreshAccounts();
                 return this.accounts.get(pid)?.uin ?? null;

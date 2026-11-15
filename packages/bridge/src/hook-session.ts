@@ -45,6 +45,9 @@ export type HookSessionDeps = {
         unload: (pid: number, handle: ManualMapHandle) => Promise<void>;
     };
     makeClient: (pid: number) => QqHookClient;
+    /** Optional application policy. Must resolve to the freshly detected real UIN
+     * before injection, pipe connection or account binding; rejection denies attach. */
+    authorizeAttach?: (pid: number, reportedUin?: string) => Promise<string>;
     /** Account QQ's local data reports as signed in on `pid`, or null. Drives the
      *  login-reconcile safety net; injectable for tests. Defaults to
      *  `detectUinForPid`. */
@@ -89,6 +92,7 @@ export class HookSession extends EventEmitter {
 
     private readonly injector: HookSessionDeps['injector'];
     private readonly makeClient: HookSessionDeps['makeClient'];
+    private readonly authorizeAttachGate?: HookSessionDeps['authorizeAttach'];
     private readonly detectLoginUin: (pid: number) => Promise<string | null>;
     private readonly pipeWatcher: HookSessionDeps['pipeWatcher'];
     private readonly onPacket: PacketSink | null;
@@ -110,6 +114,12 @@ export class HookSession extends EventEmitter {
     private sender: HookPacketClient | null = null;
     private bound = false;
     private opChain: Promise<unknown> = Promise.resolve();
+    private policyPending = false;
+    private authorizedUin = '';
+    private authorizationEpoch = 0;
+    private authorizingLoginUin = '';
+    private authorizationCheckPending = false;
+    private processGone = false;
     private disposed = false;
     private initialConnectionWatch: InitialConnectionWatch | null = null;
     private initialConnectionError = '';
@@ -138,6 +148,7 @@ export class HookSession extends EventEmitter {
         this.pid = pid;
         this.injector = deps.injector;
         this.makeClient = deps.makeClient;
+        this.authorizeAttachGate = deps.authorizeAttach;
         this.detectLoginUin = deps.detectLoginUin ?? detectUinForPid;
         this.pipeWatcher = deps.pipeWatcher;
         this.onPacket = deps.onPacket ?? null;
@@ -157,6 +168,9 @@ export class HookSession extends EventEmitter {
     }
     get method(): string {
         return this._method;
+    }
+    get isPolicyPending(): boolean {
+        return this.policyPending;
     }
     get isDisposed(): boolean {
         return this.disposed;
@@ -235,6 +249,26 @@ export class HookSession extends EventEmitter {
             });
     }
 
+    /** Account database changes revoke a live binding without waiting for a packet. */
+    recheckAuthorization(): void {
+        if (!this.authorizeAttachGate || this.authorizationCheckPending || !this.connected) {
+            return;
+        }
+
+        this.authorizationCheckPending = true;
+        void this.serialize(async () => {
+            if (this.connected) {
+                await this.authorizeAttach(this.authorizedUin || undefined);
+            }
+        })
+            .finally(() => {
+                this.authorizationCheckPending = false;
+            })
+            .catch((error) =>
+                this.log.warn('account authorization failed: %s', errorMessage(error)),
+            );
+    }
+
     onPipeDown(): void {
         if (this.disposed) {
             return;
@@ -254,6 +288,8 @@ export class HookSession extends EventEmitter {
     /** Called by the manager when the watcher reports the QQ.exe process is
      * gone. Cleans up and signals the manager to remove this session. */
     notifyProcessGone(): void {
+        this.processGone = true;
+
         if (this.disposed) {
             return;
         }
@@ -400,7 +436,11 @@ export class HookSession extends EventEmitter {
     // ─────────────── internal transitions ───────────────
 
     private async loadInternal(): Promise<HookProcessInfo> {
-        if (this.disposed) {
+        if (this.disposed || this.processGone) {
+            return this.toInfo();
+        }
+
+        if (!(await this.authorizeAttach(this.connected ? this.authorizedUin : undefined))) {
             return this.toInfo();
         }
 
@@ -466,6 +506,7 @@ export class HookSession extends EventEmitter {
     }
 
     private async unloadInternal(): Promise<HookProcessInfo> {
+        this.policyPending = false;
         this._error = '';
         this.stopInitialConnectionWatch();
         this.initialConnectionError = '';
@@ -515,7 +556,9 @@ export class HookSession extends EventEmitter {
     }
 
     private async refreshInternal(): Promise<HookProcessInfo> {
-        this._error = '';
+        if (!this.policyPending) {
+            this._error = '';
+        }
 
         try {
             // Same pipe-up / pipe-down reconcilers the watcher drives, chosen by
@@ -567,6 +610,14 @@ export class HookSession extends EventEmitter {
      * stale client, then (re)connect if needed or just settle the status.
      * Shared by onPipeUp and refresh's pipe-up branch. */
     private async reconcilePipeUp(): Promise<void> {
+        if (this.client?.isClosed) {
+            this.tearDownClient();
+        }
+
+        if (!(await this.authorizeAttach(this.connected ? this.authorizedUin : undefined))) {
+            return;
+        }
+
         if (!this.injected) {
             this.injected = true;
 
@@ -576,10 +627,6 @@ export class HookSession extends EventEmitter {
         }
 
         this.startInitialConnectionWatch();
-
-        if (this.client?.isClosed) {
-            this.tearDownClient();
-        }
 
         if (!this.connected) {
             await this.attemptConnect();
@@ -593,6 +640,10 @@ export class HookSession extends EventEmitter {
      * (i.e. we had reached login). Shared by onPipeDown, refresh's pipe-down
      * branch, and the client 'close' handler. */
     private reconcilePipeDown(): void {
+        if (this.policyPending) {
+            return;
+        }
+
         if (!this.connected) {
             // Nothing live to tear down. A session that never connected can't owe
             // a disconnect, and we must NOT clobber a diagnostic the failed
@@ -882,6 +933,9 @@ export class HookSession extends EventEmitter {
     }
 
     private tearDownClient(preserveRuntimeFailure = false): void {
+        this.authorizationEpoch++;
+        this.authorizingLoginUin = '';
+        this.authorizedUin = '';
         this.cancelConnectAttempt?.();
         this.stopLoginReconcile();
         this.resetReceiveWatch();
@@ -912,7 +966,104 @@ export class HookSession extends EventEmitter {
         this.resetLoginHint();
     }
 
+    private async authorizeAttach(reportedUin?: string): Promise<boolean> {
+        if (this.disposed || this.processGone) {
+            return false;
+        }
+
+        if (!this.authorizeAttachGate) {
+            return true;
+        }
+
+        const epoch = this.authorizationEpoch;
+
+        try {
+            const uin = await this.authorizeAttachGate(this.pid, reportedUin);
+
+            if (this.disposed || this.processGone || epoch !== this.authorizationEpoch) {
+                return false;
+            }
+
+            if (!isRealUin(uin) || (reportedUin && reportedUin !== uin)) {
+                throw new Error('本地 QQ 账号与通信通道账号不一致，请重新确认内核选择');
+            }
+
+            this.authorizedUin = uin;
+            this.policyPending = false;
+            return true;
+        } catch (error) {
+            if (!this.disposed && !this.processGone && epoch === this.authorizationEpoch) {
+                this.denyAuthorization(errorMessage(error));
+            }
+
+            return false;
+        }
+    }
+
+    private denyAuthorization(message: string): void {
+        const wasLoggedIn = this.loggedIn;
+        this.policyPending = true;
+        this.stopInitialConnectionWatch();
+        this.tearDownClient();
+        this._uin = '0';
+        this.setStatus('error', `内核选择待确认：${message}`);
+
+        if (wasLoggedIn) {
+            this.emit('disconnected', true);
+        }
+    }
+
     private handleLoginState(state: QqHookLoginState): void {
+        if (!this.authorizeAttachGate) {
+            this.applyLoginState(state);
+            return;
+        }
+
+        if (this.disposed || this.processGone || this.runtimeFailure || !this.connected) {
+            return;
+        }
+
+        const uin = state.uin || state.uinNumber.toString();
+
+        if (!state.loggedIn || !isRealUin(uin)) {
+            this.authorizationEpoch++;
+            this.authorizingLoginUin = '';
+            this.applyLoginState(state);
+            return;
+        }
+
+        if (uin !== this.authorizedUin) {
+            this.denyAuthorization('QQ 账号已切换，请为当前账号确认内核后重新连接');
+            return;
+        }
+
+        if ((this.loggedIn && this._uin === uin) || this.authorizingLoginUin === uin) {
+            return;
+        }
+
+        const client = this.client;
+        const epoch = ++this.authorizationEpoch;
+        this.authorizingLoginUin = uin;
+        void this.authorizeAttach(uin)
+            .then((allowed) => {
+                if (
+                    !allowed ||
+                    this.disposed ||
+                    this.processGone ||
+                    this.client !== client ||
+                    this.authorizationEpoch !== epoch ||
+                    !this.connected
+                ) {
+                    return;
+                }
+
+                this.authorizingLoginUin = '';
+                this.applyLoginState(state);
+            })
+            .catch((error) => this.log.warn('login authorization failed: %s', errorMessage(error)));
+    }
+
+    private applyLoginState(state: QqHookLoginState): void {
         if (this.disposed || this.runtimeFailure) {
             return;
         }
@@ -1110,6 +1261,11 @@ export class HookSession extends EventEmitter {
             this.lastDetectFailure = '';
 
             if (uin !== null && isRealUin(uin)) {
+                if (this.authorizeAttachGate && uin !== this.authorizedUin) {
+                    this.denyAuthorization('QQ 账号已切换，请为当前账号确认内核后重新连接');
+                    return;
+                }
+
                 if (this.acceptedLoginHintUin === uin) {
                     this.nextLoginIdentityObservationAt =
                         Date.now() + LOGIN_IDENTITY_OBSERVE_INTERVAL_MS;
@@ -1221,6 +1377,12 @@ export class HookSession extends EventEmitter {
         }
 
         const uin = packet.uin || this._uin;
+
+        if (this.authorizeAttachGate && isRealUin(uin) && uin !== this._uin) {
+            this.denyAuthorization('通信数据属于另一个 QQ 账号，请重新确认内核选择');
+            return;
+        }
+
         // Routing requires a real UIN, but even a frame carrying UIN=0 proves the
         // receive hook is alive. Attribute that evidence to the current epoch
         // without forwarding the malformed packet into BridgeManager.
