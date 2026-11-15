@@ -109,6 +109,7 @@ function makeSession(
         clientFailsConnect?: boolean;
         runtimeErrorOnConnect?: boolean;
         onPacket?: PacketSink;
+        authorizeAttach?: (pid: number, reportedUin?: string) => Promise<string>;
         detectLoginUin?: (pid: number) => Promise<string | null>;
         nativeReadyOnIdentityHint?: boolean;
         identityHintFailures?: number;
@@ -147,6 +148,7 @@ function makeSession(
             // Cast: FakeClient mirrors only the surface HookSession touches.
             return c as unknown as QqHookClient;
         },
+        authorizeAttach: opts.authorizeAttach,
         detectLoginUin,
         pipeWatcher: { isPipeLive: () => pipeLive },
         onPacket: opts.onPacket,
@@ -1033,6 +1035,71 @@ describe('HookSession — pipe up/down → connect lifecycle', () => {
 });
 
 describe('HookSession — unload', () => {
+    it('invalidates delayed authorization before injection and permits a later explicit load', async () => {
+        const authorization = Promise.withResolvers<string>();
+        const laterAuthorization = Promise.withResolvers<string>();
+        const authorizeAttach = vi
+            .fn(() => laterAuthorization.promise)
+            .mockReturnValueOnce(authorization.promise);
+        const ctx = makeSession({ authorizeAttach });
+
+        try {
+            const loading = ctx.session.load();
+            await flush();
+            expect(authorizeAttach).toHaveBeenCalledOnce();
+            const unloading = ctx.session.unload();
+            const reloading = ctx.session.load();
+            authorization.resolve('10001');
+            await Promise.all([loading, unloading]);
+            await flush();
+            expect(ctx.injector.inject).not.toHaveBeenCalled();
+            expect(ctx.clients).toHaveLength(0);
+            expect(ctx.session.toInfo()).toMatchObject({ status: 'available', injected: false });
+
+            expect(authorizeAttach).toHaveBeenCalledTimes(2);
+            laterAuthorization.resolve('10001');
+            await expect(reloading).resolves.toMatchObject({ injected: true });
+            expect(ctx.injector.inject).toHaveBeenCalledOnce();
+        } finally {
+            authorization.resolve('10001');
+            laterAuthorization.resolve('10001');
+            ctx.session.dispose();
+        }
+    });
+
+    it.each(['refresh', 'onPipeUp'] as const)(
+        'invalidates delayed %s authorization so unload never waits for a new pipe handshake',
+        async (operation) => {
+            const authorization = Promise.withResolvers<string>();
+            const handshake = Promise.withResolvers<void>();
+            const authorizeAttach = vi.fn(() => authorization.promise);
+            const connectClient = vi.fn(() => handshake.promise);
+            const ctx = makeSession({ pipeLive: true, authorizeAttach, connectClient });
+
+            try {
+                const connecting = ctx.session[operation]();
+                await flush();
+                expect(authorizeAttach).toHaveBeenCalledOnce();
+                let unloadSettled = false;
+                const unloading = ctx.session.unload().then(() => {
+                    unloadSettled = true;
+                });
+                authorization.resolve('10001');
+                await flush();
+                expect(ctx.clients).toHaveLength(0);
+                expect(connectClient).not.toHaveBeenCalled();
+                expect(ctx.injector.inject).not.toHaveBeenCalled();
+                expect(unloadSettled).toBe(true);
+                await Promise.all([connecting, unloading]);
+            } finally {
+                authorization.resolve('10001');
+                handshake.resolve();
+                ctx.session.dispose();
+                await flush();
+            }
+        },
+    );
+
     it('while logged in: emits disconnected(true), calls unload, status available', async () => {
         const ctx = makeSession({ pipeLive: false });
         await ctx.session.load();

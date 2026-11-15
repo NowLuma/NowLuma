@@ -213,6 +213,7 @@ export class HookSession extends EventEmitter {
     }
 
     unload(): Promise<HookProcessInfo> {
+        this.authorizationEpoch++;
         this.cancelConnectAttempt?.();
         return this.traceCommand('unload', () => this.unloadInternal());
     }
