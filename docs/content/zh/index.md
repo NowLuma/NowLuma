@@ -26,7 +26,7 @@ Nowluma 是运行在**你自己的机器或服务器**上的自托管程序。�
 | --- | --- |
 | [Nowluma 是什么](introduction.md) | 能力边界、三类“在线/离线”、保存与生效的区别、平台支持现状 |
 | [Docker 安装（Linux）](install-docker.md) | 安装向导每一步、端口与时区、初始密码、日常命令与数据卷 |
-| [原生安装](install-native.md) | Linux 发行包、Windows 的现状与限制 |
+| [原生安装](install-native.md) | Linux Lite 发行包与 Windows 单文件 exe |
 | [首次启动](first-run.md) | 登录、`?token=` 链接、双重验证、协议确认、访问密码 |
 | [总览](overview.md) | 部件库、布局编辑、导航、引导面板、展示模式 |
 | [QQ 连接](qq-connection.md) | 进程状态、加载与卸载、打开 QQ 桌面 |

@@ -1,4 +1,4 @@
-# Docker 与 Linux 部署指南
+# Docker、Linux 与 Windows 部署指南
 
 ## 1. 安装与首次登录
 
@@ -180,7 +180,9 @@ CI 可以验证目录/设置标记、机器 ID 和原生连接，但没有你的
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。
 - 后台 VNC 凭据保存在 QQ HOME 卷的私有 `.vnc/password`；浏览器和安装向导不需要读取它，勿公开导出。
 
-## 9. 原生 Linux
+## 9. 原生 Linux 与 Windows
+
+### Linux Lite
 
 使用 Linux 发行包，并安装支持的 Node；启动器也可使用同目录的可执行 `node`。
 
@@ -190,8 +192,18 @@ bash launcher.sh
 bash deploy/install.sh --native --directory /发行包目录
 ```
 
-原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
+`deploy/install.sh` 只在源码仓库里，不随 Lite 发行包分发。原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
 完整发行包的 Node 基线以 `check-node-version.cjs` 为准；不要用低版本 Node 绕过安全检查。
+
+### Windows 单文件 exe
+
+Windows x64 使用自包含的 `Nowluma.exe`：
+
+- 内置 Node 与运行环境，不需要 Docker、Node 或 .NET。
+- 双击后解压到 `%LOCALAPPDATA%\Nowluma` 并在浏览器打开控制台；可选本机 QQ，或在已有 Linux Docker 时选择隔离桌面。
+- 当前构建**未签名**，可能触发 SmartScreen；发行说明应给出 SHA-256，没有校验值的二进制不要直接运行。
+- 关闭窗口可能提前结束进程；建议按 Ctrl+C 正常停止。QQ 用户数据和设置不会被删除。
+- 真实 QQ 登录、注入与长期会话仍需你自己验证；这不是签名或真实账号验收声明。
 
 ## 10. 构建与验证
 
@@ -211,4 +223,4 @@ docker compose -f deploy/docker-compose.yml config --quiet
 CI 另外实际构建 Linux/amd64 Docker 镜像、启动官方 QQ/桌面/程序，检查原生连接，并验证停止/重启/重建时完整 HOME 和程序配置保留。
 arm64 下载和原生产物有相应构建输入，未实际验证前不得把它标为已测试的平台。
 
-许可和使用条款见根目录 LICENSE、EULA.md、PRIVACY.md；更名不改变这些条款。
+许可和使用条款见根目录 LICENSE（Nowluma Non-Commercial License, NowlumaNC）、EULA.md、PRIVACY.md；冲突时以中文版本为准。第三方组件继续受其各自许可证约束，原生二进制适用 EULA 的单独条款。

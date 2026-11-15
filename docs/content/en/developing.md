@@ -11,15 +11,18 @@ This chapter is for people changing code, opening a pull request, or redistribut
 
 | Item | Status |
 | --- | --- |
-| Is the source open source? | **No** — it is not an OSI open-source licence. It is a source-available non-commercial licence |
-| Allowed | Reading, studying, personal or otherwise non-commercial use, non-commercial self-hosting, and modification under the stated conditions |
-| Requires prior written permission | Any commercial use; publishing modified or derivative versions |
+| Is the source open source? | **No** — it is not an OSI open-source licence. It is the Nowluma Non-Commercial License (NowlumaNC), a source-available non-commercial licence |
+| Allowed | Reading, studying, personal or otherwise non-commercial use, non-commercial self-hosting, and modification and non-commercial distribution under the stated conditions |
+| Requires prior written permission | Any commercial use; distribution beyond what the licence expressly permits |
+| Distributing a Modified Version | Must retain the complete licence, give prominent Nowluma attribution and mark the Modified Version; must not impersonate an official release |
 | Native binaries | The bundled `nowluma-*.node` / `*.dll` / `*.so` files are a separate proprietary component outside the source licence |
 | Official release packages | Additionally covered by the EULA and privacy notice; where texts conflict, the Chinese version prevails |
 
-The upstream project attribution exists only in the first lines of the root `README.md`, as the licence requires. **Do not reintroduce the upstream brand** in the product name, package names, interface, environment variables or new documentation: this renaming round already moved the workspace packages (`@nowluma/*`), environment variables (`NOWLUMA_*`), SDK identifiers and backup application identifier.
+The upstream project attribution exists only in the **last line** of the root `README.md`, as the licence and history require. **Do not reintroduce the upstream brand** in the product name, package names, interface, environment variables or new documentation: this renaming round already moved the workspace packages (`@nowluma/*`), environment variables (`NOWLUMA_*`), SDK identifiers and backup application identifier. `tools/check-identity.mjs` derives the old name from that line and checks filenames, text, the native ABI exception and binary skips; do not evade it with split strings.
 
-The native components currently have only their **external filenames** changed; internal bytes and the required legacy socket ABI stay as they are. That is a deliberate exception for this phase — do not rewrite binary content to look cleaner.
+The native components currently have only their **external filenames** changed; internal bytes and the required legacy socket ABI stay as they are. The six original `nowluma-*` prebuilds kept in the repository (two per platform) are the native components used by current releases. A separate external rewrite attempt is unfinished and not shipped; its observations cover only some Windows DLL builds, and `.node` linking, real injection, send/receive calibration, login and Linux pairing are not verified in this repository. Do not rewrite the current prebuild bytes to look cleaner.
+
+This phase does not rewrite the QQ bridge kernel. The dual-kernel selector is not implemented; a future selector would require active informed risk acceptance for the original kernel on every QQ attach path, with no pre-checked acceptance and no silent fallback.
 
 ## Repository layout
 
@@ -35,7 +38,7 @@ The native components currently have only their **external filenames** changed; 
 | `packages/sqlite` / `packages/websocket` | Supplied native bindings and wrappers |
 | `packages/runtime` | Release scaffold and original prebuilds |
 | `packages/sdk` / `mcp` / `ui` | Consumer APIs and tooling packages |
-| `deploy` | Docker, installation, process supervision, persistence and smoke checks |
+| `deploy` | Docker, installation, process supervision, persistence, the Windows launcher and smoke checks |
 | `docs/content` | This documentation tree (Chinese `zh/`, English `en/`, coverage map `coverage.json`) |
 
 ## Environment
@@ -112,7 +115,7 @@ The generated-directory check compares against the committed snapshot. Commit th
 
 ## CI and releases
 
-The current pipeline runs type checks, static checks, tests and the release-layout check, and actually builds, starts and rebuilds a Linux/amd64 Docker test container. A successful build produces platform-specific Lite release artifacts.
+The current pipeline runs type checks, static checks, tests and the release-layout check, and actually builds, starts and rebuilds a Linux/amd64 Docker test container. A successful build produces platform-specific Lite release artifacts and the Windows x64 single-file exe (currently unsigned).
 
 **Not configured** are npm publishing, registry images and cross-repository automated releases. Therefore:
 

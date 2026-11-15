@@ -28,7 +28,7 @@ The console itself has no language switcher, so the interface is Chinese. Each l
 | --- | --- |
 | [What Nowluma is](introduction.md) | Boundaries, three meanings of online/offline, saved vs applied, platform status |
 | [Docker install (Linux)](install-docker.md) | Every installer step, ports and timezone, initial password, daily commands, volumes |
-| [Native install](install-native.md) | Linux release package, and the current state of Windows |
+| [Native install](install-native.md) | Linux Lite release package and the Windows single-file exe |
 | [First start](first-run.md) | Sign-in, `?token=` link, two-factor, agreements, access password |
 | [Overview](overview.md) | Widgets, layout editing, navigation, guidance panel, presentation mode |
 | [QQ connection](qq-connection.md) | Process states, load and unload, opening the QQ desktop |

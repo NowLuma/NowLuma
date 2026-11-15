@@ -1,6 +1,6 @@
 ---
-title: 原生安装（Linux 与 Windows 现状）
-description: 使用 Linux 发行包与启动器，以及 Windows 发行形态尚未确认时需要知道的事情。
+title: 原生安装（Linux 发行包与 Windows 单文件 exe）
+description: 使用 Linux Lite 发行包与启动器，或运行内置 Node 的 Windows 单文件 exe；两者都不使用容器。
 ---
 
 # 原生安装（Linux 与 Windows）
@@ -66,16 +66,19 @@ bash launcher.sh
 
 ## Windows
 
-现状需要说清楚，避免误导：
+Windows x64 的发行形态是自包含的 `Nowluma.exe`：
 
-- 安装脚本在非 Linux 上会直接退出，并提示 Windows 使用「一键运行 exe」。
-- 根 README 的 Windows 说明提到双击 `launcher.bat`。
-- **本仓库当前没有可供我验证的 Windows 发行包**：单文件 exe 是否存在、是否有签名、发行文件叫什么名字，都尚未确认。
+- 由 `tools/build-windows-exe.mjs` 打包，内置 Node 与运行环境；不需要 Docker、Node 或 .NET 安装。
+- 双击后解压到 `%LOCALAPPDATA%\Nowluma`，并在浏览器打开控制台。
+- 当前构建**未签名**，可能触发 SmartScreen；发行说明应给出 SHA-256，没有校验值的二进制不要直接运行。
+- 关闭窗口可能提前结束进程；建议在控制台按 Ctrl+C 正常停止。QQ 用户数据和设置不会被删除。
 
-因此本文档只描述「Windows 上的使用形态应当是什么」，不声明当前已发布可下载的 exe：
+这不是「已签名」或「已在真实账号上验收」的声明。真实 QQ 登录、注入与长期会话仍需要你自己验证；见 [计划中与未验证](planned.md)。
 
-1. 解压发行包。
-2. 双击启动器（`launcher.bat`，或发行说明里给出的可执行文件）启动程序。
+启动步骤：
+
+1. 运行 `Nowluma.exe`。
+2. 按提示选择本机 QQ；若已有 Linux Docker，也可选择隔离桌面。
 3. 自己打开 Windows 版 QQ 并登录，勾选 QQ 自己的自动登录设置。
 4. 回控制台按 [QQ 连接](qq-connection.md) 接入。
 
@@ -84,7 +87,7 @@ Windows 上的两个界面差异：
 - 会在总览或布局区域看到「低完整性警告」（当前进程令牌完整性级别偏低），可以「临时关闭」（本次标签页有效）或「永久关闭」（本机记住）。
 - 账号检测通过系统文件句柄完成，因此 QQ 必须在同一台机器上运行。
 
-在你拿到真实发行包之前，请不要把上面当作已发布的产物清单。发布形态确认后，这一节会被替换；见 [计划中与未验证](planned.md)。
+发行包只应包含程序与许可文件，不应包含 `config/`、`data/`、`logs/` 或真实账号数据。
 
 ## 从源码运行（开发用）
 

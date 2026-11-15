@@ -18,7 +18,7 @@ Use `git status` to preserve unrelated work. Issues should be submitted manually
 - `deploy`: Docker, installation, process supervision, persistence and smoke checks.
 
 QQ connectivity is intentionally not redesigned in the current phase. New product naming is `Nowluma`, workspace imports are `@nowluma/*`, and environment variables use `NOWLUMA_*`.
-Only the root README introduction contains the original project name. Original native bytes and their fallback socket ABI are explicit temporary exceptions; never patch arbitrary prebuild bytes to make a test pass.
+Only the root README footer contains the original project name; `tools/check-identity.mjs` derives that name from the footer rather than hardcoding it. Original native bytes and their fallback socket ABI are explicit temporary exceptions; never patch arbitrary prebuild bytes to make a test pass. The six original native prebuilds remain the shipped native components; the separate external rewrite attempt is unfinished and not shipped. The future dual-kernel selector is not implemented; when it arrives the original kernel will require active informed risk acceptance with no pre-checked or silent fallback.
 
 ## Safety and contracts
 

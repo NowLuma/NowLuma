@@ -145,3 +145,31 @@ test('the demo route is optional by default and required with withDemo', (t) => 
     const problems = checkSite({ outDir, withDemo: true });
     assert.ok(problems.some((problem) => problem.includes('demo route')));
 });
+
+test('README footer and legal contact metadata stay in sync', () => {
+    const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+    const lastLine = readme
+        .split(/\r?\n/)
+        .filter((line) => line.trim() !== '')
+        .at(-1);
+    assert.match(lastLine, /^本项目参考了 \*\*[A-Za-z]{3,}\*\* 的实现思路。$/);
+    for (const file of ['LICENSE', 'EULA.md', 'PRIVACY.md', 'README.md']) {
+        const text = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+        assert.ok(text.includes('ws675170761@gmail.com'), `${file} should use the project contact`);
+    }
+});
+
+test('coverage features map to known chapters and include performance mode', () => {
+    const coverage = JSON.parse(
+        fs.readFileSync(new URL('../docs/content/coverage.json', import.meta.url), 'utf8'),
+    );
+    const ids = new Set();
+    for (const feature of coverage.features) {
+        assert.ok(feature.id && !ids.has(feature.id), `duplicate or empty feature id: ${feature.id}`);
+        ids.add(feature.id);
+        for (const page of feature.pages) {
+            assert.ok(CHAPTERS.includes(page), `${feature.id} points at unknown page ${page}`);
+        }
+    }
+    assert.ok(ids.has('appearance-performance-mode'), 'performance mode should be covered');
+});

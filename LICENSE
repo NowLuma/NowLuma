@@ -1,131 +1,209 @@
-Nowluma Source-Available Non-Commercial License
-Nowluma 源码可见非商业许可
+# Nowluma Non-Commercial License (NowlumaNC) / Nowluma 非商业许可
 
-Version 1.0 · 2026-06-19
-Copyright (C) 2026 NowlumaDevs
-Contact: motricseven@foxmail.com
+Version 1.0 · 2026-11-15
 
-中英文如有冲突，以中文为准。
-In case of any conflict between the Chinese and English text, the Chinese
-version prevails.
+Copyright (C) 2026 Nowluma contributors
 
-This is NOT an open-source license as defined by the Open Source Initiative:
-it restricts commercial use and the public release of modifications. The
-source is published for transparency, study, and non-commercial self-hosting.
-本许可不是 OSI 定义的开源许可：它限制商业用途与修改版的公开发布。源码公开
-仅用于透明、学习与非商业的自托管。
+Contact / 联系方式: **ws675170761@gmail.com**
 
-===============================================================================
-1. Definitions / 定义
-===============================================================================
-- "Software" / "本软件": the Nowluma source code and assets in this
-  repository, excluding the Native Addon (defined below) and any third-party
-  components.
-- "You" / "你": any individual or entity exercising rights under this License.
-- "Commercial Use" / "商业用途": any use primarily intended for or directed
-  toward commercial advantage or monetary compensation. This includes, without
-  limitation, selling or reselling the Software; offering paid hosting,
-  deployment, setup, or operation services based on the Software; bundling it
-  into a paid product or service; or running it to provide a service for a fee.
-  包括但不限于：出售或转售本软件；提供基于本软件的付费托管、部署、代搭、代运营
-  服务；将其并入付费产品或服务；或以收费方式运行本软件对外提供服务。
-- "Native Addon" / "原生附加组件": the Nowluma native binary components shipped
-  with the Software (e.g. `nowluma-*.node`, `nowluma-*.dll`, `nowluma-*.so`).
-  These are a separate, proprietary component and are NOT licensed under this
-  License — see Section 5.
+This license is written in Chinese and English. If the two versions conflict, the Chinese version prevails. / 本许可同时提供中文与英文文本；两者冲突时，以中文文本为准。
 
-===============================================================================
-2. Grant / 授权
-===============================================================================
-Subject to the conditions and restrictions below, the copyright holder grants
-You a worldwide, royalty-free, non-exclusive, non-transferable, revocable
-license to:
-在下列条件与限制下，著作权人授予你一项全球、免费、非独占、不可转让、可撤销的
-许可，允许你：
-  (a) view and study the Software; 查看与学习本软件；
-  (b) use and run the Software for personal or other Non-Commercial purposes;
-      为个人或其他非商业目的使用与运行本软件；
-  (c) modify the Software for Your own Non-Commercial use; 为自己的非商业使用
-      修改本软件；
-  (d) redistribute the Software under the conditions in Section 3.
-      在第 3 条的条件下再分发本软件。
+## 1. 定义 / Definitions
 
-===============================================================================
-3. Redistribution Conditions / 再分发条件
-===============================================================================
-You may redistribute the Software (modified or unmodified) ONLY if ALL of the
-following are met. 仅当同时满足以下全部条件时，你方可再分发本软件（无论是否修改）：
-  (a) it is Non-Commercial; 属非商业性质；
-  (b) the complete text of this License is included; 附带本许可的完整文本；
-  (c) all copyright, attribution, and notices are retained unaltered;
-      保留全部著作权、署名与声明，且不得改动；
-  (d) PUBLIC release of a modified or derivative version requires the prior
-      written permission of the copyright holder. Private, non-public
-      modifications for Your own Non-Commercial use are permitted.
-      公开发布修改版或衍生版，须事先获得著作权人书面许可；为你自己非商业使用
-      而作的、不公开的修改则被允许。
+1.1 **“本软件” / “Software”** 指本仓库中由 Nowluma contributors 提供的源代码、文档、样式、图片与其他材料，但排除：
+- **原生组件 / Native Components**：`nowluma-*.node`、`nowluma-*.dll`、`nowluma-*.so` 以及随包提供的其他预编译原生文件；
+- **第三方组件 / Third-Party Components**：带有独立版权声明、许可证或归属说明的代码、字体、图标、库与其他材料。
 
-===============================================================================
-4. Restrictions / 限制
-===============================================================================
-  (a) Commercial Use of the Software in any form is PROHIBITED without the
-      prior written authorization of the copyright holder.
-      未经著作权人事先书面授权，禁止以任何形式对本软件进行商业使用。
-  (b) You may not develop, publish, or distribute another project based on the
-      Software without the prior written authorization of the copyright holder.
-      未经著作权人事先书面授权，不得基于本软件开发、发布或分发另一个项目。
-  (c) You may not remove, obscure, or alter any copyright, attribution, license,
-      or notice. 不得移除、遮蔽或更改任何著作权、署名、许可或声明。
+1.2 **“你” / “You”** 指行使本许可所授予权利的个人或组织。
 
-===============================================================================
-5. Native Addon / 原生附加组件
-===============================================================================
-The Native Addon is proprietary and is NOT covered by this License. It is
-distributed only as a precompiled binary bundled with the Software. No rights
-are granted to it other than to run it as bundled for the Non-Commercial use
-permitted above; in particular, no right to reverse engineer, reproduce,
-modify, redistribute separately, or relicense it is granted.
-原生附加组件为专有组件，不在本许可范围内，仅以随本软件分发的预编译二进制形式提供。
-除按上文允许的非商业用途以其随附形式运行外，不授予任何权利；尤其不授予对其进行逆向、
-复制、修改、单独再分发或再许可的权利。
+1.3 **“非商业目的” / “Non-Commercial Purpose”** 指不以商业利益或金钱报酬为目的的使用，包括个人学习、研究、技术互操作验证，以及不收取费用的自托管。仅为满足该目的而接受捐赠、报销实际成本或使用免费基础设施，不单独构成商业目的。
 
-===============================================================================
-6. Additional Permissions / 额外授权
-===============================================================================
-Any use not granted by this License — including Commercial Use and the public
-release of derivative works — requires prior written permission, which must be
-requested from and granted by the copyright holder (Contact above).
-本许可未授予的任何用途——包括商业使用及公开发布衍生作品——均须事先取得著作权人的
-书面许可（见上方联系方式）。
+1.4 **“商业使用” / “Commercial Use”** 包括但不限于：出售、转售、出租、付费托管、付费部署或运维、把本软件或修改版捆绑进收费产品、以本软件提供收费服务，以及为商业实体内部生产经营而使用。任何以本软件换取金钱或其他商业利益的行为均属商业使用，即使该行为没有单独标价。
 
-===============================================================================
-7. Third-Party Components / 第三方组件
-===============================================================================
-Third-party code and components retain their own original licenses, which
-govern those parts. 第三方代码与组件遵循其各自的原始许可，并以其许可为准。
+1.5 **“修改版” / “Modified Version”** 指对全部或部分本软件进行修改、翻译、改编、合并、拆分或其他衍生创作所形成的版本。
 
-===============================================================================
-8. Termination / 终止
-===============================================================================
-Any breach of this License automatically terminates the rights granted to You
-under it. 任何违反本许可的行为将自动终止你依本许可获得的权利。
+1.6 **“传播” / “Distribute”** 指向第三方提供本软件或修改版的副本，无论通过下载、镜像、安装包、容器镜像、代码托管、即时通讯、物理介质还是其他方式。
 
-===============================================================================
-9. Disclaimer / 免责声明
-===============================================================================
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
-LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
-OR OTHER DEALINGS IN THE SOFTWARE.
-本软件按“现状”提供，不附带任何明示或默示的担保，包括但不限于适销性、特定用途
-适用性及不侵权的担保。在任何情况下，作者或著作权人均不对因本软件或其使用所引起
-的任何索赔、损害或其他责任负责。
+## 2. 授权 / Grant
 
-===============================================================================
-10. Governing Law / 适用法律
-===============================================================================
-This License is governed by the laws of the mainland of the People's Republic
-of China, excluding its conflict-of-laws rules.
-本许可适用中华人民共和国大陆地区法律（不含其冲突法规则）。
+在遵守本许可全部条款的前提下，Nowluma contributors 授予你一项全球范围、免版税、非独占、不可转让、可撤销的许可，允许你：
+
+(a) 查看、阅读和学习本软件；
+(b) 为非商业目的运行本软件；
+(c) 为非商业目的修改本软件，形成修改版；
+(d) 按第 3 节的条件传播本软件或修改版。
+
+本许可不授予你任何商标、商号、服务标记或产品名称的使用权，但第 3 节要求的归属说明除外。
+
+## 3. 传播条件 / Conditions for Distribution
+
+传播本软件或修改版时，你必须同时满足以下全部条件：
+
+(a) **非商业**：传播和使用均限于非商业目的；任何商业使用须按第 6 节取得事先书面授权。
+(b) **完整许可**：随副本附上本许可的完整文本，不得删除、截断或替换。
+(c) **保留声明**：完整保留本软件及第三方组件中的版权声明、许可证、归属说明和其他权利声明，不得移除、遮蔽或改写。
+(d) **显著归属 Nowluma**：在修改版及其传播页面的显著位置（例如 README、关于页面、启动横幅或发行说明）明确说明该作品基于 **Nowluma**，并附上本仓库地址或项目主页。不得以任何方式暗示 Nowluma contributors 对你或你的修改版作出认可、担保或背书。
+(e) **标注修改版**：修改版必须显著标注“修改版 / Modified Version”、修改日期，并说明与原版的差异；不得把修改版冒充为 Nowluma 官方版本，也不得使用相同版本号冒充官方发行。
+(f) **第三方与原生条款**：继续遵守第三方组件的独立许可证，以及原生组件的单独条款（见第 5 节与 `EULA.md`）。本许可不改变、也不替代这些条款。
+
+## 4. 限制 / Restrictions
+
+除非取得第 6 节的事先书面授权，你不得：
+
+(a) 将本软件或修改版用于任何商业使用；
+(b) 把本软件或修改版再许可、出售、转让或以其他方式提供给第三方用于商业目的；
+(c) 移除、遮蔽、改写或伪造任何版权、归属、许可或其他权利声明；
+(d) 声称你独立创作了本软件的全部或主要部分，或声称本许可覆盖了第三方组件或原生组件；
+(e) 使用 Nowluma 的名称、标识或域名误导他人认为你的版本是官方版本，或获得官方认可；
+(f) 通过拆分、拼接、编码或其他方式规避本许可的限制。
+
+## 5. 原生组件与第三方组件 / Native and Third-Party Components
+
+5.1 **原生组件**是独立提供的专有组件，不属于本许可的授权范围。你仅可在遵守 `EULA.md` 与适用法律的前提下，随本软件一起运行发行包中的原生组件。你不得反向工程、反编译、修改、复制、单独传播或再许可原生组件，但适用法律强制允许且无法通过合同排除的情形除外。
+
+5.2 **第三方组件**继续受其各自许可证约束。本许可不重新许可、不改变、也不取代第三方许可证；如本许可与第三方许可证冲突，就该第三方组件而言以第三方许可证为准。传播时你必须保留第三方许可证与归属声明。
+
+5.3 本许可不授予你任何使用腾讯、QQ 或其他第三方商标、服务或数据的权利。你对 QQ 客户端、账号、网络和第三方服务的使用，仍须遵守相应条款与法律。
+
+## 6. 商业使用与其他授权 / Commercial Use and Additional Permission
+
+商业使用、或超出本许可明确允许范围的使用（包括违反第 3 节条件的传播），均须取得 Nowluma contributors 的事先书面授权。授权请求请发送至 **ws675170761@gmail.com**，说明使用主体、目的、范围、期限与分发方式。单独授权仅在其明确记载的主体、目的、范围和期限内有效，不构成对其他人的授权，也不改变本许可对未获授权行为的限制。
+
+## 7. 无担保 / No Warranty
+
+本软件按“现状”和“现有”提供，不附带任何明示或默示的担保，包括但不限于适销性、特定用途适用性、不侵权、无错误、不中断或安全的担保。你自行承担使用本软件的全部风险，包括账号、数据、网络、凭据和第三方服务相关的风险。
+
+## 8. 责任限制 / Limitation of Liability
+
+在适用法律允许的最大范围内，Nowluma contributors 不对因本软件或本许可引起的任何直接、间接、偶然、特殊、惩罚性或后果性损害承担责任，包括但不限于账号限制或封禁、数据丢失、利润损失、业务中断、设备损坏或第三方索赔。
+
+本节不排除或限制适用法律强制规定不得排除或限制的责任。若强制性法律（例如消费者保护法）赋予你不可放弃的权利，本许可不排除这些权利；在此范围内，本节按法律要求解释。
+
+## 9. 终止与恢复 / Termination and Reinstatement
+
+9.1 你违反本许可任何条款时，本许可授予你的权利自动终止。
+
+9.2 在你停止全部违约行为并书面通知 **ws675170761@gmail.com** 后，若 Nowluma contributors 未在合理期限内明确拒绝，你的权利可自通知之日起恢复。恢复不影响对恢复前违约行为的主张。
+
+9.3 本许可终止后，第 3、4、5、7、8、10、11 节以及按其性质应当继续有效的条款继续有效。
+
+## 10. 名称、历史与署名 / Names, History and Attribution
+
+10.1 本许可不删除、不追溯改写本项目的提交历史、版权声明、第三方归属或既有许可记录。你不得以再许可、改名或重新打包的方式，抹去原作者、贡献者或第三方组件的署名。
+
+10.2 根 `README.md` 末尾保留对上游项目思路的归属说明。该说明是本项目的历史与许可记录的一部分；传播时不得移除或伪造。
+
+10.3 你可以在非商业目的下使用“基于 Nowluma”的描述，但不得暗示官方身份或背书。
+
+## 11. 其他 / Miscellaneous
+
+11.1 本许可是你与 Nowluma contributors 之间关于本软件的完整许可协议，取代此前就同一主题作出的口头或书面说明。若本许可的任何条款被认定无效或不可执行，其余条款继续有效。
+
+11.2 本许可适用中华人民共和国法律（不含冲突法规则）。因本许可引起的争议，双方应先友好协商；协商不成的，提交有管辖权的人民法院。强制性法律另有规定的，从其规定。
+
+11.3 本许可的标题仅为阅读方便，不影响条款解释。
+
+---
+
+# Nowluma Non-Commercial License (NowlumaNC) — English text
+
+Version 1.0 · 2026-11-15
+
+Copyright (C) 2026 Nowluma contributors
+
+Contact: **ws675170761@gmail.com**
+
+## 1. Definitions
+
+1.1 **“Software”** means the source code, documentation, styles, images and other materials in this repository provided by Nowluma contributors, excluding:
+- **Native Components**: `nowluma-*.node`, `nowluma-*.dll`, `nowluma-*.so` and other precompiled native files shipped with a release;
+- **Third-Party Components**: code, fonts, icons, libraries and other materials carrying their own copyright notices, licenses or attribution.
+
+1.2 **“You”** means the individual or entity exercising rights under this License.
+
+1.3 **“Non-Commercial Purpose”** means use not aimed at commercial advantage or monetary compensation, including personal study, research, technical interoperability testing, and self-hosting without a fee. Accepting donations, reimbursements of actual costs, or free infrastructure solely to support that purpose does not by itself make the use commercial.
+
+1.4 **“Commercial Use”** includes selling, reselling, renting, paid hosting, paid deployment or operation, bundling the Software or a Modified Version into a paid product, providing a paid service using the Software, and use in the internal business operations of a commercial entity. Any exchange of the Software for money or other commercial advantage is Commercial Use, even without a separate price.
+
+1.5 **“Modified Version”** means a version resulting from modifying, translating, adapting, merging, splitting or otherwise creating a derivative of all or part of the Software.
+
+1.6 **“Distribute”** means providing a copy of the Software or a Modified Version to a third party by download, mirror, installer, container image, code hosting, messaging, physical media or any other means.
+
+## 2. Grant
+
+Subject to full compliance with this License, Nowluma contributors grant You a worldwide, royalty-free, non-exclusive, non-transferable, revocable license to:
+
+(a) view, read and study the Software;
+(b) run the Software for Non-Commercial Purposes;
+(c) modify the Software for Non-Commercial Purposes to create a Modified Version;
+(d) Distribute the Software or a Modified Version under Section 3.
+
+This License grants no rights in any trademark, trade name, service mark or product name, except the attribution required by Section 3.
+
+## 3. Conditions for Distribution
+
+When Distributing the Software or a Modified Version, You must meet all of the following:
+
+(a) **Non-commercial**: the Distribution and use are for Non-Commercial Purposes only; any Commercial Use requires prior written permission under Section 6.
+(b) **Complete license**: include the complete text of this License with the copy, without deletion, truncation or replacement.
+(c) **Retain notices**: retain all copyright, license, attribution and other proprietary notices in the Software and Third-Party Components, without removal, obscuring or alteration.
+(d) **Prominent Nowluma attribution**: state prominently in the Modified Version and on its distribution page (for example, README, About page, startup banner or release notes) that the work is based on **Nowluma**, with the repository address or project homepage. Do not suggest that Nowluma contributors endorse, warrant or approve You or Your Modified Version.
+(e) **Mark the Modified Version**: mark it prominently as a “Modified Version”, state the modification date, and describe the differences from the original. Do not present it as an official Nowluma release, and do not use the same version number to impersonate an official release.
+(f) **Third-party and Native terms**: continue to comply with the separate licenses of Third-Party Components and the separate terms for Native Components (Section 5 and `EULA.md`). This License does not change or replace those terms.
+
+## 4. Restrictions
+
+Unless You obtain prior written permission under Section 6, You may not:
+
+(a) use the Software or a Modified Version for any Commercial Use;
+(b) sublicense, sell, transfer or otherwise make the Software or a Modified Version available to a third party for commercial purposes;
+(c) remove, obscure, alter or falsify any copyright, attribution, license or other proprietary notice;
+(d) claim that You independently authored all or the main part of the Software, or that this License covers Third-Party Components or Native Components;
+(e) use the Nowluma name, marks or domains to mislead others into believing that Your version is official or endorsed;
+(f) circumvent the restrictions of this License by splitting, concatenating, encoding or other means.
+
+## 5. Native and Third-Party Components
+
+5.1 **Native Components** are separate proprietary components and are not licensed under this License. You may run the Native Components shipped with the Software only in compliance with `EULA.md` and applicable law. You may not reverse engineer, decompile, modify, copy, separately Distribute or sublicense Native Components, except where mandatory law permits and cannot be excluded by contract.
+
+5.2 **Third-Party Components** remain governed by their own licenses. This License does not relicense, change or replace third-party licenses; if this License conflicts with a third-party license, that third-party license governs that component. You must retain third-party licenses and attribution when Distributing.
+
+5.3 This License grants no rights in the trademarks, services or data of Tencent, QQ or any other third party. Your use of the QQ client, accounts, networks and third-party services remains subject to their terms and the law.
+
+## 6. Commercial Use and Additional Permission
+
+Commercial Use, or any use beyond what this License expressly permits (including Distribution that violates Section 3), requires prior written permission from Nowluma contributors. Send requests to **ws675170761@gmail.com**, stating the entity, purpose, scope, term and distribution method. A separate permission is valid only for the entity, purpose, scope and term it expressly states; it does not authorize anyone else and does not change this License for unauthorized acts.
+
+## 7. No Warranty
+
+The Software is provided “AS IS” and “AS AVAILABLE”, without any express or implied warranty, including merchantability, fitness for a particular purpose, non-infringement, freedom from errors, uninterrupted operation or security. You bear the entire risk of using the Software, including risks related to accounts, data, networks, credentials and third-party services.
+
+## 8. Limitation of Liability
+
+To the maximum extent permitted by applicable law, Nowluma contributors are not liable for any direct, indirect, incidental, special, punitive or consequential damages arising from the Software or this License, including account restriction or suspension, data loss, lost profits, business interruption, device damage or third-party claims.
+
+This Section does not exclude or limit liability that mandatory law prohibits from being excluded or limited. If mandatory law (for example, consumer protection law) gives You rights that cannot be waived, this License does not exclude those rights, and this Section is interpreted as required by law.
+
+## 9. Termination and Reinstatement
+
+9.1 Your rights under this License terminate automatically if You breach any term.
+
+9.2 After You stop all breaches and notify **ws675170761@gmail.com** in writing, Your rights may be reinstated from the date of notice unless Nowluma contributors expressly refuse within a reasonable period. Reinstatement does not affect claims for breaches before reinstatement.
+
+9.3 On termination, Sections 3, 4, 5, 7, 8, 10, 11 and any other provisions that by their nature should survive remain in effect.
+
+## 10. Names, History and Attribution
+
+10.1 This License does not delete or retroactively rewrite the project's commit history, copyright notices, third-party attribution or existing license records. You may not erase the attribution of the original authors, contributors or Third-Party Components by relicensing, renaming or repackaging.
+
+10.2 The root `README.md` retains an attribution to the upstream project's ideas at its end. That attribution is part of this project's history and license record; do not remove or falsify it when Distributing.
+
+10.3 You may describe Your work as “based on Nowluma” for Non-Commercial Purposes, but may not imply official status or endorsement.
+
+## 11. Miscellaneous
+
+11.1 This License is the entire license agreement between You and Nowluma contributors regarding the Software and supersedes prior oral or written statements on the same subject. If any provision is held invalid or unenforceable, the remaining provisions continue in effect.
+
+11.2 This License is governed by the laws of the People's Republic of China, excluding conflict-of-law rules. The parties should first negotiate in good faith; failing that, the dispute shall be submitted to a court of competent jurisdiction. Mandatory law prevails where it provides otherwise.
+
+11.3 Headings are for convenience only and do not affect interpretation.

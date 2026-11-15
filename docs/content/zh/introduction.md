@@ -83,8 +83,8 @@ OneBot 端点（节点卡片与总览部件）：
 | --- | --- |
 | Docker（Linux/amd64） | 安装向导、启动、桌面、重建保留数据都有自动化验证 |
 | Docker（arm64） | 有对应构建输入，**没有**实际验证记录，不要当成已测试平台 |
-| 原生 Linux 发行包 | 存在启动器与检查脚本；具体发行文件以你拿到的包为准 |
-| Windows | 发行形态与签名尚未确认，见 [原生安装](install-native.md#windows) 与 [计划中与未验证](planned.md) |
+| 原生 Linux 发行包（Lite） | 启动器与检查脚本；需要 Node.js `24.22.1`（24.x）或 `>=26.12.1`，不含 `deploy/install.sh` |
+| Windows x64 | 自包含 `Nowluma.exe`，内置 Node；未签名；无需 Docker、Node 或 .NET |
 
 ## 数据放在哪里
 
@@ -99,4 +99,4 @@ OneBot 端点（节点卡片与总览部件）：
 
 ## 许可一句话
 
-源码公开，但**不是** OSI 定义的开源许可：仅允许非商业使用与自托管，公开发布修改版需要事先书面授权；随包的原生二进制是独立的专有组件。细节和各条款见 [参与开发](developing.md)。
+源码公开，但**不是** OSI 定义的开源许可：采用 Nowluma Non-Commercial License (NowlumaNC)，仅允许非商业使用与自托管；非商业传播修改版须保留完整许可、显著标注 Nowluma 归属并标记修改版，商业使用需事先书面授权。随包的原生二进制是独立的专有组件。细节和各条款见 [参与开发](developing.md)。

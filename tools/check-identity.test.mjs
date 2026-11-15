@@ -3,10 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkIdentity } from './check-identity.mjs';
 
-const fullName = /借鉴了 \*\*([A-Za-z]+)\*\*/.exec(
-  readFileSync(new URL('../README.md', import.meta.url), 'utf8'),
-)[1];
-const README = `# Nowluma\n\n> 项目设计借鉴了 **${fullName}** 的一些想法。\n`;
+const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+const footer = readme
+  .split(/\r?\n/)
+  .filter((line) => line.trim() !== '')
+  .at(-1);
+const fullName = /^本项目参考了 \*\*([A-Za-z]{3,})\*\* 的实现思路。$/.exec(footer)[1];
+const README = `# Nowluma\n\n一段说明。\n\n${footer}\n`;
 
 function options(overrides = {}) {
   return {
@@ -18,29 +21,53 @@ function options(overrides = {}) {
   };
 }
 
-test('accepts the exact full-name README attribution', () => {
+test('accepts the exact footer as the last non-empty line', () => {
   assert.doesNotThrow(() => checkIdentity(options()));
+  assert.doesNotThrow(() => checkIdentity(options({ readme: `${README}\n\n` })));
 });
 
-test('rejects the old SL attribution and duplicate full-name mentions', () => {
+test('rejects a missing, non-final or non-footer attribution', () => {
+  assert.throws(
+    () => checkIdentity(options({ readme: '# Nowluma\n\n一段说明。\n' })),
+    /agreed README footer attribution/,
+  );
+  assert.throws(
+    () => checkIdentity(options({ readme: `${README}\n后记\n` })),
+    /agreed README footer attribution/,
+  );
   assert.throws(
     () =>
-      checkIdentity(options({ readme: `# Nowluma\n\n> 基于 **${fullName}（SL）** 二次开发。\n` })),
-    /agreed README attribution/,
+      checkIdentity(
+        options({
+          readme: `# Nowluma\n\n> 项目设计借鉴了 **${fullName}** 的一些想法。\n`,
+        }),
+      ),
+    /agreed README footer attribution/,
   );
+});
+
+test('rejects duplicate full-name mentions anywhere in the README', () => {
   assert.throws(
-    () => checkIdentity(options({ readme: `${README}\n${fullName.toLowerCase()}\n` })),
+    () => checkIdentity(options({ readme: `# ${fullName}\n\n${README}` })),
     /exactly once/,
-  );
-  assert.throws(
-    () => checkIdentity(options({ readme: '> 项目设计借鉴了 **SL** 的一些想法。' })),
-    /agreed README attribution/,
   );
 });
 
 test('allows links to this repository', () => {
   assert.doesNotThrow(() =>
-    checkIdentity(options({ readme: `${README}\nhttps://github.com/WSXYT/Nowluma\n` })),
+    checkIdentity(
+      options({
+        readme: `# Nowluma\n\nhttps://github.com/WSXYT/Nowluma\n\n${footer}\n`,
+      }),
+    ),
+  );
+  assert.doesNotThrow(() =>
+    checkIdentity(
+      options({
+        files: ['docs/own.md'],
+        readFile: () => Buffer.from('https://github.com/WSXYT/Nowluma'),
+      }),
+    ),
   );
 });
 
@@ -72,6 +99,14 @@ test('allows the documented native socket ABI exception only', () => {
       options({
         files: ['packages/bridge/src/hook-runtime-dir.ts'],
         readFile: () => Buffer.from(`return "/tmp/${fullName.toLowerCase()}-1000";`),
+      }),
+    ),
+  );
+  assert.doesNotThrow(() =>
+    checkIdentity(
+      options({
+        files: ['packages/bridge/tests/hook-runtime-dir.test.ts'],
+        readFile: () => Buffer.from(`'${fullName.toLowerCase()}-hook'`),
       }),
     ),
   );

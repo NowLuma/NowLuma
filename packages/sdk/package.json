@@ -1,8 +1,8 @@
 {
   "name": "@nowluma/sdk",
   "author": {
-    "name": "MotricSeven",
-    "email": "motricseven@gmail.com"
+    "name": "Nowluma contributors",
+    "email": "ws675170761@gmail.com"
   },
   "version": "2.4.2",
   "description": "TypeScript SDK for Nowluma OneBot HTTP and WebSocket transports",

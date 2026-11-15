@@ -83,8 +83,8 @@ OneBot endpoints (node cards and the overview widget):
 | --- | --- |
 | Docker (Linux/amd64) | Installer, startup, desktop and rebuild persistence are covered by automated checks |
 | Docker (arm64) | Build inputs exist, but there is **no** verification record; do not present it as tested |
-| Native Linux release | Launcher and checks exist; the exact release contents are whatever package you have |
-| Windows | Release form and signing unconfirmed; see [Native install](install-native.md#windows) and [Planned and unverified](planned.md) |
+| Native Linux release (Lite) | Launcher and checks; needs Node.js `24.22.1` (24.x) or `>=26.12.1`, and does not include `deploy/install.sh` |
+| Windows x64 | Self-contained `Nowluma.exe` with bundled Node; unsigned; no Docker, Node or .NET required |
 
 ## Where data lives
 
@@ -99,4 +99,4 @@ The source workspace also has a build output directory, `dist/`; in a release pa
 
 ## Licence in one line
 
-The source is available but **not** an OSI open-source licence: non-commercial use and self-hosting only, publishing modified versions requires prior written permission, and the bundled native binaries are a separate proprietary component. See [Contributing](developing.md) for the details.
+The source is available but **not** an OSI open-source licence: it uses the Nowluma Non-Commercial License (NowlumaNC), allowing non-commercial use and self-hosting only. Non-commercial distribution of a Modified Version requires the complete license, prominent Nowluma attribution and a Modified Version mark; Commercial Use requires prior written permission. The bundled native binaries are a separate proprietary component. See [Contributing](developing.md) for the details.

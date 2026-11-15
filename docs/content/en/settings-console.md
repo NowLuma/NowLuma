@@ -79,6 +79,7 @@ Three toggles for the togglable top-bar elements: 「连接状态徽章」 (conn
 | Toggle | Effect |
 | --- | --- |
 | 「自定义光标」 | Use a drawn cursor |
+| 「性能模式」 (performance mode) | Auto-detect (default) / full effects / low performance with motion off; auto mode degrades only on sustained low foreground frame rates, does not write results back to the server, and promises no frame-rate or power gain |
 | 「减弱动效」 (reduce motion) | Lower animation amplitude |
 | 「关闭全部动效」 (disable all motion) | No animation at all — for low-end devices or motion sensitivity |
 | 「高对比模式」 (high contrast) | Increase contrast |

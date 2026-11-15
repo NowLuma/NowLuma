@@ -1,6 +1,6 @@
 ---
-title: Native install (Linux, and the Windows situation)
-description: Running a Linux release package with its launcher, and what you need to know while the Windows release form is unconfirmed.
+title: Native install (Linux release package and Windows single-file exe)
+description: Run a Linux Lite release package with its launcher, or the Windows single-file exe with bundled Node; neither uses a container.
 ---
 
 # Native install (Linux and Windows)
@@ -66,16 +66,19 @@ When installing from a repository checkout, `bash deploy/install.sh --native --d
 
 ## Windows
 
-Be careful with expectations here:
+Windows x64 ships as a self-contained `Nowluma.exe`:
 
-- The installer exits on anything other than Linux and points Windows users at a one-click exe.
-- The root README's Windows section mentions double-clicking `launcher.bat`.
-- **This repository currently contains no Windows release I can verify.** Whether a single-file exe exists, whether it is signed, and what the artifact is called are all unconfirmed.
+- It is packaged by `tools/build-windows-exe.mjs` and bundles Node and the runtime; no Docker, Node or .NET installation is required.
+- Double-clicking it unpacks to `%LOCALAPPDATA%\Nowluma` and opens the console in your browser.
+- The current build is **unsigned** and may trigger SmartScreen. Release notes should provide a SHA-256; do not run a binary without a checksum.
+- Closing the window may end the process early; prefer Ctrl+C in the console for a graceful stop. QQ user data and settings are not deleted.
 
-So this documentation describes the intended shape of a Windows install without claiming a downloadable exe exists today:
+This is not a claim that the exe is signed or accepted on a real account. Real QQ login, injection and long-term sessions remain yours to verify; see [Planned and unverified](planned.md).
 
-1. Extract the release package.
-2. Double-click the launcher (`launcher.bat`, or whatever the release notes name) to start the program.
+To start:
+
+1. Run `Nowluma.exe`.
+2. Choose local QQ; if a Linux Docker engine is already available, you may choose the isolated desktop instead.
 3. Open Windows QQ yourself, sign in, and enable QQ's own automatic login.
 4. Return to the console and bridge the account as described in [QQ connection](qq-connection.md).
 
@@ -84,7 +87,7 @@ Two Windows-only differences in the interface:
 - A 「低完整性警告」 (low integrity warning) appears on the overview or layout area when the current process token has low integrity. You can dismiss it 「临时关闭」 (temporarily, this tab only) or 「永久关闭」 (permanently, this machine).
 - Account detection uses system file handles, so QQ must run on the same machine.
 
-Until you hold a real release package, do not read the above as a published artifact list. This section will be replaced once the release form is confirmed — see [Planned and unverified](planned.md).
+A release package should contain only the program and licence files, never `config/`, `data/`, `logs/` or real account data.
 
 ## Running from source (development only)
 

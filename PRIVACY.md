@@ -1,8 +1,8 @@
 # Nowluma 隐私与数据处理说明 / Privacy & Data Handling Notice
 
-- **生效日期 / Effective date:** 2026-06-19
-- **版本 / Version:** 1.0
-- **责任主体 / Provider:** NowlumaDevs（联系方式 / Contact: motricseven@foxmail.com）
+- **生效日期 / Effective date:** 2026-11-15
+- **版本 / Version:** 1.1
+- **责任主体 / Provider:** Nowluma contributors（联系方式 / Contact: ws675170761@gmail.com）
 
 > 本说明以中文与英文两种语言提供。如有冲突，**以中文版本为准**。
 > Provided in Chinese and English. **In case of conflict, the Chinese version prevails.**
@@ -12,7 +12,7 @@
 ## 中文版
 
 ### 1. 概述
-Nowluma 是一款**自托管**软件：它运行在**您自己的设备或服务器**上。**NowlumaDevs（作者方）默认不收集、不接收、不存储您的任何个人数据**。本软件**不包含**任何需要联网激活、或向作者方回传信息的授权机制。
+Nowluma 是一款**自托管**软件：它运行在**您自己的设备或服务器**上。**Nowluma contributors（作者方）默认不收集、不接收、不存储您的任何个人数据**。本软件**不包含**任何需要联网激活、或向作者方回传信息的授权机制。
 本说明唯一例外的数据外发情形，是第 4、5 条所述的两种，且其中遥测受严格限制（第 5 条）。
 
 ### 2. 本软件在您设备上存储的数据
@@ -73,7 +73,7 @@ Nowluma 是一款**自托管**软件：它运行在**您自己的设备或服务
 由于作者方默认不持有您的任何个人数据，与您个人信息相关的访问、更正、删除等权利，应在**您本地的数据范围内**由您自行行使。如遥测启用且您有疑问，可通过第 10 条联系我们。
 
 ### 10. 联系方式
-隐私相关问询：**motricseven@foxmail.com**。
+隐私相关问询：**ws675170761@gmail.com**。
 
 ### 11. 变更
 本说明可不时更新，更新版本将注明生效日期。涉及遥测的重大变更将在发布说明中显著告知。
@@ -83,7 +83,7 @@ Nowluma 是一款**自托管**软件：它运行在**您自己的设备或服务
 ## English Version
 
 ### 1. Overview
-Nowluma is **self-hosted**: it runs on **your own device or server**. **By default, NowlumaDevs (the authors) collect, receive, and store none of your data.** The Software contains **no** activation that requires network access or transmits information back to the authors. The only data that ever leaves your device is described in Sections 4 and 5, and telemetry is strictly limited (Section 5).
+Nowluma is **self-hosted**: it runs on **your own device or server**. **By default, Nowluma contributors (the authors) collect, receive, and store none of your data.** The Software contains **no** activation that requires network access or transmits information back to the authors. The only data that ever leaves your device is described in Sections 4 and 5, and telemetry is strictly limited (Section 5).
 
 ### 2. Data the Software Stores on Your Device
 To function, the Software stores the following categories of data locally (e.g., in a SQLite database, configuration, and log files). **This data stays on your device under your control; the authors cannot access it:**
@@ -143,7 +143,7 @@ The Software targets developers and technical users, is **not directed to minors
 Because the authors hold none of your personal data by default, rights of access, correction, and deletion are exercised by you **over the data on your own device**. If telemetry is enabled and you have questions, contact us (Section 10).
 
 ### 10. Contact
-Privacy inquiries: **motricseven@foxmail.com**.
+Privacy inquiries: **ws675170761@gmail.com**.
 
 ### 11. Changes
 This Notice may be updated from time to time; updated versions bear an effective date. Material changes affecting telemetry will be prominently noted in release notes.

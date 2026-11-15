@@ -8,7 +8,8 @@
     "notes": [
         "page values are file names shared by both language trees; docs/content/zh/<page> and docs/content/en/<page> both exist",
         "status: implemented = described from current source, pending-integration = planned and explicitly labelled as such, unverified = exists in source or installer but not verified end to end",
-        "labels are the real Chinese interface strings; the English tree glosses them rather than inventing new UI text"
+        "labels are the real Chinese interface strings; the English tree glosses them rather than inventing new UI text",
+        "Windows single-file exe, native prebuilds and the dual-kernel selector are release/platform status, not console features; see planned.md and install-native.md"
     ],
     "features": [
         { "id": "auth-splash", "group": "首次启动", "labels": ["初始化中…"], "pages": ["first-run.md"], "status": "implemented" },
@@ -96,6 +97,7 @@
         { "id": "appearance-topbar", "group": "系统设置", "labels": ["顶栏"], "pages": ["settings-console.md", "overview.md"], "status": "implemented" },
         { "id": "appearance-context-menu", "group": "系统设置", "labels": ["自定义右键菜单"], "pages": ["settings-console.md"], "status": "implemented" },
         { "id": "appearance-accessibility", "group": "系统设置", "labels": ["自定义光标", "减弱动效", "关闭全部动效", "高对比模式", "钉住侧栏展开"], "pages": ["settings-console.md"], "status": "implemented" },
+        { "id": "appearance-performance-mode", "group": "系统设置", "labels": ["性能模式", "自动检测（默认）", "完整效果", "低性能 / 关闭动效", "当前已使用低性能效果", "当前使用完整效果", "最近检测"], "pages": ["settings-console.md", "first-run.md"], "status": "implemented" },
         { "id": "appearance-host-managed", "group": "系统设置", "labels": ["外观跟随"], "pages": ["settings-console.md", "planned.md"], "status": "implemented" },
         { "id": "settings-data-and-format", "group": "系统设置", "labels": ["数据与格式", "轮询间隔", "登录后落地页", "时间格式"], "pages": ["settings-console.md"], "status": "implemented" },
         { "id": "settings-account-password", "group": "系统设置", "labels": ["访问密码", "修改密码"], "pages": ["settings-console.md", "first-run.md"], "status": "implemented" },
@@ -128,7 +130,7 @@
         { "id": "deploy-docker-volumes", "group": "部署", "labels": ["nowluma_config", "nowluma_data", "nowluma_logs", "nowluma_qq-home"], "pages": ["install-docker.md", "data-backup.md"], "status": "implemented" },
         { "id": "deploy-manage-script", "group": "部署", "labels": ["manage.sh start", "manage.sh stop", "manage.sh restart", "manage.sh logs", "manage.sh doctor"], "pages": ["install-docker.md", "troubleshooting.md", "data-backup.md"], "status": "implemented" },
         { "id": "deploy-native-linux", "group": "部署", "labels": ["launcher.sh", "--native --directory"], "pages": ["install-native.md"], "status": "implemented" },
-        { "id": "deploy-windows-release", "group": "部署", "labels": ["launcher.bat"], "pages": ["install-native.md", "planned.md"], "status": "unverified" },
+        { "id": "deploy-windows-release", "group": "部署", "labels": ["Nowluma.exe"], "pages": ["install-native.md", "planned.md"], "status": "unverified" },
         { "id": "deploy-desktop-authentication", "group": "网络", "labels": ["/desktop/"], "pages": ["access-network.md", "install-docker.md", "qq-connection.md"], "status": "implemented" },
         { "id": "deploy-ssh-tunnel", "group": "网络", "labels": [], "pages": ["access-network.md", "install-docker.md"], "status": "implemented" },
         { "id": "deploy-lan-access", "group": "网络", "labels": ["所有网卡"], "pages": ["access-network.md"], "status": "implemented" },

@@ -7,6 +7,10 @@ import assert from 'node:assert/strict';
 const binaryFile =
   /\.(?:png|jpe?g|gif|webp|ico|bmp|avif|node|dll|so|dylib|exe|zip|gz|tgz|tar|7z|ttf|otf|woff2?|pdf|db|sqlite3?|bin|class|jar|wasm)$/i;
 
+// The agreed footer is the only allowed full-name occurrence. The checker
+// derives the name from that line so the old brand is never hardcoded here.
+const footerAttribution = /^本项目参考了 \*\*([A-Za-z]{3,})\*\* 的实现思路。$/;
+
 // Unchanged prebuilds still own these native fallback socket-directory names.
 const nativeAbiFiles = new Set([
   'packages/bridge/src/hook-runtime-dir.ts',
@@ -21,15 +25,23 @@ function gitFiles() {
     .filter(Boolean);
 }
 
+function lastNonEmptyLine(text) {
+  const lines = text.split(/\r?\n/);
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim() !== '') return lines[index].trim();
+  }
+  return '';
+}
+
 export function checkIdentity({
   readme = readFileSync('README.md', 'utf8'),
   files = gitFiles(),
   exists = existsSync,
   readFile = (file) => readFileSync(file),
 } = {}) {
-  const attribution = /^> 项目设计借鉴了 \*\*([A-Za-z]{3,})\*\* 的一些想法。$/m.exec(readme);
-  assert.ok(attribution, 'expected the agreed README attribution using the full name');
-  const previousIdentity = attribution[1];
+  const footer = footerAttribution.exec(lastNonEmptyLine(readme));
+  assert.ok(footer, 'expected the agreed README footer attribution using the full name');
+  const previousIdentity = footer[1];
   const oldName = new RegExp(previousIdentity, 'i');
   assert.equal(
     (readme.match(new RegExp(previousIdentity, 'gi')) ?? []).length,
@@ -63,6 +75,6 @@ const invokedDirectly =
 if (invokedDirectly) {
   checkIdentity();
   console.log(
-    'Identity checked: exactly one full-name README attribution; native byte contents and documented socket ABI remain unchanged.',
+    'Identity checked: the footer is the sole full-name attribution; native byte contents and documented socket ABI remain unchanged.',
   );
 }
