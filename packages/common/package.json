@@ -28,6 +28,10 @@
       "types": "./src/semver.ts",
       "default": "./src/semver.ts"
     },
+    "./release-assets": {
+      "types": "./src/release-assets.ts",
+      "default": "./src/release-assets.ts"
+    },
     "./version": {
       "types": "./src/version.ts",
       "default": "./src/version.ts"

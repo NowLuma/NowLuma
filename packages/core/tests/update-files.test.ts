@@ -121,6 +121,29 @@ describe('staged updates', () => {
         expect(await applyPendingUpdate(root)).toBeNull();
     });
 
+    it('installs release license documents and runtime notices from an older manifest', async () => {
+        const payload = path.join(staging, 'pending/payload');
+        const manifest = await readManifest(payload);
+        manifest.entries.push('LICENSE', 'LICENSING.md', 'licenses');
+        await fs.writeFile(path.join(payload, 'LICENSE'), 'GPL fixture');
+        await fs.writeFile(path.join(payload, 'LICENSING.md'), 'Linking permission fixture');
+        await fs.mkdir(path.join(payload, 'licenses'));
+        await fs.writeFile(
+            path.join(payload, 'licenses/Node-LICENSE.txt'),
+            'Runtime notice fixture',
+        );
+        await fs.writeFile(path.join(payload, 'release.json'), JSON.stringify(manifest));
+
+        expect(await applyPendingUpdate(root)).toBe('2.0.0');
+        expect(await fs.readFile(path.join(root, 'LICENSE'), 'utf8')).toBe('GPL fixture');
+        expect(await fs.readFile(path.join(root, 'LICENSING.md'), 'utf8')).toBe(
+            'Linking permission fixture',
+        );
+        expect(await fs.readFile(path.join(root, 'licenses/Node-LICENSE.txt'), 'utf8')).toBe(
+            'Runtime notice fixture',
+        );
+    });
+
     it('only installs files declared by the release manifest', async () => {
         await fs.writeFile(path.join(staging, 'pending/payload/unlisted.mjs'), 'ignored');
         expect(await applyPendingUpdate(root)).toBe('2.0.0');

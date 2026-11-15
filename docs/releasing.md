@@ -60,7 +60,7 @@ git push origin refs/tags/v2.5.0
 
 `tools/check-version.mjs` 不依赖已安装的工作区，所以 tag 预检在任何 checkout 中都能运行。
 `tools/package-release.mjs` 只打包 `dist/` 的 linux-x64 布局，校验存档重新打开后的
-`release.json` 清单、必需的法律文件（`LICENSE`、`EULA.md`、`PRIVACY.md`），并拒绝
+`release.json` 清单、必需的 GPL 与说明文件（`LICENSE`、`LICENSING.md`、`EULA.md`、`PRIVACY.md`），并拒绝
 `config/`、`data/`、`logs/` 用户数据。Windows 产物是一键 exe，由
 `tools/build-windows-exe.mjs` 构建，不走这个脚本。
 
@@ -70,7 +70,7 @@ git push origin refs/tags/v2.5.0
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `draft`   | 校验 tag/版本/CHANGELOG，用该小节创建（或刷新）草稿发行；已发布的 tag 会被拒绝重写                                                                       |
 | `gates`   | 复用 `.github/workflows/ci.yml`：`verify`（类型、lint、测试、发行布局、文档与 demo）、Docker 构建与启动/重建 smoke、Windows 类型检查/exe 构建/启动器测试 |
-| `linux`   | 构建 `dist/`、打包 `nowluma-linux-x64-<version>.tar.gz`、生成构建来源证明、上传到草稿                                                                    |
+| `linux`   | 构建 `dist/`、打包 `Nowluma-v<version>-linux-x64-lite.tar.gz`、生成构建来源证明、上传到草稿                                                              |
 | `windows` | 类型检查、构建、`tools/build-windows-exe.mjs`、运行打包后的 `deploy/windows/launcher.test.cjs`、上传 exe 与 `build.json`                                 |
 | `docker`  | 构建 `linux/amd64` 镜像，只推送版本 tag `ghcr.io/<owner>/<repo>:<version>`，生成镜像来源证明，上传镜像摘要                                               |
 | `publish` | 下载草稿全部产物，确认齐全，生成并上传 `SHA256SUMS`，重新下载校验；稳定版在全部校验通过后把已验证摘要提升为 `:latest`；最后发布                          |
@@ -80,13 +80,14 @@ git push origin refs/tags/v2.5.0
 
 ## 4. 产物
 
-| 文件                                     | 说明                                                                         |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `nowluma-linux-x64-<version>.tar.gz`     | Linux x64 发行包，含 `release.json` 清单与法律文件                           |
-| `Nowluma-win32-x64-<version>.exe`        | Windows 一键启动器，内嵌同一版本的 payload；**未签名**                       |
-| `nowluma-win32-x64-<version>-build.json` | Windows 构建元数据：版本、目标、Node、payload/exe 的 SHA256、`signed: false` |
-| `nowluma-ghcr-linux-x64-<version>.txt`   | GHCR 镜像名、版本 tag 与 `sha256:` 摘要                                      |
-| `SHA256SUMS`                             | 上述全部文件的 SHA256，发布前重新下载校验                                    |
+| 文件                                       | 说明                                                                         |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `Nowluma-v<version>-linux-x64-lite.tar.gz` | Linux x64 发行包，含 `release.json` 清单与法律文件                           |
+| `Nowluma-v<version>-win-x64-lite.zip`      | Windows 更新归档，不内置 Node；与更新器使用同一资产名称                      |
+| `Nowluma-win32-x64-<version>.exe`          | Windows 一键启动器，内嵌同一版本的 payload；**未签名**                       |
+| `nowluma-win32-x64-<version>-build.json`   | Windows 构建元数据：版本、目标、Node、payload/exe 的 SHA256、`signed: false` |
+| `nowluma-ghcr-linux-x64-<version>.txt`     | GHCR 镜像名、版本 tag 与 `sha256:` 摘要                                      |
+| `SHA256SUMS`                               | 上述全部文件的 SHA256，发布前重新下载校验                                    |
 
 - 镜像发布到 `ghcr.io/<owner>/<repo>:<version>`。该版本 tag 由 `docker` 作业推送，因此在
   GitHub 发行仍是草稿时就已可见；稳定版的 `:latest` 只在 `publish` 作业校验完

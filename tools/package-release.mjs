@@ -5,7 +5,7 @@
 //
 // The archive must reopen with its own release.json manifest, keep the legal
 // documents the WebUI consent gate serves, and carry no user data. Windows
-// releases are the one-click exe from tools/build-windows-exe.mjs instead.
+// Windows Lite archives and the one-click exe are built by tools/build-windows-exe.mjs.
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import { assetName, RELEASE_DOCUMENTS } from '../packages/common/src/release-assets.ts';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,13 +21,20 @@ const dist = path.resolve(process.argv[2] ?? path.join(root, 'dist'));
 const output = path.resolve(process.argv[3] ?? path.join(root, '_re/releases/linux-x64'));
 // `tar` is already a @nowluma/core dependency; never add an archive dependency.
 const tar = createRequire(path.join(root, 'packages/core/package.json'))('tar');
-const agreementFiles = ['LICENSE', 'EULA.md', 'PRIVACY.md'];
+const agreementFiles = RELEASE_DOCUMENTS;
 
 const release = JSON.parse(fs.readFileSync(path.join(dist, 'release.json'), 'utf8'));
 assert.equal(release.target, 'linux-x64', 'Linux packages come from a linux-x64 build');
-assert.match(release.version, /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/, 'release.json version must be canonical SemVer');
+assert.match(
+  release.version,
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/,
+  'release.json version must be canonical SemVer',
+);
 for (const file of [...agreementFiles, 'package.json', 'index.mjs']) {
-  assert.ok(fs.statSync(path.join(dist, file), { throwIfNoEntry: false })?.isFile(), `release is missing ${file}`);
+  assert.ok(
+    fs.statSync(path.join(dist, file), { throwIfNoEntry: false })?.isFile(),
+    `release is missing ${file}`,
+  );
 }
 
 function topLevelNames(names) {
@@ -41,13 +49,16 @@ async function archiveNames(file) {
   return names;
 }
 
-const archive = path.join(output, `nowluma-${release.target}-${release.version}.tar.gz`);
+const archive = path.join(output, assetName(release.version, release.target));
 fs.mkdirSync(output, { recursive: true });
 await tar.create({ gzip: true, file: archive, cwd: dist, portable: true }, ['.']);
 
 const packed = await archiveNames(archive);
 for (const name of packed) {
-  assert.ok(!/^\.?\/(?:config|data|logs)(?:\/|$)/.test(name), `archive must not contain user data: ${name}`);
+  assert.ok(
+    !/^\.?\/(?:config|data|logs)(?:\/|$)/.test(name),
+    `archive must not contain user data: ${name}`,
+  );
 }
 for (const file of agreementFiles) {
   assert.ok(packed.includes(`./${file}`), `archive is missing legal document ${file}`);
@@ -66,7 +77,10 @@ try {
   assert.equal(manifest.version, release.version);
   assert.equal(manifest.target, release.target);
   for (const file of agreementFiles) {
-    assert.ok(fs.statSync(path.join(reopened, file), { throwIfNoEntry: false })?.isFile(), `reopened archive is missing ${file}`);
+    assert.ok(
+      fs.statSync(path.join(reopened, file), { throwIfNoEntry: false })?.isFile(),
+      `reopened archive is missing ${file}`,
+    );
   }
 } finally {
   fs.rmSync(reopened, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

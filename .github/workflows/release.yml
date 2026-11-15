@@ -80,7 +80,7 @@ jobs:
       - name: Attest the Linux package
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ runner.temp }}/release/nowluma-linux-x64-${{ needs.draft.outputs.version }}.tar.gz
+          subject-path: ${{ runner.temp }}/release/Nowluma-v${{ needs.draft.outputs.version }}-linux-x64-lite.tar.gz
       - name: Upload the Linux package to the draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -122,6 +122,7 @@ jobs:
           version="${{ needs.draft.outputs.version }}"
           mkdir -p "$RUNNER_TEMP/release"
           cp _re/releases/windows-exe/Nowluma.exe "$RUNNER_TEMP/release/Nowluma-win32-x64-$version.exe"
+          cp "_re/releases/windows-exe/Nowluma-v$version-win-x64-lite.zip" "$RUNNER_TEMP/release/Nowluma-v$version-win-x64-lite.zip"
           cp _re/releases/windows-exe/build.json "$RUNNER_TEMP/release/nowluma-win32-x64-$version-build.json"
       - name: Attest the Windows assets
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -210,7 +211,8 @@ jobs:
           version="${{ needs.draft.outputs.version }}"
           cd "$RUNNER_TEMP/assets"
           for asset in \
-            "nowluma-linux-x64-$version.tar.gz" \
+            "Nowluma-v$version-linux-x64-lite.tar.gz" \
+            "Nowluma-v$version-win-x64-lite.zip" \
             "Nowluma-win32-x64-$version.exe" \
             "nowluma-win32-x64-$version-build.json" \
             "nowluma-ghcr-linux-x64-$version.txt"; do

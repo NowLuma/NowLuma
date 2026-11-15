@@ -1,7 +1,7 @@
 # Nowluma 许可与第三方声明 / Licensing and Notices
 
-本文件说明源码许可、GPLv3 第 7 条附加的链接许可，以及随包原生组件和第三方组件的边界。它不是许可证，也不替代 [LICENSE](LICENSE)；与 `LICENSE` 冲突时以 `LICENSE` 为准。
-This file records the source licence, the GPLv3 section 7 linking permission, and the boundaries of the supplied native and third-party components. It is not a licence and does not replace [LICENSE](LICENSE); if the two conflict, `LICENSE` prevails.
+本文件记录自有源码的 GPLv3 许可、下述第 7 条附加链接许可，以及随包组件的独立条款；GPLv3 标准全文见 [LICENSE](LICENSE)。
+This file records the GPLv3 licence for our source, the section 7 additional linking permission below, and the separate terms for supplied components. See [LICENSE](LICENSE) for the unmodified GPLv3 text.
 
 ## 1. 源码许可 / Source licence
 
@@ -20,8 +20,8 @@ This permission addresses only the combination and linking of the GPL-covered so
 
 ## 3. 随包原生组件 / Supplied native components
 
-`packages/runtime/native/` 中的预编译文件是随包提供的组件，不由本仓库按 GPL 授权。其中六份原始 `nowluma-*` 预编译文件（三个平台各 `.node` 加 `.dll`/`.so`）保留其提供时的条款；本仓库不授予其源代码权利，也不声称它们采用 GPL。对它们的复制、修改与再分发受其自身条款和适用法律约束。
-The precompiled files under `packages/runtime/native/` are supplied components and are not licensed under the GPL by this repository. The six original `nowluma-*` prebuilds (one `.node` plus `.dll`/`.so` per platform) keep the terms under which they were supplied; this repository grants no rights to their source code and does not claim that they are GPL-licensed. Their copying, modification and redistribution are governed by their own terms and applicable law.
+`packages/runtime/native/` 中的文件继续适用提供方的独立条款，本仓库不将它们重新许可为 GPL。其中六份 `nowluma-*` 预编译文件（三个平台各 `.node` 加 `.dll`/`.so`）除另有书面授权外，仅授权以随本软件提供的形式进行非商业运行；不授予其源代码、修改、单独再分发或再许可的权利。此范围仅针对这些原生文件，不限制 GPL 源码本身的权利；适用法律规定不得排除的权利不受影响。
+Files under `packages/runtime/native/` retain their suppliers' separate terms and are not relicensed under the GPL here. Unless separately authorized in writing, the six `nowluma-*` prebuilds (one `.node` plus `.dll`/`.so` per platform) may only be run as supplied with this software for non-commercial use; no rights to their source, modification, separate redistribution or relicensing are granted. This scope applies only to those native files and does not restrict rights in the GPL-covered source. Non-waivable rights under applicable law remain unaffected.
 
 ## 4. 第三方组件 / Third-party components
 
@@ -33,5 +33,3 @@ The precompiled files under `packages/runtime/native/` are supplied components a
   The bundled Jersey 20 font is copyright The Soft Type Project Authors and licensed under the SIL Open Font License; its licence text ships with it (`packages/webui/src/appearance/targets/assets/Jersey20-OFL.txt`).
 - Windows 发行包另附 Node.js 与 .NET 的许可证文件（`licenses/`）。
   Windows release packages carry the Node.js and .NET licence files under `licenses/`.
-- 根 `README.md` 末尾保留对上游项目实现思路的归属说明；上游、第三方与贡献者的版权、归属和历史仍归其各自作者，本仓库不重新许可。
-  The root `README.md` footer keeps the attribution to the upstream project whose implementation ideas this project references; upstream, third-party and contributor copyrights, attribution and history remain with their respective authors and are not relicensed here.

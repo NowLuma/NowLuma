@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assetName, RELEASE_DOCUMENTS } from '../packages/common/src/release-assets.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const script = path.join(repoRoot, 'tools/package-release.mjs');
@@ -20,7 +21,8 @@ function fixture({ version = '2.5.0-rc.1', target = 'linux-x64', files = {}, ent
     'package.json': JSON.stringify({ version }),
     'check-node-version.cjs': '// guard\n',
     'launcher.sh': '#!/bin/sh\n',
-    'LICENSE': 'license\n',
+    LICENSE: 'license\n',
+    'LICENSING.md': 'linking permission\n',
     'EULA.md': 'eula\n',
     'PRIVACY.md': 'privacy\n',
     'client/index.html': '<!doctype html>\n',
@@ -58,30 +60,47 @@ function failure(dist, out) {
 test('packages a linux-x64 release that reopens with its own manifest', async () => {
   const { dist, out } = fixture();
   const stdout = run(dist, out);
-  const archive = path.join(out, 'nowluma-linux-x64-2.5.0-rc.1.tar.gz');
+  const archive = path.join(out, assetName('2.5.0-rc.1', 'linux-x64'));
   assert.ok(fs.statSync(archive).isFile());
   assert.match(stdout, /SHA256: [0-9a-f]{64}/);
 
   const names = [];
-  await tar.list({ file: archive, onReadEntry: (entry) => names.push(entry.path.replace(/^\.\//, '')) });
-  for (const name of ['release.json', 'LICENSE', 'EULA.md', 'PRIVACY.md', 'native/sqlite/manifest.json']) {
+  await tar.list({
+    file: archive,
+    onReadEntry: (entry) => names.push(entry.path.replace(/^\.\//, '')),
+  });
+  for (const name of ['release.json', ...RELEASE_DOCUMENTS, 'native/sqlite/manifest.json']) {
     assert.ok(names.includes(name), `archive is missing ${name}`);
   }
   assert.ok(!names.some((name) => /^(?:config|data|logs)\//.test(name)));
 });
 
-test('rejects a release without the legal documents the console serves', () => {
-  const { dist, out } = fixture();
-  fs.rmSync(path.join(dist, 'EULA.md'));
-  const error = failure(dist, out);
-  assert.equal(error.status, 1);
-  assert.match(error.stderr, /release is missing EULA\.md/);
-});
+for (const document of ['EULA.md', 'LICENSING.md']) {
+  test(`rejects a release without ${document}`, () => {
+    const { dist, out } = fixture();
+    fs.rmSync(path.join(dist, document));
+    const error = failure(dist, out);
+    assert.equal(error.status, 1);
+    assert.ok(error.stderr.includes(`release is missing ${document}`));
+  });
+}
 
 test('rejects a release that carries user data', () => {
   const { dist, out } = fixture({
     files: { 'data/accounts.db': 'sqlite' },
-    entries: ['LICENSE', 'EULA.md', 'PRIVACY.md', 'check-node-version.cjs', 'client', 'data', 'index.mjs', 'launcher.sh', 'native', 'package.json', 'release.json'],
+    entries: [
+      'LICENSE',
+      'EULA.md',
+      'PRIVACY.md',
+      'check-node-version.cjs',
+      'client',
+      'data',
+      'index.mjs',
+      'launcher.sh',
+      'native',
+      'package.json',
+      'release.json',
+    ],
   });
   const error = failure(dist, out);
   assert.equal(error.status, 1);

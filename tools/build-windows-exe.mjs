@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { assetName, RELEASE_DOCUMENTS } from '../packages/common/src/release-assets.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const releaseRoot = path.resolve(process.argv[2] ?? path.join(root, 'dist'));
@@ -33,6 +34,12 @@ function collect(directory, relative = '') {
   }
 }
 collect(releaseRoot);
+for (const name of Object.keys(files)) {
+  assert.ok(
+    !/^(?:config|data|logs)(?:\/|$)/.test(name),
+    `Payload must not contain user data: ${name}`,
+  );
+}
 files['node.exe'] = fs.readFileSync(process.execPath);
 const nodeRoot = path.dirname(process.execPath);
 files['licenses/Node-LICENSE.txt'] = fs.readFileSync(path.join(nodeRoot, 'LICENSE'));
@@ -47,12 +54,23 @@ files['licenses/.NET-ThirdPartyNotices.txt'] = fs.readFileSync(
 );
 release.entries = [...new Set([...release.entries, 'licenses'])].sort();
 files['release.json'] = Buffer.from(JSON.stringify(release, null, 2));
-for (const name of Object.keys(files)) {
-  assert.ok(
-    !/^(?:config|data|logs)(?:\/|$)/.test(name),
-    `Payload must not contain user data: ${name}`,
-  );
+const liteArchive = assetName(release.version, release.target);
+const lite = Buffer.from(
+  zipSync(Object.fromEntries(Object.entries(files).filter(([name]) => name !== 'node.exe')), {
+    level: 6,
+  }),
+);
+const reopenedLite = unzipSync(lite);
+assert.equal(
+  reopenedLite['node.exe'],
+  undefined,
+  'Lite updates must not replace the bundled runtime',
+);
+for (const document of RELEASE_DOCUMENTS) {
+  assert.deepEqual(Buffer.from(reopenedLite[document]), files[document]);
 }
+fs.mkdirSync(output, { recursive: true });
+fs.writeFileSync(path.join(output, liteArchive), lite);
 const payload = Buffer.from(zipSync(files, { level: 6 }));
 const reopened = unzipSync(payload);
 assert.deepEqual(Buffer.from(reopened['node.exe']), files['node.exe']);
@@ -80,7 +98,11 @@ execFileSync(
 const exe = path.join(output, 'Nowluma.exe');
 assert.ok(fs.statSync(exe).isFile());
 const executableHash = createHash('sha256').update(fs.readFileSync(exe)).digest('hex');
-fs.writeFileSync(path.join(output, 'SHA256SUMS'), `${executableHash}  Nowluma.exe\n`);
+const liteHash = createHash('sha256').update(lite).digest('hex');
+fs.writeFileSync(
+  path.join(output, 'SHA256SUMS'),
+  `${executableHash}  Nowluma.exe\n${liteHash}  ${liteArchive}\n`,
+);
 fs.writeFileSync(
   path.join(output, 'build.json'),
   JSON.stringify(

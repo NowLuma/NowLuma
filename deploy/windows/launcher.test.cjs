@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const { createHash } = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync, spawn } = require('node:child_process');
@@ -45,6 +46,17 @@ test(
       assert.equal(fs.existsSync(path.join(directory, '.launcher-endpoint')), false);
       const release = JSON.parse(fs.readFileSync(path.join(directory, 'release.json'), 'utf8'));
       assert.equal(release.target, 'win32-x64');
+      assert.equal(
+        createHash('sha256')
+          .update(fs.readFileSync(path.join(directory, 'LICENSE')))
+          .digest('hex'),
+        '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986',
+      );
+      assert.ok(release.entries.includes('LICENSING.md'));
+      assert.match(
+        fs.readFileSync(path.join(directory, 'LICENSING.md'), 'utf8'),
+        /linking permission/i,
+      );
       for (const name of ['config', 'data', 'logs']) {
         fs.mkdirSync(path.join(directory, name));
         fs.writeFileSync(path.join(directory, name, 'keep'), 'unchanged');

@@ -44,11 +44,11 @@ export function checkVersions({ root, tag = null }) {
     problems.push(`package.json version "${version}" is not canonical SemVer`);
     return { version, problems };
   }
-  // A `+build` suffix is valid SemVer but neither a release tag nor a container
-  // tag can carry it, so reject it here instead of failing mid-release.
+  // Build metadata is valid SemVer but not a valid Docker image tag; reject it
+  // at the shared preflight instead of failing after publishing other assets.
   if (version.includes('+')) {
     problems.push(
-      `package.json version "${version}" has build metadata, which release tags and container tags cannot represent; use "${version.split('+')[0]}" instead`,
+      `package.json version "${version}" has build metadata, which container tags cannot represent; use "${version.split('+')[0]}" instead`,
     );
     return { version, problems };
   }
@@ -83,10 +83,14 @@ function main() {
   };
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const tagFlag = flag('--tag');
-  const tag = tagFlag ?? (process.env.GITHUB_REF_NAME?.startsWith('v') ? process.env.GITHUB_REF_NAME : null);
+  const tag =
+    tagFlag ?? (process.env.GITHUB_REF_NAME?.startsWith('v') ? process.env.GITHUB_REF_NAME : null);
   const notesPath = flag('--notes');
   const { version, problems } = checkVersions({ root, tag });
-  const notes = problems.length === 0 ? releaseNotes(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), version) : null;
+  const notes =
+    problems.length === 0
+      ? releaseNotes(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), version)
+      : null;
 
   if (problems.length === 0 && !notes) {
     problems.push(`CHANGELOG.md has no non-empty "## ${version}" section`);

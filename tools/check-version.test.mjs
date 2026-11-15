@@ -10,14 +10,21 @@ import { checkVersions, parseVersion, releaseNotes, workspaceVersions } from './
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function fixture({ version = '2.5.0-rc.1', packages = {}, changelog = `# 更新记录\n\n## ${version}\n\n### 更新\n\n- 新增发行流程。\n` } = {}) {
+function fixture({
+  version = '2.5.0-rc.1',
+  packages = {},
+  changelog = `# 更新记录\n\n## ${version}\n\n### 更新\n\n- 新增发行流程。\n`,
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-version-'));
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version }));
   fs.writeFileSync(path.join(root, 'CHANGELOG.md'), changelog);
   fs.mkdirSync(path.join(root, 'packages'));
   for (const [name, value] of Object.entries({ core: version, ...packages })) {
     fs.mkdirSync(path.join(root, 'packages', name));
-    fs.writeFileSync(path.join(root, 'packages', name, 'package.json'), JSON.stringify({ version: value }));
+    fs.writeFileSync(
+      path.join(root, 'packages', name, 'package.json'),
+      JSON.stringify({ version: value }),
+    );
   }
   return root;
 }
@@ -33,7 +40,11 @@ test('parses canonical SemVer only', () => {
 
 test('reads the root and every workspace package version', () => {
   const versions = workspaceVersions(fixture({ packages: { webui: '2.5.0-rc.1' } }));
-  assert.deepEqual([...versions.keys()].sort(), ['package.json', 'packages/core/package.json', 'packages/webui/package.json']);
+  assert.deepEqual([...versions.keys()].sort(), [
+    'package.json',
+    'packages/core/package.json',
+    'packages/webui/package.json',
+  ]);
   assert.deepEqual([...new Set(versions.values())], ['2.5.0-rc.1']);
 });
 
@@ -55,7 +66,7 @@ test('rejects build metadata at the release preflight', () => {
     changelog: '# 更新记录\n\n## 2.5.0+build.7\n\n- 说明。\n',
   });
   assert.deepEqual(checkVersions({ root, tag: 'v2.5.0+build.7' }).problems, [
-    'package.json version "2.5.0+build.7" has build metadata, which release tags and container tags cannot represent; use "2.5.0" instead',
+    'package.json version "2.5.0+build.7" has build metadata, which container tags cannot represent; use "2.5.0" instead',
   ]);
 });
 
@@ -97,11 +108,16 @@ test('the CLI fails a mismatched tag without writing release notes', () => {
   const notes = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-notes-')), 'notes.md');
   assert.throws(
     () =>
-      execFileSync(process.execPath, [path.join(repoRoot, 'tools/check-version.mjs'), '--tag', 'v0.0.1', '--notes', notes], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      }),
-    (error) => error.status === 1 && /tag "v0\.0\.1" does not match package version/.test(error.stderr),
+      execFileSync(
+        process.execPath,
+        [path.join(repoRoot, 'tools/check-version.mjs'), '--tag', 'v0.0.1', '--notes', notes],
+        {
+          encoding: 'utf8',
+          stdio: 'pipe',
+        },
+      ),
+    (error) =>
+      error.status === 1 && /tag "v0\.0\.1" does not match package version/.test(error.stderr),
   );
   assert.equal(fs.existsSync(notes), false);
 });

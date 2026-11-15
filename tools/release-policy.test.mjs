@@ -19,9 +19,17 @@ function job(text, name) {
 test('no workflow runs fork code with a write token', () => {
   for (const name of names) {
     const text = read(name);
-    assert.equal(/pull_request_target/.test(text), false, `${name} must not use pull_request_target`);
+    assert.equal(
+      /pull_request_target/.test(text),
+      false,
+      `${name} must not use pull_request_target`,
+    );
     if (/^ {2}pull_request:/m.test(text)) {
-      assert.match(text, /permissions:\n {2}contents: read/, `${name} must keep pull_request runs read-only`);
+      assert.match(
+        text,
+        /permissions:\n {2}contents: read/,
+        `${name} must keep pull_request runs read-only`,
+      );
     }
   }
 });
@@ -77,15 +85,34 @@ test('the publish job resolves the repository without a checkout', () => {
 test('a stable image is promoted to :latest only after the checksums verify', () => {
   const release = read('release.yml');
   const docker = job(release, 'docker');
-  assert.equal(/printf '%s:latest/.test(docker), false, 'the docker job must not move the mutable tag');
+  assert.equal(
+    /printf '%s:latest/.test(docker),
+    false,
+    'the docker job must not move the mutable tag',
+  );
 
   const publish = job(release, 'publish');
   assert.match(publish, /packages: write/);
   assert.match(publish, /if: needs\.draft\.outputs\.prerelease == 'false'/);
   const verified = publish.indexOf('sha256sum --check --strict SHA256SUMS');
   const promoted = publish.indexOf('imagetools create --tag "$image:latest"');
-  assert.ok(verified !== -1 && promoted !== -1, 'publish must verify checksums and promote the digest');
+  assert.ok(
+    verified !== -1 && promoted !== -1,
+    'publish must verify checksums and promote the digest',
+  );
   assert.ok(verified < promoted, 'the mutable tag is promoted only after verification');
+});
+
+test('platform archives retain the runtime updater names and the GPL linking notice', () => {
+  const release = read('release.yml');
+  assert.match(release, /Nowluma-v\$version-linux-x64-lite\.tar\.gz/);
+  assert.match(release, /Nowluma-v\$version-win-x64-lite\.zip/);
+  assert.match(release, /cp "_re\/releases\/windows-exe\/Nowluma-v\$version-win-x64-lite\.zip"/);
+  const documents = fs.readFileSync(
+    path.join(root, 'packages/common/src/release-assets.ts'),
+    'utf8',
+  );
+  assert.match(documents, /'LICENSING\.md'/);
 });
 
 test('the local release driver targets main and the release workflow', () => {

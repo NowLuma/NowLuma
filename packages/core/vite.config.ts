@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { defineConfig, PluginOption, UserConfig } from 'vite';
 import cp from 'vite-plugin-cp';
 import { sqliteBuildPlugin } from '@nowluma/sqlite/vite';
+import { RELEASE_DOCUMENTS } from '@nowluma/common/release-assets';
 import { APP_VERSION } from '@nowluma/common/version';
 import runtimePackage from '../runtime/package.json' with { type: 'json' };
 
@@ -38,7 +39,7 @@ const runtimeDistFiles = [
     'check-node-version.cjs',
     targetPlatform === 'win32' ? 'launcher.bat' : 'launcher.sh',
 ];
-const agreementFiles = ['LICENSE', 'EULA.md', 'PRIVACY.md'];
+const agreementFiles = RELEASE_DOCUMENTS;
 
 // Native binaries shipped for the selected target:
 //   * `nowluma-*.{dll,node,so}`           – NTQQ hook (Windows + Linux).
