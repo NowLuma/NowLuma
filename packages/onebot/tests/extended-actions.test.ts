@@ -187,6 +187,32 @@ describe('extended-actions / send_forward_msg', () => {
     });
 });
 
+describe('extended-actions / forward upload aliases', () => {
+    it('echoes group_id only from the canonical upload action', async () => {
+        const sendForwardMsg = vi.fn(async () => ({ forwardId: 'fwd' }));
+        const ctx = fakeCtx(fakeBridge(), { sendForwardMsg });
+        const canonical = await makeHandler(ctx).handle('upload_forward_msg', {
+            messages: 'hi',
+            group_id: 20001,
+        });
+        const alias = await makeHandler(ctx).handle('upload_foward_msg', {
+            messages: 'hi',
+            group_id: 20001,
+        });
+        expect(canonical).toMatchObject({
+            status: 'ok',
+            data: { res_id: 'fwd', forward_id: 'fwd', message_id: 0, group_id: 20001 },
+        });
+        expect(alias).toMatchObject({
+            status: 'ok',
+            data: { res_id: 'fwd', forward_id: 'fwd', message_id: 0 },
+        });
+        expect((alias.data as Record<string, unknown>).group_id).toBeUndefined();
+        expect(sendForwardMsg).toHaveBeenNthCalledWith(1, 'hi', 20001);
+        expect(sendForwardMsg).toHaveBeenNthCalledWith(2, 'hi', 20001);
+    });
+});
+
 describe('extended-actions / get_forward_msg', () => {
     it('uses a string message_id as the forward id', async () => {
         const getForwardMsg = vi.fn(async () => []);

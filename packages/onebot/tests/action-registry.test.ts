@@ -288,3 +288,53 @@ describe('ActionRegistry.bind', () => {
         expect((await api.handle(HANDLE_QUICK_OPERATION_ACTION, {})).retcode).toBe(1404);
     });
 });
+
+describe('forward action docs in the compiled registry', () => {
+    function returnsSchema(name: string): Record<string, unknown> {
+        const entry = ACTION_REGISTRY.resolve(name);
+
+        if (!entry || entry.kind === 'raw') {
+            throw new Error(`declarative action missing: ${name}`);
+        }
+
+        return entry.action.doc.returnsSchema as Record<string, unknown>;
+    }
+
+    function property(name: string, key: string): unknown {
+        const properties = returnsSchema(name).properties as Record<string, unknown>;
+        return properties[key];
+    }
+
+    it('keeps the upload alias group_id echo difference without duplicating the schema', () => {
+        expect(property('upload_forward_msg', 'group_id')).toEqual({
+            type: 'integer',
+            description: '仅请求提供正数 group_id 时出现',
+        });
+        expect(property('upload_foward_msg', 'group_id')).toBeUndefined();
+        expect(returnsSchema('upload_forward_msg').required).toEqual([
+            'res_id',
+            'forward_id',
+            'message_id',
+        ]);
+        expect(returnsSchema('upload_foward_msg').required).toEqual([
+            'res_id',
+            'forward_id',
+            'message_id',
+        ]);
+    });
+
+    it('keeps send_forward_msg anyOf while group/private share the sent result schema', () => {
+        expect(property('send_forward_msg', 'message_id')).toMatchObject({
+            anyOf: [{ type: 'integer' }, { const: 0 }],
+        });
+        expect(returnsSchema('send_group_forward_msg')).toEqual(
+            returnsSchema('send_private_forward_msg'),
+        );
+        expect(property('send_group_forward_msg', 'message_id')).toMatchObject({
+            type: 'integer',
+            minimum: -2147483648,
+            maximum: 2147483647,
+            not: { const: 0 },
+        });
+    });
+});
