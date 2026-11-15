@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import {
+    copyFileSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    readdirSync,
+    realpathSync,
+    rmSync,
+    symlinkSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
@@ -25,8 +34,19 @@ let build: string;
 
 beforeAll(async () => {
     build = mkdtempSync(path.join(tmpdir(), 'nowluma-mcp-protocol-'));
-    copyFileSync(path.join(root, 'package.json'), path.join(build, 'package.json'));
-    symlinkSync(path.join(root, 'node_modules'), path.join(build, 'node_modules'), 'junction');
+    const manifestPath = path.join(root, 'package.json');
+    copyFileSync(manifestPath, path.join(build, 'package.json'));
+    const { dependencies } = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+        dependencies: Record<string, string>;
+    };
+
+    // Link actual dependencies, not relative pnpm links through a cross-drive junction.
+    for (const name of Object.keys(dependencies)) {
+        const installed = path.join(build, 'node_modules', name);
+        mkdirSync(path.dirname(installed), { recursive: true });
+        symlinkSync(realpathSync(path.join(root, 'node_modules', name)), installed, 'junction');
+    }
+
     const compiler = createRequire(import.meta.url).resolve('typescript/bin/tsc');
     const result = spawnSync(
         process.execPath,
@@ -610,10 +630,34 @@ describe('published stdio entry', () => {
             });
             await pendingStarted.promise;
             await first.close(shutdown === 'SIGTERM' ? shutdown : undefined);
-            expect(readdirSync(taskDirectory).filter((file) => file.startsWith('.lease-'))).toEqual(
-                [],
-            );
+
+            const leases = () =>
+                readdirSync(taskDirectory).filter((file) => file.startsWith('.lease-'));
+
+            let staleLease: string | undefined;
+
+            if (process.platform === 'win32' && shutdown === 'SIGTERM') {
+                // Windows terminates the CLI without delivering the signal, so the dead
+                // runtime's lease and working task stay durable until the restart below
+                // reclaims them without replaying the transfer.
+                expect(leases()).toHaveLength(1);
+                staleLease = leases()[0];
+                expect(
+                    JSON.parse(
+                        readFileSync(
+                            path.join(taskDirectory, `${String(interrupted.taskId)}.task.json`),
+                            'utf8',
+                        ),
+                    ),
+                ).toMatchObject({ task: { status: 'working' } });
+            } else {
+                expect(leases()).toEqual([]);
+            }
+
             const second = await open();
+            // The restarted runtime holds only its own lease; the dead one is gone.
+            expect(leases()).not.toContain(staleLease);
+            expect(leases()).toHaveLength(1);
             expect(await second.request('tasks/get', { taskId: completedId })).toMatchObject({
                 status: 'completed',
             });
@@ -629,9 +673,7 @@ describe('published stdio entry', () => {
                 .join('\n');
             expect(persisted).not.toContain('private-test-token');
             await second.close();
-            expect(readdirSync(taskDirectory).filter((file) => file.startsWith('.lease-'))).toEqual(
-                [],
-            );
+            expect(leases()).toEqual([]);
         },
     );
 });
