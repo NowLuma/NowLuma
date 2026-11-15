@@ -95,6 +95,8 @@ export interface HookProcessInfo {
     status: 'available' | 'loading' | 'connecting' | 'loaded' | 'online' | 'error' | 'disconnected';
     error: string;
     method: string;
+    /** A deliberate unload stays stopped until the operator explicitly loads this PID. */
+    manualStopped?: boolean;
     account: HookProcessAccount | null;
 }
 
