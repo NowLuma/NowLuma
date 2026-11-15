@@ -63,6 +63,25 @@ function validSelection(value: unknown): value is KernelSelection {
     );
 }
 
+export function parseKernelPolicyDocument(value: unknown): {
+    version: 1;
+    accounts: Record<string, KernelSelection>;
+} {
+    if (
+        !object(value) ||
+        !keys(value, ['version', 'accounts']) ||
+        value.version !== 1 ||
+        !object(value.accounts) ||
+        !Object.entries(value.accounts).every(
+            ([uin, selection]) => isRealUin(uin) && validSelection(selection),
+        )
+    ) {
+        throw new Error('账号内核选择配置格式无效，未覆盖原文件');
+    }
+
+    return value as { version: 1; accounts: Record<string, KernelSelection> };
+}
+
 /** Desired policy is read separately from live PID state; damaged files are never repaired implicitly. */
 export class KernelPolicyStore {
     constructor(private readonly file = path.join('config', 'kernel-selections.json')) {}
@@ -88,19 +107,7 @@ export class KernelPolicyStore {
             throw new Error('账号内核选择配置损坏，未覆盖原文件', { cause: error });
         }
 
-        if (
-            !object(value) ||
-            !keys(value, ['version', 'accounts']) ||
-            value.version !== 1 ||
-            !object(value.accounts) ||
-            !Object.entries(value.accounts).every(
-                ([uin, selection]) => isRealUin(uin) && validSelection(selection),
-            )
-        ) {
-            throw new Error('账号内核选择配置格式无效，未覆盖原文件');
-        }
-
-        return value.accounts as Record<string, KernelSelection>;
+        return parseKernelPolicyDocument(value).accounts;
     }
 
     get(uin: string): KernelSelection | null {

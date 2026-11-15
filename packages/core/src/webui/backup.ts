@@ -3,8 +3,9 @@
 // over an explicit allowlist (never a whole-dir sweep) so a stray/unknown file
 // can't leak and an import can't path-traverse.
 //
-// Credentials are gated by a toggle on both export and import. The credential
-// set is: webui.json (password hash), key.pem (TLS private key),
+// Credentials and account authorizations are gated on both export and import. The set includes
+// kernel-selections.json (account identifiers and native-kernel risk acknowledgments),
+// webui.json (password hash), key.pem (TLS private key),
 // notifications.json (webhook URLs / SMTP passwords), AND every OneBot config
 // (onebot.json + per-account onebot_<uin>.json) — those carry access tokens, so
 // a no-credentials backup must NOT include them.
@@ -18,6 +19,7 @@ import { normalizeRuntimeConfig } from '@nowluma/common/runtime';
 import { isRealUin } from '@nowluma/common/uin';
 import { normalizeGlobalSettings } from '@nowluma/onebot/global-config';
 import { prepareOneBotConfigForRestore } from '@nowluma/onebot/config';
+import { parseKernelPolicyDocument } from '../kernel-policy';
 import { normalizeNotificationsConfig } from '../notifications/config';
 import { prepareWebuiAuthStateForRestore } from './auth';
 import { MAX_BACKGROUND_BYTES, normalizeStoredUiConfig, sniffImageMime } from './ui-config';
@@ -45,6 +47,7 @@ export const BACKUP_FILES: readonly BackupFileSpec[] = [
     { name: 'nowluma.json', binary: false, credential: false },
     { name: 'cert.pem', binary: false, credential: false },
     { name: 'ui-assets/background', binary: true, credential: false },
+    { name: 'kernel-selections.json', binary: false, credential: true },
     { name: 'webui.json', binary: false, credential: true },
     { name: 'key.pem', binary: false, credential: true },
     // OneBot config carries the access token → credential.
@@ -398,6 +401,12 @@ function prepareFile(name: string, data: Buffer): { data: Buffer; migratedFields
                 return prepareNormalizedJson(name, data, normalizeNotificationsConfig);
             case 'nowluma.json':
                 return prepareGlobalSettingsJson(name, data);
+
+            case 'kernel-selections.json':
+                return {
+                    data: serializeJson(parseKernelPolicyDocument(parseJson(name, data))),
+                    migratedFields: [],
+                };
 
             case 'webui.json': {
                 const value = parseJson(name, data);
