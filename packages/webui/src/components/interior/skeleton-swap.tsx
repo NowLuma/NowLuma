@@ -118,7 +118,7 @@ export function SkeletonSwap({
             aria-busy={!ready}
             aria-label={label}
             tabIndex={scrollable ? 0 : undefined}
-            style={{ height: box }}
+            style={{ height: !ready || showSkeleton ? box : undefined, minHeight: box }}
             className={`relative grid overflow-y-auto overscroll-contain text-foreground ${className}`}
         >
             <motion.div
