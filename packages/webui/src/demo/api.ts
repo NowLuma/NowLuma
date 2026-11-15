@@ -1,18 +1,27 @@
 import { normalizeOneBotConfig } from '@/lib/onebot-config';
 import { normalizeUpdateSourceConfig } from '@nowluma/common/update-source';
+import type { UpdateSourceConfig } from '@nowluma/common/update-source';
 import { APP_VERSION, ALL_ACCOUNTS_CONFIRMATION } from '@/types';
 import type {
     DebugInvokeResult,
+    GlobalSettings,
+    HookProcessInfo,
+    LogEntry,
     LogLevel,
+    NotificationDeliveryRecord,
+    NotificationsConfig,
+    OneBotConfig,
     StorageCleanupRequest,
+    StorageOverviewResponse,
+    SystemSettings,
     SystemSettingsPatch,
     UiConfig,
 } from '@/types';
 import {
+    DEMO_DESKTOP_URL,
     DEMO_NEW_PASSWORD,
     DEMO_PASSWORD,
     DEMO_PID,
-    DEMO_DESKTOP_URL,
     DEMO_TOTP,
     DEMO_UIN,
     demoActions,
@@ -28,6 +37,59 @@ import {
 export type DemoScenario = 'setup' | 'ready' | 'offline' | 'failure';
 type Body = Record<string, unknown>;
 type Feed = { path: string; send: (data: unknown) => void; close: () => void };
+
+type DemoRequest = {
+    path: string;
+    method: string;
+    url: URL;
+    headers: Headers;
+    raw: BodyInit | null | undefined;
+    body: Body;
+    signal: AbortSignal | null | undefined;
+};
+
+type DemoState = {
+    generation: number;
+    token: string | null;
+    password: string;
+    consent: boolean;
+    mustChange: boolean;
+    totpEnabled: boolean;
+    totpPending: boolean;
+    recoveryCodes: string[];
+    process: HookProcessInfo;
+    ui: UiConfig;
+    config: OneBotConfig;
+    settings: SystemSettings;
+    hasCert: boolean;
+    storage: StorageOverviewResponse;
+    notifications: NotificationsConfig;
+    recent: NotificationDeliveryRecord[];
+    globalConfig: GlobalSettings;
+    sources: UpdateSourceConfig;
+    updatePhase: 'idle' | 'ready' | 'restarting';
+    logLevel: LogLevel;
+    logs: LogEntry[];
+    messages: Map<number, Body>;
+    nextMessageId: number;
+    feeds: Set<Feed>;
+    listeners: Set<() => void>;
+    scenario: DemoScenario;
+    failNextMutation: boolean;
+    backgroundUrl: string | null;
+    notice: string;
+};
+
+class DemoRequestError extends Error {
+    status: number;
+    notice?: string;
+
+    constructor(message: string, status: number, notice?: string) {
+        super(message);
+        this.status = status;
+        this.notice = notice;
+    }
+}
 
 function object(value: unknown): Body {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -113,6 +175,145 @@ const DEMO_GLOBAL_SHAPE = {
     videoUploadConcurrency: 2,
 };
 
+function parseUiUpdate(current: UiConfig, body: Body): UiConfig {
+    const next: UiConfig = {
+        ...current,
+        appearance: {
+            ...current.appearance,
+            ...(body.appearance ? object(body.appearance) : {}),
+        },
+        layout: { ...current.layout, ...(body.layout ? object(body.layout) : {}) },
+        pages: { ...current.pages, ...(body.pages ? object(body.pages) : {}) },
+    };
+    validateDemoShape(next, demoUi());
+    // Custom CSS is never evaluated by the static practice site.
+    next.appearance.customCss = '';
+    return next;
+}
+
+function parseSettingsUpdate(current: SystemSettings, body: Body): SystemSettings {
+    if (
+        body.webuiPort !== undefined &&
+        (!Number.isInteger(body.webuiPort) ||
+            Number(body.webuiPort) < 1 ||
+            Number(body.webuiPort) > 65535)
+    ) {
+        throw new Error('Invalid port');
+    }
+
+    const settings = { ...current, ...(body as SystemSettingsPatch) };
+    validateDemoShape(settings, demoSystemSettings());
+    return settings;
+}
+
+function parseBackup(body: Body): {
+    config: OneBotConfig;
+    ui: UiConfig;
+    settings: SystemSettings;
+    globalConfig: GlobalSettings;
+    notifications: NotificationsConfig;
+} {
+    const backup = object(body.backup);
+
+    if (backup.demo !== true || backup.version !== 1 || body.restoreCredentials === true) {
+        throw new Error('Only simulator backups without credential restoration are accepted');
+    }
+
+    const config = parseDemoConfig(backup.config);
+    const ui = object(backup.ui);
+
+    if (!ui.appearance || !ui.layout || !ui.pages) {
+        throw new Error('Incomplete backup');
+    }
+
+    const settings = object(backup.settings);
+    const globalConfig = object(backup.globalConfig);
+    const notifications = object(backup.notifications);
+    validateDemoShape(ui, demoUi());
+    validateDemoShape(settings, demoSystemSettings());
+    validateDemoShape(globalConfig, DEMO_GLOBAL_SHAPE);
+    validateDemoShape(notifications, DEMO_NOTIFICATION_SHAPE);
+    return {
+        config,
+        ui: structuredClone(ui) as unknown as UiConfig,
+        settings: settings as unknown as SystemSettings,
+        globalConfig: globalConfig as unknown as GlobalSettings,
+        notifications: notifications as unknown as NotificationsConfig,
+    };
+}
+
+function parseNotificationsUpdate(current: NotificationsConfig, body: Body): NotificationsConfig {
+    if (!Array.isArray(body.channels) || body.channels.length > 16) {
+        throw new Error('Invalid channels');
+    }
+
+    const config = { ...current, ...body };
+    validateDemoShape(config, DEMO_NOTIFICATION_SHAPE);
+    return config;
+}
+
+function parseGlobalConfigUpdate(current: GlobalSettings, body: Body): GlobalSettings {
+    const config = { ...current, ...body };
+    validateDemoShape(config, DEMO_GLOBAL_SHAPE);
+    return config;
+}
+
+function validateStorageLimits(body: Body): void {
+    for (const field of ['logMaxTotalMb', 'logRetainDays'] as const) {
+        if (
+            body[field] !== undefined &&
+            (!Number.isFinite(body[field]) || Number(body[field]) < 0)
+        ) {
+            throw new Error('Invalid storage limit');
+        }
+    }
+}
+
+async function readDemoRequest(input: RequestInfo | URL, init: RequestInit): Promise<DemoRequest> {
+    if (init.signal?.aborted) {
+        throw new DOMException('DEMO request aborted', 'AbortError');
+    }
+
+    const request = input instanceof Request ? input : null;
+    const origin = typeof location === 'undefined' ? 'https://demo.invalid' : location.origin;
+    const url = new URL(request?.url ?? String(input), origin);
+
+    if (url.origin !== origin) {
+        throw new DemoRequestError(
+            'DEMO: External URLs are blocked; no request was sent',
+            403,
+            `DEMO blocked external request: ${url.origin}`,
+        );
+    }
+
+    if (!url.pathname.startsWith('/api/')) {
+        throw new DemoRequestError(
+            `DEMO: Unsupported URL ${url.pathname}; no network fallback`,
+            404,
+            `DEMO blocked unsupported URL: ${url.pathname}`,
+        );
+    }
+
+    const method = (init.method ?? request?.method ?? 'GET').toUpperCase();
+    const headers = new Headers(init.headers ?? request?.headers);
+    const raw = init.body ?? (request && method !== 'GET' ? await request.text() : undefined);
+
+    if (typeof raw === 'string' && raw.length > 2_000_000) {
+        throw new DemoRequestError('DEMO: Request too large', 413);
+    }
+
+    const body = typeof raw === 'string' && raw ? object(JSON.parse(raw)) : {};
+    return {
+        path: url.pathname,
+        method,
+        url,
+        headers,
+        raw,
+        body,
+        signal: init.signal ?? request?.signal,
+    };
+}
+
 function json(value: unknown, status = 200): Response {
     return new Response(JSON.stringify(value), {
         status,
@@ -124,144 +325,149 @@ function fakeError(message: string, status = 400): Response {
     return json({ success: false, message, code: 'DEMO_ERROR' }, status);
 }
 
+// Single owner for every simulated field; construction and reset both start here.
+function createDemoState(): DemoState {
+    return {
+        generation: 0,
+        token: null,
+        password: DEMO_PASSWORD,
+        consent: false,
+        mustChange: true,
+        totpEnabled: false,
+        totpPending: false,
+        recoveryCodes: ['DEMO-RECOVERY-0001', 'DEMO-RECOVERY-0002'],
+        process: demoProcess(),
+        ui: demoUi(),
+        config: demoConfig(),
+        settings: demoSystemSettings(),
+        hasCert: false,
+        storage: demoStorage(),
+        notifications: {
+            version: 1,
+            debounceSeconds: 10,
+            channels: [
+                {
+                    id: 'demo-webhook',
+                    name: 'DEMO webhook · no delivery',
+                    type: 'webhook',
+                    url: 'https://demo.invalid/webhook',
+                    bodyTemplate: '{"text":"DEMO {nickname} {event}"}',
+                    enabled: true,
+                },
+            ],
+        },
+        recent: [],
+        globalConfig: {
+            rkey: { fallbackServers: ['https://demo.invalid/rkey'] },
+            musicSignUrl: '',
+            videoUploadConcurrency: 2,
+        },
+        sources: {
+            mode: 'direct',
+            mirror: '',
+            mirrors: ['https://demo.invalid/mirror'],
+        },
+        updatePhase: 'idle',
+        logLevel: 'info',
+        logs: [
+            demoLog(1, 'Practice only — no QQ, VNC, filesystem or outgoing API traffic'),
+            demoLog(2, 'DEMO adapter example: waiting for simulated scan', 'warn'),
+        ],
+        messages: new Map<number, Body>([
+            [
+                100,
+                {
+                    message_id: 100,
+                    user_id: 10002,
+                    message: [{ type: 'text', data: { text: 'DEMO sample message' } }],
+                    raw_message: 'DEMO sample message',
+                    time: 1784851200,
+                },
+            ],
+        ]),
+        nextMessageId: 101,
+        feeds: new Set(),
+        listeners: new Set(),
+        scenario: 'setup',
+        failNextMutation: false,
+        backgroundUrl: null,
+        notice: 'DEMO ready. Use only the example credentials.',
+    };
+}
+
 // All effects stay in this instance. There is deliberately no real fetch fallback.
 export class DemoApi {
-    private generation = 0;
-    private token: string | null = null;
-    private password = DEMO_PASSWORD;
-    private consent = false;
-    private mustChange = true;
-    private totpEnabled = false;
-    private totpPending = false;
-    private recoveryCodes = ['DEMO-RECOVERY-0001', 'DEMO-RECOVERY-0002'];
-    private process = demoProcess();
-    private ui: UiConfig = demoUi();
-    private config = demoConfig();
-    private settings = demoSystemSettings();
-    private hasCert = false;
-    private storage = demoStorage();
-    private notifications = {
-        version: 1,
-        debounceSeconds: 10,
-        channels: [
-            {
-                id: 'demo-webhook',
-                name: 'DEMO webhook · no delivery',
-                type: 'webhook' as const,
-                url: 'https://demo.invalid/webhook',
-                bodyTemplate: '{"text":"DEMO {nickname} {event}"}',
-                enabled: true,
-            },
-        ],
-    };
-    private recent: Array<{
-        time: number;
-        uin: string;
-        event: 'online';
-        channelId: string;
-        ok: boolean;
-        status: number;
-    }> = [];
-    private globalConfig = {
-        rkey: { fallbackServers: ['https://demo.invalid/rkey'] },
-        musicSignUrl: '',
-        videoUploadConcurrency: 2,
-    };
-    private sources = {
-        mode: 'direct' as 'direct' | 'auto' | 'mirror',
-        mirror: '',
-        mirrors: ['https://demo.invalid/mirror'],
-    };
-    private updatePhase: 'idle' | 'ready' | 'restarting' = 'idle';
-    private logLevel: LogLevel = 'info';
-    private logs = [
-        demoLog(1, 'Practice only — no QQ, VNC, filesystem or outgoing API traffic'),
-        demoLog(2, 'DEMO adapter example: waiting for simulated scan', 'warn'),
-    ];
-    private messages = new Map<number, Body>([
-        [
-            100,
-            {
-                message_id: 100,
-                user_id: 10002,
-                message: [{ type: 'text', data: { text: 'DEMO sample message' } }],
-                raw_message: 'DEMO sample message',
-                time: 1784851200,
-            },
-        ],
-    ]);
-    private nextMessageId = 101;
-    private feeds = new Set<Feed>();
-    private listeners = new Set<() => void>();
-    scenario: DemoScenario = 'setup';
-    failNextMutation = false;
-    backgroundUrl: string | null = null;
-    notice = 'DEMO ready. Use only the example credentials.';
+    private state = createDemoState();
 
     subscribe = (listener: () => void) => {
-        this.listeners.add(listener);
+        this.state.listeners.add(listener);
 
         return () => {
-            this.listeners.delete(listener);
+            this.state.listeners.delete(listener);
         };
     };
 
-    private announce(message: string) {
-        this.notice = message;
-        this.listeners.forEach((listener) => listener());
-    }
-
     get examplePassword() {
-        return this.password;
+        return this.state.password;
     }
 
     get summary() {
         return {
-            authenticated: this.token !== null,
-            consent: this.consent,
-            mustChange: this.mustChange,
-            scanned: this.process.account !== null,
-            online: this.process.status === 'online',
-            messages: this.messages.size,
+            authenticated: this.state.token !== null,
+            consent: this.state.consent,
+            mustChange: this.state.mustChange,
+            scanned: this.state.process.account !== null,
+            online: this.state.process.status === 'online',
+            messages: this.state.messages.size,
         };
+    }
+
+    get scenario() {
+        return this.state.scenario;
+    }
+
+    set scenario(scenario: DemoScenario) {
+        this.state.scenario = scenario;
+    }
+
+    get failNextMutation() {
+        return this.state.failNextMutation;
+    }
+
+    set failNextMutation(fail: boolean) {
+        this.state.failNextMutation = fail;
+    }
+
+    get backgroundUrl() {
+        return this.state.backgroundUrl;
+    }
+
+    set backgroundUrl(url: string | null) {
+        this.state.backgroundUrl = url;
+    }
+
+    get notice() {
+        return this.state.notice;
+    }
+
+    set notice(notice: string) {
+        this.state.notice = notice;
     }
 
     reset() {
         this.closeFeeds();
 
-        if (this.backgroundUrl) {
-            URL.revokeObjectURL(this.backgroundUrl);
+        if (this.state.backgroundUrl) {
+            URL.revokeObjectURL(this.state.backgroundUrl);
         }
 
-        const fresh = new DemoApi();
-        this.generation++;
-        Object.assign(this, {
-            token: null,
-            password: DEMO_PASSWORD,
-            consent: false,
-            mustChange: true,
-            totpEnabled: false,
-            totpPending: false,
-            recoveryCodes: fresh.recoveryCodes,
-            process: demoProcess(),
-            ui: demoUi(),
-            config: demoConfig(),
-            settings: demoSystemSettings(),
-            hasCert: false,
-            storage: demoStorage(),
-            notifications: fresh.notifications,
-            recent: [],
-            globalConfig: fresh.globalConfig,
-            sources: fresh.sources,
-            updatePhase: 'idle',
-            logLevel: 'info',
-            logs: fresh.logs,
-            messages: fresh.messages,
-            nextMessageId: 101,
-            scenario: 'setup',
-            failNextMutation: false,
-            backgroundUrl: null,
-        });
+        const { feeds, listeners, generation } = this.state;
+        this.state = {
+            ...createDemoState(),
+            generation: generation + 1,
+            feeds,
+            listeners,
+        };
         this.announce('DEMO reset: all practice writes, files and sessions cleared.');
     }
 
@@ -271,14 +477,14 @@ export class DemoApi {
             return;
         }
 
-        this.scenario = scenario;
+        this.state.scenario = scenario;
 
         if (scenario === 'ready') {
-            this.consent = true;
-            this.mustChange = false;
+            this.state.consent = true;
+            this.state.mustChange = false;
             this.scan();
-            this.process = {
-                ...this.process,
+            this.state.process = {
+                ...this.state.process,
                 injected: true,
                 connected: true,
                 loggedIn: true,
@@ -286,8 +492,8 @@ export class DemoApi {
                 status: 'online',
             };
         } else if (scenario === 'offline') {
-            this.process = {
-                ...this.process,
+            this.state.process = {
+                ...this.state.process,
                 connected: false,
                 loggedIn: false,
                 status: 'disconnected',
@@ -305,40 +511,735 @@ export class DemoApi {
     }
 
     scan() {
-        this.process.account = { uin: DEMO_UIN, nickname: 'DEMO 小光' };
+        this.state.process.account = { uin: DEMO_UIN, nickname: 'DEMO 小光' };
         this.emitState();
         this.announce(
             'DEMO scan simulated. Now choose 加载 on process 4242; detection is not QQ delivery.',
         );
     }
 
+    fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+        try {
+            return this.handle(await readDemoRequest(input, init));
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                throw error;
+            }
+
+            if (error instanceof DemoRequestError) {
+                if (error.notice) {
+                    this.announce(error.notice);
+                }
+
+                return fakeError(error.message, error.status);
+            }
+
+            return fakeError(`DEMO: ${error instanceof Error ? error.message : 'Invalid request'}`);
+        }
+    };
+
+    private handle(request: DemoRequest): Response {
+        const { path, method } = request;
+
+        if (path === '/api/ui/public' && method === 'GET') {
+            return json({ appearance: this.state.ui.appearance });
+        }
+
+        if (path === '/api/login' && method === 'POST') {
+            return this.login(request.body);
+        }
+
+        if (
+            this.state.token === null ||
+            request.headers.get('X-Nowluma-Token') !== this.state.token
+        ) {
+            return fakeError('DEMO: Login required', 401);
+        }
+
+        const auth = this.authRoute(request);
+
+        if (auth) {
+            return auth;
+        }
+
+        if (!this.state.consent || this.state.mustChange) {
+            return fakeError('DEMO: Finish practice agreement/password setup first', 403);
+        }
+
+        if (this.state.scenario === 'failure') {
+            return fakeError(
+                'DEMO: Simulated API failure. Choose Ready or Reset in the practice guide.',
+                503,
+            );
+        }
+
+        if (method !== 'GET' && this.state.failNextMutation) {
+            this.state.failNextMutation = false;
+            this.addLog('Simulated write failure; no data changed', 'error');
+            this.announce(
+                'DEMO: Write failed intentionally. Retry only after inspecting the result.',
+            );
+            return fakeError('DEMO: Simulated write failure; nothing changed', 503);
+        }
+
+        return (
+            this.streamRoute(request) ??
+            this.processRoute(request) ??
+            this.uiRoute(request) ??
+            this.logRoute(request) ??
+            this.updateRoute(request) ??
+            this.systemRoute(request) ??
+            this.storageRoute(request) ??
+            this.notificationRoute(request) ??
+            this.totpRoute(request) ??
+            this.debugRoute(request) ??
+            this.unhandled(path, method)
+        );
+    }
+
+    private login(body: Body): Response {
+        if (body.password !== this.state.password) {
+            return fakeError(
+                `DEMO: Use only example password ${this.state.password}. Never enter a real password.`,
+                401,
+            );
+        }
+
+        if (
+            this.state.totpEnabled &&
+            body.totp !== DEMO_TOTP &&
+            !this.state.recoveryCodes.includes(String(body.recoveryCode))
+        ) {
+            return body.totp || body.recoveryCode
+                ? fakeError('DEMO: Invalid example second factor', 401)
+                : json({ needsTotp: true });
+        }
+
+        if (body.recoveryCode) {
+            this.state.recoveryCodes = this.state.recoveryCodes.filter(
+                (code) => code !== body.recoveryCode,
+            );
+        }
+
+        this.state.token = `demo-session-${++this.state.generation}`;
+        this.announce('DEMO login accepted. This is not a real server session.');
+        return json({ token: this.state.token, mustChangePassword: this.state.mustChange });
+    }
+
+    private authRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/logout' && method === 'POST') {
+            this.state.token = null;
+            this.closeFeeds();
+            return json({ success: true });
+        }
+
+        if (path === '/api/status' && method === 'GET') {
+            return json({ authenticated: true });
+        }
+
+        if (path === '/api/auth/state' && method === 'GET') {
+            return json({ mustChangePassword: this.state.mustChange });
+        }
+
+        if (path === '/api/agreements' && method === 'GET') {
+            return json({
+                version: 'demo-v1',
+                consentRequired: !this.state.consent,
+                documents: [
+                    {
+                        id: 'eula',
+                        title: 'DEMO 使用练习 / Practice agreement',
+                        declaredVersion: 'DEMO',
+                        effectiveDate: '2026-07-24',
+                        text: '这是模拟练习文本，不是生产协议。\nPractice only. All operations are in browser memory. No QQ connection or delivery, no filesystem writes, no physical desktop. Never enter actual passwords, tokens or account data. Production uses the supplied EULA and LICENSE.',
+                    },
+                    {
+                        id: 'privacy',
+                        title: 'DEMO 隐私提示 / Privacy reminder',
+                        declaredVersion: 'DEMO',
+                        effectiveDate: '2026-07-24',
+                        text: '示例登录密码 DemoOnly!2026；新密码 DemoChanged!2026；2FA 123456。\nUse only these public examples. Nothing is persisted. Reset or refresh clears the simulator.',
+                    },
+                ],
+            });
+        }
+
+        if (path === '/api/agreements/record-consent' && method === 'POST') {
+            if (body.version !== 'demo-v1') {
+                return json(
+                    {
+                        success: false,
+                        currentVersion: 'demo-v1',
+                        message: 'DEMO: Agreement version changed',
+                    },
+                    409,
+                );
+            }
+
+            this.state.consent = true;
+            return json({ success: true });
+        }
+
+        if (path === '/api/auth/check-strength' && method === 'POST') {
+            const valid = body.password === DEMO_NEW_PASSWORD;
+            return json({
+                valid,
+                rules: [
+                    {
+                        id: 'demo-only',
+                        label: `仅输入示例 / Example only: ${DEMO_NEW_PASSWORD}`,
+                        ok: valid,
+                    },
+                ],
+            });
+        }
+
+        if (path === '/api/auth/change-password' && method === 'POST') {
+            if (
+                body.oldPassword !== this.state.password ||
+                body.newPassword !== DEMO_NEW_PASSWORD
+            ) {
+                return fakeError(
+                    `DEMO: Old password must be the example; new password must be ${DEMO_NEW_PASSWORD}`,
+                );
+            }
+
+            this.state.password = DEMO_NEW_PASSWORD;
+            this.state.mustChange = false;
+            return json({ success: true });
+        }
+
+        return null;
+    }
+
+    private streamRoute({ path, method, signal }: DemoRequest): Response | null {
+        if (
+            ['/api/state/stream', '/api/logs/stream', '/api/debug/stream'].includes(path) &&
+            method === 'GET'
+        ) {
+            return this.stream(path, signal);
+        }
+
+        return null;
+    }
+
+    private processRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/processes' && method === 'GET') {
+            return json({ list: [this.state.process] });
+        }
+
+        if (path === '/api/qq-list' && method === 'GET') {
+            return json({ list: this.accounts() });
+        }
+
+        if (path === '/api/connections' && method === 'GET') {
+            return json({ list: this.connections() });
+        }
+
+        const processAction = path.match(/^\/api\/processes\/(\d+)\/(load|unload|refresh)$/);
+
+        if (processAction && method === 'POST') {
+            if (Number(processAction[1]) !== DEMO_PID) {
+                return fakeError('DEMO: Unknown process', 404);
+            }
+
+            const action = processAction[2];
+
+            if (action === 'load' && !this.state.process.account) {
+                return fakeError('DEMO: Open the mock desktop and simulate a scan first', 409);
+            }
+
+            this.state.process = {
+                ...this.state.process,
+                injected: action !== 'unload',
+                connected: action !== 'unload',
+                loggedIn: action !== 'unload',
+                uin: action === 'unload' ? '' : DEMO_UIN,
+                status: action === 'unload' ? 'available' : 'online',
+                error: '',
+            };
+            this.emitState();
+            this.addLog(`Process ${action}: in-memory simulation only`, 'success');
+            return json({ process: this.state.process });
+        }
+
+        const configAccount = path.match(/^\/api\/config\/([^/]+)$/);
+
+        if (configAccount) {
+            if (decodeURIComponent(configAccount[1]) !== DEMO_UIN) {
+                return fakeError('DEMO: Unknown account', 404);
+            }
+
+            if (method === 'GET') {
+                return json({ config: this.state.config });
+            }
+
+            if (method === 'POST') {
+                this.state.config = parseDemoConfig(body);
+                this.emitState();
+                this.addLog(
+                    'Configuration saved to memory; no listener or remote connection opened',
+                    'success',
+                );
+                return json({
+                    config: this.state.config,
+                    saved: true,
+                    applied: this.state.process.status === 'online',
+                    online: this.state.process.status === 'online',
+                    errors: [],
+                    message: 'DEMO: Saved in memory. No real transport.',
+                });
+            }
+        }
+
+        return null;
+    }
+
+    private uiRoute({ path, method, body, raw }: DemoRequest): Response | null {
+        if (path === '/api/ui') {
+            if (method === 'POST') {
+                this.state.ui = parseUiUpdate(this.state.ui, body);
+            } else if (method !== 'GET') {
+                return fakeError('DEMO: Unsupported UI method', 405);
+            }
+
+            return json({ config: this.state.ui });
+        }
+
+        if (path === '/api/ui/background' && (method === 'POST' || method === 'DELETE')) {
+            if (this.state.backgroundUrl) {
+                URL.revokeObjectURL(this.state.backgroundUrl);
+            }
+
+            this.state.backgroundUrl = null;
+
+            if (method === 'POST') {
+                const file = raw instanceof FormData ? raw.get('file') : null;
+
+                if (
+                    !(file instanceof Blob) ||
+                    !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) ||
+                    file.size > 8 * 1024 ** 2
+                ) {
+                    return fakeError('DEMO: Choose PNG/JPEG/WebP/GIF up to 8 MiB');
+                }
+
+                this.state.backgroundUrl = URL.createObjectURL(file);
+            }
+
+            this.state.ui.appearance.background = {
+                ...this.state.ui.appearance.background,
+                hasImage: !!this.state.backgroundUrl,
+                imageVersion: this.state.ui.appearance.background.imageVersion + 1,
+            };
+            return json({ config: this.state.ui });
+        }
+
+        return null;
+    }
+
+    private logRoute({ path, method, url, body }: DemoRequest): Response | null {
+        if (path === '/api/logs' && method === 'GET') {
+            return json({
+                list: this.state.logs.slice(
+                    -Math.min(1000, Math.max(1, Number(url.searchParams.get('limit') ?? 500))),
+                ),
+            });
+        }
+
+        if (path === '/api/logs/level' && (method === 'GET' || method === 'POST')) {
+            const levels: LogLevel[] = ['trace', 'debug', 'info', 'success', 'warn', 'error'];
+
+            if (method === 'POST') {
+                if (!levels.includes(body.level as LogLevel)) {
+                    return fakeError('DEMO: Invalid log level');
+                }
+
+                this.state.logLevel = body.level as LogLevel;
+            }
+
+            return json({ level: this.state.logLevel, levels });
+        }
+
+        if (path === '/api/logs/export/trace' && method === 'GET') {
+            return new Response(this.state.logs.map((log) => log.line).join('\n'), {
+                headers: { 'Content-Disposition': 'attachment; filename="DEMO-trace.log"' },
+            });
+        }
+
+        return null;
+    }
+
+    private updateRoute({ path, method, body }: DemoRequest): Response | null {
+        if (!path.startsWith('/api/update/')) {
+            return null;
+        }
+
+        if (path === '/api/update/check' && method === 'GET') {
+            return json({
+                current: APP_VERSION,
+                latest: '99.0.0-demo',
+                hasUpdate: true,
+                htmlUrl: null,
+                notes: 'DEMO release notes. Download/restart only change memory; no software is downloaded or restarted.',
+                publishedAt: '2026-07-24T00:00:00Z',
+                checkedAt: Date.now(),
+            });
+        }
+
+        if (path === '/api/update/sources' && (method === 'GET' || method === 'POST')) {
+            if (method === 'POST') {
+                this.state.sources = normalizeUpdateSourceConfig(body);
+            }
+
+            return json({
+                config: this.state.sources,
+                saved: true,
+                applied: true,
+                online: true,
+                errors: [],
+                message: 'DEMO: Source stored in memory only',
+            });
+        }
+
+        if (path === '/api/update/sources/test' && method === 'POST') {
+            const config = normalizeUpdateSourceConfig(body);
+            return json({
+                results: [...new Set([config.mirror, ...config.mirrors].filter(Boolean))].map(
+                    (mirror) => ({
+                        mirror,
+                        available: true,
+                        latencyMs: 12,
+                        error: 'DEMO result — no network probe',
+                    }),
+                ),
+            });
+        }
+
+        if (path === '/api/update/download' && method === 'POST') {
+            this.state.updatePhase = 'ready';
+        } else if (path === '/api/update/restart' && method === 'POST') {
+            this.state.updatePhase = 'restarting';
+        } else if (path !== '/api/update/status' || method !== 'GET') {
+            return null;
+        }
+
+        return json({
+            current: APP_VERSION,
+            phase: this.state.updatePhase,
+            ...(this.state.updatePhase === 'idle' ? {} : { version: '99.0.0-demo' }),
+        });
+    }
+
+    private systemRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/system' && method === 'GET') {
+            return json(demoSystem());
+        }
+
+        if (path === '/api/system/settings' && (method === 'GET' || method === 'POST')) {
+            if (method === 'POST') {
+                this.state.settings = parseSettingsUpdate(this.state.settings, body);
+                return json({ settings: this.state.settings, restartRequiredToApply: true });
+            }
+
+            return json({
+                settings: this.state.settings,
+                effective: {
+                    vncPort: 0,
+                    vncUrl: DEMO_DESKTOP_URL,
+                    hookAutoLoad: this.state.settings.hookAutoLoad,
+                },
+                hasCert: this.state.hasCert,
+                envOverrides: [],
+                listeningPort: 5099,
+                restartRequiredToApply: false,
+            });
+        }
+
+        if (path === '/api/system/tls/cert' && (method === 'POST' || method === 'DELETE')) {
+            if (
+                method === 'POST' &&
+                (body.cert !== 'DEMO CERTIFICATE' || body.key !== 'DEMO PRIVATE KEY')
+            ) {
+                return fakeError(
+                    'DEMO: Use literal DEMO CERTIFICATE and DEMO PRIVATE KEY; never upload real keys',
+                );
+            }
+
+            this.state.hasCert = method === 'POST';
+            return json({ success: true });
+        }
+
+        if (path === '/api/system/backup/export' && method === 'GET') {
+            return json({
+                demo: true,
+                version: 1,
+                config: this.state.config,
+                ui: this.state.ui,
+                settings: this.state.settings,
+                globalConfig: this.state.globalConfig,
+                notifications: this.state.notifications,
+            });
+        }
+
+        if (path === '/api/system/backup/import' && method === 'POST') {
+            const backup = parseBackup(body);
+            this.state.config = backup.config;
+            this.state.ui = backup.ui;
+            this.state.ui.appearance.customCss = '';
+            this.state.settings = { ...this.state.settings, ...backup.settings };
+            this.state.globalConfig = { ...this.state.globalConfig, ...backup.globalConfig };
+            this.state.notifications = { ...this.state.notifications, ...backup.notifications };
+            this.emitState();
+            return json({
+                success: true,
+                transactionId: 'DEMO-memory-restore',
+                restored: ['DEMO config', 'DEMO ui', 'DEMO settings'],
+                skipped: ['credentials'],
+                migrated: [],
+                restartRequiredToApply: false,
+            });
+        }
+
+        if (path === '/api/global-config' && (method === 'GET' || method === 'POST')) {
+            if (method === 'POST') {
+                this.state.globalConfig = parseGlobalConfigUpdate(this.state.globalConfig, body);
+            }
+
+            return json({ success: true, config: this.state.globalConfig });
+        }
+
+        return null;
+    }
+
+    private storageRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/system/storage' && method === 'GET') {
+            return json(this.state.storage);
+        }
+
+        if (path === '/api/system/storage/settings' && method === 'POST') {
+            validateStorageLimits(body);
+            this.state.storage.settings.saved = { ...this.state.storage.settings.saved, ...body };
+            this.state.storage.settings.effective = { ...this.state.storage.settings.saved };
+            this.state.storage.snapshot.logs = {
+                ...this.state.storage.snapshot.logs,
+                maxTotalBytes: this.state.storage.settings.saved.logMaxTotalMb * 1024 ** 2,
+                retainDays: this.state.storage.settings.saved.logRetainDays,
+                perUinEnabled: this.state.storage.settings.saved.logPerUin,
+            };
+            return json({
+                success: true,
+                settings: this.state.storage.settings,
+                status: this.state.storage.snapshot.logs,
+                snapshot: this.state.storage.snapshot,
+            });
+        }
+
+        if (path === '/api/system/storage/cleanup' && method === 'POST') {
+            return this.cleanup(body);
+        }
+
+        return null;
+    }
+
+    private notificationRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/notifications/config' && (method === 'GET' || method === 'POST')) {
+            if (method === 'POST') {
+                this.state.notifications = parseNotificationsUpdate(this.state.notifications, body);
+            }
+
+            return json({ success: true, config: this.state.notifications });
+        }
+
+        if (path === '/api/notifications/recent' && method === 'GET') {
+            return json({ recent: this.state.recent });
+        }
+
+        if (path === '/api/notifications/test' && method === 'POST') {
+            if (
+                !this.state.notifications.channels.some((channel) => channel.id === body.channelId)
+            ) {
+                return fakeError('DEMO: Unknown notification channel', 404);
+            }
+
+            this.state.recent.unshift({
+                time: Date.now(),
+                uin: DEMO_UIN,
+                event: 'online',
+                channelId: String(body.channelId),
+                ok: true,
+                status: 200,
+            });
+            this.state.recent = this.state.recent.slice(0, 20);
+            return json({
+                success: true,
+                message: 'DEMO: Simulated delivery; no email or webhook was sent',
+                status: 200,
+            });
+        }
+
+        return null;
+    }
+
+    private totpRoute({ path, method, body }: DemoRequest): Response | null {
+        if (path === '/api/auth/totp' && method === 'GET') {
+            return json(
+                this.state.totpEnabled
+                    ? {
+                          enabled: true,
+                          remainingRecoveryCodes: this.state.recoveryCodes.length,
+                          label: 'DEMO example only',
+                      }
+                    : { enabled: false },
+            );
+        }
+
+        if (path === '/api/auth/totp/begin' && method === 'POST') {
+            this.state.totpPending = true;
+            return json({
+                success: true,
+                secret: 'JBSWY3DPEHPK3PXP',
+                otpauthUrl: 'otpauth://totp/DEMO?secret=JBSWY3DPEHPK3PXP&issuer=DEMO',
+                issuer: 'DEMO example — never enroll',
+                accountName: 'DEMO',
+            });
+        }
+
+        if (path === '/api/auth/totp/confirm' && method === 'POST') {
+            if (
+                !this.state.totpPending ||
+                body.password !== this.state.password ||
+                body.code !== DEMO_TOTP
+            ) {
+                return fakeError('DEMO: Use example password and code 123456');
+            }
+
+            this.state.totpEnabled = true;
+            this.state.totpPending = false;
+            return json({ success: true, recoveryCodes: this.state.recoveryCodes });
+        }
+
+        if (
+            ['/api/auth/totp/disable', '/api/auth/totp/recovery-codes'].includes(path) &&
+            method === 'POST'
+        ) {
+            if (
+                !this.state.totpEnabled ||
+                body.password !== this.state.password ||
+                (body.totp !== DEMO_TOTP &&
+                    !this.state.recoveryCodes.includes(String(body.recoveryCode)))
+            ) {
+                return fakeError('DEMO: Invalid example second factor');
+            }
+
+            if (path.endsWith('/disable')) {
+                this.state.totpEnabled = false;
+            } else {
+                this.state.recoveryCodes = ['DEMO-RECOVERY-0003', 'DEMO-RECOVERY-0004'];
+            }
+
+            return json({ success: true, recoveryCodes: this.state.recoveryCodes });
+        }
+
+        return null;
+    }
+
+    private debugRoute({ path, method, body, raw, signal }: DemoRequest): Response | null {
+        if (path === '/api/debug/actions' && method === 'GET') {
+            return json({
+                actions: demoActions,
+                categories: [...new Set(demoActions.map((action) => action.category))].map(
+                    (category) => ({
+                        category,
+                        count: demoActions.filter((action) => action.category === category).length,
+                    }),
+                ),
+            });
+        }
+
+        if (['/api/debug/invoke', '/api/debug/invoke-stream'].includes(path) && method === 'POST') {
+            if (body.uin !== DEMO_UIN) {
+                return fakeError('DEMO: Unknown account', 404);
+            }
+
+            if (this.state.process.status !== 'online') {
+                return fakeError('DEMO: Account offline', 409);
+            }
+
+            const params = object(body.params);
+            const result = this.invoke(String(body.action), params);
+            this.state.feeds.forEach((feed) => {
+                if (feed.path === '/api/debug/stream') {
+                    feed.send({
+                        kind: 'action',
+                        uin: DEMO_UIN,
+                        action: body.action,
+                        params,
+                        response: result,
+                        ms: 1,
+                    });
+                }
+            });
+
+            if (path.endsWith('invoke-stream')) {
+                return this.stream(path, signal, [result]);
+            }
+
+            return json(result);
+        }
+
+        if (path === '/api/debug/upload' && method === 'POST') {
+            const file = raw instanceof FormData ? raw.get('file') : null;
+
+            if (!(file instanceof Blob) || file.size > 8 * 1024 ** 2) {
+                return fakeError('DEMO: Choose a file up to 8 MiB');
+            }
+
+            return json({
+                status: 'ok',
+                path: '/DEMO/memory/upload',
+                size: file.size,
+                message: 'DEMO: File metadata only; no disk upload',
+            });
+        }
+
+        return null;
+    }
+
+    private announce(message: string) {
+        this.state.notice = message;
+        this.state.listeners.forEach((listener) => listener());
+    }
+
     private accounts() {
-        return this.process.status === 'online' ? [{ uin: DEMO_UIN, nickname: 'DEMO 小光' }] : [];
+        return this.state.process.status === 'online'
+            ? [{ uin: DEMO_UIN, nickname: 'DEMO 小光' }]
+            : [];
     }
 
     private connections() {
         return this.accounts().map((account) => ({
             ...account,
             adapters: [
-                ...this.config.networks.httpServers.map((network) => ({
+                ...this.state.config.networks.httpServers.map((network) => ({
                     name: network.name,
                     kind: 'httpServer',
                     status: network.enabled === false ? 'disabled' : 'ok',
                     detail: 'DEMO listener only — no socket opened',
                 })),
-                ...this.config.networks.httpClients.map((network) => ({
+                ...this.state.config.networks.httpClients.map((network) => ({
                     name: network.name,
                     kind: 'httpClient',
                     status: network.enabled === false ? 'disabled' : 'ok',
                     detail: 'DEMO only — no outgoing request',
                 })),
-                ...this.config.networks.wsServers.map((network) => ({
+                ...this.state.config.networks.wsServers.map((network) => ({
                     name: network.name,
                     kind: 'wsServer',
                     status: network.enabled === false ? 'disabled' : 'ok',
                     detail: 'DEMO listener only — no socket opened',
                 })),
-                ...this.config.networks.wsClients.map((network) => ({
+                ...this.state.config.networks.wsClients.map((network) => ({
                     name: network.name,
                     kind: 'wsClient',
                     status: network.enabled === false ? 'disabled' : 'ok',
@@ -349,22 +1250,22 @@ export class DemoApi {
     }
 
     private emitState() {
-        for (const feed of this.feeds) {
+        for (const feed of this.state.feeds) {
             if (feed.path === '/api/state/stream') {
-                feed.send({ resource: 'processes', data: [this.process] });
+                feed.send({ resource: 'processes', data: [this.state.process] });
                 feed.send({ resource: 'qq-list', data: this.accounts() });
                 feed.send({ resource: 'connections', data: this.connections() });
             }
         }
 
-        this.storage.snapshot.accounts[0].online = this.process.status === 'online';
+        this.state.storage.snapshot.accounts[0].online = this.state.process.status === 'online';
     }
 
     private addLog(message: string, level: LogLevel = 'info') {
-        const log = demoLog((this.logs.at(-1)?.id ?? 0) + 1, message, level);
-        this.logs = [...this.logs.slice(-199), log];
+        const log = demoLog((this.state.logs.at(-1)?.id ?? 0) + 1, message, level);
+        this.state.logs = [...this.state.logs.slice(-199), log];
         this.announce(message);
-        this.feeds.forEach((feed) => {
+        this.state.feeds.forEach((feed) => {
             if (feed.path === '/api/logs/stream') {
                 feed.send(log);
             }
@@ -372,7 +1273,7 @@ export class DemoApi {
     }
 
     private closeFeeds() {
-        [...this.feeds].forEach((feed) => feed.close());
+        [...this.state.feeds].forEach((feed) => feed.close());
     }
 
     private stream(path: string, signal?: AbortSignal | null, frames?: unknown[]) {
@@ -381,7 +1282,7 @@ export class DemoApi {
         }
 
         const encoder = new TextEncoder();
-        const feeds = this.feeds;
+        const feeds = this.state.feeds;
         let dispose: (() => void) | null = null;
         const stream = new ReadableStream<Uint8Array>(
             {
@@ -441,7 +1342,7 @@ export class DemoApi {
                     signal?.addEventListener('abort', close, { once: true });
 
                     if (path === '/api/logs/stream') {
-                        this.logs.forEach(feed.send);
+                        this.state.logs.forEach(feed.send);
                     } else {
                         feed.send({ kind: 'ready' });
                     }
@@ -458,707 +1359,6 @@ export class DemoApi {
         );
         return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
     }
-
-    fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
-        try {
-            if (init.signal?.aborted) {
-                throw new DOMException('DEMO request aborted', 'AbortError');
-            }
-
-            const request = input instanceof Request ? input : null;
-            const origin =
-                typeof location === 'undefined' ? 'https://demo.invalid' : location.origin;
-            const url = new URL(request?.url ?? String(input), origin);
-
-            if (url.origin !== origin) {
-                this.announce(`DEMO blocked external request: ${url.origin}`);
-                return fakeError('DEMO: External URLs are blocked; no request was sent', 403);
-            }
-
-            if (!url.pathname.startsWith('/api/')) {
-                this.announce(`DEMO blocked unsupported URL: ${url.pathname}`);
-                return fakeError(`DEMO: Unsupported URL ${url.pathname}; no network fallback`, 404);
-            }
-
-            const method = (init.method ?? request?.method ?? 'GET').toUpperCase();
-            const headers = new Headers(init.headers ?? request?.headers);
-            const raw =
-                init.body ?? (request && method !== 'GET' ? await request.text() : undefined);
-
-            if (typeof raw === 'string' && raw.length > 2_000_000) {
-                return fakeError('DEMO: Request too large', 413);
-            }
-
-            const body = typeof raw === 'string' && raw ? object(JSON.parse(raw)) : {};
-            const path = url.pathname;
-
-            if (path === '/api/ui/public' && method === 'GET') {
-                return json({ appearance: this.ui.appearance });
-            }
-
-            if (path === '/api/login' && method === 'POST') {
-                if (body.password !== this.password) {
-                    return fakeError(
-                        `DEMO: Use only example password ${this.password}. Never enter a real password.`,
-                        401,
-                    );
-                }
-
-                if (
-                    this.totpEnabled &&
-                    body.totp !== DEMO_TOTP &&
-                    !this.recoveryCodes.includes(String(body.recoveryCode))
-                ) {
-                    return body.totp || body.recoveryCode
-                        ? fakeError('DEMO: Invalid example second factor', 401)
-                        : json({ needsTotp: true });
-                }
-
-                if (body.recoveryCode) {
-                    this.recoveryCodes = this.recoveryCodes.filter(
-                        (code) => code !== body.recoveryCode,
-                    );
-                }
-
-                this.token = `demo-session-${++this.generation}`;
-                this.announce('DEMO login accepted. This is not a real server session.');
-                return json({ token: this.token, mustChangePassword: this.mustChange });
-            }
-
-            if (!this.token || headers.get('X-Nowluma-Token') !== this.token) {
-                return fakeError('DEMO: Login required', 401);
-            }
-
-            if (path === '/api/logout' && method === 'POST') {
-                this.token = null;
-                this.closeFeeds();
-                return json({ success: true });
-            }
-
-            if (path === '/api/status' && method === 'GET') {
-                return json({ authenticated: true });
-            }
-
-            if (path === '/api/auth/state' && method === 'GET') {
-                return json({ mustChangePassword: this.mustChange });
-            }
-
-            if (path === '/api/agreements' && method === 'GET') {
-                return json({
-                    version: 'demo-v1',
-                    consentRequired: !this.consent,
-                    documents: [
-                        {
-                            id: 'eula',
-                            title: 'DEMO 使用练习 / Practice agreement',
-                            declaredVersion: 'DEMO',
-                            effectiveDate: '2026-07-24',
-                            text: '这是模拟练习文本，不是生产协议。\nPractice only. All operations are in browser memory. No QQ connection or delivery, no filesystem writes, no physical desktop. Never enter actual passwords, tokens or account data. Production uses the supplied EULA and LICENSE.',
-                        },
-                        {
-                            id: 'privacy',
-                            title: 'DEMO 隐私提示 / Privacy reminder',
-                            declaredVersion: 'DEMO',
-                            effectiveDate: '2026-07-24',
-                            text: '示例登录密码 DemoOnly!2026；新密码 DemoChanged!2026；2FA 123456。\nUse only these public examples. Nothing is persisted. Reset or refresh clears the simulator.',
-                        },
-                    ],
-                });
-            }
-
-            if (path === '/api/agreements/record-consent' && method === 'POST') {
-                if (body.version !== 'demo-v1') {
-                    return json(
-                        {
-                            success: false,
-                            currentVersion: 'demo-v1',
-                            message: 'DEMO: Agreement version changed',
-                        },
-                        409,
-                    );
-                }
-
-                this.consent = true;
-                return json({ success: true });
-            }
-
-            if (path === '/api/auth/check-strength' && method === 'POST') {
-                const valid = body.password === DEMO_NEW_PASSWORD;
-                return json({
-                    valid,
-                    rules: [
-                        {
-                            id: 'demo-only',
-                            label: `仅输入示例 / Example only: ${DEMO_NEW_PASSWORD}`,
-                            ok: valid,
-                        },
-                    ],
-                });
-            }
-
-            if (path === '/api/auth/change-password' && method === 'POST') {
-                if (body.oldPassword !== this.password || body.newPassword !== DEMO_NEW_PASSWORD) {
-                    return fakeError(
-                        `DEMO: Old password must be the example; new password must be ${DEMO_NEW_PASSWORD}`,
-                    );
-                }
-
-                this.password = DEMO_NEW_PASSWORD;
-                this.mustChange = false;
-                return json({ success: true });
-            }
-
-            if (!this.consent || this.mustChange) {
-                return fakeError('DEMO: Finish practice agreement/password setup first', 403);
-            }
-
-            if (this.scenario === 'failure') {
-                return fakeError(
-                    'DEMO: Simulated API failure. Choose Ready or Reset in the practice guide.',
-                    503,
-                );
-            }
-
-            if (method !== 'GET' && this.failNextMutation) {
-                this.failNextMutation = false;
-                this.addLog('Simulated write failure; no data changed', 'error');
-                this.announce(
-                    'DEMO: Write failed intentionally. Retry only after inspecting the result.',
-                );
-                return fakeError('DEMO: Simulated write failure; nothing changed', 503);
-            }
-
-            if (path === '/api/processes' && method === 'GET') {
-                return json({ list: [this.process] });
-            }
-
-            if (path === '/api/qq-list' && method === 'GET') {
-                return json({ list: this.accounts() });
-            }
-
-            if (path === '/api/connections' && method === 'GET') {
-                return json({ list: this.connections() });
-            }
-
-            if (path === '/api/system' && method === 'GET') {
-                return json(demoSystem());
-            }
-
-            if (
-                ['/api/state/stream', '/api/logs/stream', '/api/debug/stream'].includes(path) &&
-                method === 'GET'
-            ) {
-                return this.stream(path, init.signal ?? request?.signal);
-            }
-
-            const processAction = path.match(/^\/api\/processes\/(\d+)\/(load|unload|refresh)$/);
-
-            if (processAction && method === 'POST') {
-                if (Number(processAction[1]) !== DEMO_PID) {
-                    return fakeError('DEMO: Unknown process', 404);
-                }
-
-                const action = processAction[2];
-
-                if (action === 'load' && !this.process.account) {
-                    return fakeError('DEMO: Open the mock desktop and simulate a scan first', 409);
-                }
-
-                this.process = {
-                    ...this.process,
-                    injected: action !== 'unload',
-                    connected: action !== 'unload',
-                    loggedIn: action !== 'unload',
-                    uin: action === 'unload' ? '' : DEMO_UIN,
-                    status: action === 'unload' ? 'available' : 'online',
-                    error: '',
-                };
-                this.emitState();
-                this.addLog(`Process ${action}: in-memory simulation only`, 'success');
-                return json({ process: this.process });
-            }
-
-            const configAccount = path.match(/^\/api\/config\/([^/]+)$/);
-
-            if (configAccount) {
-                if (decodeURIComponent(configAccount[1]) !== DEMO_UIN) {
-                    return fakeError('DEMO: Unknown account', 404);
-                }
-
-                if (method === 'GET') {
-                    return json({ config: this.config });
-                }
-
-                if (method === 'POST') {
-                    this.config = parseDemoConfig(body);
-                    this.emitState();
-                    this.addLog(
-                        'Configuration saved to memory; no listener or remote connection opened',
-                        'success',
-                    );
-                    return json({
-                        config: this.config,
-                        saved: true,
-                        applied: this.process.status === 'online',
-                        online: this.process.status === 'online',
-                        errors: [],
-                        message: 'DEMO: Saved in memory. No real transport.',
-                    });
-                }
-            }
-
-            if (path === '/api/ui') {
-                if (method === 'POST') {
-                    const next: UiConfig = {
-                        ...this.ui,
-                        appearance: {
-                            ...this.ui.appearance,
-                            ...(body.appearance ? object(body.appearance) : {}),
-                        },
-                        layout: { ...this.ui.layout, ...(body.layout ? object(body.layout) : {}) },
-                        pages: { ...this.ui.pages, ...(body.pages ? object(body.pages) : {}) },
-                    };
-                    validateDemoShape(next, demoUi());
-                    // Custom CSS is never evaluated by the static practice site.
-                    next.appearance.customCss = '';
-                    this.ui = next;
-                } else if (method !== 'GET') {
-                    return fakeError('DEMO: Unsupported UI method', 405);
-                }
-
-                return json({ config: this.ui });
-            }
-
-            if (path === '/api/ui/background' && (method === 'POST' || method === 'DELETE')) {
-                if (this.backgroundUrl) {
-                    URL.revokeObjectURL(this.backgroundUrl);
-                }
-
-                this.backgroundUrl = null;
-
-                if (method === 'POST') {
-                    const file = raw instanceof FormData ? raw.get('file') : null;
-
-                    if (
-                        !(file instanceof Blob) ||
-                        !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(
-                            file.type,
-                        ) ||
-                        file.size > 8 * 1024 ** 2
-                    ) {
-                        return fakeError('DEMO: Choose PNG/JPEG/WebP/GIF up to 8 MiB');
-                    }
-
-                    this.backgroundUrl = URL.createObjectURL(file);
-                }
-
-                this.ui.appearance.background = {
-                    ...this.ui.appearance.background,
-                    hasImage: !!this.backgroundUrl,
-                    imageVersion: this.ui.appearance.background.imageVersion + 1,
-                };
-                return json({ config: this.ui });
-            }
-
-            if (path === '/api/logs' && method === 'GET') {
-                return json({
-                    list: this.logs.slice(
-                        -Math.min(1000, Math.max(1, Number(url.searchParams.get('limit') ?? 500))),
-                    ),
-                });
-            }
-
-            if (path === '/api/logs/level' && (method === 'GET' || method === 'POST')) {
-                const levels: LogLevel[] = ['trace', 'debug', 'info', 'success', 'warn', 'error'];
-
-                if (method === 'POST') {
-                    if (!levels.includes(body.level as LogLevel)) {
-                        return fakeError('DEMO: Invalid log level');
-                    }
-
-                    this.logLevel = body.level as LogLevel;
-                }
-
-                return json({ level: this.logLevel, levels });
-            }
-
-            if (path === '/api/logs/export/trace' && method === 'GET') {
-                return new Response(this.logs.map((log) => log.line).join('\n'), {
-                    headers: { 'Content-Disposition': 'attachment; filename="DEMO-trace.log"' },
-                });
-            }
-
-            if (path.startsWith('/api/update/')) {
-                if (path === '/api/update/check' && method === 'GET') {
-                    return json({
-                        current: APP_VERSION,
-                        latest: '99.0.0-demo',
-                        hasUpdate: true,
-                        htmlUrl: null,
-                        notes: 'DEMO release notes. Download/restart only change memory; no software is downloaded or restarted.',
-                        publishedAt: '2026-07-24T00:00:00Z',
-                        checkedAt: Date.now(),
-                    });
-                }
-
-                if (path === '/api/update/sources' && (method === 'GET' || method === 'POST')) {
-                    if (method === 'POST') {
-                        this.sources = normalizeUpdateSourceConfig(body);
-                    }
-
-                    return json({
-                        config: this.sources,
-                        saved: true,
-                        applied: true,
-                        online: true,
-                        errors: [],
-                        message: 'DEMO: Source stored in memory only',
-                    });
-                }
-
-                if (path === '/api/update/sources/test' && method === 'POST') {
-                    const config = normalizeUpdateSourceConfig(body);
-                    return json({
-                        results: [
-                            ...new Set([config.mirror, ...config.mirrors].filter(Boolean)),
-                        ].map((mirror) => ({
-                            mirror,
-                            available: true,
-                            latencyMs: 12,
-                            error: 'DEMO result — no network probe',
-                        })),
-                    });
-                }
-
-                if (path === '/api/update/download' && method === 'POST') {
-                    this.updatePhase = 'ready';
-                } else if (path === '/api/update/restart' && method === 'POST') {
-                    this.updatePhase = 'restarting';
-                } else if (path !== '/api/update/status' || method !== 'GET') {
-                    return this.unhandled(path, method);
-                }
-
-                return json({
-                    current: APP_VERSION,
-                    phase: this.updatePhase,
-                    ...(this.updatePhase === 'idle' ? {} : { version: '99.0.0-demo' }),
-                });
-            }
-
-            if (path === '/api/system/settings' && (method === 'GET' || method === 'POST')) {
-                if (method === 'POST') {
-                    if (
-                        body.webuiPort !== undefined &&
-                        (!Number.isInteger(body.webuiPort) ||
-                            Number(body.webuiPort) < 1 ||
-                            Number(body.webuiPort) > 65535)
-                    ) {
-                        return fakeError('DEMO: Invalid port');
-                    }
-
-                    const settings = { ...this.settings, ...(body as SystemSettingsPatch) };
-                    validateDemoShape(settings, demoSystemSettings());
-                    this.settings = settings;
-                    return json({ settings: this.settings, restartRequiredToApply: true });
-                }
-
-                return json({
-                    settings: this.settings,
-                    effective: {
-                        vncPort: 0,
-                        vncUrl: DEMO_DESKTOP_URL,
-                        hookAutoLoad: this.settings.hookAutoLoad,
-                    },
-                    hasCert: this.hasCert,
-                    envOverrides: [],
-                    listeningPort: 5099,
-                    restartRequiredToApply: false,
-                });
-            }
-
-            if (path === '/api/system/tls/cert' && (method === 'POST' || method === 'DELETE')) {
-                if (
-                    method === 'POST' &&
-                    (body.cert !== 'DEMO CERTIFICATE' || body.key !== 'DEMO PRIVATE KEY')
-                ) {
-                    return fakeError(
-                        'DEMO: Use literal DEMO CERTIFICATE and DEMO PRIVATE KEY; never upload real keys',
-                    );
-                }
-
-                this.hasCert = method === 'POST';
-                return json({ success: true });
-            }
-
-            if (path === '/api/system/backup/export' && method === 'GET') {
-                return json({
-                    demo: true,
-                    version: 1,
-                    config: this.config,
-                    ui: this.ui,
-                    settings: this.settings,
-                    globalConfig: this.globalConfig,
-                    notifications: this.notifications,
-                });
-            }
-
-            if (path === '/api/system/backup/import' && method === 'POST') {
-                const backup = object(body.backup);
-
-                if (
-                    backup.demo !== true ||
-                    backup.version !== 1 ||
-                    body.restoreCredentials === true
-                ) {
-                    return fakeError(
-                        'DEMO: Only simulator backups without credential restoration are accepted',
-                    );
-                }
-
-                const config = parseDemoConfig(backup.config);
-                const ui = object(backup.ui);
-
-                if (!ui.appearance || !ui.layout || !ui.pages) {
-                    return fakeError('DEMO: Incomplete backup');
-                }
-
-                const settings = object(backup.settings);
-                const globalConfig = object(backup.globalConfig);
-                const notifications = object(backup.notifications);
-                validateDemoShape(ui, demoUi());
-                validateDemoShape(settings, demoSystemSettings());
-                validateDemoShape(globalConfig, DEMO_GLOBAL_SHAPE);
-                validateDemoShape(notifications, DEMO_NOTIFICATION_SHAPE);
-                this.config = config;
-                this.ui = structuredClone(ui) as unknown as UiConfig;
-                this.ui.appearance.customCss = '';
-                this.settings = { ...this.settings, ...settings };
-                this.globalConfig = { ...this.globalConfig, ...globalConfig };
-                this.notifications = { ...this.notifications, ...notifications };
-                this.emitState();
-                return json({
-                    success: true,
-                    transactionId: 'DEMO-memory-restore',
-                    restored: ['DEMO config', 'DEMO ui', 'DEMO settings'],
-                    skipped: ['credentials'],
-                    migrated: [],
-                    restartRequiredToApply: false,
-                });
-            }
-
-            if (path === '/api/system/storage' && method === 'GET') {
-                return json(this.storage);
-            }
-
-            if (path === '/api/system/storage/settings' && method === 'POST') {
-                for (const field of ['logMaxTotalMb', 'logRetainDays'] as const) {
-                    if (
-                        body[field] !== undefined &&
-                        (!Number.isFinite(body[field]) || Number(body[field]) < 0)
-                    ) {
-                        return fakeError('DEMO: Invalid storage limit');
-                    }
-                }
-
-                this.storage.settings.saved = { ...this.storage.settings.saved, ...body };
-                this.storage.settings.effective = { ...this.storage.settings.saved };
-                this.storage.snapshot.logs = {
-                    ...this.storage.snapshot.logs,
-                    maxTotalBytes: this.storage.settings.saved.logMaxTotalMb * 1024 ** 2,
-                    retainDays: this.storage.settings.saved.logRetainDays,
-                    perUinEnabled: this.storage.settings.saved.logPerUin,
-                };
-                return json({
-                    success: true,
-                    settings: this.storage.settings,
-                    status: this.storage.snapshot.logs,
-                    snapshot: this.storage.snapshot,
-                });
-            }
-
-            if (path === '/api/system/storage/cleanup' && method === 'POST') {
-                return this.cleanup(body);
-            }
-
-            if (path === '/api/notifications/config' && (method === 'GET' || method === 'POST')) {
-                if (method === 'POST') {
-                    if (!Array.isArray(body.channels) || body.channels.length > 16) {
-                        return fakeError('DEMO: Invalid channels');
-                    }
-
-                    const config = { ...this.notifications, ...body };
-                    validateDemoShape(config, DEMO_NOTIFICATION_SHAPE);
-                    this.notifications = config;
-                }
-
-                return json({ success: true, config: this.notifications });
-            }
-
-            if (path === '/api/notifications/recent' && method === 'GET') {
-                return json({ recent: this.recent });
-            }
-
-            if (path === '/api/notifications/test' && method === 'POST') {
-                if (!this.notifications.channels.some((channel) => channel.id === body.channelId)) {
-                    return fakeError('DEMO: Unknown notification channel', 404);
-                }
-
-                this.recent.unshift({
-                    time: Date.now(),
-                    uin: DEMO_UIN,
-                    event: 'online',
-                    channelId: String(body.channelId),
-                    ok: true,
-                    status: 200,
-                });
-                this.recent = this.recent.slice(0, 20);
-                return json({
-                    success: true,
-                    message: 'DEMO: Simulated delivery; no email or webhook was sent',
-                    status: 200,
-                });
-            }
-
-            if (path === '/api/global-config' && (method === 'GET' || method === 'POST')) {
-                if (method === 'POST') {
-                    const config = { ...this.globalConfig, ...body };
-                    validateDemoShape(config, DEMO_GLOBAL_SHAPE);
-                    this.globalConfig = config;
-                }
-
-                return json({ success: true, config: this.globalConfig });
-            }
-
-            if (path === '/api/auth/totp' && method === 'GET') {
-                return json(
-                    this.totpEnabled
-                        ? {
-                              enabled: true,
-                              remainingRecoveryCodes: this.recoveryCodes.length,
-                              label: 'DEMO example only',
-                          }
-                        : { enabled: false },
-                );
-            }
-
-            if (path === '/api/auth/totp/begin' && method === 'POST') {
-                this.totpPending = true;
-                return json({
-                    success: true,
-                    secret: 'JBSWY3DPEHPK3PXP',
-                    otpauthUrl: 'otpauth://totp/DEMO?secret=JBSWY3DPEHPK3PXP&issuer=DEMO',
-                    issuer: 'DEMO example — never enroll',
-                    accountName: 'DEMO',
-                });
-            }
-
-            if (path === '/api/auth/totp/confirm' && method === 'POST') {
-                if (
-                    !this.totpPending ||
-                    body.password !== this.password ||
-                    body.code !== DEMO_TOTP
-                ) {
-                    return fakeError('DEMO: Use example password and code 123456');
-                }
-
-                this.totpEnabled = true;
-                this.totpPending = false;
-                return json({ success: true, recoveryCodes: this.recoveryCodes });
-            }
-
-            if (
-                ['/api/auth/totp/disable', '/api/auth/totp/recovery-codes'].includes(path) &&
-                method === 'POST'
-            ) {
-                if (
-                    !this.totpEnabled ||
-                    body.password !== this.password ||
-                    (body.totp !== DEMO_TOTP &&
-                        !this.recoveryCodes.includes(String(body.recoveryCode)))
-                ) {
-                    return fakeError('DEMO: Invalid example second factor');
-                }
-
-                if (path.endsWith('/disable')) {
-                    this.totpEnabled = false;
-                } else {
-                    this.recoveryCodes = ['DEMO-RECOVERY-0003', 'DEMO-RECOVERY-0004'];
-                }
-
-                return json({ success: true, recoveryCodes: this.recoveryCodes });
-            }
-
-            if (path === '/api/debug/actions' && method === 'GET') {
-                return json({
-                    actions: demoActions,
-                    categories: [...new Set(demoActions.map((action) => action.category))].map(
-                        (category) => ({
-                            category,
-                            count: demoActions.filter((action) => action.category === category)
-                                .length,
-                        }),
-                    ),
-                });
-            }
-
-            if (
-                ['/api/debug/invoke', '/api/debug/invoke-stream'].includes(path) &&
-                method === 'POST'
-            ) {
-                if (body.uin !== DEMO_UIN) {
-                    return fakeError('DEMO: Unknown account', 404);
-                }
-
-                if (this.process.status !== 'online') {
-                    return fakeError('DEMO: Account offline', 409);
-                }
-
-                const params = object(body.params);
-                const result = this.invoke(String(body.action), params);
-                this.feeds.forEach((feed) => {
-                    if (feed.path === '/api/debug/stream') {
-                        feed.send({
-                            kind: 'action',
-                            uin: DEMO_UIN,
-                            action: body.action,
-                            params,
-                            response: result,
-                            ms: 1,
-                        });
-                    }
-                });
-
-                if (path.endsWith('invoke-stream')) {
-                    return this.stream(path, init.signal ?? request?.signal, [result]);
-                }
-
-                return json(result);
-            }
-
-            if (path === '/api/debug/upload' && method === 'POST') {
-                const file = raw instanceof FormData ? raw.get('file') : null;
-
-                if (!(file instanceof Blob) || file.size > 8 * 1024 ** 2) {
-                    return fakeError('DEMO: Choose a file up to 8 MiB');
-                }
-
-                return json({
-                    status: 'ok',
-                    path: '/DEMO/memory/upload',
-                    size: file.size,
-                    message: 'DEMO: File metadata only; no disk upload',
-                });
-            }
-
-            return this.unhandled(path, method);
-        } catch (error) {
-            if (error instanceof DOMException && error.name === 'AbortError') {
-                throw error;
-            }
-
-            return fakeError(`DEMO: ${error instanceof Error ? error.message : 'Invalid request'}`);
-        }
-    };
 
     private unhandled(path: string, method: string) {
         this.announce(`DEMO unsupported: ${method} ${path}. No network fallback.`);
@@ -1201,7 +1401,7 @@ export class DemoApi {
                 ];
                 break;
             case 'get_msg':
-                data = this.messages.get(Number(params.message_id));
+                data = this.state.messages.get(Number(params.message_id));
 
                 if (!data) {
                     return { status: 'failed', retcode: 1404, message: 'DEMO: Message not found' };
@@ -1240,8 +1440,8 @@ export class DemoApi {
                                   return typeof data.text === 'string' ? data.text : '';
                               })
                               .join('');
-                const messageId = this.nextMessageId++;
-                this.messages.set(messageId, {
+                const messageId = this.state.nextMessageId++;
+                this.state.messages.set(messageId, {
                     message_id: messageId,
                     user_id: 10002,
                     ...(group ? { group_id: 20001 } : {}),
@@ -1250,8 +1450,8 @@ export class DemoApi {
                     sender: { user_id: Number(DEMO_UIN), nickname: 'DEMO 小光' },
                 });
 
-                if (this.messages.size > 100) {
-                    this.messages.delete(this.messages.keys().next().value!);
+                if (this.state.messages.size > 100) {
+                    this.state.messages.delete(this.state.messages.keys().next().value!);
                 }
 
                 this.addLog(
@@ -1260,7 +1460,7 @@ export class DemoApi {
                         : `DEMO message ${messageId} stored only in memory`,
                     'success',
                 );
-                this.feeds.forEach((feed) => {
+                this.state.feeds.forEach((feed) => {
                     if (feed.path === '/api/debug/stream') {
                         feed.send({
                             kind: 'event',
@@ -1293,9 +1493,9 @@ export class DemoApi {
         return { status: 'ok', retcode: 0, data, message: 'DEMO: Simulated result only' };
     }
 
-    private cleanup(body: Body) {
+    private cleanup(body: Body): Response {
         const request = body as unknown as StorageCleanupRequest;
-        const snapshot = this.storage.snapshot;
+        const snapshot = this.state.storage.snapshot;
         let freedBytes: number;
         let deletedFiles: number;
 
@@ -1367,7 +1567,7 @@ export class DemoApi {
             failureCount: 0,
             failures: [],
         };
-        this.storage.lastCleanup = lastCleanup;
+        this.state.storage.lastCleanup = lastCleanup;
         this.addLog(`DEMO cleanup: ${freedBytes} pretend bytes, no filesystem access`, 'success');
         return json({
             success: true,

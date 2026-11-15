@@ -31,6 +31,7 @@ beforeEach(() => {
     });
 });
 afterEach(() => {
+    vi.restoreAllMocks();
     api.reset();
     vi.unstubAllGlobals();
 });
@@ -341,6 +342,52 @@ describe('DEMO API guided journey using the production client', () => {
             ok: true,
             mustChangePassword: true,
         });
+    });
+
+    it('reset replaces the state factory without leaking session, blob, subscription or write data', async () => {
+        await ready();
+        const listener = vi.fn();
+        const unsubscribe = api.subscribe(listener);
+        const revoke = vi.spyOn(URL, 'revokeObjectURL');
+        await client.ui.uploadBackground(new File(['DEMO'], 'demo.png', { type: 'image/png' }));
+        const oldBackground = api.backgroundUrl;
+        expect(oldBackground).toMatch(/^blob:/);
+        const config = await client.config.get(DEMO_UIN);
+        config.statusCommand.trigger = '#leak';
+        await client.config.save(DEMO_UIN, config);
+        await client.debug.invoke(DEMO_UIN, 'send_private_msg', {
+            user_id: 10002,
+            message: 'leak',
+        });
+        expect(api.summary.messages).toBe(2);
+        api.setScenario('offline');
+        api.failNextMutation = true;
+
+        api.reset();
+
+        expect(revoke).toHaveBeenCalledWith(oldBackground);
+        expect(revoke).toHaveBeenCalledTimes(1);
+        expect(api.backgroundUrl).toBeNull();
+        expect(api.failNextMutation).toBe(false);
+        expect(api.scenario).toBe('setup');
+        expect(api.summary).toEqual({
+            authenticated: false,
+            consent: false,
+            mustChange: true,
+            scanned: false,
+            online: false,
+            messages: 1,
+        });
+        expect(listener).toHaveBeenCalled();
+        expect(await client.status()).toBe(false);
+
+        unsubscribe();
+        listener.mockClear();
+        api.scan();
+        expect(listener).not.toHaveBeenCalled();
+        await setup();
+        expect((await client.config.get(DEMO_UIN)).statusCommand.trigger).toBe('#nl');
+        revoke.mockRestore();
     });
 
     it('reset clears writes, sessions, scenarios and returns immutable response snapshots', async () => {
