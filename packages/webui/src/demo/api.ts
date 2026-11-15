@@ -519,9 +519,21 @@ export class DemoApi {
     }
 
     fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+        const state = this.state;
+
         try {
-            return this.handle(await readDemoRequest(input, init));
+            const request = await readDemoRequest(input, init);
+
+            if (this.state !== state) {
+                throw new DOMException('DEMO request cancelled by reset', 'AbortError');
+            }
+
+            return this.handle(request);
         } catch (error) {
+            if (this.state !== state) {
+                throw new DOMException('DEMO request cancelled by reset', 'AbortError');
+            }
+
             if (error instanceof DOMException && error.name === 'AbortError') {
                 throw error;
             }

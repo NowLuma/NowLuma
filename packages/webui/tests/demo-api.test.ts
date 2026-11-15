@@ -344,6 +344,34 @@ describe('DEMO API guided journey using the production client', () => {
         });
     });
 
+    it('discards requests still parsing when reset replaces the state', async () => {
+        const resetNotice = 'DEMO reset: all practice writes, files and sessions cleared.';
+
+        const assertDiscarded = async (send: () => Promise<Response>) => {
+            const listener = vi.fn();
+            const unsubscribe = api.subscribe(listener);
+            const pending = send();
+            api.reset();
+            await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+            expect(api.summary.authenticated).toBe(false);
+            expect(api.notice).toBe(resetNotice);
+            expect(listener).toHaveBeenCalledTimes(1);
+            unsubscribe();
+        };
+
+        const body = JSON.stringify({ password: api.examplePassword });
+        const origin = typeof location === 'undefined' ? 'https://demo.invalid' : location.origin;
+        await assertDiscarded(() => api.fetch('/api/login', { method: 'POST', body }));
+        await assertDiscarded(() =>
+            api.fetch(
+                new Request(new URL('/api/login', origin), {
+                    method: 'POST',
+                    body,
+                }),
+            ),
+        );
+    });
+
     it('reset replaces the state factory without leaking session, blob, subscription or write data', async () => {
         await ready();
         const listener = vi.fn();
