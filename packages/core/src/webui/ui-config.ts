@@ -152,19 +152,17 @@ const DEFAULT_OVERVIEW_BLOCKS: UiLayoutItem[] = [
     { id: 'sessions', visible: true },
 ];
 
-// Single-column mobile order = the desktop grid catalogue's widgets, flattened
-// (stat tiles, then the cards). The client reconciles against its real
-// catalogue, so this just seeds first run; unknown ids are dropped on load.
+// First-run mobile order follows the workspace catalogue; saved arrays are preserved.
 const DEFAULT_OVERVIEW_MOBILE: UiLayoutItem[] = [
     { id: 'stat:status', visible: true },
+    { id: 'connections', visible: true },
+    { id: 'alerts', visible: true },
+    { id: 'sessions', visible: true },
+    { id: 'host', visible: true },
     { id: 'stat:accounts', visible: true },
     { id: 'stat:processes', visible: true },
     { id: 'stat:host', visible: true },
     { id: 'stat:uptime', visible: true },
-    { id: 'connections', visible: true },
-    { id: 'alerts', visible: true },
-    { id: 'host', visible: true },
-    { id: 'sessions', visible: true },
 ];
 
 const DEFAULT_NAV_ITEMS: UiLayoutItem[] = [
