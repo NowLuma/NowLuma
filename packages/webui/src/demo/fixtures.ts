@@ -18,8 +18,9 @@ export {
     DEMO_UIN,
     DEMO_PID,
     DEMO_AVATAR,
+    DEMO_DESKTOP_URL,
 } from './constants';
-import { DEMO_UIN, DEMO_PID } from './constants';
+import { DEMO_UIN, DEMO_PID, DEMO_DESKTOP_URL } from './constants';
 
 export const demoActions: DebugActionDoc[] = [
     {
@@ -155,7 +156,7 @@ export function demoSystemSettings(): SystemSettings {
         tlsEnabled: false,
         trustProxy: '',
         vncPort: 0,
-        vncUrl: '#desktop',
+        vncUrl: DEMO_DESKTOP_URL,
         hookAutoLoad: false,
     };
 }
@@ -184,7 +185,7 @@ export function demoSystem(): SystemInfo {
             },
             writable: { config: true, data: true, logs: true, qq: true },
             vncPort: 0,
-            vncUrl: '#desktop',
+            vncUrl: DEMO_DESKTOP_URL,
         },
         cpu: {
             model: 'DEMO CPU',

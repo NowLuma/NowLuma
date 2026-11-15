@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { desktopLink, normalizeVncUrl } from '@nowluma/common/desktop-url';
 import { DemoApi } from '../src/demo/api';
-import { DEMO_NEW_PASSWORD, DEMO_PASSWORD, DEMO_PID, DEMO_UIN } from '../src/demo/constants';
+import {
+    DEMO_DESKTOP_URL,
+    DEMO_NEW_PASSWORD,
+    DEMO_PASSWORD,
+    DEMO_PID,
+    DEMO_UIN,
+} from '../src/demo/constants';
+import { demoSystem, demoSystemSettings } from '../src/demo/fixtures';
+import { demoLinkTarget } from '../src/demo/isolation';
 import { createApiClient } from '../src/lib/api/client';
 import type { ApiClient } from '../src/lib/api/types';
 
@@ -171,10 +180,41 @@ describe('DEMO API guided journey using the production client', () => {
         expect((await client.ui.getPublic()).mode).toBe('dark');
     });
 
+    it('serves desktop URLs accepted by the production validator and demo isolation', async () => {
+        await ready();
+        const page = 'https://example.invalid/Nowluma/demo/';
+
+        const accepts = (vncUrl: string) => {
+            const href = desktopLink(0, vncUrl, page);
+            expect(href).toBe('https://example.invalid/desktop/');
+            expect(demoLinkTarget(href!, page)).toBe('desktop');
+        };
+
+        const before = await client.systemSettings.get();
+        expect(before.effective?.vncUrl).toBe(DEMO_DESKTOP_URL);
+
+        for (const vncUrl of [
+            demoSystemSettings().vncUrl,
+            demoSystem().deployment.vncUrl,
+            before.settings.vncUrl,
+            before.effective!.vncUrl,
+        ]) {
+            accepts(vncUrl);
+        }
+
+        expect(() => normalizeVncUrl('#desktop')).toThrow();
+        await client.systemSettings.save({ vncUrl: DEMO_DESKTOP_URL });
+        const after = await client.systemSettings.get();
+
+        for (const vncUrl of [after.settings.vncUrl, after.effective!.vncUrl]) {
+            accepts(vncUrl);
+        }
+    });
+
     it('exercises all settings surfaces without real probes, credentials, downloads or restart', async () => {
         await ready();
         const settings = await client.systemSettings.get();
-        expect(settings.effective?.vncUrl).toBe('#desktop');
+        expect(settings.effective?.vncUrl).toBe(DEMO_DESKTOP_URL);
         expect(await client.systemSettings.save({ webuiPort: 6000 })).toMatchObject({
             restartRequiredToApply: true,
         });

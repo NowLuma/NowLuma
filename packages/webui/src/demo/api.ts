@@ -12,6 +12,7 @@ import {
     DEMO_NEW_PASSWORD,
     DEMO_PASSWORD,
     DEMO_PID,
+    DEMO_DESKTOP_URL,
     DEMO_TOTP,
     DEMO_UIN,
     demoActions,
@@ -865,7 +866,7 @@ export class DemoApi {
                     settings: this.settings,
                     effective: {
                         vncPort: 0,
-                        vncUrl: '#desktop',
+                        vncUrl: DEMO_DESKTOP_URL,
                         hookAutoLoad: this.settings.hookAutoLoad,
                     },
                     hasCert: this.hasCert,
