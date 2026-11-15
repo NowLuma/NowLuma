@@ -2,8 +2,9 @@
  * Pure frame-rate sampler behind the automatic performance mode.
  *
  * The caller feeds `requestAnimationFrame` timestamps (ms, monotonic) into
- * `sample`; this module owns no DOM, timers or storage. A window of
- * `FRAME_WINDOW_MS` closes after that much measured frame time; `autoLow` latches
+ * `sample`; this module owns no DOM, timers or storage. A warmup of `WARMUP_MS`
+ * measured frame time is ignored after start/resume so mount and first paint cannot
+ * latch. A window of `FRAME_WINDOW_MS` closes after that much measured frame time; `autoLow` latches
  * only when `SUSTAINED_LOW_WINDOWS` consecutive windows stay below
  * `LOW_FPS_THRESHOLD`, so a single dropped frame or one isolated suspend/idle gap
  * never degrades the UI. Consecutive long gaps are a genuinely very-low foreground
@@ -29,6 +30,15 @@ export interface FrameRateSample {
     autoLow: boolean;
 }
 
+export type PerformanceMode = 'auto' | 'high' | 'low';
+
+/** Low performance simplifies rendering; it never changes the motion preference. */
+export function performanceModeLow(mode: PerformanceMode, autoLow: boolean): boolean {
+    return mode === 'low' || (mode === 'auto' && autoLow);
+}
+
+/** Measured frame time ignored after start/resume so mount and first paint cannot latch. */
+export const WARMUP_MS = 1500;
 /** Measured frame time accumulated into one FPS reading (not wall-clock time). */
 export const FRAME_WINDOW_MS = 1000;
 /**
@@ -50,6 +60,7 @@ export class FrameRateSampler {
     private previous: number | null = null;
     /** Last long gap, measured only if another long gap follows it. */
     private pendingGap: number | null = null;
+    private warmupMs = 0;
     private windowMs = 0;
     private frames = 0;
     private lowWindows = 0;
@@ -114,12 +125,18 @@ export class FrameRateSampler {
     private pause(): void {
         this.previous = null;
         this.pendingGap = null;
+        this.warmupMs = 0;
         this.windowMs = 0;
         this.frames = 0;
         this.lowWindows = 0;
     }
 
     private measure(gap: number): void {
+        if (this.warmupMs < WARMUP_MS) {
+            this.warmupMs += gap;
+            return;
+        }
+
         this.windowMs += gap;
         this.frames += 1;
     }

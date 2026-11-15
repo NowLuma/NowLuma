@@ -10,7 +10,7 @@ import {
 const environment: GlassEnvironment = {
     userAgent: 'Mozilla/5.0 Chrome/142.0.0.0 Safari/537.36',
     supportsBackdropFilter: true,
-    reducedMotion: false,
+    lowCost: false,
     reducedTransparency: false,
     highContrast: false,
     hostManaged: false,
@@ -20,13 +20,19 @@ describe('glassGeometry', () => {
     it.each([
         [0, 44, 22],
         [44, -1, 22],
-        [769, 44, 22],
         [224, 481, 22],
+        [1200, 600, 22],
         [NaN, 44, 22],
         [44, Infinity, 22],
         [44, 44, NaN],
     ])('rejects an empty, invalid or full-page surface (%s × %s)', (width, height, radius) => {
         expect(glassGeometry(width, height, radius)).toBeNull();
+    });
+
+    it('allows wide, short chrome while keeping the raster bounded', () => {
+        expect(glassGeometry(1600, 64, 22)).toMatchObject({ width: 1600, height: 64 });
+        expect(glassGeometry(769, 44, 22)).toMatchObject({ width: 769, height: 44 });
+        expect(glassGeometry(1920, 480, 22)).toBeNull();
     });
 
     it('clamps capsule radius, edge band and displacement to the actual control', () => {
@@ -116,9 +122,9 @@ describe('glassRenderer', () => {
         expect(glassRenderer({ ...environment, userAgent })).toBe('frosted');
     });
 
-    it('uses frost for unsupported backdrops and reduced/disabled motion', () => {
+    it('uses frost for unsupported backdrops and the low-performance budget', () => {
         expect(glassRenderer({ ...environment, supportsBackdropFilter: false })).toBe('frosted');
-        expect(glassRenderer({ ...environment, reducedMotion: true })).toBe('frosted');
+        expect(glassRenderer({ ...environment, lowCost: true })).toBe('frosted');
     });
 
     it.each(['highContrast', 'reducedTransparency', 'hostManaged'] as const)(

@@ -13,6 +13,7 @@ import {
 import { MotionConfig } from 'motion/react';
 import { actionErrorMessage, useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { useAutoPerformance } from '@/hooks/use-auto-performance';
+import { performanceModeLow } from '@/lib/performance-mode';
 import type { ThemeMode, UiAppearance, UiBackground } from '@/types';
 import { DEFAULT_APPEARANCE } from '@nowluma/common/webui-appearance';
 import { WEBUI_TARGETS, type WebuiPresentation } from '@nowluma/common/webui-target';
@@ -126,12 +127,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const frameRate = useAutoPerformance(
         performanceMode === 'auto' && !appearance.disableMotion && !appearance.reduceMotion,
     );
-    const lowPerformance =
-        performanceMode === 'low' || (performanceMode === 'auto' && frameRate.autoLow);
-    const effectiveAppearance = useMemo(() => {
-        const resolved = resolveAppearance(appearance, presentation, getTargetAppearance());
-        return lowPerformance ? { ...resolved, disableMotion: true } : resolved;
-    }, [appearance, presentation, lowPerformance]);
+    const lowPerformance = performanceModeLow(performanceMode, frameRate.autoLow);
+    const effectiveAppearance = useMemo(
+        () => resolveAppearance(appearance, presentation, getTargetAppearance()),
+        [appearance, presentation],
+    );
     const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
     const [ready, setReady] = useState(false);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,8 +189,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // application doesn't flash. The pre-mount flash is handled by the inline
     // bootstrap script in index.html.
     useLayoutEffect(() => {
-        applyAppearance(effectiveAppearance, resolved, presentation);
-    }, [effectiveAppearance, resolved, presentation]);
+        applyAppearance(effectiveAppearance, resolved, presentation, lowPerformance);
+    }, [effectiveAppearance, resolved, presentation, lowPerformance]);
     useLayoutEffect(() => {
         applyBackgroundLayer(effectiveAppearance);
     }, [effectiveAppearance]);
@@ -243,19 +243,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         (patch: AppearancePatch) => {
             const prev = appearanceRef.current;
             // Animate a circular light/dark reveal only for brightness/scheme changes
-            // (mode, palette, dark intensity) — and never when motion is reduced/off.
+            // (mode, palette, dark intensity) — and never when motion is reduced/off
+            // or the device is on the low-performance budget.
             const schemeChange =
                 (patch.mode !== undefined && patch.mode !== prev.mode) ||
                 (patch.palette !== undefined && patch.palette !== prev.palette) ||
                 (patch.darkIntensity !== undefined && patch.darkIntensity !== prev.darkIntensity);
 
-            if (schemeChange && !prev.reduceMotion && !effectiveAppearance.disableMotion) {
+            if (
+                schemeChange &&
+                !prev.reduceMotion &&
+                !effectiveAppearance.disableMotion &&
+                !lowPerformance
+            ) {
                 runThemeReveal(() => commit(patch));
             } else {
                 commit(patch);
             }
         },
-        [commit, effectiveAppearance.disableMotion],
+        [commit, effectiveAppearance.disableMotion, lowPerformance],
     );
 
     const uploadBackground = useMemo(
@@ -353,7 +359,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             pollInterval: appearance.pollInterval,
             performance: {
                 mode: performanceMode,
-                low: lowPerformance || appearance.disableMotion,
+                low: lowPerformance,
                 fps: frameRate.fps,
             },
         }),

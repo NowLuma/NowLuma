@@ -108,6 +108,7 @@ export function applyAppearance(
     a: UiAppearance,
     resolved: 'light' | 'dark',
     presentation: WebuiPresentation | null,
+    lowPerformance = false,
 ): void {
     const root = document.documentElement;
     applyPresentationAttributes(presentation);
@@ -134,6 +135,9 @@ export function applyAppearance(
         a.reduceMotion || a.disableMotion || systemReduce ? '1' : '0',
     );
     root.setAttribute('data-no-motion', a.disableMotion ? '1' : '0');
+    // Low performance is a rendering budget, not a motion preference: it keeps
+    // the short transitions and static glass edge while skipping displacement work.
+    root.setAttribute('data-low-performance', lowPerformance ? '1' : '0');
     // Mode-independent vars go inline on :root.
     root.style.setProperty('--radius', `${a.radius}rem`);
     root.style.setProperty(

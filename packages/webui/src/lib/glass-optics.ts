@@ -6,7 +6,9 @@ export interface GlassGeometry {
     displacement: number;
 }
 
-/** Optics are reserved for small chrome, never a full-page filter. */
+/** Optics are reserved for chrome, never a full-page filter. */
+export const GLASS_MAX_AREA = 768 * 480;
+
 export function glassGeometry(width: number, height: number, radius: number): GlassGeometry | null {
     if (
         !Number.isFinite(width) ||
@@ -14,8 +16,8 @@ export function glassGeometry(width: number, height: number, radius: number): Gl
         !Number.isFinite(radius) ||
         width <= 0 ||
         height <= 0 ||
-        width > 768 ||
-        height > 480
+        height > 480 ||
+        width * height > GLASS_MAX_AREA
     ) {
         return null;
     }
@@ -88,7 +90,8 @@ export function glassDisplacementMap(geometry: GlassGeometry) {
 export interface GlassEnvironment {
     userAgent: string;
     supportsBackdropFilter: boolean;
-    reducedMotion: boolean;
+    /** Low-performance mode skips displacement rasterization, not the glass edge. */
+    lowCost: boolean;
     reducedTransparency: boolean;
     highContrast: boolean;
     hostManaged: boolean;
@@ -104,7 +107,7 @@ export function glassRenderer(environment: GlassEnvironment): 'refracted' | 'fro
     const chromium =
         /(?:Chrome|Chromium|Edg)\/\d+/.test(environment.userAgent) &&
         !/iPhone|iPad|iPod/.test(environment.userAgent);
-    return chromium && environment.supportsBackdropFilter && !environment.reducedMotion
+    return chromium && environment.supportsBackdropFilter && !environment.lowCost
         ? 'refracted'
         : 'frosted';
 }

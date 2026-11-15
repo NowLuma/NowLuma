@@ -31,8 +31,13 @@ describe('GlassMaterial', () => {
         expect(css).toMatch(
             /@media \(prefers-reduced-transparency: reduce\),\s*\(forced-colors: active\)/,
         );
+        // Motion preference only stops animation; static refraction stays available.
+        expect(css).not.toMatch(/html\[data-reduce-motion="1"\] \.ui-glass-material/);
+        expect(css).not.toMatch(/html\[data-no-motion="1"\] \.ui-glass-material/);
+        // Low performance skips the displacement pass, not the frosted material.
+        expect(css).not.toMatch(/html\[data-low-performance="1"\] \.ui-glass-material/);
         expect(css).toMatch(
-            /html\[data-reduce-motion="1"\] \.ui-glass-material,\s*html\[data-no-motion="1"\] \.ui-glass-material\s*\{[^}]*backdrop-filter: none !important;/,
+            /html\[data-low-performance="1"\] \.ui-line-field-lines\s*\{\s*animation: none !important;/,
         );
     });
 

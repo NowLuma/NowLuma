@@ -39,7 +39,7 @@ describe('automatic performance observer', () => {
         const samples: FrameRateSample[] = [];
         const stop = observeFrameRate((sample) => samples.push(sample));
 
-        for (let i = 1; i < 80; i++) {
+        for (let i = 1; i < 160; i++) {
             env.tick(i * (1000 / 30));
         }
 
@@ -62,7 +62,7 @@ describe('automatic performance observer', () => {
             callback();
         }
 
-        for (let i = 0; i < 150; i++) {
+        for (let i = 0; i < 200; i++) {
             env.tick(30_000 + i * (1000 / 60));
         }
 
@@ -71,5 +71,23 @@ describe('automatic performance observer', () => {
         stop();
         expect(env.callbacks.size).toBe(0);
         expect(env.listeners.size).toBe(0);
+    });
+
+    it('does not degrade from a slow startup burst alone', () => {
+        const env = environment();
+        const samples: FrameRateSample[] = [];
+        const stop = observeFrameRate((sample) => samples.push(sample));
+
+        for (let i = 1; i <= 12; i++) {
+            env.tick(i * 100);
+        }
+
+        for (let i = 1; i <= 180; i++) {
+            env.tick(1200 + i * (1000 / 60));
+        }
+
+        expect(samples.at(-1)?.fps).toBeGreaterThan(50);
+        expect(samples.every((sample) => !sample.autoLow)).toBe(true);
+        stop();
     });
 });

@@ -306,17 +306,22 @@
     transition-duration: 110ms;
   }
 
-  html[data-reduce-motion='1'] .ui-glass-material,
-  html[data-no-motion='1'] .ui-glass-material {
-    background: color-mix(in oklab, var(--popover) 94%, transparent);
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-
   html[data-contrast='high'] .ui-glass-material {
     background: var(--popover);
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+
+  html[data-low-performance='1'] .ui-line-field-lines {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  html[data-low-performance='1'] .ui-glass [data-press-scale] {
+    transition:
+      color 150ms,
+      background-color 150ms,
+      scale 180ms ease-out;
   }
 
   html[data-webui-target] .ui-glass-material {
@@ -369,11 +374,6 @@
   .ui-line-field-lines {
     animation: none !important;
     transform: none !important;
-  }
-  .ui-glass-material {
-    background: color-mix(in oklab, var(--popover) 94%, transparent);
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
   }
 }
 

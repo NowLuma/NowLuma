@@ -30,7 +30,6 @@ export function GlassMaterial() {
         }
 
         const root = document.documentElement;
-        const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
         const transparency = window.matchMedia('(prefers-reduced-transparency: reduce)');
         const contrast = window.matchMedia('(forced-colors: active)');
         let frame = 0;
@@ -42,10 +41,7 @@ export function GlassMaterial() {
                 userAgent: navigator.userAgent,
                 supportsBackdropFilter:
                     typeof CSS !== 'undefined' && CSS.supports('backdrop-filter', 'url("#glass")'),
-                reducedMotion:
-                    motion.matches ||
-                    root.dataset.reduceMotion === '1' ||
-                    root.dataset.noMotion === '1',
+                lowCost: root.dataset.lowPerformance === '1',
                 reducedTransparency: transparency.matches,
                 highContrast: contrast.matches || root.dataset.contrast === 'high',
                 hostManaged: root.hasAttribute('data-webui-target'),
@@ -111,14 +107,12 @@ export function GlassMaterial() {
         preferences.observe(root, {
             attributes: true,
             attributeFilter: [
-                'data-reduce-motion',
-                'data-no-motion',
+                'data-low-performance',
                 'data-contrast',
                 'data-webui-target',
                 'style',
             ],
         });
-        motion.addEventListener('change', schedule);
         transparency.addEventListener('change', schedule);
         contrast.addEventListener('change', schedule);
         update();
@@ -127,7 +121,6 @@ export function GlassMaterial() {
             cancelAnimationFrame(frame);
             resize.disconnect();
             preferences.disconnect();
-            motion.removeEventListener('change', schedule);
             transparency.removeEventListener('change', schedule);
             contrast.removeEventListener('change', schedule);
         };

@@ -69,6 +69,7 @@
             a.reduceMotion || a.disableMotion || systemReduce ? '1' : '0',
           );
           if (a.disableMotion) root.setAttribute('data-no-motion', '1');
+          root.setAttribute('data-low-performance', a.performanceMode === 'low' ? '1' : '0');
           if (typeof a.radius === 'number' && a.radius >= 0 && a.radius <= 2)
             root.style.setProperty('--radius', a.radius + 'rem');
           if (typeof a.uiScale === 'number' && a.uiScale >= 0.5 && a.uiScale <= 2) {

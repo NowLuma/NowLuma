@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { FrameRateSampler, type FrameRateSample } from '../src/lib/performance-mode';
+import {
+    FrameRateSampler,
+    performanceModeLow,
+    type FrameRateSample,
+} from '../src/lib/performance-mode';
 
 /** Frame timestamps for consecutive `[fps, durationMs]` spans, starting at `start`. */
 function timeline(spans: Array<[fps: number, durationMs: number]>, start = 0): number[] {
@@ -36,7 +40,7 @@ describe('automatic performance detection', () => {
 
     it('latches only after two sustained 30 FPS windows', () => {
         const sampler = new FrameRateSampler();
-        const samples = feed(sampler, timeline([[30, 2300]]));
+        const samples = feed(sampler, timeline([[30, 4000]]));
         const firstWindow = samples.find((sample) => sample.fps > 0)!;
 
         expect(firstWindow.fps).toBeCloseTo(30, 0);
@@ -47,7 +51,7 @@ describe('automatic performance detection', () => {
 
     it('latches on a sustained 3 FPS foreground session', () => {
         const sampler = new FrameRateSampler();
-        const samples = feed(sampler, timeline([[3, 4000]]));
+        const samples = feed(sampler, timeline([[3, 5000]]));
 
         expect(samples.at(-1)!.fps).toBeCloseTo(3, 0);
         expect(samples.at(-1)!.autoLow).toBe(true);
@@ -55,7 +59,7 @@ describe('automatic performance detection', () => {
 
     it('latches on a sustained 1 FPS foreground session', () => {
         const sampler = new FrameRateSampler();
-        const samples = feed(sampler, timeline([[1, 5000]]));
+        const samples = feed(sampler, timeline([[1, 6000]]));
 
         expect(samples.at(-1)!.fps).toBeCloseTo(1, 0);
         expect(samples.at(-1)!.autoLow).toBe(true);
@@ -108,7 +112,7 @@ describe('automatic performance detection', () => {
             feed(
                 sampler,
                 timeline([
-                    [30, 1100],
+                    [30, 3000],
                     [60, 2000],
                 ]),
             ).at(-1)!.autoLow,
@@ -122,7 +126,7 @@ describe('automatic performance detection', () => {
         expect(hidden.at(-1)!.fps).toBe(0);
         expect(hidden.at(-1)!.autoLow).toBe(false);
 
-        const resumed = feed(sampler, timeline([[60, 1500]], 30_000));
+        const resumed = feed(sampler, timeline([[60, 3000]], 30_000));
 
         expect(resumed.at(-1)!.fps).toBeGreaterThan(50);
         expect(resumed.at(-1)!.autoLow).toBe(false);
@@ -139,14 +143,31 @@ describe('automatic performance detection', () => {
         expect(samples.at(-1)!.autoLow).toBe(false);
     });
 
+    it('ignores a slow startup burst before measuring the warm session', () => {
+        const sampler = new FrameRateSampler();
+        const samples = feed(sampler, [...timeline([[10, 1200]]), ...timeline([[60, 3000]], 1200)]);
+
+        expect(samples.at(-1)!.fps).toBeGreaterThan(50);
+        expect(samples.at(-1)!.autoLow).toBe(false);
+    });
+
     it('keeps the latch until an explicit reset, which re-arms detection', () => {
         const sampler = new FrameRateSampler();
 
-        expect(feed(sampler, timeline([[30, 2500]])).at(-1)!.autoLow).toBe(true);
+        expect(feed(sampler, timeline([[30, 4000]])).at(-1)!.autoLow).toBe(true);
         expect(sampler.sample(3999, false).autoLow).toBe(true);
         sampler.reset();
         expect(sampler.sample(4000)).toEqual({ fps: 0, autoLow: false });
         expect(feed(sampler, timeline([[60, 2000]], 4100)).at(-1)!.autoLow).toBe(false);
-        expect(feed(sampler, timeline([[30, 2500]], 7000)).at(-1)!.autoLow).toBe(true);
+        expect(feed(sampler, timeline([[30, 3000]], 7000)).at(-1)!.autoLow).toBe(true);
+    });
+});
+
+describe('performance mode selection', () => {
+    it('separates automatic low performance from an explicit motion choice', () => {
+        expect(performanceModeLow('auto', false)).toBe(false);
+        expect(performanceModeLow('auto', true)).toBe(true);
+        expect(performanceModeLow('high', false)).toBe(false);
+        expect(performanceModeLow('low', false)).toBe(true);
     });
 });
