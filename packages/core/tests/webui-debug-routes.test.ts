@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import type { OneBotInstance } from '@nowluma/onebot/instance';
 import { registerDebugRoutes, resolveDebugInvoke } from '../src/webui/debug-routes';
+import { createSseResponder } from '../src/webui/sse-response';
 
 function makeApp() {
     const getInstance = vi.fn();
@@ -9,7 +10,7 @@ function makeApp() {
     const app = new Hono();
     registerDebugRoutes(app, {
         manager: { getInstance, getInstances },
-        shutdown: new AbortController().signal,
+        sseResponse: createSseResponder(new AbortController().signal),
     });
     return { app, getInstance };
 }
@@ -68,7 +69,7 @@ describe('debug invoke after validation', () => {
         const app = new Hono();
         registerDebugRoutes(app, {
             manager: { getInstance: () => instance, getInstances: () => [instance] },
-            shutdown: new AbortController().signal,
+            sseResponse: createSseResponder(new AbortController().signal),
         });
 
         const res = await post(

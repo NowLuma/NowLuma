@@ -20,7 +20,7 @@ import os from 'os';
 import path from 'path';
 import { randomBytes } from 'crypto';
 import { traceWebuiMutationRequestChunk } from './mutation-trace';
-import { sseResponse } from './sse-response';
+import type { SseStarter } from './sse-response';
 
 /** Temp dir for browser→server uploads. Siblings the Stream API's temp root but
  *  kept distinct so the two cleanup stories don't entangle. */
@@ -196,15 +196,15 @@ const DRAIN_MAX_SPINS = 3000; // 3000 * 20ms ≈ 60s
 
 /** Build the SSE `Response` for `/api/debug/invoke-stream`: each relayed frame
  *  is one `data: <json>\n\n` event; no frame is ever dropped. A driver error
- *  becomes a terminal `failed` frame. Closing the request (signal abort) stops
- *  delivery. `delay` is injectable for tests. */
+ *  becomes a terminal `failed` frame. The route responder binds the session,
+ *  request and server lifetime. `delay` is injectable for tests. */
 export function buildStreamInvokeResponse(
     driver: StreamInvokeDriver,
     rawRequest: string,
-    signal: AbortSignal,
+    respond: (start: SseStarter) => Response,
     delay: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
 ): Response {
-    return sseResponse(signal, (channel) => {
+    return respond((channel) => {
         const isAlive = () => !channel.isClosed();
 
         const emit = async (json: string): Promise<void> => {

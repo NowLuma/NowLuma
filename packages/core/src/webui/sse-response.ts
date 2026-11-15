@@ -5,7 +5,7 @@ const log = createLogger('WebUI.SSE');
 
 export type SseStarter = (channel: SseChannel) => void;
 
-/** Route-level responder: request cancellation plus the WebUI shutdown signal. */
+/** Route-level responder: request cancellation, shutdown and the session lifetime. */
 export type SseResponder = (c: Context, start: SseStarter) => Response;
 
 export interface SseChannel {
@@ -116,7 +116,21 @@ export function sseResponse(
     });
 }
 
-/** Bind the shutdown signal once; every streaming route shares this responder. */
-export function createSseResponder(shutdown: AbortSignal): SseResponder {
-    return (c, start) => sseResponse(c.req.raw.signal, start, shutdown);
+/** Every protected streaming route shares the same lifetime binding. */
+export function createSseResponder(
+    shutdown: AbortSignal,
+    bindSession?: (c: Context, channel: SseChannel) => void,
+): SseResponder {
+    return (c, start) =>
+        sseResponse(
+            c.req.raw.signal,
+            (channel) => {
+                bindSession?.(c, channel);
+
+                if (!channel.isClosed()) {
+                    start(channel);
+                }
+            },
+            shutdown,
+        );
 }

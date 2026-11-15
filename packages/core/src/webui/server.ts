@@ -65,6 +65,7 @@ import { requireTlsContext, resolveTlsContext } from './tls';
 import { checkListenerExposure } from './listener-exposure';
 import { createDroppingSender } from './debug-stream';
 import { createSseResponder } from './sse-response';
+import { WebuiSessions } from './sessions';
 import { bindStateStream } from './state-stream';
 import type { StateBus, StateResource } from './state-bus';
 import { createConnectionPoller } from './connection-diff-loop';
@@ -117,12 +118,6 @@ export {
 } from './system-routes';
 export type { RestoreFailureBody } from './system-routes';
 
-interface SessionInfo {
-    expiresAt: number;
-    mustChangePassword: boolean;
-}
-
-const sessionTokens = new Map<string, SessionInfo>();
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const totpEnrollments = new Map<
     string,
@@ -174,7 +169,7 @@ const CONSENT_ALLOWLIST = new Set([
 
 const avatarCache = new Map<string, { body: Uint8Array; contentType: string; expiresAt: number }>();
 
-function purgeExpiredTokens() {
+function purgeExpiredTokens(sessionTokens: WebuiSessions) {
     const now = Date.now();
 
     for (const [token, info] of sessionTokens) {
@@ -337,8 +332,11 @@ export async function initWebUI(
     }
 
     const app = new Hono();
+    const sessionTokens = new WebuiSessions();
     const shutdownStreams = new AbortController();
-    const sseResponse = createSseResponder(shutdownStreams.signal);
+    const sseResponse = createSseResponder(shutdownStreams.signal, (c, channel) =>
+        sessionTokens.bindStream(c.get('sessionToken' as never) as string, channel),
+    );
     app.use('*', webuiSecurityHeaders);
     registerLoginRequestSecurity(app);
     const storageManagement = new StorageManagementService({
@@ -401,7 +399,7 @@ export async function initWebUI(
 
         const info = sessionTokens.get(token);
 
-        if (!info || Date.now() > info.expiresAt) {
+        if (!info) {
             return c.json({ status: 'failed', message: 'Token expired or invalid' }, 401);
         }
 
@@ -438,12 +436,7 @@ export async function initWebUI(
         enabled: process.env.NOWLUMA_DESKTOP_PROXY === '1',
         sessionAllowed: (token) => {
             const session = sessionTokens.get(token);
-            return (
-                !!session &&
-                Date.now() <= session.expiresAt &&
-                !session.mustChangePassword &&
-                !consentGatePending
-            );
+            return !!session && !session.mustChangePassword && !consentGatePending;
         },
     });
     app.post('/api/desktop/session', (c) => {
@@ -851,11 +844,7 @@ export async function initWebUI(
         const sessionToken = readAvatarSessionToken(c);
         const session = sessionTokens.get(sessionToken);
 
-        if (!session || Date.now() > session.expiresAt) {
-            if (sessionToken) {
-                sessionTokens.delete(sessionToken);
-            }
-
+        if (!session) {
             return c.text('unauthorized', 401);
         }
 
@@ -969,7 +958,7 @@ export async function initWebUI(
 
     registerDebugRoutes(app, {
         manager: oneBotManager,
-        shutdown: shutdownStreams.signal,
+        sseResponse,
     });
 
     app.get('/api/qq-list', (c) => {
@@ -1527,13 +1516,14 @@ export async function initWebUI(
         );
     });
     desktop.attach(listeningServer as import('node:http').Server);
-    const tokenJanitor = setInterval(purgeExpiredTokens, 60_000);
+    const tokenJanitor = setInterval(() => purgeExpiredTokens(sessionTokens), 60_000);
     tokenJanitor.unref();
     return {
         port: finalPort,
         async stop() {
             clearInterval(tokenJanitor);
             shutdownStreams.abort();
+            sessionTokens.clear();
             desktop.stop();
             await new Promise<void>((resolve, reject) => {
                 listeningServer.close((err) => (err ? reject(err) : resolve()));

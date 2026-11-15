@@ -11,12 +11,11 @@ import { isRealUin } from '@nowluma/common/uin';
 import type { Hono, Context } from 'hono';
 import { createDroppingSender } from './debug-stream';
 import { buildStreamInvokeResponse, streamUploadToDisk } from './debug-tools';
-import { createSseResponder } from './sse-response';
+import type { SseResponder } from './sse-response';
 
 export interface DebugRouteDependencies {
     manager: Pick<OneBotManager, 'getInstance' | 'getInstances'>;
-    /** Aborted when the WebUI stops; ends every open debug stream. */
-    shutdown: AbortSignal;
+    sseResponse: SseResponder;
 }
 
 interface DebugInvokeInput {
@@ -76,7 +75,7 @@ export async function resolveDebugInvoke(
 }
 
 export function registerDebugRoutes(app: Hono, deps: DebugRouteDependencies): void {
-    const sseResponse = createSseResponder(deps.shutdown);
+    const { sseResponse } = deps;
 
     // Action schemas for the tester form (declarative actions only; legacy ones
     // are invoked freeform).
@@ -110,7 +109,7 @@ export function registerDebugRoutes(app: Hono, deps: DebugRouteDependencies): vo
         return buildStreamInvokeResponse(
             (rq, emit, alive) => target.instance.invokeStream(rq, emit, alive),
             rawRequest,
-            AbortSignal.any([c.req.raw.signal, deps.shutdown]),
+            (start) => sseResponse(c, start),
         );
     });
 
