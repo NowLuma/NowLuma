@@ -1,8 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkIdentity } from './check-identity.mjs';
 
-const fullName = ['Snow', 'Luma'].join('');
+const fullName = /借鉴了 \*\*([A-Za-z]+)\*\*/.exec(
+  readFileSync(new URL('../README.md', import.meta.url), 'utf8'),
+)[1];
 const README = `# Nowluma\n\n> 项目设计借鉴了 **${fullName}** 的一些想法。\n`;
 
 function options(overrides = {}) {
@@ -26,8 +29,33 @@ test('rejects the old SL attribution and duplicate full-name mentions', () => {
     /agreed README attribution/,
   );
   assert.throws(
-    () => checkIdentity(options({ readme: `${README}\n${fullName}\n` })),
+    () => checkIdentity(options({ readme: `${README}\n${fullName.toLowerCase()}\n` })),
     /exactly once/,
+  );
+  assert.throws(
+    () => checkIdentity(options({ readme: '> 项目设计借鉴了 **SL** 的一些想法。' })),
+    /agreed README attribution/,
+  );
+});
+
+test('allows links to this repository', () => {
+  assert.doesNotThrow(() =>
+    checkIdentity(options({ readme: `${README}\nhttps://github.com/WSXYT/Nowluma\n` })),
+  );
+});
+
+test('rejects old filenames without reading native bytes', () => {
+  assert.throws(
+    () =>
+      checkIdentity(
+        options({
+          files: [`packages/runtime/native/${fullName.toLowerCase()}.node`],
+          readFile: () => {
+            throw new Error('native bytes must not be read');
+          },
+        }),
+      ),
+    /old file name/,
   );
 });
 

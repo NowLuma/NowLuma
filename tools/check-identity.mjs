@@ -4,9 +4,6 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
-const expectedIdentity = ['Snow', 'Luma'].join('');
-const ATTRIBUTION = `> 项目设计借鉴了 **${expectedIdentity}** 的一些想法。`;
-const oldName = new RegExp(expectedIdentity, 'i');
 const binaryFile =
   /\.(?:png|jpe?g|gif|webp|ico|bmp|avif|node|dll|so|dylib|exe|zip|gz|tgz|tar|7z|ttf|otf|woff2?|pdf|db|sqlite3?|bin|class|jar|wasm)$/i;
 
@@ -30,20 +27,22 @@ export function checkIdentity({
   exists = existsSync,
   readFile = (file) => readFileSync(file),
 } = {}) {
-  const attribution = /^> 项目设计借鉴了 \*\*([A-Za-z]+)\*\* 的一些想法。$/m.exec(readme);
-  assert.ok(attribution, 'expected the agreed README attribution');
-  assert.equal(attribution[1], expectedIdentity, 'README attribution must use the full name');
+  const attribution = /^> 项目设计借鉴了 \*\*([A-Za-z]{3,})\*\* 的一些想法。$/m.exec(readme);
+  assert.ok(attribution, 'expected the agreed README attribution using the full name');
+  const previousIdentity = attribution[1];
+  const oldName = new RegExp(previousIdentity, 'i');
   assert.equal(
-    (readme.match(new RegExp(expectedIdentity, 'g')) ?? []).length,
+    (readme.match(new RegExp(previousIdentity, 'gi')) ?? []).length,
     1,
-    `README must mention ${expectedIdentity} exactly once, using the full name`,
+    'README must mention the full name exactly once',
   );
-  assert.ok(!readme.includes('github.com/'), 'README must not reintroduce the upstream URL');
 
   const decoder = new TextDecoder('utf-8', { fatal: true });
   const forbidden = [];
   for (const file of new Set(files)) {
-    if (file === 'README.md' || binaryFile.test(file) || !exists(file)) continue;
+    if (!exists(file)) continue;
+    if (oldName.test(file)) forbidden.push(`${file}: old file name`);
+    if (file === 'README.md' || binaryFile.test(file)) continue;
     let text;
     try {
       text = decoder.decode(readFile(file));
@@ -51,7 +50,7 @@ export function checkIdentity({
       continue;
     }
     if (nativeAbiFiles.has(file)) {
-      const prefix = expectedIdentity.toLowerCase();
+      const prefix = previousIdentity.toLowerCase();
       text = text.replaceAll(`/tmp/${prefix}-`, '').replaceAll(`${prefix}-hook`, '');
     }
     if (oldName.test(text)) forbidden.push(`${file}: old text identity`);

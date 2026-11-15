@@ -56,9 +56,11 @@ describe('brand assets', () => {
             expect(html).toContain('rel="icon"');
             expect(html).toContain('type="image/svg+xml"');
             expect(html).toContain('href="./src/assets/nowluma-mark.svg?inline"');
-            expect(html).toContain('<meta name="theme-color" content="#f4f7fb" />');
+            expect(html).toContain('<meta name="theme-color" content="#ffffff" />');
             expect(html).not.toContain('/logo.png');
             expect(html).not.toContain('favicon.png');
         }
+
+        expect(indexHtml).toContain("resolved === 'dark' ? '#0a0a0a' : '#ffffff'");
     });
 });
