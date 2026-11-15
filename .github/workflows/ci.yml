@@ -35,7 +35,7 @@ jobs:
       - run: node tools/check-identity.mjs
       - run: pnpm test
       - run: node tools/check-action-catalog.mjs
-      - run: node --test deploy/docker/healthcheck.test.cjs deploy/install.test.cjs
+      - run: node --test deploy/docker/healthcheck.test.cjs deploy/docker/kernel-gate.test.mjs deploy/install.test.cjs
       - run: bash -n deploy/install.sh && bash -n deploy/manage.sh && bash -n deploy/docker/entrypoint.sh
       - run: docker compose -f deploy/docker-compose.yml config --quiet
       - run: pnpm run build:all
@@ -99,5 +99,5 @@ jobs:
           tags: nowluma:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Verify startup, native hook, desktop and restart/recreation persistence
+      - name: Verify startup, native discovery, account kernel gate, desktop and persistence
         run: node deploy/docker/smoke.mjs nowluma:ci

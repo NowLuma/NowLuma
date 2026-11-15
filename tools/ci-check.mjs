@@ -26,14 +26,18 @@ export const checks = [
   ['Verify generated action catalog is up to date', 'node tools/check-action-catalog.mjs'],
   [
     'Test the deployment scripts and container health check',
-    'node --test deploy/docker/healthcheck.test.cjs deploy/install.test.cjs',
+    'node --test deploy/docker/healthcheck.test.cjs deploy/docker/kernel-gate.test.mjs deploy/install.test.cjs',
   ],
   [
     'Check the shell entrypoints',
     'bash -n deploy/install.sh && bash -n deploy/manage.sh && bash -n deploy/docker/entrypoint.sh',
     'bash',
   ],
-  ['Check the Docker Compose file', 'docker compose -f deploy/docker-compose.yml config --quiet', 'docker'],
+  [
+    'Check the Docker Compose file',
+    'docker compose -f deploy/docker-compose.yml config --quiet',
+    'docker',
+  ],
   ['Build release inputs', 'pnpm run build:all'],
   ['Check the release layout', 'node tools/check-release-layout.mjs dist'],
   ['Build the documentation site', 'node tools/build-docs.mjs'],
@@ -83,7 +87,9 @@ function main() {
     process.exit(1);
   }
 
-  console.log('\nLocal verify checks passed (same commands as the `verify` job of .github/workflows/ci.yml).');
+  console.log(
+    '\nLocal verify checks passed (same commands as the `verify` job of .github/workflows/ci.yml).',
+  );
   if (skipped.length > 0) {
     console.log(
       `NOT RUN here (tool missing): ${skipped.map((item) => item.tool).join(', ')}. ` +

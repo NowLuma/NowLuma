@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { checkUnselectedKernel } from './kernel-gate.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const image = process.argv[2] ?? 'nowluma:ci';
@@ -143,7 +144,7 @@ async function checkAuthenticatedDesktop() {
     ws.close();
   }
 }
-async function checkDesktopAndHook() {
+async function checkDesktopAndKernelGate() {
   const system = await api('/api/system');
   assert.equal(system.hostname, 'nowluma');
   assert.equal(system.deployment.home, '/home/nowluma');
@@ -157,20 +158,20 @@ async function checkDesktopAndHook() {
   for (let attempt = 0; attempt < 60; attempt++) {
     const { list } = await api('/api/processes');
     assert.ok(Array.isArray(list));
-    if (list.some((process) => process.injected && process.connected)) return;
-    if (list.some((process) => process.status === 'error')) {
-      throw new Error(`QQ hook failed: ${list.map((process) => process.error).join('; ')}`);
+    if (list.length > 0) {
+      for (const process of list) await checkUnselectedKernel(api, process);
+      return;
     }
     await delay(1000);
   }
-  throw new Error('QQ started but the native hook did not connect');
+  throw new Error('QQ started but native process discovery did not find it');
 }
 try {
   for (const volume of volumes) docker('volume', 'create', volume);
   start();
   await waitHealthy();
   await login();
-  await checkDesktopAndHook();
+  await checkDesktopAndKernelGate();
   await api('/api/system/settings', { vncPort: 6123 });
   docker(
     'exec',
@@ -184,22 +185,22 @@ try {
   docker('start', name);
   await waitHealthy();
   await login();
-  await checkDesktopAndHook();
+  await checkDesktopAndKernelGate();
   stop();
   docker('rm', name);
   start();
   await waitHealthy();
   await login();
-  await checkDesktopAndHook();
+  await checkDesktopAndKernelGate();
   assert.equal(docker('exec', name, 'cat', '/home/nowluma/.config/QQ/ci-marker'), 'saved');
   assert.equal(docker('exec', name, 'cat', '/home/nowluma/.local/share/ci-marker'), 'saved');
   assert.equal(docker('exec', name, 'sha256sum', '/home/nowluma/.machine-id'), machineIdHash);
   assert.equal((await api('/api/system/settings')).settings.vncPort, 6123);
   console.log(
-    'PASS: image startup, QQ native hook, authenticated same-origin desktop, graceful stop, config, complete HOME and machine ID across restart/recreation.',
+    'PASS: image startup, native QQ discovery, account kernel gate, authenticated same-origin desktop, graceful stop, config, complete HOME and machine ID across restart/recreation.',
   );
   console.log(
-    'NOT_RUN: actual QQ account login and server-side session retention; no account was scanned into this test.',
+    'NOT_RUN: QQ hook attachment, actual QQ account login and server-side session retention; this fresh HOME has no account or accepted kernel choice.',
   );
 } catch (error) {
   console.error(error.message);

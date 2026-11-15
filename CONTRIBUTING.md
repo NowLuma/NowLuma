@@ -25,16 +25,16 @@ pnpm --filter @nowluma/mcp gen
 
 ## 主要目录
 
-| 目录 | 职责 |
-| --- | --- |
-| `packages/bridge` | QQ 进程发现、原生通信、接入生命周期 |
-| `packages/core` | 账号编排、WebUI 后端、运行/更新入口 |
-| `packages/onebot` | 动作、事件转换、连接与存储 |
-| `packages/protocol` | 协议解析、身份、媒体传输 |
-| `packages/common` | 浏览器安全工具与基础设施 |
-| `packages/webui` | 管理界面 |
-| `deploy` | Docker、首次安装、日常管理、重建测试 |
-| `packages/sdk`、`packages/mcp` | 客户端与工具接入 |
+| 目录                           | 职责                                 |
+| ------------------------------ | ------------------------------------ |
+| `packages/bridge`              | QQ 进程发现、原生通信、接入生命周期  |
+| `packages/core`                | 账号编排、WebUI 后端、运行/更新入口  |
+| `packages/onebot`              | 动作、事件转换、连接与存储           |
+| `packages/protocol`            | 协议解析、身份、媒体传输             |
+| `packages/common`              | 浏览器安全工具与基础设施             |
+| `packages/webui`               | 管理界面                             |
+| `deploy`                       | Docker、首次安装、日常管理、重建测试 |
+| `packages/sdk`、`packages/mcp` | 客户端与工具接入                     |
 
 workspace 包名使用 `@nowluma/*`。重命名已同步 SDK 标识符、环境变量、构建和测试；新代码不要再引入旧产品标识。
 原生二进制内容和旧套接字 ABI 暂时保持不变，外部文件名由发行构建管理。
@@ -52,7 +52,7 @@ docker build -f deploy/docker/Dockerfile -t nowluma:ci .
 node deploy/docker/smoke.mjs nowluma:ci
 ```
 
-smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。
+smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。它验证真实 QQ 进程发现、同源桌面、未确认账号的接入门禁和重建持久化；空白 HOME 不伪造账号确认，因此真实 hook 接入与账号登录单列实机验证。
 它验证启动、原生连接、桌面、配置、完整 HOME 和机器 ID 的重启/重建保留；不会替用户扫码，也不证明 QQ 服务端长期接受某个账号。
 
 ## 格式与变更
