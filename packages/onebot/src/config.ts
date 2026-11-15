@@ -17,6 +17,20 @@ import type {
     WsRole,
     WsServerNetwork,
 } from './types';
+import {
+    OneBotConfigValidationError,
+    STATUS_COMMAND_COOLDOWN_MAX,
+    STATUS_COMMAND_TRIGGER_MAX_LENGTH,
+    invalid,
+    isObject,
+    parseRestoreInteger,
+    rejectUnknownKeys,
+    validateRestoreHistorySync,
+    validateRestoreNotifications,
+    validateRestoreStatusCommand,
+} from './config-restore';
+
+export { OneBotConfigValidationError, STATUS_COMMAND_TRIGGER_MAX_LENGTH } from './config-restore';
 
 const log = createLogger('OneBot.Config');
 
@@ -37,10 +51,6 @@ const DEFAULT_STATUS_COMMAND: StatusCommandConfig = {
     cooldownSeconds: 5,
     trigger: '#nl',
 };
-/** Upper bound on the status-command reply cooldown — a year is effectively "off but sane". */
-const STATUS_COMMAND_COOLDOWN_MAX = 31_536_000;
-/** Max length of a user-customised trigger word (UTF-16 code units). */
-export const STATUS_COMMAND_TRIGGER_MAX_LENGTH = 32;
 
 function makeDefaultStatusCommand(): StatusCommandConfig {
     return { ...DEFAULT_STATUS_COMMAND };
@@ -89,15 +99,6 @@ function generateAccessToken(): string {
 
 export interface LoadOneBotConfigOptions {
     persistDefaults?: boolean;
-}
-
-/** A deterministic configuration error. Callers may safely return this as a
- *  4xx without conflating it with filesystem/runtime failures. */
-export class OneBotConfigValidationError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'OneBotConfigValidationError';
-    }
 }
 
 export function loadOneBotConfig(uin: string, options: LoadOneBotConfigOptions = {}): OneBotConfig {
@@ -562,116 +563,6 @@ function validateRestoreAdapterArray(
     return value.length;
 }
 
-function validateRestoreStatusCommand(value: unknown): void {
-    if (value === undefined) {
-        return;
-    }
-
-    if (!isObject(value)) {
-        invalid('$.statusCommand must be an object');
-    }
-
-    rejectUnknownKeys(
-        value,
-        new Set(['enabled', 'swallow', 'cooldownSeconds', 'trigger']),
-        '$.statusCommand',
-    );
-
-    if (value.enabled !== undefined && typeof value.enabled !== 'boolean') {
-        invalid('$.statusCommand.enabled must be a boolean');
-    }
-
-    if (value.swallow !== undefined && typeof value.swallow !== 'boolean') {
-        invalid('$.statusCommand.swallow must be a boolean');
-    }
-
-    if (value.cooldownSeconds !== undefined) {
-        const cooldown = parseRestoreInteger(value.cooldownSeconds);
-
-        if (cooldown === null || cooldown < 0 || cooldown > STATUS_COMMAND_COOLDOWN_MAX) {
-            invalid(
-                `$.statusCommand.cooldownSeconds must be an integer between 0 and ${STATUS_COMMAND_COOLDOWN_MAX}`,
-            );
-        }
-    }
-
-    if (value.trigger !== undefined) {
-        const trigger = typeof value.trigger === 'string' ? value.trigger.trim() : '';
-
-        if (
-            typeof value.trigger !== 'string' ||
-            !trigger ||
-            /[\r\n]/.test(value.trigger) ||
-            trigger.length > STATUS_COMMAND_TRIGGER_MAX_LENGTH
-        ) {
-            invalid(
-                `$.statusCommand.trigger must be non-empty, single-line, and <= ${STATUS_COMMAND_TRIGGER_MAX_LENGTH} characters`,
-            );
-        }
-    }
-}
-
-function validateRestoreNotifications(value: unknown): void {
-    if (value === undefined) {
-        return;
-    }
-
-    if (!isObject(value)) {
-        invalid('$.notifications must be an object');
-    }
-
-    rejectUnknownKeys(value, new Set(['channelIds']), '$.notifications');
-
-    if (value.channelIds === undefined) {
-        return;
-    }
-
-    if (!Array.isArray(value.channelIds)) {
-        invalid('$.notifications.channelIds must be an array');
-    }
-
-    value.channelIds.forEach((id, index) => {
-        if (typeof id !== 'string') {
-            invalid(`$.notifications.channelIds[${String(index)}] must be a string`);
-        }
-
-        const normalized = id.trim();
-
-        if (!normalized || normalized.length > 64 || !/^[\w.-]+$/.test(normalized)) {
-            invalid(`$.notifications.channelIds[${String(index)}] is invalid`);
-        }
-    });
-}
-
-function validateRestoreHistorySync(value: unknown): void {
-    if (value === undefined) {
-        return;
-    }
-
-    if (!isObject(value)) {
-        invalid('$.historySync must be an object');
-    }
-
-    rejectUnknownKeys(value, new Set(['enabled']), '$.historySync');
-
-    if (value.enabled !== undefined && typeof value.enabled !== 'boolean') {
-        invalid('$.historySync.enabled must be a boolean');
-    }
-}
-
-function rejectUnknownKeys(value: JsonObject, allowed: ReadonlySet<string>, at: string): void {
-    const unknown = Object.keys(value).find((key) => !allowed.has(key));
-
-    if (unknown) {
-        invalid(`${at}.${unknown} is not supported`);
-    }
-}
-
-function parseRestoreInteger(value: unknown): number | null {
-    const number = typeof value === 'string' && value.trim() ? Number(value) : value;
-    return typeof number === 'number' && Number.isSafeInteger(number) ? number : null;
-}
-
 function isHttpUrlForRestore(value: string): boolean {
     try {
         const parsed = new URL(value);
@@ -1023,10 +914,6 @@ function validateRole(value: unknown, at: string): void {
     if (value !== undefined && value !== 'Api' && value !== 'Event' && value !== 'Universal') {
         invalid(`${at} must be Api, Event, or Universal`);
     }
-}
-
-function invalid(message: string): never {
-    throw new OneBotConfigValidationError(message);
 }
 
 function ensureConfigDir(): void {
@@ -1668,10 +1555,6 @@ function saveJson(filePath: string, json: JsonObject): void {
 
         throw error;
     }
-}
-
-function isObject(value: unknown): value is JsonObject {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isValidBindHost(value: string): boolean {
