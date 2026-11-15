@@ -37,6 +37,10 @@ describe('qzone / parseQzoneJson', () => {
 
     it('strips a JSONP callback wrapper', () => {
         expect(parseQzoneJson<{ a: number }>('_preloadCallback({"a":1});')).toEqual({ a: 1 });
+        expect(parseQzoneJson<{ a: number }>('back({"a":1});')).toEqual({ a: 1 });
+        expect(parseQzoneJson<{ a: number }>('frameElement.callback({"a":1});')).toEqual({
+            a: 1,
+        });
     });
 
     it('throws on a non-object body (HTML error page)', () => {
