@@ -57,7 +57,9 @@ export function glassDisplacementAt(
     const profile = Math.sqrt(t * (2 - t));
     const incident = Math.atan((1 - t) / Math.max(0.001, profile));
     const refracted = Math.asin(Math.sin(incident) / 1.5);
-    const bend = Math.min(displacement, Math.tan(incident - refracted) * profile * edge);
+    // Smooth both ends of the rim so backdrop samples never fold into a scratched double edge.
+    const taper = 4 * t * (1 - t);
+    const bend = Math.min(displacement, Math.tan(incident - refracted) * profile * edge) * taper;
     return { x: Math.sign(dx) * nx * bend, y: Math.sign(dy) * ny * bend };
 }
 

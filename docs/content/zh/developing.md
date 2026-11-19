@@ -1,48 +1,39 @@
 ---
 title: 参与开发
-description: 许可与署名边界、仓库结构、Node 与 pnpm 基线、测试与格式约定、提交与评审流程，以及发行相关声明的限制。
+description: Nowluma 的 GPL-3.0-only 许可、仓库结构、本地验证、文档构建、变更边界与发行流程。
 ---
 
 # 参与开发
 
-这一章写给要改代码、提 PR 或做二次分发的人。使用文档见 [文档首页](index.md)。
+Nowluma 以 GPL-3.0-only 发布。修改和分发源码时遵守 GPLv3；随包原生组件与第三方组件按 `LICENSING.md` 的各自条款处理。
 
-## 许可与你能做什么
+## 许可
 
-| 事项 | 情况 |
+- 源码可以自由使用、研究、修改和分发，**包括商业用途**，没有额外的非商业限制。
+- 分发修改版时按 GPLv3 提供对应源码与许可文本，不添加额外限制。
+- 根目录 `LICENSE` 是 GNU GPLv3 标准全文；`LICENSING.md` 记录原生组件与第三方边界；`EULA.md` 与 `PRIVACY.md` 是使用与隐私说明，不改变 GPL 权利。
+- 只有侵权投诉使用 `ws675170761@gmail.com`；它不是通用、商业合作或隐私联系邮箱。
+
+## 目录
+
+| 路径 | 负责 |
 | --- | --- |
-| 源码是否开源 | **是**——采用 GNU GPLv3（GPL-3.0-only），OSI 定义的开源许可；`LICENSE` 是 GNU 发布的标准全文 |
-| 允许 | 按 GPLv3 使用、研究、修改和分发（含商业用途），无需另行授权 |
-| 分发条件 | 保留许可与版权声明、提供对应源码，并按 GPLv3 标注修改 |
-| 原生二进制 | `packages/runtime/native/` 下的预编译 `nowluma-*` / `websocket-*` / `ffmpegAddon-*` 是 GPL 源码之外的随包组件，见 `LICENSING.md` |
-| 官方发行包 | EULA.md 是使用说明，PRIVACY.md 说明数据处理；二者不增加 GPL 源码的限制，源码条款以 LICENSE 为准 |
-
-上游项目署名只保留在根 `README.md` 的**最后一行**，作为许可与历史记录要求的归属说明。**不要在产品名、包名、界面、环境变量或新文档里重新引入上游品牌名**：这一轮更名已经把工作区包名（`@nowluma/*`）、环境变量（`NOWLUMA_*`）、SDK 标识和备份应用标识都换过了。`tools/check-identity.mjs` 会从该行推导旧名称，并检查文件名、文本、原生 ABI 例外和二进制跳过规则；不要用拆分字符串绕过检查。
-
-原生组件当前只改了**外部文件名**，内部字节和必要的旧套接字 ABI 保持不变。仓库保留的六份 `nowluma-*` 原始预编译文件（三个平台各两份）就是当前发行使用的原生组件。另有外部重写尝试，尚未完成、未随包发布；其观察只覆盖部分 Windows DLL 构建，`.node` 链接、真实注入、收发校准、登录和 Linux 配对都未在本仓库验证。不要为了「看起来更干净」去改当前预编译文件的二进制内容。
-
-本轮不重写 QQ 接入内核。双内核选择器尚未实现；将来引入时，原内核需要用户主动知情并接受风险，所有 QQ 接入路径都不会预勾选或静默回退。
-
-## 仓库结构
-
-| 目录 | 职责 |
-| --- | --- |
-| `packages/bridge` | QQ 进程发现、账号检测、原生通信生命周期 |
-| `packages/core` | 按账号编排、WebUI 后端、启动/更新组装 |
-| `packages/onebot` | 动作、事件转换、账号存储、HTTP/WebSocket |
-| `packages/protocol` | 包解析、身份映射、协议与媒体请求 |
-| `packages/common` | 叶子工具；浏览器导入不能拉进 Node 文件系统模块 |
+| `packages/bridge` | QQ 进程发现、账号识别、原生传输生命周期 |
+| `packages/core` | 每账号编排、WebUI 后端、启动与更新组装 |
+| `packages/onebot` | 动作、事件转换、账号存储、HTTP/WebSocket 传输 |
+| `packages/protocol` | 数据包解析、身份映射、协议与媒体请求 |
+| `packages/common` | 叶子工具；浏览器导入不得拉入 Node 文件系统模块 |
 | `packages/webui` | React 控制台 |
-| `packages/proto-defs` / `packages/proton` | 类型 schema 与编解码生成 |
-| `packages/sqlite` / `packages/websocket` | 提供的原生绑定与封装 |
-| `packages/runtime` | 发行脚手架与原始预编译产物 |
-| `packages/sdk` / `mcp` / `ui` | 消费端 API 与工具包 |
-| `deploy` | Docker、安装、进程监管、持久化、Windows 启动器与冒烟检查 |
-| `docs/content` | 本文档树（中文 `zh/`、英文 `en/`、覆盖表 `coverage.json`） |
+| `packages/runtime` | 发行脚手架与原始预编译文件 |
+| `packages/sdk` / `mcp` / `ui` | 消费端 API 与工具 |
+| `deploy` | Docker、安装、进程监督、持久化与 smoke |
+| `tools` | 构建、检查、发行与文档脚本 |
 
-## 环境
+改动共享函数前先读所有调用方与相邻测试。新增或修改功能时，保持每账号身份、消息历史、非零有符号 int32 消息 ID、teardown 顺序与在途工作不变。
 
-使用 `.node-version` 固定的 Node（`24.22.1`）和 `package.json` 指定的 pnpm（`11.25.0`）。运行时支持范围以 `packages/runtime/check-node-version.cjs` 和各包 engines 为准，不要为了跑通而降低版本检查。
+## 本地验证
+
+使用仓库固定的 Node 与 pnpm 版本，不要改依赖或锁文件来绕过失败。
 
 ```bash
 pnpm install --frozen-lockfile
@@ -55,85 +46,72 @@ node tools/check-identity.mjs
 node --test deploy/docker/healthcheck.test.cjs
 ```
 
-不要通过改依赖或锁文件来绕过失败。
-
-## 测试
-
-| 场景 | 命令 |
-| --- | --- |
-| 单个包 | `pnpm --filter @nowluma/<package> test`（前端包名是 `webui`） |
-| 全部工作区 | `pnpm test` |
-| 原生覆盖 | `pnpm test:native` |
-| Docker 真实检查 | `docker build -f deploy/docker/Dockerfile -t nowluma:ci .` 然后 `node deploy/docker/smoke.mjs nowluma:ci` |
-
-规矩：
-
-- 优先跑变更所有者的测试，再跑工作区检查。
-- QQ 本地目录、令牌、密码、抓包数据不进 fixtures、不进 Git、不进公开日志。
-- 普通单测使用 fake；`pnpm dev` 可能发现本机真实 QQ，只有明确要做真实运行时测试才用。
-- `pnpm test:native` 缺原生产物或目标平台缺失是 NOT_RUN，**不是**跳过验证的许可。
-
-## 格式
-
-四个空格缩进 TypeScript，沿用现有 import、组件与日志模式。只格式化你改过的文件：
+聚焦测试：
 
 ```bash
-pnpm exec eslint --config eslint.format.config.ts --fix <修改的文件>
-pnpm exec prettier --write <修改的文件>
+pnpm --filter @nowluma/<package> test
 ```
 
-## 生成文件
-
-改了 OneBot 动作名称、文档或返回 schema 之后：
+前端包名是 `webui`。原生测试单独运行：
 
 ```bash
-pnpm --filter @nowluma/mcp gen
+pnpm test:native
 ```
 
-生成目录检查会比较已提交快照。要把源定义和生成文件一起提交，不要只提交一半。
+缺少原生产物或目标平台是 NOT_RUN，不是跳过验证的理由。
 
-## 提交与评审
+`pnpm dev` 会尝试连接本机真实 QQ；只在确实要进行真实运行测试时使用。日常开发优先用隔离 fake 或 Docker smoke。
 
-- 提交信息用英文 Conventional Commits，例如 `fix(deploy): preserve QQ home across container recreation`。
-- 目标分支是当前仓库的 `main`，用功能分支提 PR；不依赖其他仓库的发布流程。
-- 仓库有 issue 模板（缺陷、功能请求）和 PR 模板；PR 还会经过一个策略检查脚本。
-- 提交 issue 请通过仓库网页模板手动创建，写清可复现步骤。**不要上传私密账号数据、日志或抓包。**
-- 评审关注：账号隔离、输入校验、错误上下文、数据保护；失败不能被静默转成成功。
+## 文档
+
+文档在 `docs/content/{zh,en}`，每语言 18 章，共用 `docs/content/coverage.json` 的功能映射。
+
+```bash
+pnpm docs:build
+pnpm docs:check
+node --test tools/docs.test.mjs
+```
+
+- 链接用相对路径，保持 `/Nowluma/` 基路径与离线阅读都可用。
+- 改标题时同时更新所有跨章链接；不要为了通过检查而放宽 `tools/check-docs.mjs`。
+- 界面标签以源码实际文案为准；英文文档解释同一功能，不另造界面文案。
+- 不写像素坐标、未经验证的截图或帧率承诺。
 
 ## 变更边界
 
-- 本轮不重写 QQ 接入内核。修共享函数时先读所有调用方和相邻测试。
-- 保留按账号的身份、消息/媒体历史、有符号非零 int32 消息 ID、停止顺序与在途任务。
-- 解析输入与产生副作用要分开；在信任边界上校验；保留错误细节。
-- 期望保存的配置要和已应用的运行时配置、环境变量覆盖区分开。
-- 不要用默认值覆盖损坏的凭据/配置，也不要自动删除用户数据。
-- 媒体发送要等待校验过的上传完成，不要盲目重试不确定的写入。
-- HTTP/WS 监听必须保留配置的绑定、认证、TLS 失败处理与有界缓冲。
-- SSE 保留账号隔离、游标、上报过滤与令牌失效后的关闭。
-- SDK 的 NodeNext 相对导入保留显式 `.js`，并维持新包导入测试与公开动作映射覆盖率。
+- 修复共享问题一次改在拥有者模块，不复制到多个调用方。
+- 输入解析与副作用分开；信任边界要校验；失败保留错误详情，不把失败转成成功。
+- 持久化配置与已应用运行配置保持区分；环境变量覆盖要可见。
+- 不要用默认值覆盖损坏的凭据或配置，不要自动删除用户数据。
+- 媒体发送等待上传确认；不确定的写入不要盲目重试。
+- HTTP/WS 监听保留绑定、认证、TLS 失败处理和有限缓冲。
+- OneBot 动作/目录变化要更新测试、SDK 契约和 MCP 生成目录：`pnpm --filter @nowluma/mcp gen`。
+- Proton 转换在测试中使用生产实现，不复制一份测试专用实现。
+- 不提交真实密码、账号数据库、令牌、用户 HOME 或未脱敏流量。
 
-## CI 与发行
+## 提交与 PR
 
-现有流水线做的是：类型检查、静态检查、测试、发行布局检查，并实际构建、启动和重建 Linux/amd64 Docker 测试容器。成功的构建会产生对应平台的 Lite 发行产物和 Windows x64 单文件 exe（当前未签名）。
+- 从 `main` 开功能分支，目标也是当前仓库的 `main`。
+- 标题使用 Conventional Commits，例如 `feat(webui): ...`。
+- PR 正文包含关联 Issue、变更说明与实际验证命令/结果。
+- 记录实际退出状态与未运行的门禁；代码或验证未完成时不要把任务标成完成。
+- 问题通过仓库网页模板提交；不要粘贴私密账号数据或完整日志。
 
-**尚未配置**的发布通道包括 npm、镜像仓库和跨仓库自动发布。因此：
+## 发行流程
 
-- 不要把源码里的 SDK/UI/MCP 包示例当成「已经发布到 npm 的版本」。
-- 不要声称存在签名过的可执行文件、官方镜像或未经验证的安装包。
-- 发布前要自己核对实际产物与校验值；本文档不背书的平台不要标成「已测试」。
+发行由推送到 `main` 的 `vX.Y.Z` tag 触发：
 
-## 文档贡献
+```bash
+pnpm bump 2.5.0
+# 在 CHANGELOG.md 写入一致的 ## 2.5.0
+pnpm release 2.5.0
+```
 
-- 只改 `docs/content/` 下的 Markdown 与 `coverage.json`。
-- 页面用相对 `.md` 链接互连，每个文件开头有 `title` 和 `description` 的 YAML frontmatter。
-- 中英文两棵树结构一致；改一章要同时改两种语言。
-- 不要编造功能、截图或执行结果。界面外观仍在调整，文档引用**稳定的标签与行为**而不是像素位置。
-- `coverage.json` 把每个控制台功能/分组映射到页面；新增界面功能时要同步更新它。
+- tag、根与全部 `packages/*/package.json`、CHANGELOG 小节必须一致。
+- 工作流先创建草稿，汇总并校验产物后才发布；失败的草稿保持私有。
+- `gates` 复用 CI 的 verify、Docker 启动/重建 smoke 与 Windows 检查。
+- 产物包括 Linux Lite 归档、Windows 更新归档、未签名 exe、镜像摘要与 `SHA256SUMS`。
+- 当前 Docker smoke 使用全新 HOME，验证进程发现、未确认账号不自动接入、桌面认证和重建持久化；真实 QQ 登录与 hook 接入是 NOT RUN。
+- 归档、镜像与 exe 只证明构建来源与内容，不证明账号能登录或长期可用。
 
-## 提 PR 前的自查
-
-1. `pnpm typecheck`、`pnpm lint`、相关包测试都过了吗？
-2. 改了生成内容吗？源文件和生成文件都提交了吗？
-3. 新增/修改的文案是否泄漏真实账号、令牌或主机名？
-4. 文档改动是否同时改了 `zh/` 和 `en/`，并更新了 `coverage.json`？
-5. 有没有把「计划中」的功能写成「已发布」？
+更细的版本、tag 与工作流步骤见 `docs/releasing.md`。

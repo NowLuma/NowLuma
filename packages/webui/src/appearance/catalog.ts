@@ -80,8 +80,9 @@ export const ACCENTS: AccentSpec[] = [
 ];
 
 export const RADIUS_OPTIONS = [
+    { value: 0.25, label: '默认' },
     { value: 0.375, label: '紧凑' },
-    { value: 0.5, label: '默认' },
+    { value: 0.5, label: '标准' },
     { value: 0.75, label: '舒适' },
     { value: 1.0, label: '圆润' },
 ] as const;

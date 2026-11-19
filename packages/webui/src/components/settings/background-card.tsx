@@ -74,7 +74,7 @@ export function BackgroundCard({
         <Group
             title="背景"
             icon={ImageIcon}
-            description="纯色、渐变或自定义壁纸，会显示在卡片之间与登录页。"
+            description="背景应用于工作区与登录页。"
         >
             <SettingRow label="背景类型">
                 <Segmented
@@ -88,7 +88,7 @@ export function BackgroundCard({
                 <SettingRow label="背景颜色">
                     <div className="flex items-center gap-3">
                         <label
-                            className="relative size-10 cursor-pointer overflow-hidden rounded-lg border"
+                            className="relative size-11 cursor-pointer overflow-hidden rounded-[4px] border focus-within:ring-2 focus-within:ring-ring"
                             style={{ backgroundColor: a.background.color }}
                         >
                             <input
@@ -97,7 +97,7 @@ export function BackgroundCard({
                                 onChange={(e) =>
                                     setAppearance({ background: { color: e.target.value } })
                                 }
-                                className="absolute inset-0 cursor-pointer opacity-0"
+                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                 aria-label="背景颜色"
                             />
                         </label>
@@ -117,19 +117,20 @@ export function BackgroundCard({
                                 <button
                                     key={g.id}
                                     type="button"
+                                    aria-pressed={active}
                                     onClick={() =>
                                         setAppearance({ background: { gradient: g.id } })
                                     }
                                     title={g.label}
                                     aria-label={g.label}
                                     className={cn(
-                                        'h-12 w-20 rounded-lg border transition-colors cursor-pointer',
-                                        active
-                                            ? 'border-foreground/30 ring-2 ring-primary'
-                                            : 'border-border',
+                                        'inline-flex min-h-11 items-center gap-2 rounded-[4px] border px-3 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                        active ? 'border-foreground' : 'border-border hover:bg-muted/40',
                                     )}
-                                    style={{ backgroundImage: g.css }}
-                                />
+                                >
+                                    <span aria-hidden="true" className="h-5 w-8 rounded-[2px] border border-border/60" style={{ backgroundImage: g.css }} />
+                                    {g.label}
+                                </button>
                             );
                         })}
                     </div>
@@ -177,7 +178,7 @@ export function BackgroundCard({
                             )}
                         </div>
                         {a.background.hasImage && (
-                            <div className="overflow-hidden rounded-lg border">
+                            <div className="max-w-lg overflow-hidden rounded-[4px] border">
                                 <img
                                     src={`/ui-asset/background?v=${a.background.imageVersion}`}
                                     alt="背景预览"
@@ -191,7 +192,7 @@ export function BackgroundCard({
                         <>
                             <SliderSettingRow
                                 label="遮罩强度"
-                                hint="越高越能盖住壁纸、提升前景可读性。"
+                                hint="提高遮罩以增加前景可读性。"
                                 min={0}
                                 max={1}
                                 step={0.05}
@@ -219,7 +220,7 @@ export function BackgroundCard({
                 </>
             )}
 
-            {err && <p className="px-5 py-3 text-[12px] text-destructive">{err}</p>}
+            {err && <p role="alert" className="py-3 text-xs text-destructive">{err}</p>}
         </Group>
     );
 }

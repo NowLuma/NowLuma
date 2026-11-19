@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
-import { ArrowRight, Check, KeyRound, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { useDropdown } from '@/components/interior/dropdown';
+import { motion, useReducedMotionConfig } from 'motion/react';
+import { ArrowRight, KeyRound } from 'lucide-react';
 import { GlassMaterial } from '@/components/ui/glass-material';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LineField } from '@/components/ui/line-field';
+import { PaperBackdrop } from '@/components/layout/paper-backdrop';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { BRAND_LOGO_URL } from '@/brand';
@@ -26,32 +26,6 @@ interface LoginPageProps {
     initialUseRecovery?: boolean;
 }
 
-// Device-local login effects; existing 0/1 choices never alter server appearance.
-const LOGIN_FX_KEY = 'nowluma_login_fx';
-
-function readLoginFx(): boolean {
-    try {
-        const v = localStorage.getItem(LOGIN_FX_KEY);
-
-        if (v === '0') {
-            return false;
-        }
-
-        if (v === '1') {
-            return true;
-        }
-    } catch {
-        /* ignore */
-    }
-
-    // A new device starts without drift when the OS asks for reduced motion.
-    // Accessibility settings still take precedence over an explicit local choice.
-    try {
-        return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch {
-        return true;
-    }
-}
 
 export function LoginPage({
     onLogin,
@@ -79,22 +53,6 @@ export function LoginPage({
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [shake, setShake] = useState(0);
-    const [fxOn, setFxOn] = useState(readLoginFx);
-    const [fxSaveError, setFxSaveError] = useState('');
-
-    const toggleFx = (v: boolean) => {
-        setFxOn(v);
-
-        try {
-            localStorage.setItem(LOGIN_FX_KEY, v ? '1' : '0');
-            setFxSaveError('');
-        } catch (error) {
-            setFxSaveError(
-                `本次已生效，无法保存：${error instanceof Error ? error.message : String(error)}`,
-            );
-        }
-    };
-
     useEffect(() => {
         if (otpStatus !== 'rejected') {
             return;
@@ -166,9 +124,6 @@ export function LoginPage({
         <LoginShell
             customBg={customBg}
             reduce={reduce}
-            fxOn={fxOn}
-            fxSaveError={fxSaveError}
-            onToggleFx={toggleFx}
             wide={useRecovery}
         >
             {needsTotp ? (
@@ -306,6 +261,7 @@ export function LoginPage({
                         <Button
                             type="submit"
                             disabled={loading || !password}
+                            variant="glass"
                             className="h-12 text-[15px]"
                         >
                             {loading ? (
@@ -336,31 +292,19 @@ function LoginBrand({ title, subtitle }: { title: string; subtitle: string }) {
 function LoginShell({
     customBg,
     reduce,
-    fxOn,
-    fxSaveError,
-    onToggleFx,
     wide = false,
     children,
 }: {
     customBg: boolean;
     reduce: boolean;
-    fxOn: boolean;
-    fxSaveError: string;
-    onToggleFx: (value: boolean) => void;
     wide?: boolean;
     children: ReactNode;
 }) {
     const { managedBy, performance } = useTheme();
     const lowCost = performance?.low ?? false;
-    const effectsStatus = !fxOn
-        ? '简洁'
-        : reduce
-          ? '细腻 · 静态'
-          : lowCost
-            ? '细腻 · 磨砂'
-            : '细腻';
     return (
         <div className={cn('workspace-auth-shell', customBg ? 'bg-transparent' : 'bg-background')}>
+            {!customBg && <PaperBackdrop />}
             <header className="workspace-auth-masthead">
                 <div className="workspace-auth-wordmark">
                     <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
@@ -373,76 +317,9 @@ function LoginShell({
             </header>
             <div className={cn('workspace-auth-content', wide && 'workspace-auth-content-wide')}>
                 <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
-                    <div
-                        className="workspace-auth-artwork"
-                        data-login-effects={fxOn ? 'full' : 'simple'}
-                    >
-                        <svg
-                            className="workspace-auth-diagram"
-                            aria-hidden="true"
-                            focusable="false"
-                            data-ui-decoration=""
-                            data-line-motion={
-                                fxOn && !reduce && !lowCost && !managedBy ? 'true' : undefined
-                            }
-                            width="352"
-                            height="240"
-                            viewBox="0 0 352 240"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <rect
-                                x="30"
-                                y="48"
-                                width="74"
-                                height="116"
-                                rx="14"
-                                strokeWidth="1"
-                                opacity="0.28"
-                            />
-                            <circle cx="55" cy="73" r="9" strokeWidth="2" opacity="0.64" />
-                            <path
-                                d="M74 73h13M44 103h42M44 115h31M44 137h42"
-                                strokeWidth="1"
-                                opacity="0.38"
-                            />
-                            <rect
-                                x="248"
-                                y="72"
-                                width="70"
-                                height="96"
-                                rx="14"
-                                strokeWidth="1"
-                                opacity="0.28"
-                            />
-                            <path d="M264 92h36M264 148h21" strokeWidth="1" opacity="0.42" />
-                            <path d="M264 108h26" strokeWidth="2" opacity="0.55" />
-                            <path d="M264 124h36" strokeWidth="3" opacity="0.64" />
-                            <g className="workspace-auth-stream">
-                                <path
-                                    d="M91 120c39 0 31-48 83-48s49 55 82 55"
-                                    strokeWidth="4"
-                                    opacity="0.78"
-                                />
-                                <path
-                                    d="M92 133c38 0 46-42 80-42s44 48 81 48"
-                                    strokeWidth="2"
-                                    opacity="0.4"
-                                />
-                                <path
-                                    d="M89 147c41 0 49-36 84-36s44 39 79 39"
-                                    strokeWidth="1"
-                                    opacity="0.28"
-                                />
-                            </g>
-                            <path d="M180 174v14M173 181h14" strokeWidth="1" opacity="0.3" />
-                        </svg>
-                        <div className="workspace-auth-signature">
-                            <LineField animated={false} />
-                        </div>
-                        {fxOn && !managedBy && (
+                    <div className="workspace-auth-artwork">
+                        <LineField animated={!reduce && !lowCost && !managedBy} />
+                        {!managedBy && (
                             <div
                                 className="ui-glass workspace-auth-lens"
                                 aria-hidden="true"
@@ -485,20 +362,6 @@ function LoginShell({
                     <section className="workspace-auth-form" aria-label="登录">
                         {children}
                     </section>
-                    {!managedBy && (
-                        <LoginEffects
-                            fxOn={fxOn}
-                            status={effectsStatus}
-                            reduce={reduce}
-                            lowCost={lowCost}
-                            onChange={onToggleFx}
-                        />
-                    )}
-                    {fxSaveError && (
-                        <p role="alert" className="mt-2 break-words text-xs text-destructive">
-                            {fxSaveError}
-                        </p>
-                    )}
                 </motion.div>
             </div>
             <footer className="workspace-auth-footer">{APP_NAME} · QQ 连接控制台</footer>
@@ -506,89 +369,3 @@ function LoginShell({
     );
 }
 
-const LOGIN_EFFECTS = [
-    { value: '1', label: '细腻', icon: Sparkles },
-    { value: '0', label: '简洁', icon: SlidersHorizontal },
-];
-
-function LoginEffects({
-    fxOn,
-    status,
-    reduce,
-    lowCost,
-    onChange,
-}: {
-    fxOn: boolean;
-    status: string;
-    reduce: boolean;
-    lowCost: boolean;
-    onChange: (value: boolean) => void;
-}) {
-    const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
-        items: LOGIN_EFFECTS,
-        value: fxOn ? '1' : '0',
-        onChange: (value) => onChange(value === '1'),
-    });
-    const transition = reduce
-        ? { duration: 0 }
-        : lowCost
-          ? { duration: 0.18, ease: 'easeOut' as const }
-          : { type: 'spring' as const, duration: 0.42, bounce: 0.12 };
-
-    return (
-        <div className="workspace-auth-effects" ref={rootRef}>
-            <button {...triggerProps} aria-label="显示效果" className="workspace-text-button">
-                <SlidersHorizontal className="size-4" aria-hidden="true" />
-                显示效果
-            </button>
-            <span role="status" aria-live="polite" className="workspace-effects-status">
-                {status}
-            </span>
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={reduce ? false : { opacity: 0, y: 6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                        transition={transition}
-                        className="ui-glass ui-glass-menu workspace-effects-menu"
-                    >
-                        <GlassMaterial />
-                        <ul
-                            {...listProps}
-                            aria-label="显示效果"
-                            className="workspace-theme-options"
-                        >
-                            <motion.li
-                                role="presentation"
-                                aria-hidden="true"
-                                initial={false}
-                                animate={{
-                                    y: Math.max(0, activeIndex) * 44,
-                                    opacity: activeIndex < 0 ? 0 : 1,
-                                }}
-                                transition={transition}
-                                className="workspace-theme-active"
-                            />
-                            {LOGIN_EFFECTS.map(({ value, label, icon: Icon }, index) => (
-                                <li
-                                    key={value}
-                                    {...getItemProps(index)}
-                                    data-active={index === activeIndex}
-                                    className="workspace-theme-option"
-                                >
-                                    <Icon className="size-4" aria-hidden="true" />
-                                    <span className="flex-1">{label}</span>
-                                    {value === (fxOn ? '1' : '0') && (
-                                        <Check className="size-4" aria-hidden="true" />
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                        <p className="workspace-effects-note">仅此设备 · 系统偏好优先</p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}

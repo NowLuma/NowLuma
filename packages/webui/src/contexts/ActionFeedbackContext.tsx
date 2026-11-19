@@ -3,11 +3,13 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { CircleAlert, CircleCheck } from 'lucide-react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { CollapsibleBanner, type BannerState } from '@/components/interior/collapsible-banner';
@@ -17,6 +19,7 @@ import {
     type ActivityInput,
 } from '@/components/interior/live-activity';
 import '@/styles/action-feedback.css';
+import type { Activity } from '@/components/interior/live-activity';
 
 type ResultDetail<T> = string | ((result: T) => string | undefined);
 type ErrorDetail = string | ((error: unknown) => string);
@@ -42,13 +45,15 @@ export interface ActionFeedbackHandle {
     fail: (detail: string, patch?: Partial<ActivityInput>) => void;
 }
 
-interface ActionFeedbackValue {
+export interface ActionFeedbackValue {
     startAction: (input: ActivityInput) => ActionFeedbackHandle;
     runAction: <T>(options: ActionFeedbackOptions<T>, action: () => Promise<T> | T) => Promise<T>;
-    activity: ReturnType<typeof useLiveActivity>['activity'];
+    activity: Activity | null;
     notices: ActionNotice[];
     removeNotice: (id: number) => void;
     dismiss: () => void;
+    viewportHost: HTMLElement | null;
+    registerViewportHost: (host: HTMLElement) => () => void;
 }
 
 interface ActionNotice {
@@ -168,6 +173,7 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
     const activeId = useRef<string | null>(null);
     const noticeId = useRef(0);
     const [notices, setNotices] = useState<ActionNotice[]>([]);
+    const [viewportHost, setViewportHost] = useState<HTMLElement | null>(null);
 
     const pushNotice = useCallback((notice: Omit<ActionNotice, 'id'>) => {
         const next = { ...notice, id: ++noticeId.current };
@@ -280,9 +286,35 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
         setNotices((current) => current.filter((notice) => notice.id !== id));
     }, []);
 
+    const registerViewportHost = useCallback((host: HTMLElement) => {
+        setViewportHost(host);
+
+        return () => {
+            setViewportHost((current) => (current === host ? null : current));
+        };
+    }, []);
+
     const value = useMemo<ActionFeedbackValue>(
-        () => ({ startAction, runAction, activity, notices, removeNotice, dismiss }),
-        [startAction, runAction, activity, notices, removeNotice, dismiss],
+        () => ({
+            startAction,
+            runAction,
+            activity,
+            notices,
+            removeNotice,
+            dismiss,
+            viewportHost,
+            registerViewportHost,
+        }),
+        [
+            startAction,
+            runAction,
+            activity,
+            notices,
+            removeNotice,
+            dismiss,
+            viewportHost,
+            registerViewportHost,
+        ],
     );
 
     return (
@@ -295,15 +327,53 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
  * motion / disable-motion preference also reaches Interior's component.
  */
 export function ActionFeedbackViewport() {
-    const { activity, notices, removeNotice, dismiss } = useActionFeedback();
+    const { activity, notices, removeNotice, dismiss, viewportHost } = useActionFeedback();
     const runningActivity = activity?.phase === 'running' ? activity : null;
+    const inline = viewportHost?.isConnected === true;
+    // Move one owned portal container, not its React children: countdowns,
+    // dismissed states and in-flight feedback survive setup entering/leaving.
+    const [container] = useState(() =>
+        typeof document === 'undefined' ? null : document.createElement('div'),
+    );
 
-    return (
+    useLayoutEffect(() => {
+        if (!container) {
+            return;
+        }
+
+        const target = viewportHost?.isConnected ? viewportHost : document.body;
+
+        if (container.parentNode === target) {
+            return;
+        }
+
+        const focused = container.contains(document.activeElement)
+            ? (document.activeElement as HTMLElement)
+            : null;
+        target.appendChild(container);
+        focused?.focus({ preventScroll: true });
+    }, [container, viewportHost]);
+    useLayoutEffect(() => () => container?.remove(), [container]);
+
+    const viewport = (
         <div
             role="region"
             aria-label="操作通知"
             tabIndex={notices.length > 0 ? 0 : undefined}
             className="action-feedback-viewport pointer-events-none fixed z-[45] flex flex-col items-end gap-2"
+            style={
+                inline
+                    ? {
+                          position: 'static',
+                          inset: 'auto',
+                          width: '100%',
+                          maxHeight: 'none',
+                          overflow: 'visible',
+                          alignItems: 'stretch',
+                          paddingBottom: notices.length > 0 || runningActivity ? '1rem' : 0,
+                      }
+                    : undefined
+            }
         >
             {notices.map((notice) => (
                 <ActionNoticeBanner
@@ -321,6 +391,7 @@ export function ActionFeedbackViewport() {
             />
         </div>
     );
+    return container ? createPortal(viewport, container) : viewport;
 }
 
 function ActionNoticeBanner({

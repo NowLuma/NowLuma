@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { NavigationDock, WorkspaceManagement } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/top-bar';
+import { PaperBackdrop } from '@/components/layout/paper-backdrop';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useKiosk } from '@/contexts/KioskContext';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
             className={cn('workspace-shell text-foreground', !customBg && 'bg-background')}
             data-workspace-kiosk={kiosk}
         >
+            {!customBg && <PaperBackdrop />}
             {!kiosk && (
                 <>
                     <TopBar

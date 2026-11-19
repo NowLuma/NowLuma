@@ -9,7 +9,7 @@ import {
     useRef,
     useState,
 } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 
 const INSTANT = { duration: 0 } as const;
 
@@ -171,7 +171,7 @@ export function FloatingLabelInput({
     const fieldId = id ?? `${auto}-field`;
     const hintId = `${auto}-hint`;
 
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const { ref, raised, focused, length, instant, fieldProps } = useFloatingLabel({
         value,
         defaultValue,

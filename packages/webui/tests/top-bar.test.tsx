@@ -199,28 +199,8 @@ describe('workspace navigation and management', () => {
         expect(pinned).toContain('href="/settings"');
     });
 
-    it('separates theme and session management, with no duplicate route menu', () => {
-        const header = topbar();
-        expect(header).toContain('已连接');
-        expect(header).toContain('切换主题：浅色');
-        expect(header).toContain('aria-label="会话与工作区"');
-        expect(header).toContain('aria-haspopup="menu"');
-        expect(header).toContain('aria-haspopup="listbox"');
-        expect(header).toContain('lucide-sun');
-        expect(header).toContain('lucide-ellipsis');
-        expect(header.match(/workspace-theme-trigger/g)).toHaveLength(1);
-        expect(header).not.toContain('ui-line-field');
-        state.menuOpen = true;
-        const menu = topbar();
-        expect(menu).toContain('role="menu"');
-        expect(menu.match(/role="menuitem"/g)).toHaveLength(3);
-        expect(menu).toContain('工作区管理');
-        expect(menu).toContain('展示模式');
-        expect(menu).toContain('退出登录');
-        expect(menu).not.toContain('页面导航');
-    });
 
-    it('opens management, keeps kiosk immediate and logout behind confirmation', async () => {
+    it('keeps kiosk immediate and logout behind confirmation', async () => {
         topbar();
         const menu = state.sessionMenu;
 
@@ -231,13 +211,10 @@ describe('workspace navigation and management', () => {
         const focus = vi.fn();
         menu.triggerProps.ref.current = { focus } as unknown as HTMLButtonElement;
         menu.getItemProps(0).onClick();
-        expect(state.onManageWorkspace).toHaveBeenCalledOnce();
-        expect(state.enterKiosk).not.toHaveBeenCalled();
-        menu.getItemProps(1).onClick();
         expect(state.enterKiosk).toHaveBeenCalledOnce();
-        menu.getItemProps(2).onClick();
+        menu.getItemProps(1).onClick();
         expect(state.onLogout).not.toHaveBeenCalled();
-        expect(focus).toHaveBeenCalledTimes(3);
+        expect(focus).toHaveBeenCalledTimes(2);
         expect(state.confirm.title).toBe('退出登录？');
         expect(state.confirm.destructive).toBe(true);
         await state.confirm.onConfirm();

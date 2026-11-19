@@ -17,6 +17,16 @@
   flex-shrink: 0;
 }
 
+/* Setup feedback occupies its own bounded row; primary actions remain reachable. */
+.workspace-onboarding-feedback {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-height: min(12rem, 24dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
 /* The fixed workspace dock reserves 70px plus a gap, including on a 375px viewport. */
 body:has(.workspace-dock-anchor) .action-feedback-viewport {
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.25rem);

@@ -23,8 +23,6 @@ import { GlobalConfigPanel } from '@/components/settings/global-config-panel';
 import { NotificationsPanel } from '@/components/settings/notifications-panel';
 import { StoragePanel } from '@/components/settings/storage-panel';
 import { SystemPanel } from '@/components/settings/system-panel';
-import { GlassMaterial } from '@/components/ui/glass-material';
-import { ScrollableTabList } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { settingsRoute, type SettingsTab } from '@/router';
 import '@/styles/console-pages.css';
@@ -35,10 +33,8 @@ interface TabDef {
     icon: typeof Sun;
 }
 
-// The ten setting groups, laid out as a compact top category navigation
-// (wrapped chips on desktop, a scroll strip on narrow screens) above the
-// active panel's content sections. Keys are the URL `?tab=` contract
-// (SETTINGS_TABS in src/router); the order mirrors the former grouped rail.
+// These categories belong only to Settings. Every key remains URL-addressable;
+// the compact document index stays visible without a second scrolling region.
 const TABS: TabDef[] = [
     { key: 'appearance', label: '外观', icon: Palette },
     { key: 'data', label: '数据与格式', icon: RefreshCw },
@@ -66,20 +62,29 @@ export function SettingsPage() {
         });
 
     return (
-        <div className="cp-page">
-            <SettingsNav tab={tab} onChange={setTab} />
-
-            <div key={tab} className="cp-settings-content cp-fade flex min-w-0 flex-col gap-5">
-                {tab === 'appearance' && <AppearancePanel />}
-                {tab === 'data' && <DataPanel />}
-                {tab === 'advanced' && <AdvancedPanel />}
-                {tab === 'account' && <AccountPanel />}
-                {tab === 'system' && <SystemPanel />}
-                {tab === 'storage' && <StoragePanel />}
-                {tab === 'notifications' && <NotificationsPanel />}
-                {tab === 'globalConfig' && <GlobalConfigPanel />}
-                {tab === 'developer' && <DeveloperPanel />}
-                {tab === 'about' && <AboutPanel />}
+        <div className="cp-page cp-settings">
+            <header className="border-b border-border pb-4">
+                <h2 className="text-lg font-semibold tracking-tight">控制台偏好</h2>
+                <p className="mt-1 text-sm text-muted-foreground">外观、数据与服务设置。</p>
+            </header>
+            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+                <SettingsNav tab={tab} onChange={setTab} />
+                <section
+                    key={tab}
+                    aria-label={TABS.find((item) => item.key === tab)?.label}
+                    className="cp-settings-content cp-fade flex min-w-0 flex-col gap-5"
+                >
+                    {tab === 'appearance' && <AppearancePanel />}
+                    {tab === 'data' && <DataPanel />}
+                    {tab === 'advanced' && <AdvancedPanel />}
+                    {tab === 'account' && <AccountPanel />}
+                    {tab === 'system' && <SystemPanel />}
+                    {tab === 'storage' && <StoragePanel />}
+                    {tab === 'notifications' && <NotificationsPanel />}
+                    {tab === 'globalConfig' && <GlobalConfigPanel />}
+                    {tab === 'developer' && <DeveloperPanel />}
+                    {tab === 'about' && <AboutPanel />}
+                </section>
             </div>
         </div>
     );
@@ -96,9 +101,8 @@ export function SettingsNav({
     const reduced = useReducedMotionConfig();
 
     return (
-        <nav aria-label="设置导航" className="ui-glass cp-category-chrome">
-            <GlassMaterial />
-            <ScrollableTabList activeValue={tab} className="cp-catnav">
+        <nav aria-label="设置导航" className="min-w-0 lg:border-r lg:border-border lg:pr-5">
+            <div className="grid min-w-0 grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
                 {TABS.map((item) => {
                     const Icon = item.icon;
                     const active = tab === item.key;
@@ -108,14 +112,16 @@ export function SettingsNav({
                             type="button"
                             onClick={() => onChange(item.key)}
                             aria-current={active ? 'page' : undefined}
-                            data-tab-active={active ? 'true' : undefined}
-                            className="cp-catnav-item"
+                            className={cn(
+                                'relative flex min-h-11 min-w-0 items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50',
+                                active ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                            )}
                         >
                             {active && (
                                 <motion.span
                                     aria-hidden="true"
                                     layoutId={reduced ? undefined : `settings-category-${id}`}
-                                    className="cp-selection"
+                                    className="absolute inset-y-2 left-0 w-0.5 bg-foreground"
                                     transition={
                                         reduced
                                             ? { duration: 0 }
@@ -123,14 +129,12 @@ export function SettingsNav({
                                     }
                                 />
                             )}
-                            <Icon
-                                className={cn('relative size-4 shrink-0', active && 'text-primary')}
-                            />
-                            <span className="relative">{item.label}</span>
+                            <Icon aria-hidden="true" className="size-4 shrink-0" />
+                            <span className="min-w-0 break-words">{item.label}</span>
                         </button>
                     );
                 })}
-            </ScrollableTabList>
+            </div>
         </nav>
     );
 }

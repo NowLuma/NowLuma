@@ -1,102 +1,89 @@
 ---
 title: What Nowluma is
-description: Capability boundaries, three different senses of online/offline, the three persistence families, and the current platform support status.
+description: The access layer and workspace, connection states, save/apply semantics, per-account kernel choice, platforms and GPL-3.0-only licensing.
 ---
 
 # What Nowluma is
 
-Nowluma has two halves:
+Nowluma runs on your machine. It finds an already-running QQ client, attaches the account to OneBot v11, and gives you a browser workspace for accounts, connections, logs and the desktop.
 
-1. **The bridge**: it finds a QQ client already running on the same machine and exposes that account over the OneBot v11 protocol for bot programs.
-2. **The console**: a Chinese-language browser UI with six pages — overview, QQ connections, endpoint configuration, logs, debug and settings.
+## Components
 
-QQ sign-in always happens in QQ. The program does not sign in for you, does not store your QQ password, does not forge device tokens, and does not need your QQ profile directory moved anywhere.
+| Part | Responsibility |
+| --- | --- |
+| Access layer | Discover local QQ processes, attach the native component after your confirmation, establish the pipe |
+| Account kernel | Persist an access-kernel choice and risk acknowledgement per real QQ number |
+| OneBot layer | Per-account HTTP and WebSocket endpoints; events and actions |
+| Workspace | Six pages: Workspace, QQ sessions, Bot connections, Run log, Debug tools, Settings |
+| Desktop | Operate QQ login and dialogs in a browser, local or Docker desktop |
+
+QQ itself performs login, QR scan, verification and auto-login. Nowluma never asks for the QQ password, forges device tokens or migrates your QQ user directory.
 
 ## What it does not do
 
-| Common assumption | Reality |
-| --- | --- |
-| The console signs me into QQ | No. Scanning, verification and QQ's own auto-login setting all happen in the QQ window, including the one inside 「打开 QQ 桌面」 (Open QQ desktop). |
-| The access password is the QQ login | No. It only unlocks the console and has nothing to do with the QQ account. |
-| An endpoint showing 「正常」 (ok) means the bot works | No. It means a listener is bound or a connection is established; see the status table below. |
-| A configuration change takes effect immediately | Not always. Most settings must be saved; some need a restart, others wait for the account to connect. |
-| Keeping local data guarantees no QR scan | Not guaranteed. Local credentials only avoid creating a new environment; whether QQ accepts the session is QQ's decision. |
+- It does not log in to QQ, and the console password is not the QQ password.
+- It does not guarantee a bot will reply just because an endpoint is `正常`.
+- It does not call a saved configuration “applied”.
+- It does not promise that keeping local data avoids a future QR scan.
+- It does not attach the compatibility kernel without the account holder's active acknowledgement.
 
-## Three different senses of online/offline
+## Three kinds of save result
 
-The same word means different things in different places. This is the most common source of misdiagnosis.
-
-| Phrase | Where | What it really means | How to confirm |
-| --- | --- | --- | --- |
-| Console connected | Top bar connection badge | The browser's console session is still valid | The page stops asking you to sign in; when the session dies you are returned to the login gate |
-| Account online | 「QQ 连接」 (QQ connections) page, 「在线账号」 (online accounts) widget | That QQ process has completed sign-in and been recognised | The card says 「已在线」 and shows the UIN |
-| Endpoint ok | Node cards in 「节点配置」, the 「OneBot 连接」 widget | The port is listening, or a reverse connection is established | Card status chip. The bot program **still** has to hold the right token and work correctly |
-| Account mapping offline | Notification event `{event}` | The account went from online to offline, subject to the debounce window | See [Notifications](settings-runtime.md#notifications) |
-
-## Three different senses of “saved”
-
-The console has three independent persistence families. Treating them as one leads to wrong conclusions.
-
-| Family | Stored where | When it takes effect | Failure mode |
-| --- | --- | --- | --- |
-| UI preferences (appearance, layout, page prefs, global config, notifications) | UI configuration file in the program config directory | Auto-saved with debounce; applied in the browser immediately | A bottom-right notice such as 「外观同步失败」 (appearance sync failed). The local value still applies but was not persisted |
-| Per-account OneBot configuration | That account's config file | After clicking 「保存」 (Save), using the result the server returns | The save-state chip names the reason |
-| Service-level settings (listener, TLS, backup restore, updates) | Program config directory | After 「保存」, with a notice about whether a restart is needed | Inline error, existing configuration preserved |
-
-The classic “stored but not applied” message is 「已保存，下次连接时应用」 (saved, applied on next connection). Only 「已保存并应用」 (saved and applied) means the running endpoint was replaced.
-
-### A concrete example
-
-1. Open 「节点配置」 (Endpoint configuration), select an account that is **not currently online**, and create a node under 「HTTP API」 on port `3000`.
-2. Click 「保存」 (Save).
-3. Expected result: the save chip says 「已保存，下次连接时应用」 (saved, applied on next connection).
-
-Why: the server cannot hot-reload endpoints for an account that is not online. Once you load the account from 「QQ 连接」, it will actually listen on 3000.
-
-## Status vocabulary
-
-QQ process (cards on 「QQ 连接」):
-
-| Label | Meaning |
-| --- | --- |
-| 可加载 (loadable) | QQ main process found, not yet bridged |
-| 加载中 (loading) | Injecting the bridge into that process |
-| 等待连接 (waiting for connection) | Injected, waiting for the local pipe |
-| 等待登录 (waiting for sign-in) | Pipe is up, the account has not signed in |
-| 已在线 (online) | Signed in and recognised |
-| 错误 (error) | The last operation failed; the card shows an error line |
-| 已断开 (disconnected) | Was bridged, now disconnected |
-
-OneBot endpoints (node cards and the overview widget):
-
-| Label | Meaning |
-| --- | --- |
-| 正常 (ok) | HTTP is listening / WS is connected |
-| 注意 (warn) | A recoverable issue, such as a recent error |
-| 异常 (down) | Listen or connect failed |
-| 应用失败 (apply failed) | Configuration saved, hot reload failed, old endpoints restored best-effort |
-| 未启用 (disabled) | The node exists but is switched off |
-
-## Platform status
-
-| Case | Status |
-| --- | --- |
-| Docker (Linux/amd64) | Installer, startup, desktop and rebuild persistence are covered by automated checks |
-| Docker (arm64) | Build inputs exist, but there is **no** verification record; do not present it as tested |
-| Native Linux release (Lite) | Launcher and checks; needs Node.js `24.22.1` (24.x) or `>=26.12.1`, and does not include `deploy/install.sh` |
-| Windows x64 | Self-contained `Nowluma.exe` with bundled Node; unsigned; no Docker, Node or .NET required |
-
-## Where data lives
-
-| Content | Native run | Docker |
+| Action | How it is saved | When it applies |
 | --- | --- | --- |
-| Console password, 2FA, connections, runtime and appearance settings | `config/` | volume `nowluma_config` → `/app/config` |
-| Account message store and media | `data/` | volume `nowluma_data` → `/app/data` |
-| Runtime logs | `logs/` | volume `nowluma_logs` → `/app/logs` |
-| QQ's own profile, settings and credentials | QQ's own directory | volume `nowluma_qq-home` → `/home/nowluma` |
+| UI preferences, layout, navigation order | Auto-saved to UI config (debounced) | Immediately in the browser, synced across devices; on failure local state remains and an error is shown |
+| Per-account bot connections | Dialog or `立即保存`, written to the server | Live hot reload gives “saved and applied”; otherwise it applies on the next connection |
+| Service settings | Explicit save | Usually requires restarting Nowluma; the UI says so |
 
-The source workspace also has a build output directory, `dist/`; in a release package its contents are the program root. It is not user data and is replaced on upgrade.
+Example: change the HTTP port while the QQ account is offline. The save succeeds but shows “已保存，下次连接时应用”. Only “已保存并应用” means the server hot-reloaded the endpoint.
 
-## Licence in one line
+## Four “connected” meanings
 
-The source is free software under the **GNU General Public License v3 (GPL-3.0-only)**: you may use, study, modify and redistribute it, including commercially, without further permission; distribution must follow GPLv3's source and notice requirements. The root `LICENSE` is the verbatim GNU GPLv3 text. The bundled precompiled native components and third-party components are outside the GPL source and keep their own terms (`LICENSING.md`). See [Contributing](developing.md) for the details.
+| Phrase | Where | Meaning |
+| --- | --- | --- |
+| Console connected | Masthead connection status | The browser session is valid |
+| Account online | QQ session card, `已登录会话` widget | QQ is logged in and the local identity was recognized and attached |
+| Endpoint healthy | Bot connection summary, `机器人连接` widget | Listening or connected; the bot still needs the right address and token |
+| Notification delivered | `通知投递` widget | Online/offline events reached the selected channels |
+
+## Account kernel choice
+
+Before attaching a QQ number, the console asks for a kernel choice for that real UIN:
+
+- `兼容内核` uses the bundled native component and requires an unchecked-by-default risk acknowledgement for the current risk version.
+- `重写内核` is shown as `暂不可用`; it cannot be selected and there is no silent fallback to compatibility.
+- The choice is stored per UIN in `config/kernel-selections.json`.
+- Saving the choice alone does not attach the process; only `加载` or reconnect in QQ sessions does.
+- A different QQ number, a changed account identity, or a new risk version requires a new acknowledgement. A confirmation from one PID is never cloned to another account.
+
+## State words
+
+QQ process: `可加载`, `加载中`, `等待连接`, `等待登录`, `已在线`, `错误`, `已断开`.
+
+Bot endpoint: `正常`, `注意`, `异常`, `应用失败`, `未启用`. `应用失败` means saved but hot reload failed; the server best-effort restores the previous endpoints.
+
+## Platforms and releases
+
+| Form | Requirement | Verification |
+| --- | --- | --- |
+| Linux Docker | Docker Engine and Compose v2, linux/amd64 | Automated build and recreate smoke; no fabricated QQ login |
+| Linux Lite | Node.js `24.22.1` (24.x) or `>=26.12.1` | Launcher and release-layout checks; native attach must be verified by you |
+| Windows x64 | Self-contained `Nowluma.exe` with Node 24 and .NET runtime | Built, unsigned; real-account behaviour unverified |
+| Docker arm64 | Build inputs exist | Not verified |
+
+## Data locations
+
+| Content | Native | Docker volume |
+| --- | --- | --- |
+| Console password/2FA, connections, kernel choices, appearance | `config/` | `nowluma_config` → `/app/config` |
+| Account message store and media | `data/` | `nowluma_data` → `/app/data` |
+| Runtime logs | `logs/` | `nowluma_logs` → `/app/logs` |
+| QQ user environment | controlled by QQ | `nowluma_qq-home` → `/home/nowluma` |
+
+## Licence
+
+Source is **GPL-3.0-only**. You may use, study, modify and redistribute it, **including commercially**, without extra permission. Distribution must comply with GPLv3 source and notice requirements. `LICENSE` is the verbatim GNU GPLv3 text.
+
+Bundled prebuilt native components and third-party components are not GPL source; their terms are recorded in `LICENSING.md`. `EULA.md` and `PRIVACY.md` describe use and data handling and do not add non-commercial restrictions to GPL rights.
+
+The current source contains no analytics or telemetry, and there is no `NOWLUMA_TELEMETRY` switch. See `PRIVACY.md`.

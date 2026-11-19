@@ -423,6 +423,7 @@ export class DemoApi {
             mustChange: this.state.mustChange,
             scanned: this.state.process.account !== null,
             online: this.state.process.status === 'online',
+            stopped: this.state.process.manualStopped === true,
             messages: this.state.messages.size,
         };
     }
@@ -496,6 +497,7 @@ export class DemoApi {
                 loggedIn: canLoad,
                 uin: canLoad ? DEMO_UIN : '',
                 status: canLoad ? 'online' : 'available',
+                manualStopped: false,
                 error: '',
             };
         } else if (scenario === 'offline') {
@@ -504,6 +506,7 @@ export class DemoApi {
                 connected: false,
                 loggedIn: false,
                 status: 'disconnected',
+                manualStopped: false,
                 error: 'DEMO: simulated account offline',
             };
         }
@@ -824,6 +827,10 @@ export class DemoApi {
 
             const action = processAction[2];
 
+            if (action === 'refresh' && this.state.process.manualStopped) {
+                return json({ success: true, process: this.state.process });
+            }
+
             if (action !== 'unload') {
                 if (!this.state.process.account) {
                     return fakeError('DEMO: Open the mock desktop and simulate a scan first', 409);
@@ -841,6 +848,7 @@ export class DemoApi {
                 loggedIn: action !== 'unload',
                 uin: action === 'unload' ? '' : DEMO_UIN,
                 status: action === 'unload' ? 'available' : 'online',
+                manualStopped: action === 'unload',
                 error: '',
             };
             this.emitState();
@@ -888,7 +896,7 @@ export class DemoApi {
                 return fakeError('DEMO: Unsupported UI method', 405);
             }
 
-            return json({ config: this.state.ui });
+            return json({ ...(method === 'POST' ? { success: true } : {}), config: this.state.ui });
         }
 
         if (path === '/api/ui/background' && (method === 'POST' || method === 'DELETE')) {

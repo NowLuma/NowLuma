@@ -12,8 +12,7 @@ import {
 } from 'react';
 import { MotionConfig } from 'motion/react';
 import { actionErrorMessage, useActionFeedback } from '@/contexts/ActionFeedbackContext';
-import { useAutoPerformance } from '@/hooks/use-auto-performance';
-import { performanceModeLow } from '@/lib/performance-mode';
+import { normalizePerformanceMode, performanceModeLow, type PerformanceMode } from '@/lib/performance-mode';
 import type { ThemeMode, UiAppearance, UiBackground } from '@/types';
 import { DEFAULT_APPEARANCE } from '@nowluma/common/webui-appearance';
 import { WEBUI_TARGETS, type WebuiPresentation } from '@nowluma/common/webui-target';
@@ -26,6 +25,7 @@ import {
 import { paletteResolved } from '@/appearance/catalog';
 import { applyAppearance, applyBackgroundLayer } from '@/appearance/dom';
 import {
+    authToken,
     fetchAppearance,
     persistAppearance,
     readCache,
@@ -76,6 +76,26 @@ export type AppearancePatch = Partial<Omit<UiAppearance, 'background'>> & {
     background?: Partial<UiBackground>;
 };
 
+function mergeAppearance(current: UiAppearance, patch: AppearancePatch): UiAppearance {
+    return {
+        ...current,
+        ...patch,
+        background: patch.background
+            ? { ...current.background, ...patch.background }
+            : current.background,
+    };
+}
+
+function mergeAppearancePatches(current: AppearancePatch, patch: AppearancePatch): AppearancePatch {
+    return {
+        ...current,
+        ...patch,
+        background: patch.background
+            ? { ...current.background, ...patch.background }
+            : current.background,
+    };
+}
+
 // ─── Context ───────────────────────────────────────────────────────────────
 
 interface ThemeContextValue {
@@ -90,6 +110,10 @@ interface ThemeContextValue {
     resolved: 'light' | 'dark';
     /** Merge a partial appearance: applies instantly, caches, debounced-persists. */
     setAppearance: (patch: AppearancePatch) => void;
+    /** Explicit setup save. Resolves only after the authenticated server confirms it. */
+    saveAppearance: (patch: AppearancePatch) => Promise<void>;
+    /** Scoped setup/replay presentation. Null restores the underlying saved preferences. */
+    setAppearancePreview: (patch: AppearancePatch | null) => void;
     /** Upload a wallpaper (PNG/JPEG/WebP, ≤5MB). Throws on failure. */
     uploadBackground: (file: File) => Promise<void>;
     /** Remove the wallpaper. */
@@ -103,7 +127,7 @@ interface ThemeContextValue {
     mode: ThemeMode;
     setMode: (m: ThemeMode) => void;
     pollInterval: number;
-    performance: { mode: 'auto' | 'high' | 'low'; low: boolean; fps: number };
+    performance: { mode: PerformanceMode; low: boolean };
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -119,27 +143,72 @@ function getSystemTheme(): 'light' | 'dark' {
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const { runAction, startAction } = useActionFeedback();
     const [appearance, setAppearanceState] = useState<UiAppearance>(readCache);
+    const [appearancePreview, setAppearancePreviewState] = useState<AppearancePatch | null>(null);
     const presentation = useSyncExternalStore(
         presentationStore.subscribe,
         presentationStore.getSnapshot,
     );
-    const performanceMode = appearance.performanceMode ?? 'auto';
-    const frameRate = useAutoPerformance(
-        performanceMode === 'auto' && !appearance.disableMotion && !appearance.reduceMotion,
-    );
-    const lowPerformance = performanceModeLow(performanceMode, frameRate.autoLow);
     const effectiveAppearance = useMemo(
-        () => resolveAppearance(appearance, presentation, getTargetAppearance()),
-        [appearance, presentation],
+        () => resolveAppearance(
+            appearancePreview ? mergeAppearance(appearance, appearancePreview) : appearance,
+            presentation,
+            getTargetAppearance(),
+        ),
+        [appearance, appearancePreview, presentation],
     );
+    const performanceMode = normalizePerformanceMode(effectiveAppearance.performanceMode);
+    const lowPerformance = performanceModeLow(performanceMode);
     const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
     const [ready, setReady] = useState(false);
-    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const saveTimer = useRef<number | undefined>(undefined);
     // Mirror of the latest appearance so the (pure) setAppearance can read the
     // current value without an impure state-updater closure (StrictMode-safe).
     // Synced via a layout effect (not during render) + written synchronously by
     // the mutators themselves so consecutive calls in one tick still compose.
     const appearanceRef = useRef(appearance);
+    const previewRef = useRef<AppearancePatch | null>(null);
+    const initialPatch = useRef<AppearancePatch | null>({});
+    const editedAppearance = useRef<AppearancePatch>({});
+    const initialEditToken = useRef<string | null>(null);
+    const inFlightSave = useRef<Promise<void> | null>(null);
+    const mounted = useRef(false);
+
+    // Serialize confirmed writes so an older slow save cannot finish after a new choice.
+    const queueSave = useCallback((next: UiAppearance, token: string | null) => {
+        const write = () => {
+            if (!mounted.current) {
+                throw new Error('外观保存已取消。');
+            }
+            return persistAppearance(next, token);
+        };
+        const previous = inFlightSave.current;
+        // Previous callers retain their own failure; this is a new explicit/debounced edit.
+        const result = previous ? previous.then(write, write) : write();
+        inFlightSave.current = result;
+        return result;
+    }, []);
+
+    const scheduleSave = useCallback((token: string | null) => {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = window.setTimeout(() => {
+            saveTimer.current = undefined;
+            void queueSave(appearanceRef.current, token).catch((error) => {
+                if (!mounted.current || authToken() !== token) {
+                    return;
+                }
+                console.error('persist appearance failed', error);
+                startAction({ title: '外观同步失败' }).fail(
+                    `当前修改未保存：${actionErrorMessage(error)}`,
+                );
+            });
+        }, 400);
+    }, [queueSave, startAction]);
+
+    const setAppearancePreview = useCallback((patch: AppearancePatch | null) => {
+        const next = patch === null ? null : mergeAppearancePatches(previewRef.current ?? {}, patch);
+        previewRef.current = next;
+        setAppearancePreviewState(next);
+    }, []);
 
     // A Catppuccin flavor fixes light/dark; otherwise honor mode (+ system).
     const resolved: 'light' | 'dark' =
@@ -156,28 +225,36 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return () => mq.removeEventListener('change', handler);
     }, []);
 
-    // Load the server appearance, retaining the cache if it is unavailable.
+    // Merge only edits made during the first read over the server's unrelated fields.
+    // Defer their save until this merge; cached defaults must not overwrite a slow read.
     useEffect(() => {
+        if (initialPatch.current === null) {
+            return;
+        }
         let cancelled = false;
 
         (async () => {
             const server = await fetchAppearance();
-
             if (cancelled) {
                 return;
             }
 
-            const next = server ?? readCache();
-
+            const patch = initialPatch.current ?? {};
+            const next = mergeAppearance(server ?? appearanceRef.current, patch);
+            initialPatch.current = null;
+            appearanceRef.current = next;
             setAppearanceState(next);
             writeCache(next);
             setReady(true);
+            if (Object.keys(patch).length > 0) {
+                scheduleSave(initialEditToken.current);
+            }
         })();
 
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [scheduleSave]);
 
     // Keep the mutator-facing ref in sync after any state change (init load,
     // system-theme flip, upload/delete). Written in an effect, never during render.
@@ -195,52 +272,73 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         applyBackgroundLayer(effectiveAppearance);
     }, [effectiveAppearance]);
 
-    // Cancel a pending save when the provider unmounts.
-    useEffect(
-        () => () => {
-            if (saveTimer.current) {
-                clearTimeout(saveTimer.current);
-            }
-        },
-        [],
-    );
+    // Cancel pending debounce work and suppress old-session/unmounted result notices.
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+            clearTimeout(saveTimer.current);
+        };
+    }, []);
 
     // Track the last click so the light/dark reveal can emanate from it.
     useEffect(trackRevealOrigin, []);
 
     const commit = useCallback(
         (patch: AppearancePatch) => {
-            const prev = appearanceRef.current;
-            const next: UiAppearance = {
-                ...prev,
-                ...patch,
-                background: patch.background
-                    ? { ...prev.background, ...patch.background }
-                    : prev.background,
-            };
+            editedAppearance.current = mergeAppearancePatches(editedAppearance.current, patch);
+            const next = mergeAppearance(appearanceRef.current, patch);
             appearanceRef.current = next;
             setAppearanceState(next);
             writeCache(next);
 
-            if (saveTimer.current) {
-                clearTimeout(saveTimer.current);
+            if (initialPatch.current !== null) {
+                initialPatch.current = mergeAppearancePatches(initialPatch.current, patch);
+                initialEditToken.current = authToken();
+            } else {
+                scheduleSave(authToken());
             }
-
-            saveTimer.current = setTimeout(() => {
-                saveTimer.current = null;
-                void persistAppearance(next).catch((error) => {
-                    console.error('persist appearance failed', error);
-                    startAction({ title: '外观同步失败' }).fail(
-                        `当前修改未保存：${actionErrorMessage(error)}`,
-                    );
-                });
-            }, 400);
         },
-        [startAction],
+        [scheduleSave],
     );
+
+    const saveAppearance = useCallback(async (patch: AppearancePatch) => {
+        const token = authToken();
+        if (!token) {
+            throw new Error('登录已失效，请重新登录后保存显示效果。');
+        }
+        if (initialPatch.current !== null) {
+            throw new Error('外观仍在加载，请稍后再保存。');
+        }
+        clearTimeout(saveTimer.current);
+        saveTimer.current = undefined;
+        // Setup can begin while the initial read was public (without custom CSS).
+        // Read the authenticated owner before replacing its full appearance section.
+        const server = await fetchAppearance(true);
+        if (authToken() !== token) {
+            throw new Error('登录状态已变化，请重新登录后保存显示效果。');
+        }
+        if (!mounted.current) {
+            throw new Error('外观保存已取消。');
+        }
+        if (!server) {
+            throw new Error('无法读取已保存的外观；当前显示选择未提交，请稍后再保存。');
+        }
+        appearanceRef.current = mergeAppearance(server, editedAppearance.current);
+        commit(mergeAppearancePatches(previewRef.current ?? {}, patch));
+        clearTimeout(saveTimer.current);
+        saveTimer.current = undefined;
+        await queueSave(appearanceRef.current, token);
+    }, [commit, queueSave]);
 
     const setAppearance = useCallback(
         (patch: AppearancePatch) => {
+            // Preview mutations are synchronous and local. A delayed theme reveal
+            // must never commit a replay choice after its scope has unmounted.
+            if (previewRef.current !== null) {
+                setAppearancePreview(patch);
+                return;
+            }
             const prev = appearanceRef.current;
             // Animate a circular light/dark reveal only for brightness/scheme changes
             // (mode, palette, dark intensity) — and never when motion is reduced/off
@@ -261,7 +359,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 commit(patch);
             }
         },
-        [commit, effectiveAppearance.disableMotion, lowPerformance],
+        [commit, setAppearancePreview, effectiveAppearance.disableMotion, lowPerformance],
     );
 
     const uploadBackground = useMemo(
@@ -329,17 +427,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     );
 
     const reloadAppearance = useCallback(async () => {
-        // Post-auth, the only field the pre-auth public subset lacked is
-        // `customCss`. Merge JUST that (via setAppearance, which preserves every
-        // other field — incl. a pre-auth localStorage migration — and write-through
-        // persists). A full overwrite here would clobber that migration with the
-        // server's not-yet-persisted default.
+        // A post-auth read supplies custom CSS, not an implicit save of server defaults.
+        const previousCss = appearanceRef.current.customCss;
         const server = await fetchAppearance();
-
-        if (server && server.customCss !== appearanceRef.current.customCss) {
-            setAppearance({ customCss: server.customCss });
+        if (
+            server &&
+            appearanceRef.current.customCss === previousCss &&
+            server.customCss !== previousCss
+        ) {
+            const next = mergeAppearance(appearanceRef.current, { customCss: server.customCss });
+            appearanceRef.current = next;
+            setAppearanceState(next);
+            writeCache(next);
         }
-    }, [setAppearance]);
+    }, []);
 
     const value = useMemo<ThemeContextValue>(
         () => ({
@@ -350,6 +451,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             ready,
             resolved,
             setAppearance,
+            saveAppearance,
+            setAppearancePreview,
             uploadBackground,
             removeBackground,
             formatClock,
@@ -360,7 +463,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             performance: {
                 mode: performanceMode,
                 low: lowPerformance,
-                fps: frameRate.fps,
             },
         }),
         [
@@ -370,13 +472,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             ready,
             resolved,
             setAppearance,
+            saveAppearance,
+            setAppearancePreview,
             uploadBackground,
             removeBackground,
             formatClock,
             reloadAppearance,
             performanceMode,
             lowPerformance,
-            frameRate.fps,
         ],
     );
 

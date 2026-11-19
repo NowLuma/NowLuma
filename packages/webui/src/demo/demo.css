@@ -1,10 +1,14 @@
 .demo-shell {
-  min-height: 100dvh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: var(--foreground);
   background: var(--background);
 }
 .demo-banner {
   height: 3.5rem;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -29,11 +33,11 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
-.demo-console .h-dvh {
-  height: calc(100dvh - 3.5rem);
-}
-.demo-console .min-h-dvh {
-  min-height: calc(100dvh - 3.5rem);
+.demo-console {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  --workspace-viewport-height: calc(100dvh - 3.5rem);
 }
 .demo-guide {
   position: fixed;

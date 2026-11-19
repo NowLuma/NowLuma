@@ -42,16 +42,13 @@ export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
             .map((item) => item.id),
     );
     const actions = [
-        { value: 'workspace', label: '工作区管理', icon: Settings2 },
         ...(shown.has('kiosk') ? [{ value: 'kiosk', label: '展示模式', icon: Expand }] : []),
         { value: 'logout', label: '退出登录', icon: LogOut },
     ];
     const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
         items: actions,
         onChange: (action) => {
-            if (action === 'workspace') {
-                onManageWorkspace();
-            } else if (action === 'kiosk') {
+            if (action === 'kiosk') {
                 enterKiosk();
             } else if (action === 'logout') {
                 setConfirmLogout(true);
@@ -95,13 +92,23 @@ export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
                 <div className="workspace-session-actions">
                     <div className="workspace-toolbar-scene">
                         {shown.has('theme') && <ThemeToggle />}
+                        <button
+                            id="workspace-session-trigger"
+                            type="button"
+                            onClick={onManageWorkspace}
+                            aria-label="工作区管理"
+                            title="工作区管理"
+                            className="workspace-text-button"
+                        >
+                            <Settings2 className="size-4" />
+                            <span className="hidden sm:inline">工作区</span>
+                        </button>
                         <div ref={rootRef} className="workspace-more">
                             <button
                                 {...triggerProps}
-                                id="workspace-session-trigger"
-                                aria-label="会话与工作区"
+                                aria-label="更多操作"
                                 aria-haspopup="menu"
-                                title="会话与工作区"
+                                title="更多操作"
                                 className="ui-glass workspace-icon-button workspace-more-trigger"
                                 data-press-scale=""
                             >
@@ -129,7 +136,7 @@ export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
                                         <ul
                                             {...listProps}
                                             role="menu"
-                                            aria-label="会话与工作区"
+                                            aria-label="会话操作"
                                             className="workspace-theme-options"
                                         >
                                             <motion.li

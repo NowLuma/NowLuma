@@ -1,179 +1,107 @@
 ---
-title: Endpoint configuration (OneBot)
-description: Per-account general settings and the four OneBot network endpoints — HTTP API, HTTP client, WS server and WS client — with every field, token rules, message formats and save semantics.
+title: Bot connections
+description: Per-account message behaviour and HTTP/WebSocket endpoints: tabs, fields, tokens, auto-save, hot reload and recovery.
 ---
 
-# Endpoint configuration (OneBot)
+# Bot connections
 
-The 「节点配置」 page (`/config`) manages two things per account: that account's general behaviour (history sync, the `#nl` status command, notification opt-in) and the OneBot endpoints it exposes.
+Path `/config`. Heading: `按账号管理连接方式与消息行为，改动自动保存。` Every adapter belongs to the selected QQ account; switching accounts with unsaved edits asks `放弃未保存的修改？`.
 
-The left rail lists accounts under 「在线连接」 (online connections), showing 「暂无在线会话」 (no online sessions) when empty. **Only online accounts appear there** — saving still works for an offline account, but the result says it will apply on the next connection.
+## Layout
 
-## Header and save state
+1. Account strip: `账号` chips with avatar, nickname and UIN.
+2. Five category tabs: `消息行为`, `HTTP 接口`, `HTTP 推送`, `WebSocket 监听`, `反向 WebSocket`.
+3. Editor bar: `UIN …`, save state chip, `立即保存`, and `添加连接` where relevant.
+4. Editing area: message settings or a row table per transport.
 
-| Element | Description |
+The active tab is remembered.
+
+## Message behaviour
+
+### Login history sync
+
+`登录时同步云端历史` — next login or restart. It fetches at most 3 groups and 3 friends, 20 messages each, at least 2 seconds apart. It only writes local history; it does not replay events or change read state.
+
+### Status reply
+
+| Setting | Meaning |
 | --- | --- |
-| 「OneBot 协议端点」 | Page title |
-| `UIN {selectedUin}` | Selected account |
-| Save-state chip | See the table below |
-| 「新建 {service type}」 | Only on the four network tabs |
-| 「保存」 | Save this account's configuration |
-
-Chip values:
-
-| Chip | Meaning |
-| --- | --- |
-| 未保存 (unsaved) | Changes not yet saved |
-| 保存中 (saving) | Request in flight |
-| 已保存并应用 (saved and applied) | Persisted, and the running endpoints hot-reloaded |
-| 已保存，下次连接时应用 (saved, applied on next connection) | Persisted; the account is offline |
-| 已保存，但热重载失败：{reason} | Persisted; hot reload failed and the old endpoints were restored best-effort |
-| 保存失败：{reason} | Nothing was persisted |
-| 上一版本已保存，当前修改待保存 | The older change succeeded; the newer one is pending |
-
-The chip clears after three seconds. Switching accounts with unsaved edits opens 「放弃未保存的修改？」 (discard unsaved changes?); choosing 「放弃并切换」 discards them.
-
-## Tabs
-
-The fixed order is general settings, HTTP API, HTTP client, WS server, WS client. Each network tab carries a node-count badge, supports arrow keys and Home/End, and the last tab you used is remembered.
-
-| Tab | Description text | Node noun | Defaults for a new node |
-| --- | --- | --- | --- |
-| HTTP API | Listen on a local HTTP port; OneBot clients send requests | HTTP API 服务 | `http-N`, `127.0.0.1:3000`, path `/`, WS/SSE off, a generated 32-byte token |
-| HTTP client | POST events to a remote URL | HTTP 推送客户端 | `httppost-N`, `http://127.0.0.1:5700` |
-| WS server | Listen on a local WebSocket port for persistent clients | WebSocket 服务 | `ws-N`, `127.0.0.1:3001`, role `Universal` |
-| WS client | Connect out to an external WebSocket server (reverse WS) | WebSocket 反向客户端 | `wsclient-N`, `ws://127.0.0.1:8080/ws`, reconnect 5000 ms |
-
-Above the node list on all four tabs sits the same warning: the copied address excludes the token, the token must be entered in the bot program separately, and **a healthy listener does not mean a bot is connected**.
-
-## General settings
-
-### Backfill cloud history on sign-in
-
-- Label 「登录时补齐云端历史记录」 with the subtitle 「下次账号登录或重启后生效」 *(applies on the next sign-in or restart)*.
-- Deliberately bounded: at most 3 groups and 3 friends, 20 messages per session, at least 2 seconds apart.
-- It only fills locally missing history. It **never replays events** and never changes read state on the server.
-- Changing it while the account is online does not backfill immediately; wait for the next sign-in or restart.
-
-### Built-in `#nl` status command
-
-| Control | Description |
-| --- | --- |
-| Toggle | Off means the program stops answering `#nl`; a downstream bot's own reply logic is unaffected |
-| 「触发词」 (trigger word) | Up to 32 characters, trimmed and lowercased on save; default `#nl` |
-| 「不转发给下游（swallow）」 | When on, messages matching the trigger are not forwarded to the bot, so both sides do not answer |
-| 「回复冷却（秒）」 | `0` means unlimited |
-
-**Example**: send the plain text `#nl` and expect a reply with version, platform and uptime. Change the trigger to `#status` and save: `#nl` no longer answers, `#status` does.
+| `启用状态回复` | Anyone can trigger; off means no response |
+| `触发词` | Default `#nl`, max 32 characters; leading/trailing spaces and case ignored |
+| `回复冷却（秒）` | Same conversation is not answered again during cooldown; 0 means unlimited |
+| `拦截已命中的消息` | The trigger is not forwarded downstream; it still replies and logs |
 
 ### Notification opt-in
 
-This selects **which channels this account** may trigger:
+`上下线通知渠道` selects global channels for this account. The badge shows `已选 N / 共 M`; `全选` selects only enabled channels. Empty states: `还没有全局渠道——先到「设置 → 通知」添加。` and `未选择任何渠道。展开以选择。`. Stale selected IDs are kept, not silently dropped. Channel CRUD is under [Settings → Notifications](settings-runtime.md#notifications).
 
-- The collapsed row summarises how many channels are selected; expanding reveals a searchable list.
-- 「全选」 (select all) only selects enabled channels — it never turns on disabled ones.
-- Channel creation, webhook/email fields and test sends live under [Settings: Nowluma and platform](settings-runtime.md#notifications).
+## Four transports
 
-**Save semantics**: general settings debounce for 500 ms and save automatically — no 「保存」 needed. Any node mutation (create, edit, delete, enable/disable) saves immediately.
-
-## Node cards
-
-Each node is summarised as a card:
-
-| Element | Description |
-| --- | --- |
-| Name | A 「名称重复」 (duplicate name) badge when it collides, or 「已停用」 (disabled) |
-| Status chip | 正常 / 注意 / 异常 / 应用失败 / 未启用 |
-| Summary line | Listen address or target address |
-| Message format | 「数组」 (array) or 「CQ 码」 (CQ codes) |
-| Self messages | 「上报自身」 or 「不上报自身」 |
-| Token | 「已设 Token」 or 「无 Token」 |
-| 「复制端点地址（不含凭据）」 | Copies the address only, without the token, user info or query string |
-| Enable switch / edit / delete | Toggling takes effect immediately; deleting removes the node at once |
-
-The empty state offers 「暂无 {type} 节点」 plus 「创建第一个」 (create the first one).
-
-## Every field in the node dialog
-
-| Field | Where | Description |
+| Tab | Default | Purpose |
 | --- | --- | --- |
-| 启用 (enabled) | All | Off means the node is disabled when saved |
-| 名称 (name) | All | Required; a duplicate reports 「名称与其它节点重复」 and blocks saving |
-| 授权 Token | All | Generate, copy, toggle visibility; policy feedback appears inline |
-| 主机 (host) | Inbound (HTTP API / WS server) | Listen address; `0.0.0.0` allows external access and needs firewall rules |
-| 端口 (port) | Inbound | Listen port |
-| 路径 (path) | Inbound | For example `/` or `/onebot` |
-| 启用 WebSocket | HTTP API | Serve WebSocket on the same port |
-| 启用 SSE | HTTP API | Serve SSE reporting on the same port |
-| 消息格式 (message format) | All | 「数组」 = standard OneBot message segments; 「CQ 码」 = compatible string form |
-| 角色 (role) | WS server | `Universal` / `Event` / `Api`, deciding which frames this connection sends and receives |
-| 上报自身消息 | All | 「上报自身」 or 「不上报自身」 |
-| 目标 URL | Outbound (HTTP client / WS client) | The address your bot provides, not the console address |
-| 超时 (ms) | HTTP client | Request timeout |
-| 重连间隔 (ms) | WS client | Reconnect delay after a drop |
-| 单帧上限 (bytes) | WS client | Maximum frame size; larger frames are rejected |
-| 取消 / 创建节点 / 保存修改 | Footer | Create for new nodes, save changes for edits |
+| `HTTP 接口` | `127.0.0.1:3000`, path `/` | Local HTTP API; optional WebSocket and SSE |
+| `HTTP 推送` | `http://127.0.0.1:5700` | Push events to a URL |
+| `WebSocket 监听` | `127.0.0.1:3001`, role `Universal` | Wait for bot connections |
+| `反向 WebSocket` | `ws://127.0.0.1:8080/ws`, reconnect 5000 ms | Connect out to the bot |
 
-## Examples for the four endpoint types
+Copied addresses never include the token or query parameters: `复制地址不含令牌，请在机器人程序中单独填写。` Listening does not mean a bot has connected.
 
-### 1 — Give a local bot an HTTP API
+## Connection list
 
-1. Select an account → 「HTTP API」 → 「新建 HTTP API 服务」.
-2. Host `127.0.0.1`, port `3000`, path `/`, message format 「数组」.
-3. Generate a token with the button next to the token field and copy it.
-4. Press 「创建节点」. If the account is online, the chip reads 「已保存并应用」.
-5. Configure `http://127.0.0.1:3000/` and that token in the bot.
+Rows are read-only summaries; all editing goes through the dialog.
 
-**Expected result**: the card reports 「正常」 and the overview's 「OneBot 连接」 widget lists it. Actions succeeding proves the address and token are right; it does not prove the bot will reply in a group.
+- Name or `(未命名)`; badges `名称重复`, `已停用`.
+- Meta: `数组` / `CQ 码`, `含自身消息` / `不含自身消息`, `令牌已设置` / `未设令牌`.
+- Live state: `运行中`, `待检查`, `未连接`, `应用失败`, `未启用`, with detail and last error on hover.
+- Actions: enable toggle, `编辑`, copy address, `删除`.
 
-### 2 — Push events to your own service
+Deleting asks `删除连接 …？`, explains that this removes the configuration and stops that protocol service, and leaves other connections and message history alone. To pause a connection, use the toggle rather than deleting it.
 
-1. 「HTTP client」 → create a node.
-2. Target URL `http://127.0.0.1:5700` (example), keep the default timeout.
-3. Save and log requests on your service.
+## Dialog fields
 
-**Expected result**: your service receives POST requests. If nothing arrives, check the node state first: 「异常」 means the connection failed; 「正常」 with no traffic means your service's auth or path is rejecting it.
-
-### 3 — Let a bot connect in (reverse WS)
-
-1. 「WS server」 → create a node.
-2. Host `127.0.0.1`, port `3001`, role `Universal`.
-3. Use 「复制端点地址（不含凭据）」 and enter the token separately in the bot.
-
-**Expected result**: after the bot connects, the card reads 「正常」. If it keeps reconnecting, the token or path is usually wrong.
-
-### 4 — Connect out to a bot's WebSocket
-
-1. 「WS client」 → create a node.
-2. Target URL `ws://127.0.0.1:8080/ws`, reconnect `5000`, frame cap per the other side's documentation.
-
-**Expected result**: 「正常」 once connected, and an automatic reconnect after the peer restarts. **This is the peer's address**, not the console or desktop address.
-
-## Tokens, addresses and what “ok” means
-
-- The copy button copies only the address. Copy the token separately so credentials do not end up in chats or screenshots.
-- Every endpoint has its own token; the console access password cannot substitute for an OneBot token.
-- 「正常」 means the port is listening or a connection is established. Whether the bot handles actions correctly, and whether it replies, must be verified on the bot side.
-- Accounts sharing a listener need distinct ports, and those ports must be published by your deployment.
-
-## Saving, hot reload and restarts
-
-| Case | Result | When it takes effect |
-| --- | --- | --- |
-| Account online | `saved=true, applied=true` | Hot-reloaded immediately; chip reads 「已保存并应用」 |
-| Account offline | `saved=true, applied=false` | On the account's next connection |
-| Partial hot-reload failure | `saved=true, applied=false` plus per-endpoint errors | Old endpoints restored best-effort; fix the configuration and save again |
-| Validation or write failure | `saved=false` | Nothing changed |
-
-Configuration lives in the program config directory and does not need a program restart to affect online accounts. **Listener-level** changes (console port, bind address, TLS) are elsewhere — see [Settings: Nowluma and platform](settings-runtime.md#service).
-
-## Recovery
-
-| Symptom | Fix |
+| Section | Fields |
 | --- | --- |
-| 「名称与其它节点重复」 | Choose another name; names must be unique per account |
-| Chip says hot reload failed | Read the per-endpoint message: a busy port means change the port; an invalid bind address means change the address |
-| Bot cannot connect | Confirm the node is not disabled, then check address, port, path and token |
-| Old bot dropped after changing the token | Expected: the old credential is invalid. Put the new token in the bot |
-| Need to pause an endpoint | Use the card's enable switch rather than deleting the node |
-| Account never comes online | Fix [QQ connection](qq-connection.md); the configuration is not the problem |
+| Connection | `启用`, `名称`, transport-specific defaults |
+| Authentication | `授权 Token` with generate, copy and show/hide |
+| Behaviour | `启用 WebSocket`, `启用 SSE`, `消息格式` (`数组` / `CQ 码`), `角色` (`Universal` / `Event` / `Api`), `上报自身消息` |
+| Address | `主机`, `端口`, `路径` or `目标 URL`, `超时 (ms)`, `重连间隔 (ms)` |
+| Advanced | `单帧上限 (bytes)` |
+
+`127.0.0.1` accepts local connections only. `0.0.0.0` requires a firewall and a strong token; the dialog warns about this. Duplicate names show `名称与其它节点重复` and block save. The footer uses `添加连接` / `保存连接`, with `保存中…` while writing.
+
+## Save and apply
+
+- Message behaviour is debounced (500 ms) and auto-saved; `立即保存` forces it.
+- Transport changes are written immediately.
+- Chip meanings: `已保存并应用` (server hot-reloaded), `已保存，下次连接时应用` (offline account or next connect), `已保存，但热重载失败：…`, `保存失败：…`.
+- If only part of the reload fails, the previous endpoints are restored best-effort; the failure is shown rather than reported as success.
+- Offline accounts can still save; the change applies when the account next connects.
+
+## Example
+
+Goal: expose account `10001` over HTTP on port 3000.
+
+1. Select the account, open `HTTP 接口`, `添加连接`.
+2. Keep `127.0.0.1`, port `3000`, path `/`, leave WS/SSE off, copy the generated token.
+3. Save. With the account online, expect `已保存并应用`; offline, expect `已保存，下次连接时应用`.
+4. Copy the endpoint address (no token) and paste it, plus the token, into the bot.
+5. Expected: the row changes to `运行中` once the bot connects. Listening alone is not proof the bot is receiving.
+
+## Tokens and addresses
+
+- Generate a fresh 32-byte token per endpoint; do not reuse the console password.
+- Copying the address intentionally omits the token; configure it separately.
+- Changing a token disconnects bots using the old one; update and reconnect them.
+- For reverse WebSocket, enter the bot's address, not the console or desktop address.
+- Multiple accounts using listeners need distinct ports and matching published ports.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Bot cannot connect | Enabled, address, port, path, token |
+| Row says `未启用` | Turn the toggle on; deleting is not pausing |
+| `应用失败` | Saved but hot reload failed; read the error and save again |
+| Token change dropped bots | Expected; update the bot with the new token |
+| Offline account | Save succeeds but waits for next connect |
+| Empty tab | Create the first connection of that type |

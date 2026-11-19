@@ -13,7 +13,7 @@ import { elements, hookHost } from './helpers/hook-host';
 vi.mock('react', async (original) => ({ ...(await original<typeof import('react')>()) }));
 vi.mock('motion/react', async (original) => ({
     ...(await original<typeof import('motion/react')>()),
-    useReducedMotion: () => true,
+    useReducedMotionConfig: () => true,
 }));
 
 vi.mock('@/contexts/ActionFeedbackContext', async (original) => ({

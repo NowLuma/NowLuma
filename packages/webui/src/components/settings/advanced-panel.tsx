@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { Group } from '@/components/settings/settings-controls';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Textarea } from '@/components/ui/textarea';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { DEFAULT_LAYOUT, DEFAULT_PAGES } from '@/contexts/LayoutContext';
@@ -90,6 +90,7 @@ export function AdvancedPanel() {
 
     const onExport = async () => {
         setMsg(null);
+        setBusy(true);
 
         try {
             const config = await runAction(
@@ -107,7 +108,9 @@ export function AdvancedPanel() {
             );
         } catch (error) {
             console.error('export UI config failed', error);
-            setMsg({ kind: 'err', text: '导出失败' });
+            setMsg({ kind: 'err', text: error instanceof Error ? error.message : '导出失败' });
+        } finally {
+            setBusy(false);
         }
     };
 
@@ -191,7 +194,7 @@ export function AdvancedPanel() {
             window.location.reload();
         } catch (error) {
             setBusy(false);
-            setMsg({ kind: 'err', text: '重置失败' });
+            setMsg({ kind: 'err', text: error instanceof Error ? error.message : '重置失败' });
             throw error;
         }
     };
@@ -216,37 +219,37 @@ export function AdvancedPanel() {
     };
 
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-7">
             {managedBy && (
                 <p className="text-sm text-muted-foreground">
                     自定义 CSS 已保留，跟随{managedBy}外观期间暂停应用。
                 </p>
             )}
-            <fieldset disabled={!!managedBy} className="contents" aria-label="自定义 CSS">
+            <fieldset disabled={!!managedBy || busy} className="contents" aria-label="自定义 CSS">
                 <Group
                     title="自定义 CSS"
                     icon={Code2}
-                    description={
-                        <>
-                            登录后应用，不影响登录页。需要修复时，在地址后加{' '}
-                            <code className="font-mono text-xs">?safe-mode=1</code> 临时禁用样式。
-                        </>
-                    }
+                    description="登录后应用，不影响登录页。"
                 >
-                    <div className="flex min-w-0 flex-col gap-4 p-5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="mr-1 text-xs text-muted-foreground">插入模板：</span>
-                            {CSS_SNIPPETS.map((s) => (
-                                <button
-                                    key={s.label}
-                                    type="button"
-                                    onClick={() => insertSnippet(s.css)}
-                                    className="cp-control inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors cursor-pointer outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40"
-                                >
-                                    <Plus className="size-3" /> {s.label}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex min-w-0 flex-col gap-3 py-3">
+                        <details>
+                            <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                插入样式片段
+                            </summary>
+                            <div className="flex flex-wrap items-center gap-1.5 pb-2">
+                                {CSS_SNIPPETS.map((s) => (
+                                    <Button
+                                        key={s.label}
+                                        type="button"
+                                        variant="glass"
+                                        size="sm"
+                                        onClick={() => insertSnippet(s.css)}
+                                    >
+                                        <Plus className="size-3" /> {s.label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </details>
                         <Textarea
                             ref={cssRef}
                             aria-label="自定义 CSS"
@@ -264,14 +267,14 @@ export function AdvancedPanel() {
                             placeholder={
                                 '/* 例如：放大侧栏字号 */\n.text-sidebar-foreground { font-size: 1.05em; }'
                             }
-                            className="h-64 resize-y rounded-lg bg-card/40 p-3 font-mono text-base leading-relaxed md:text-[12px]"
+                            className="h-64 resize-y rounded-[4px] bg-transparent p-3 font-mono text-base leading-relaxed md:text-[12px]"
                         />
                         {cssWarn && (
-                            <p className="flex items-start gap-1.5 text-xs text-warning">
+                            <p role="alert" className="flex items-start gap-1.5 text-xs text-warning">
                                 <AlertTriangle className="mt-px size-3.5 shrink-0" /> {cssWarn}
                             </p>
                         )}
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="text-meta text-muted-foreground">
                                 {appearance.customCss.length} / 50000 字符
                             </span>
@@ -288,28 +291,33 @@ export function AdvancedPanel() {
                                 <Trash2 className="size-4" /> 清空
                             </Button>
                         </div>
+                        <details className="text-xs text-muted-foreground">
+                            <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                临时停用自定义样式
+                            </summary>
+                            <p className="max-w-prose leading-relaxed">
+                                在地址后加 <code className="font-mono">?safe-mode=1</code>{' '}
+                                可临时禁用自定义 CSS；保存的内容不会被删除。
+                            </p>
+                        </details>
                     </div>
                 </Group>
             </fieldset>
-            <Group
-                title="备份与重置"
-                icon={Download}
-                description="导出或导入外观、布局与自定义 CSS。背景图片需重新上传。"
-            >
-                <div className="flex min-w-0 flex-col gap-4 p-5">
+            <Group title="界面配置" icon={Download}>
+                <input
+                    ref={fileRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={onImportFile}
+                    className="hidden"
+                />
+                <SettingRow label="导出与导入" hint="外观、布局与自定义 CSS；背景图片需重新上传。">
                     <div className="flex flex-wrap items-center gap-2">
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept="application/json,.json"
-                            onChange={onImportFile}
-                            className="hidden"
-                        />
-                        <Button variant="outline" size="sm" onClick={onExport} disabled={busy}>
+                        <Button variant="glass" size="sm" onClick={onExport} disabled={busy}>
                             <Download className="size-4" /> 导出
                         </Button>
                         <Button
-                            variant="outline"
+                            variant="glass"
                             size="sm"
                             onClick={() => fileRef.current?.click()}
                             disabled={busy}
@@ -318,31 +326,33 @@ export function AdvancedPanel() {
                                 <Loader2 className="size-4 animate-spin" />
                             ) : (
                                 <Upload className="size-4" />
-                            )}{' '}
+                            )}
                             导入
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setConfirmReset(true)}
-                            disabled={busy}
-                            className="text-destructive hover:text-destructive"
-                        >
-                            <RotateCcw className="size-4" /> 重置全部
-                        </Button>
                     </div>
-                    {msg && (
-                        <span
-                            role={msg.kind === 'ok' ? 'status' : 'alert'}
-                            className={cn(
-                                'text-xs',
-                                msg.kind === 'ok' ? 'text-success' : 'text-destructive',
-                            )}
-                        >
-                            {msg.text}
-                        </span>
-                    )}
-                </div>
+                </SettingRow>
+                <SettingRow label="恢复默认" hint="重置外观、布局、导航与自定义 CSS。">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmReset(true)}
+                        disabled={busy}
+                        className="text-destructive hover:text-destructive"
+                    >
+                        <RotateCcw className="size-4" /> 重置全部
+                    </Button>
+                </SettingRow>
+                {msg && (
+                    <p
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
+                        className={cn(
+                            'py-3 text-xs',
+                            msg.kind === 'ok' ? 'text-success' : 'text-destructive',
+                        )}
+                    >
+                        {msg.text}
+                    </p>
+                )}
             </Group>
 
             <ConfirmDialog

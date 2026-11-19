@@ -63,6 +63,5 @@ describe('SettingsPage category routes', () => {
         expect(html.match(/<button /g)).toHaveLength(10);
         expect(html.match(/aria-current="page"/g)).toHaveLength(1);
         expect(html).toContain('aria-label="设置导航"');
-        expect(html).toContain('cp-category-chrome');
     });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 
 const CELL = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 } as const;
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const;
@@ -127,7 +127,7 @@ export function useIconMorph({
     const count = source.length;
 
     const [internal, setInternal] = useState(() => toIndex(defaultActive));
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
 
     const raw = active === undefined ? internal : toIndex(active);
     const index = count === 0 ? 0 : Math.min(Math.max(raw, 0), count - 1);

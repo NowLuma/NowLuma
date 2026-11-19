@@ -2,12 +2,13 @@
 // friend), build a message visually, preview it, send it. A message containing
 // forward nodes goes through the forward-send action; otherwise the plain
 // send_*_msg. The chosen group provides the @-member context to the builder.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { Loader2, MessageSquarePlus, Send } from 'lucide-react';
 import { Dropdown } from '@/components/interior/dropdown';
 import { Picker } from '@/components/ui/picker';
 import { JsonTree } from '@/components/ui/json-tree';
+import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/debug/segmented';
 import {
     MessageBuilder,
@@ -22,7 +23,6 @@ import { useApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { DebugInvokeResult, QQInfo } from '@/types';
 
-const cardCls = 'cp-panel';
 const looksLikeId = (s: string) => /^\d{3,}$/.test(s.trim());
 
 function TargetPicker({
@@ -30,11 +30,13 @@ function TargetPicker({
     uin,
     value,
     onChange,
+    disabled,
 }: {
     kind: 'group' | 'friend';
     uin: string;
     value: string;
     onChange: (v: string) => void;
+    disabled?: boolean;
 }) {
     const groups = useGroups(kind === 'group' ? uin : '');
     const friends = useFriends(kind === 'friend' ? uin : '');
@@ -50,6 +52,7 @@ function TargetPicker({
             onRefresh={src.refresh}
             placeholder={kind === 'group' ? '选择群…' : '选择好友…'}
             validateRaw={looksLikeId}
+            disabled={disabled}
         />
     );
 }
@@ -63,6 +66,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
     const [segs, setSegs] = useState<Seg[]>([]);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState<DebugInvokeResult | { error: string } | null>(null);
+    const sendingRef = useRef(false);
 
     // default to the first account once loaded
     useEffect(() => {
@@ -75,6 +79,10 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
     const groupId = kind === 'group' ? target : '';
 
     const send = async () => {
+        if (sendingRef.current) {
+            return;
+        }
+
         if (!uin) {
             setResult({ error: '请选择账号' });
             return;
@@ -121,6 +129,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
             kind === 'group' ? { group_id: target } : { user_id: target };
         params[forward ? 'messages' : 'message'] = payload;
 
+        sendingRef.current = true;
         setSending(true);
         setResult(null);
 
@@ -129,6 +138,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
         } catch (e) {
             setResult({ error: e instanceof Error ? e.message : '发送失败' });
         } finally {
+            sendingRef.current = false;
             setSending(false);
         }
     };
@@ -137,8 +147,8 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
 
     return (
         <div className="cp-debug-workbench">
-            <div className="cp-debug-context cp-panel relative z-30 p-5 sm:p-6">
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <fieldset disabled={sending} inert={sending} className="cp-debug-context relative z-30">
+                <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                     <div className="flex flex-col gap-1.5">
                         {/* Matching label rows keep both pickers aligned. */}
                         <div className="flex min-h-12 items-center">
@@ -146,12 +156,23 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                         </div>
                         <Dropdown
                             value={uin}
-                            onChange={setUin}
+                            onChange={(nextUin) => {
+                                if (sendingRef.current || nextUin === uin) {
+                                    return;
+                                }
+
+                                setUin(nextUin);
+                                setTarget('');
+                                setResult(null);
+                            }}
                             label="账号"
                             placeholder={accounts.length === 0 ? '（无在线账号）' : '选择账号'}
+                            disabled={sending || accounts.length === 0}
                             items={accounts.map((account) => ({
                                 value: account.uin,
-                                label: account.nickname || account.uin,
+                                label: account.nickname
+                                    ? `${account.nickname} · ${account.uin}`
+                                    : account.uin,
                             }))}
                             className="w-full"
                         />
@@ -163,8 +184,13 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                                 label="消息目标类型"
                                 value={kind}
                                 onChange={(k) => {
+                                    if (sendingRef.current) {
+                                        return;
+                                    }
+
                                     setKind(k);
                                     setTarget('');
+                                    setResult(null);
                                 }}
                                 options={[
                                     { value: 'group', label: '群聊' },
@@ -172,56 +198,83 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                                 ]}
                             />
                         </div>
-                        <TargetPicker kind={kind} uin={uin} value={target} onChange={setTarget} />
+                        <TargetPicker
+                            kind={kind}
+                            uin={uin}
+                            value={target}
+                            disabled={sending}
+                            onChange={(nextTarget) => {
+                                if (sendingRef.current) {
+                                    return;
+                                }
+
+                                setTarget(nextTarget);
+                                setResult(null);
+                            }}
+                        />
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             <motion.section
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: reduced ? 0 : 0.28 }}
-                className={cn(cardCls, 'relative z-10 flex flex-col gap-5')}
+                className="cp-panel cp-debug-section relative z-10 flex min-w-0 flex-col gap-5"
             >
                 <div className="flex items-center gap-2.5">
-                    <MessageSquarePlus className="h-[18px] w-[18px] text-primary" />
+                    <MessageSquarePlus className="size-4 text-muted-foreground" />
                     <h2 className="text-base font-semibold">编写消息</h2>
                 </div>
+                <div className="cp-document-actions">
+                    <Button
+                        variant="glass"
+                        size="sm"
+                        onClick={send}
+                        disabled={sending}
+                        aria-label="发送消息"
+                    >
+                        {sending ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                            <Send className="optical-forward size-4" />
+                        )}
+                        {sending ? '发送中…' : hasNodes(segs) ? '发送合并转发' : '发送消息'}
+                    </Button>
+                    <span className="min-w-0 break-words font-mono text-xs text-muted-foreground">
+                        {uin ? `QQ ${uin}` : '尚未选择账号'}
+                        {target ? ` · ${kind === 'group' ? '群' : '好友'} ${target}` : ''}
+                    </span>
+                </div>
+                <p className="text-xs leading-relaxed text-warning">
+                    发送会真实作用于此账号和目标，不是模拟预览。
+                </p>
 
-                <div className="flex flex-col gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">消息内容</span>
+                <fieldset
+                    disabled={sending}
+                    inert={sending}
+                    className="flex min-w-0 flex-col gap-2"
+                >
+                    <legend className="mb-2 text-xs font-medium text-muted-foreground">
+                        消息内容
+                    </legend>
                     <MessageBuilder
                         segments={segs}
                         onChange={setSegs}
                         uin={uin}
                         groupId={groupId}
                     />
-                </div>
-
-                <button
-                    type="button"
-                    onClick={send}
-                    disabled={sending}
-                    data-press-scale=""
-                    className="ui-button inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground transition-[background-color,opacity] duration-150 ease-out hover:bg-primary/90 disabled:opacity-50"
-                >
-                    {sending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Send className="optical-forward h-4 w-4" />
-                    )}{' '}
-                    发送{hasNodes(segs) ? '(合并转发)' : ''}
-                </button>
+                </fieldset>
             </motion.section>
 
             <motion.section
                 initial={reduced ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: reduced ? 0 : 0.28 }}
-                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-4')}
+                className="cp-panel cp-debug-section flex min-w-0 flex-col gap-4"
             >
                 <h3 className="text-base font-semibold">内容预览</h3>
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm">
+                <div className="cp-preview text-sm">
                     {preview ? (
                         <span className="whitespace-pre-wrap break-words">{preview}</span>
                     ) : (
@@ -229,7 +282,7 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                     )}
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">OneBot 段</span>
-                <JsonTree data={toOneBot(segs)} maxHeight="14rem" />
+                <JsonTree data={toOneBot(segs)} maxHeight="none" className="cp-json-document" />
 
                 {result && (
                     <div className="flex flex-col gap-1.5">
@@ -242,14 +295,11 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                             {resultFailed ? '发送失败' : '请求完成'}
                         </span>
                         {'error' in result ? (
-                            <div
-                                role="alert"
-                                className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
-                            >
+                            <div role="alert" className="cp-inline-notice text-destructive">
                                 {result.error}
                             </div>
                         ) : (
-                            <JsonTree data={result} maxHeight="12rem" />
+                            <JsonTree data={result} maxHeight="none" className="cp-json-document" />
                         )}
                     </div>
                 )}

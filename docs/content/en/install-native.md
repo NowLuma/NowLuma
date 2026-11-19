@@ -1,108 +1,87 @@
 ---
-title: Native install (Linux release package and Windows single-file exe)
-description: Run a Linux Lite release package with its launcher, or the Windows single-file exe with bundled Node; neither uses a container.
+title: Native install
+description: Linux Lite package, self-contained Windows exe and running from source, including Node baselines, data locations and verification limits.
 ---
 
-# Native install (Linux and Windows)
+# Native install
 
-Native mode does not use a container: the program runs directly on your system and you start and sign in to QQ yourself.
+Native mode does not use Docker. The app runs in your user environment and QQ is your desktop client. Use it when you already manage your own desktop and processes.
 
-## Linux release package
+## Linux Lite
 
-An extracted release package should contain `launcher.sh`, `index.mjs`, `check-node-version.cjs` and `release.json`. Start it from the extracted directory with:
+The release is `Nowluma-v<version>-linux-x64-lite.tar.gz`. After extraction the directory should contain `launcher.sh`, `index.mjs`, `release.json` and, when provided, a bundled Node.
+
+Requirements:
+
+- Linux x64.
+- Node.js `24.22.1` (24.x) or `>=26.12.1`; a bundled Node is preferred.
+- A desktop QQ that you can install and log in to. Nowluma does not install QQ.
+
+Start:
 
 ```bash
 bash launcher.sh
 ```
 
-`deploy/install.sh` ships only with the **source repository**; it is not part of the release package. If you installed from a repository checkout, run the same checks from the repository root and point `--directory` at the extracted release:
+Install from a source checkout into a release directory:
 
 ```bash
 bash deploy/install.sh --native --directory /path/to/release
 ```
 
-In this mode the installer:
+`deploy/install.sh` ships only in the source repository, not in the Lite package. Native mode does not modify your QQ user directory or log in for you.
 
-1. Requires `index.mjs` and `launcher.sh` in the directory, otherwise it asks you to point `--directory` at an extracted release.
-2. Prefers the bundled `node`, falls back to the system `node`, and otherwise reports that bundled Node or Node.js 24.22.1 / 26.12.1+ is required.
-3. Runs `check-node-version.cjs` to enforce the runtime baseline.
-4. Reads `release.json` and verifies that `target` matches the current platform's `linux-<arch>`; a mismatch is a hard error.
-5. Prints that you should sign in to QQ and enable automatic login, then hands over to `launcher.sh`.
-
-The launcher pins the working directory and prefers the bundled Node. The Lite release needs Node.js `24.22.1` (24.x) or `>=26.12.1`. Do not lower the version check just to make it start.
-
-**Native mode does not install QQ and does not modify your user directories.** Open desktop QQ yourself, sign in, then bridge the account as described in [QQ connection](qq-connection.md).
-
-Where native data lives:
-
-| Directory | Contents |
-| --- | --- |
-| `config/` | Console password and 2FA, connection settings, runtime and appearance settings |
-| `data/` | Account message store and media |
-| `logs/` | Runtime logs |
-
-Keep those three directories across upgrades and replace only the release files. QQ's profile directory belongs to QQ; do not move it.
-
-## Example and expected result
-
-```bash
-mkdir -p ~/nowluma && cd ~/nowluma
-tar -xzf nowluma-linux-x64.tar.gz
-bash launcher.sh
-```
-
-When installing from a repository checkout, `bash deploy/install.sh --native --directory ~/nowluma` performs the same checks.
-
-**Expected result**: the terminal reports the actual listener, for example `listening http://127.0.0.1:5099`; open that address and the login page appears. If the default port `5099` is taken, the console logs a warning and automatically moves to a nearby free port (up to 50 ports forward); use the `listening ...` address from the log. To pin the port, stop the other process or change the listener port under “Settings → Service → Service listener” and restart. If all 50 nearby ports are unavailable it exits with `No available TCP port found near 5099`.
-
-**When it fails**:
-
-| Symptom | Fix |
-| --- | --- |
-| `Release platform mismatch` | The package is for another architecture; use the matching one |
-| “bundled Node or Node.js … is required” | Install Node 24.22.1 or 26.12.1+, or use a package that bundles Node |
-| Console port already in use | Check the log for the port it switched to; to pin it, stop the other process or change the listener port and restart |
-| No QQ process after opening the console | Start QQ and sign in first, then refresh 「QQ 连接」 |
+Program data is under `config/`, `data/` and `logs/` in the release or working directory. QQ keeps its own data in its user directory; do not move or delete it during upgrades. See [Data, backup and updates](data-backup.md).
 
 ## Windows
 
-Windows x64 ships as a self-contained `Nowluma.exe`:
+Windows x64 uses a self-contained `Nowluma.exe`:
 
-- It is packaged by `tools/build-windows-exe.mjs` and bundles Node and the runtime; no Docker, Node or .NET installation is required.
-- Double-clicking it unpacks to `%LOCALAPPDATA%\Nowluma` and opens the console in your browser.
-- The current build is **unsigned** and may trigger SmartScreen. Release notes should provide a SHA-256; do not run a binary without a checksum.
-- Closing the window may end the process early; prefer Ctrl+C in the console for a graceful stop. QQ user data and settings are not deleted.
+- Bundles Node 24 and the .NET self-contained runtime; Docker, Node and .NET are not required.
+- Extracts to `%LOCALAPPDATA%\Nowluma` and opens the console in your browser.
+- After startup, use the console. Windows native does not provide the `打开 QQ 桌面` entry; desktop capability comes from the actual server. Complete the in-console notice reading and password setup; there is no additional OOBE installation or platform-chooser wizard.
+- The build is **unsigned** and may trigger SmartScreen. Release notes should provide SHA-256; do not run a binary without a checksum.
+- Closing the window may end the process early; use Ctrl+C in the console for a clean stop. QQ data and settings are not deleted.
 
-This is not a claim that the exe is signed or accepted on a real account. Real QQ login, injection and long-term sessions remain yours to verify; see [Planned and unverified](planned.md).
+After starting, complete [First run](first-run.md), then attach in `QQ 会话`. The first attach for an account requires a kernel choice and risk acknowledgement. Real injection, login and long sessions on Windows must be verified by you. A Windows browser connected to a Linux Docker server gets the desktop entry only when that server reports the capability.
 
-To start:
-
-1. Run `Nowluma.exe`.
-2. Choose local QQ; if a Linux Docker engine is already available, you may choose the isolated desktop instead.
-3. Open Windows QQ yourself, sign in, and enable QQ's own automatic login.
-4. Return to the console and bridge the account as described in [QQ connection](qq-connection.md).
-
-Two Windows-only differences in the interface:
-
-- A 「低完整性警告」 (low integrity warning) appears on the overview or layout area when the current process token has low integrity. You can dismiss it 「临时关闭」 (temporarily, this tab only) or 「永久关闭」 (permanently, this machine).
-- Account detection uses system file handles, so QQ must run on the same machine.
-
-A release package should contain only the program and licence files, never `config/`, `data/`, `logs/` or real account data.
-
-## Running from source (development only)
-
-Only needed when you are changing code:
+## Running from source
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm run build:all
-node dist/index.mjs
+pnpm start
 ```
 
-Development mode differs from a release build in ways that are development conventions (for example password rotation is skipped). Do not infer production behaviour from it. See [Contributing](developing.md).
+The workspace pins Node `24.22.1` and pnpm `11.25.0`. Do not bypass the version check with an older Node.
 
-## Next steps
+`pnpm dev` tries to attach to a real local QQ; use it only when you intend a real runtime test. Prefer isolated fakes or the Docker smoke for routine development.
 
-- Open the console: [First start](first-run.md)
-- Decide how you reach it: [Access and networking](access-network.md)
-- Something is broken: [Troubleshooting](troubleshooting.md)
+## First attach
+
+1. Open and log in to desktop QQ.
+2. Open the console and `QQ 会话`.
+3. Press `刷新`, select the process, press `加载`.
+4. On the first attach for that account, confirm the risk in `选择接入内核`; submit stays disabled until checked.
+5. Once `已在线`, add an endpoint in `机器人连接`.
+
+Auto-connect running QQ is a service setting applied after restart. It auto-attaches only after local QQ login, a recognized real UIN, and a current-risk-version compatibility acknowledgement. It neither logs in to QQ nor skips kernel confirmation; a PID explicitly unloaded still needs a manual load.
+
+## Desktop and permissions
+
+- Linux native mode must be able to attach to the same user's QQ process. Read the log on permission failures; do not mask them with `chmod 777`.
+- Windows may show an integrity-level notice; follow the UI and do not disable all isolation.
+- For remote access, prefer SSH tunnels or HTTPS; see [Access and network](access-network.md).
+
+## Limits and verification
+
+| Item | Status |
+| --- | --- |
+| Linux Lite startup and release layout | Automated checks |
+| Real Linux QQ login/attach | Verify on your desktop |
+| Windows exe | Built, unsigned; real-account behaviour unverified |
+| Docker arm64 | Build inputs only, unverified |
+| Rewrite kernel | Incomplete and unselectable; no automatic fallback |
+| Six original prebuilt files | Used by the current release; internal bytes and required ABI unchanged |
+
+Native mode does not automatically gain Docker's process isolation or desktop gateway; your desktop, user permissions and network define the boundary. Unverified platforms and artifacts are listed under [Planned and unverified](planned.md).

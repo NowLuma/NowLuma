@@ -15,14 +15,15 @@ import {
     Trash2,
 } from 'lucide-react';
 import { JsonTree } from '@/components/ui/json-tree';
-import { GlassMaterial } from '@/components/ui/glass-material';
+import { GlassSurface } from '@/components/ui/glass-material';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Segmented } from '@/components/debug/segmented';
 import { useApi } from '@/lib/api';
 import { cn, downloadBlob } from '@/lib/utils';
 import type { DebugStreamMessage } from '@/types';
 
 const STREAM_CAP = 300;
-const cardCls = 'cp-panel';
 
 interface StreamRow {
     id: number;
@@ -35,21 +36,25 @@ function IconBtn({
     onClick,
     title,
     children,
+    danger,
 }: {
     onClick: () => void;
     title: string;
     children: ReactNode;
+    danger?: boolean;
 }) {
     return (
-        <button
+        <Button
             type="button"
+            variant={danger ? 'ghost' : 'glass'}
+            size="icon"
             onClick={onClick}
             title={title}
             aria-label={title}
-            className="ui-button flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className={danger ? 'text-muted-foreground hover:text-destructive' : undefined}
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
@@ -79,7 +84,7 @@ function StatusPill({
     return (
         <div
             role="status"
-            className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-medium"
+            className="inline-flex items-center gap-2 text-xs font-medium"
         >
             <span className={cn('h-2 w-2 rounded-full', map.dot, map.glow)} />
             <span className="text-muted-foreground">{map.label}</span>
@@ -135,7 +140,7 @@ function StreamRowItem({ row }: { row: StreamRow }) {
                 aria-expanded={open}
                 aria-controls={id}
                 onClick={() => setOpen((v) => !v)}
-                className="flex min-h-16 w-full items-start gap-3 px-3 py-3 text-left text-[13px]"
+                className="flex min-h-16 min-w-0 w-full items-start gap-3 py-3 text-left text-[13px]"
             >
                 <ChevronRight
                     className={cn(
@@ -146,14 +151,7 @@ function StreamRowItem({ row }: { row: StreamRow }) {
                 <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="font-mono tabular-nums">{time}</span>
-                        <span
-                            className={cn(
-                                'rounded px-1.5 py-0.5 text-micro font-semibold',
-                                isAction
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'bg-muted text-muted-foreground',
-                            )}
-                        >
+                        <span className="text-micro font-medium">
                             {isAction ? '调用' : '事件'}
                         </span>
                         <span className="font-mono">{msg.uin}</span>
@@ -183,8 +181,8 @@ function StreamRowItem({ row }: { row: StreamRow }) {
                             transition={{ duration: reduced ? 0 : 0.32, ease: [0.16, 1, 0.3, 1] }}
                             className="overflow-hidden"
                         >
-                            <div className="mx-3 mb-3">
-                                <JsonTree data={detail} maxHeight="18rem" />
+                            <div className="mb-3 min-w-0">
+                                <JsonTree data={detail} maxHeight="none" className="cp-json-document" />
                             </div>
                         </motion.div>
                     )}
@@ -202,6 +200,7 @@ export function LiveActivity() {
     const [status, setStatus] = useState<'open' | 'reconnecting' | 'closed'>('closed');
     const [kindFilter, setKindFilter] = useState<'all' | 'event' | 'action'>('all');
     const [query, setQuery] = useState('');
+    const [confirmClear, setConfirmClear] = useState(false);
     const idRef = useRef(0);
 
     // Pausing truly drops the live fetch stream instead of connecting-and-discarding:
@@ -281,11 +280,11 @@ export function LiveActivity() {
             initial={reduced ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: reduced ? 0 : 0.28 }}
-            className={cn(cardCls, 'flex min-h-[28rem] min-w-0 flex-col p-4 sm:p-6')}
+            className="cp-panel flex min-w-0 flex-col gap-4"
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <RadioTower className="h-[18px] w-[18px] text-primary" />
+                    <RadioTower className="size-4 text-muted-foreground" />
                     <h2 className="text-[15px] font-semibold tracking-tight">实时活动</h2>
                     <span className="text-xs text-muted-foreground tabular-nums">
                         {visible.length}
@@ -313,14 +312,13 @@ export function LiveActivity() {
                     <IconBtn onClick={exportJson} title="导出 JSON">
                         <Download className="h-4 w-4" />
                     </IconBtn>
-                    <IconBtn onClick={() => setRows([])} title="清空">
+                    <IconBtn danger onClick={() => setConfirmClear(true)} title="清空活动">
                         <Trash2 className="h-4 w-4" />
                     </IconBtn>
                 </div>
             </div>
 
-            <div className="ui-glass ui-glass-search cp-search mt-4">
-                <GlassMaterial />
+            <GlassSurface className="ui-glass-search cp-search max-w-3xl">
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
                     type="search"
@@ -330,14 +328,12 @@ export function LiveActivity() {
                     placeholder="搜索类型 / 账号 / 内容…"
                     className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
-            </div>
+            </GlassSurface>
 
             <div className="mt-4 flex min-w-0 flex-1 flex-col">
                 {visible.length === 0 ? (
-                    <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60">
-                            <Activity className="h-6 w-6 text-muted-foreground/70" />
-                        </div>
+                    <div className="cp-empty-state">
+                        <Activity className="size-7 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
                             {paused
                                 ? '已暂停'
@@ -350,6 +346,15 @@ export function LiveActivity() {
                     visible.map((r) => <StreamRowItem key={r.id} row={r} />)
                 )}
             </div>
+            <ConfirmDialog
+                open={confirmClear}
+                onOpenChange={setConfirmClear}
+                title="清空活动记录？"
+                description="仅清空当前浏览器的活动缓冲区，不会修改账号消息或撤销调用。"
+                confirmText="清空活动"
+                destructive
+                onConfirm={() => setRows([])}
+            />
         </motion.section>
     );
 }

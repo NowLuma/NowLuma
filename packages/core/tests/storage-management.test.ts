@@ -214,7 +214,11 @@ describe('StorageManagementService', () => {
         const externalMessages = path.join(externalDir, 'messages.db');
         writeSized(externalMessages, 10);
         fs.mkdirSync(dataDir, { recursive: true });
-        fs.symlinkSync(externalDir, path.join(dataDir, '12345'));
+        fs.symlinkSync(
+            externalDir,
+            path.join(dataDir, '12345'),
+            process.platform === 'win32' ? 'junction' : 'dir',
+        );
 
         const service = new StorageManagementService({
             dataDir,
@@ -240,7 +244,7 @@ describe('StorageManagementService', () => {
         const externalDir = path.join(root, 'external');
         const externalMessages = path.join(externalDir, '12345', 'messages.db');
         writeSized(externalMessages, 10);
-        fs.symlinkSync(externalDir, dataDir);
+        fs.symlinkSync(externalDir, dataDir, process.platform === 'win32' ? 'junction' : 'dir');
 
         const service = new StorageManagementService({
             dataDir,

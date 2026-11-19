@@ -31,11 +31,13 @@ vi.mock('motion/react', async (original) => ({
 
 let host: ReturnType<typeof hookHost>;
 let noticeHost: ReturnType<typeof hookHost>;
+let viewportHooks: ReturnType<typeof hookHost>;
 let resize: (() => void)[];
 
 beforeEach(() => {
     host = hookHost();
     noticeHost = hookHost();
+    viewportHooks = hookHost();
     resize = [];
     preferences.reduced = false;
     preferences.present = true;
@@ -55,6 +57,7 @@ beforeEach(() => {
 afterEach(() => {
     host.unmount();
     noticeHost.unmount();
+    viewportHooks.unmount();
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -357,7 +360,7 @@ function feedback(): ReturnType<typeof useActionFeedback> {
 
 function viewport(value: ReturnType<typeof feedback>) {
     vi.spyOn(React, 'useContext').mockReturnValue(value);
-    return ActionFeedbackViewport();
+    return viewportHooks.render(() => ActionFeedbackViewport());
 }
 
 function noticeRenderer(value: ReturnType<typeof feedback>) {
@@ -443,6 +446,33 @@ describe('ActionFeedbackProvider running-to-result lifecycle', () => {
             { tone: 'error' },
             { tone: 'error', detail: '权限不足' },
         ]);
+    });
+
+    it('retains a failed result when setup feedback hosts are replaced and removed', async () => {
+        const failure = new Error('TLS 证书读取失败');
+        await expect(
+            feedback().runAction({ title: '保存设置', errorTitle: '保存失败' }, () =>
+                Promise.reject(failure),
+            ),
+        ).rejects.toBe(failure);
+        const leaveFirst = feedback().registerViewportHost({} as HTMLElement);
+        const leaveCurrent = feedback().registerViewportHost({} as HTMLElement);
+        leaveFirst();
+        const render = noticeRenderer(feedback());
+
+        const expectFailure = () => {
+            const tree = render();
+            expect(elements(tree).some((item) => item.props.role === 'alert')).toBe(true);
+            expect(banner(tree).props).toMatchObject({
+                state: 'open',
+                title: '保存失败',
+                description: 'TLS 证书读取失败',
+            });
+        };
+
+        expectFailure();
+        leaveCurrent();
+        expectFailure();
     });
 
     it('uses discrete countdown text with no motion and preserves the original dismissal deadline', () => {

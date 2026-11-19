@@ -327,7 +327,7 @@ export function DashboardGrid({
                 page wheel even when the widget already fits on screen. */}
                         <div
                             className={cn(
-                                'h-full w-full overflow-hidden rounded-xl',
+                                'h-full w-full overflow-hidden rounded-[4px]',
                                 editing && 'pointer-events-none select-none',
                             )}
                         >

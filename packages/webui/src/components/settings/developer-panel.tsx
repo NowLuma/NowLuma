@@ -15,25 +15,21 @@ export function DeveloperPanel() {
     const [crashRequested, requestCrash] = useReducer(developerCrashReducer, false);
 
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-7">
             {/* Event-handler errors bypass React boundaries; the probe throws on render. */}
             <DeveloperCrashProbe requested={crashRequested} />
-            <Group
-                title="界面测试"
-                icon={Bug}
-                description="直接验证首次使用流程与页面级异常恢复；这些工具始终可见，不受环境开关限制。"
-            >
+            <Group title="交互演练" icon={Bug}>
                 <SettingRow
                     label="首次使用引导"
-                    hint="以演练模式重新进入完整引导，不会修改协议确认记录或真实访问密码。"
+                    hint="演练完整引导，不保存协议确认、访问密码或外观设置。"
                 >
-                    <Button variant="outline" size="sm" onClick={() => setConfirmOnboarding(true)}>
-                        <RotateCcw className="size-4" /> 重新进入
+                    <Button variant="glass" size="sm" onClick={() => setConfirmOnboarding(true)}>
+                        <RotateCcw className="size-4" /> 进入演练
                     </Button>
                 </SettingRow>
                 <SettingRow
                     label="崩溃界面"
-                    hint="主动抛出测试异常并交给页面错误边界；在崩溃界面点击“重试”即可返回。"
+                    hint="展示页面异常界面；选择“重试”返回。"
                 >
                     <Button variant="destructive" size="sm" onClick={() => setConfirmCrash(true)}>
                         <AlertTriangle className="size-4" /> 触发崩溃
@@ -45,7 +41,7 @@ export function DeveloperPanel() {
                 open={confirmOnboarding}
                 onOpenChange={setConfirmOnboarding}
                 title="重新进入首次使用引导？"
-                description="将以演练模式展示完整流程，不会修改协议确认记录或真实访问密码。"
+                description="将以演练模式展示完整流程，不会修改协议确认记录、真实访问密码或外观设置。"
                 confirmText="进入引导"
                 onConfirm={restartOnboarding}
             />

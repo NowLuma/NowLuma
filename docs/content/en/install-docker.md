@@ -1,161 +1,138 @@
 ---
 title: Docker install (Linux)
-description: Deploy Nowluma on Linux with the installer — language choice, Docker source choice, ports and timezone, initial password, daily commands and volumes.
+description: Deploy Nowluma on Linux with the installer: access mode, ports, timezone, volumes, daily commands, desktop, upgrades and verification status.
 ---
 
 # Docker install (Linux)
 
-This is the most thoroughly verified install path: the host needs neither Node nor QQ, because everything runs inside the container.
+For a long-running Linux server or NAS. The installer checks Docker Engine and Compose v2, writes private configuration and starts the container.
 
-## Before you start
+## Requirements
 
-| Requirement | Notes |
+- Linux x86_64 (amd64). arm64 has build inputs but is not actually verified.
+- Docker Engine and Compose v2; use sudo for subsequent commands when required.
+- Network access to container images, Node and the pinned QQ package.
+- Four persistent volumes: `config`, `data`, `logs` and the complete QQ HOME.
+
+## Installer
+
+From the source directory:
+
+```bash
+bash deploy/install.sh --docker
+```
+
+The first run asks:
+
+| Prompt | Meaning |
 | --- | --- |
-| OS | Linux. On anything else the installer exits and points at the Windows one-click package |
-| Architecture | amd64 has real build and startup verification; arm64 has build inputs but is **unverified**, see [Planned and unverified](planned.md) |
-| Privileges | Working `sudo`, or membership in the `docker` group |
-| Network | The first build downloads dependencies, Node and a pinned, checksum-verified Linux QQ package |
-| Disk | Several GB recommended for the image, QQ and dependencies |
+| Language | `1. 简体中文` or `2. English` |
+| Access | `1. 仅本机/SSH（推荐）` or `2. 局域网` |
+| Console and QQ desktop port | Default `5099` |
+| Bot HTTP port | Default `3000` |
+| Bot WebSocket port | Default `3001` |
+| Timezone | For example `Asia/Shanghai` |
 
-From the extracted source directory:
+Enter accepts the default. The three ports must differ. Configuration is stored in private `deploy/.env`; an existing file is preserved verbatim and never regenerated.
 
-```bash
-bash deploy/install.sh --docker
-```
+If Docker is missing, the installer shows an install command and asks first; it does not install silently or require disabling the firewall/SELinux. Mirror choice is yours.
 
-You can also preselect the language: `bash deploy/install.sh --docker --lang en`.
+On success it prints the generated initial console password and actual address. Existing deployments are not given a new password.
 
-## Step 1 — choose a language
-
-The very first question is the language; every later confirmation, error and volume explanation follows it:
-
-```
-Nowluma — 1. 简体中文  2. English
-Language / 语言 [1]:
-```
-
-- Press Enter for Simplified Chinese.
-- Type `2` for English.
-- The timezone default follows the language: `Asia/Shanghai` for Chinese, `UTC` for English.
-
-## Step 2 — check Docker
-
-The installer behaves differently in three cases:
-
-1. **Docker already installed**: prints that Docker was detected and that its existing configuration and registry mirrors are kept. Nothing is reinstalled.
-2. **No Docker**: asks 「是否使用第三方 LinuxMirrors 安装脚本并配置 Docker 镜像源？y=使用，n=官方安装。」 — *use the third-party LinuxMirrors installer and configure registry mirrors? y = mirrors, n = official.* Default is `n`.
-   - `n` prints the official command it will run: `curl -fsSL https://get.docker.com | bash -s docker`.
-   - `y` prints the third-party command `bash <(curl -sSL https://linuxmirrors.cn/docker.sh)` and warns that this script may also ask about disabling the firewall or SELinux — **Nowluma does not require that**; decide according to your own security policy.
-   - Both paths then ask 「是否继续执行？」 (run this command?) with `y` as the default. Enter proceeds; `n` cancels and nothing is written.
-3. **Docker installed but the daemon is down**: asks whether to start it and enable it on boot, then runs `systemctl enable --now docker`.
-
-Next comes the Compose v2 check. If it is missing, the installer asks whether to install the plugin and uses `apt-get`/`dnf`/`yum`/`apk`/`pacman`/`zypper` as appropriate. Declining exits without writing configuration.
-
-## Step 3 — first deployment settings (asked once)
-
-These questions only appear when `deploy/.env` does not exist. If it does, the installer prints that deployment settings, accounts and the QQ HOME are preserved, **keeps the file byte-for-byte**, and resets no passwords.
-
-| Question | Default | Effect |
-| --- | --- | --- |
-| Access: `1. Localhost/SSH` (recommended) or `2. LAN` | `1` | Host bind address, `127.0.0.1` or `0.0.0.0`; choosing LAN warns that HTTP is unencrypted |
-| Console and QQ desktop port | `5099` | Browser port, and the port the desktop entry uses |
-| Bot HTTP endpoint port | `3000` | OneBot HTTP server / reporting port |
-| Bot WebSocket port | `3001` | OneBot WS service port |
-| Timezone | `Asia/Shanghai` (zh) / `UTC` (en) | Written into the container's `TZ` |
-
-Constraints:
-
-- Ports must be integers from `1` to `65535`, and the three ports must differ; duplicates send you back to re-enter.
-- The timezone accepts letters, digits and `_ + / -` only, and rejects `..`; otherwise installation aborts.
-- The generated `deploy/.env` is mode `600`. It must not be a symlink — the installer fails if it is.
-
-## Step 4 — build and wait for the startup check
-
-The installer warns that the first build downloads Node, QQ and dependencies, then runs `manage.sh start`, which is `docker compose up -d --build --wait` with a 240-second timeout.
-
-On success it prints:
-
-- The console's initial password — **first run only**, 16 hex characters.
-- The console URL, for example `http://127.0.0.1:5099` (the host IP when LAN access was chosen).
-- The installation directory and the daily commands.
-
-The initial password comes from the `initial credentials: user=admin password=...` line in the container log. If it has scrolled away, run `bash deploy/manage.sh logs`.
-
-## Example — a fresh Ubuntu server
+## First entry
 
 ```bash
-git clone <repository> Nowluma && cd Nowluma
-bash deploy/install.sh --docker
+bash deploy/manage.sh logs
 ```
 
-The interaction (example, not a verbatim transcript):
+Open `http://127.0.0.1:5099`, log in with the initial password and complete [First run](first-run.md). Then:
 
-```
-Nowluma — 1. 简体中文  2. English
-Language / 语言 [1]: 2
-Docker was not found.
-Use the third-party LinuxMirrors installer and configure registry mirrors? y=mirrors, n=official installer. [y/N]: n
-The official Docker installer will run without an added registry mirror:
-curl -fsSL https://get.docker.com | bash -s docker
-Run this command? [Y/n]:
-Access: 1. Localhost/SSH (recommended)  2. LAN [1]:
-Console and QQ desktop port: [5099]:
-Bot HTTP endpoint port: [3000]:
-Bot WebSocket endpoint port: [3001]:
-Timezone: [UTC]:
-```
+1. Press `打开 QQ 桌面` to reach the graphical QQ inside the container.
+2. Log in inside QQ and optionally enable QQ's own auto-login.
+3. In `QQ 会话`, refresh and attach the account.
+4. On first attach, choose and acknowledge the kernel for that real UIN.
+5. Add an endpoint in `机器人连接` and paste the address and token into your bot.
 
-**Expected result**: the final output contains a “Nowluma is running” line, one console password, one console URL, and the five daily commands `bash deploy/manage.sh start|stop|restart|logs|doctor`.
-
-## Three things to do right after installing
-
-1. Open the console URL and follow [First start](first-run.md) to accept the agreements and change the access password.
-2. Click 「打开 QQ 桌面」 (Open QQ desktop), sign in to QQ inside that window, and enable automatic login **in QQ's own settings**.
-3. Return to [QQ connection](qq-connection.md) and load the account. Add endpoints later from [Endpoint configuration](onebot-config.md) when a bot needs them.
-
-The desktop reuses your console session; **no separate VNC password is required**. The browser, its scripts and the WebSocket all check the console session, while the backend VNC stays on loopback with its own authentication.
-
-## Volumes and the runtime user
-
-The Compose project name is fixed to `nowluma`, so volume names do not depend on the source directory name — moving the checkout reuses the same data:
-
-| Volume | Container path | Contents |
-| --- | --- | --- |
-| `nowluma_config` | `/app/config` | Console password/2FA, connections, runtime and appearance settings |
-| `nowluma_data` | `/app/data` | Account message store and media |
-| `nowluma_logs` | `/app/logs` | Runtime logs |
-| `nowluma_qq-home` | `/home/nowluma` | Complete QQ HOME: settings, credentials, user storage, machine ID |
-
-Both the program and QQ run as UID/GID **1000** with a shared HOME; `XDG_CONFIG_HOME=/home/nowluma/.config` and QQ's config directory is `QQ` inside it. The whole HOME is kept, not just `login.db`. The XDG runtime directory is the temporary `/tmp/nowluma-runtime`, so stale locks are never persisted.
-
-The machine ID is generated once inside HOME and reused when the container is recreated. The hostname is fixed to `nowluma`.
+The desktop reuses the current console session; no extra VNC password is needed. Do not expose it directly to the public internet.
 
 ## Daily commands
 
 ```bash
-bash deploy/manage.sh start     # build and start, wait for the health check
-bash deploy/manage.sh stop      # stop; volumes are kept
-bash deploy/manage.sh restart   # stop cleanly, start, wait for recovery
-bash deploy/manage.sh logs      # follow logs
-bash deploy/manage.sh doctor    # processes, directories, permissions, listeners
+bash deploy/manage.sh start
+bash deploy/manage.sh stop
+bash deploy/manage.sh restart
+bash deploy/manage.sh logs
+bash deploy/manage.sh doctor
 ```
 
-If Docker needs `sudo`, the commands the installer prints include `sudo` automatically.
+- `start` builds and waits for health; failure returns non-zero and keeps existing data.
+- `restart` stops gracefully and waits for recovery.
+- `stop` deletes no volumes.
+- `doctor` checks the container, processes, ports and directories.
+- Errors in the log do not mean installation succeeded.
 
-`doctor` runs the in-container health check as UID 1000 and prints `id`, `HOME`, `XDG_CONFIG_HOME` plus the permissions of `/home/nowluma`, `/home/nowluma/.config/QQ`, `/app/config`, `/app/data` and `/app/logs`.
+## Ports and network
 
-## When installation fails
+Only host loopback is published by default. For a remote server, create a tunnel from your computer:
 
-| Symptom | What to do |
+```bash
+ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 user@server
+```
+
+Keep it open, then visit `http://127.0.0.1:5099`.
+
+If you explicitly choose LAN access, the installer binds `0.0.0.0` and warns that HTTP is unencrypted. Configure HTTPS or restrict access to trusted networks; never expose the console and desktop directly to the internet. See [Access and network](access-network.md).
+
+Whether bot ports 3000/3001 are reachable depends on Compose publishing. Every endpoint still needs its own token; the console password is not a substitute.
+
+## Volumes
+
+The Compose project is fixed as `nowluma`, so volume names do not depend on the checkout directory:
+
+| Volume | Container path | Content |
+| --- | --- | --- |
+| `nowluma_config` | `/app/config` | Password/2FA, connections, kernel choices, runtime and appearance |
+| `nowluma_data` | `/app/data` | Account message store and media |
+| `nowluma_logs` | `/app/logs` | Runtime logs |
+| `nowluma_qq-home` | `/home/nowluma` | Complete QQ environment, auto-login, credentials, machine ID |
+
+QQ and the app run as UID/GID 1000 with the same HOME and XDG environment. The machine ID is created in HOME and reused after container recreation; XDG runtime is temporary `/tmp/nowluma-runtime`, so stale locks/sockets are not persisted.
+
+Normal `stop`, `restart` and recreation reuse these volumes. `docker compose down -v` deletes data; use it only when you intend to erase everything.
+
+## Desktop and authentication
+
+- The desktop is served at same-origin `/desktop/`; only the console port is published, not the old 6080.
+- QQ, Xvfb, openbox and x11vnc run in one container with one complete HOME, not a VM per account; multiple accounts share this desktop environment.
+- HttpOnly, SameSite=Strict, path-scoped cookies; console tokens and VNC passwords never enter URLs.
+- The VNC backend listens only on loopback 5900 and keeps independent authentication; the gateway checks the session server-side.
+- After logout, password change or expiry, desktop operations stop; WebSocket also checks Origin.
+
+A reverse proxy must preserve `/desktop/`, the real Host, WebSocket upgrade headers and a sufficient read timeout. See [Access and network](access-network.md).
+
+## Upgrade and removal
+
+1. Stop and back up all four volumes to avoid copying live SQLite/WAL.
+2. Update the source or release directory and run `bash deploy/manage.sh start`; volumes are reused.
+3. Do not use `down -v` to upgrade.
+4. Confirm backups before deleting anything; normal `stop` keeps data.
+
+## Verification status
+
+Container smoke uses a fresh HOME and verifies QQ process discovery, that unconfirmed accounts are not auto-attached, desktop authentication and persistence across restart/recreate. It does not fabricate account confirmation or call process discovery a real QQ login.
+
+Real hook attach and real QQ login are **NOT RUN** in the latest smoke. Earlier CI results are historical and are not acceptance for this build, and CI for the current HEAD has not run. Current CI does not prove message delivery, QR-free restart or a working rewrite kernel.
+
+## Troubleshooting
+
+| Symptom | Check |
 | --- | --- |
-| Stuck downloading dependencies or QQ | Check network and DNS. When the official address is unavailable the installer says so and points at the pinned release mirror instead of silently changing versions |
-| “Startup failed; data is preserved.” | Run `bash deploy/manage.sh logs`. No volume was deleted; fix the cause and run `start` again |
-| Port already in use | Change the ports in `deploy/.env` and `restart`. Do not edit the Compose file directly |
-| Build succeeded but the console does not open | Check the bind address, run `manage.sh doctor`, and for a remote server open an SSH tunnel first — see [Access and networking](access-network.md) |
-| You ran `docker compose down -v` | The volumes are gone and QQ must scan again. See [Data, backup and updates](data-backup.md) |
+| Console unreachable | Container health, port conflict, tunnel or LAN publish address |
+| Desktop unreachable | Console session, onboarding, proxy Host and WebSocket |
+| No QQ process | QQ started, Xvfb/QQ logs; an empty list is not success |
+| Cannot attach | Native component/architecture, `SYS_PTRACE`, matching users |
+| Auto-login lost after restart | `nowluma_qq-home` reused, HOME/XDG not overridden, no `down -v` |
+| Files exist but QR required | QQ server session expired; verify inside QQ |
+| Corrupt configuration | The program reports and preserves it; it is not overwritten |
 
-## What “installation succeeded” means
-
-The installer only reports success after the startup check passes. That check verifies the QQ process exists, the desktop listener is up and the console answers. If a required process exits, the entrypoint ends the service and lets Docker restart it rather than leaving a console-only container behind.
-
-It does not mean QQ is signed in, and it does not mean a bot will reply. Continue with [First start](first-run.md) and [QQ connection](qq-connection.md).
+More entry points: [Troubleshooting](troubleshooting.md).

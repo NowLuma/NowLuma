@@ -109,7 +109,7 @@ export function UpdateInstaller({ version }: { version: string | null }) {
     }
 
     return (
-        <div className="flex flex-col gap-3 px-5 py-4">
+        <div className="flex min-w-0 flex-col gap-3 py-3">
             {error && (
                 <p role="alert" className="text-xs text-destructive">
                     {error}
@@ -131,9 +131,9 @@ export function UpdateInstaller({ version }: { version: string | null }) {
             )}
             {status?.phase === 'restarting' && <p className="text-sm">正在重启，稍后刷新页面。</p>}
             {status?.phase === 'ready' && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <span className="text-sm">v{status.version} 已就绪</span>
-                    <Button size="sm" onClick={() => setConfirmRestart(true)}>
+                    <Button size="sm" variant="glass" onClick={() => setConfirmRestart(true)}>
                         <RefreshCw className="size-4" />
                         重启更新
                     </Button>
@@ -141,6 +141,7 @@ export function UpdateInstaller({ version }: { version: string | null }) {
             )}
             {version && (phase === 'idle' || phase === 'error') && (
                 <Button
+                    variant="glass"
                     size="sm"
                     className="self-start"
                     onClick={() => {

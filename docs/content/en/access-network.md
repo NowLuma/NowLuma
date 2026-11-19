@@ -1,64 +1,40 @@
 ---
-title: Access and networking
-description: Local, LAN and SSH access, TLS and reverse proxies, how /desktop/ authenticates, and which ports are exposed.
+title: Access and network
+description: Local, SSH, LAN and reverse-proxy access; TLS, desktop authentication, token handling and recovery.
 ---
 
-# Access and networking
+# Access and network
 
-This chapter answers three questions: where you reach the console from, how to keep that safe, and why the desktop entry behaves differently from an ordinary page.
+By default only the local machine can reach the console. Prefer an SSH tunnel for remote use; use an HTTPS reverse proxy for LAN or public entry. Never expose the management UI and desktop directly over plaintext public HTTP.
 
-## Three ways to reach it
+## Three entry modes
 
-| Method | When | Bind address | TLS needed |
-| --- | --- | --- | --- |
-| Local / SSH tunnel | Remote servers (recommended) | `127.0.0.1` | The tunnel is already encrypted |
-| LAN direct | Same trusted network | `0.0.0.0` | **Recommended**; otherwise the password travels in plaintext |
-| Reverse proxy + domain | You want HTTPS and a single entry | `127.0.0.1` + proxy | Required |
+| Entry | Suitable for | Key point |
+| --- | --- | --- |
+| `http://127.0.0.1:5099` | Same machine | Default bind is `127.0.0.1` |
+| SSH tunnel | Remote server | Only a local port is opened; traffic goes through SSH |
+| LAN / reverse proxy | Trusted network or existing HTTPS | Strong access password; public entry requires TLS |
 
-Default ports: console and desktop **5099**, bot HTTP **3000**, bot WebSocket **3001**.
+The installer's `1. 仅本机/SSH（推荐）` sets `127.0.0.1`; `2. 局域网` sets `0.0.0.0` and warns that HTTP is unencrypted.
 
-## SSH tunnel (the cheapest safe option)
-
-On your own computer:
+## SSH tunnel
 
 ```bash
 ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 user@server
 ```
 
-Keep that window open and browse to `http://127.0.0.1:5099`.
-
-**Expected result**: the console behaves as if it were local, and the server exposes nothing publicly.
-
-To connect a bot running on your machine, forward 3000 too:
-
-```bash
-ssh -L 5099:127.0.0.1:5099 -L 3000:127.0.0.1:3000 -L 3001:127.0.0.1:3001 user@server
-```
+Keep the window open and visit `http://127.0.0.1:5099`. Forward bot ports only as needed; do not publish 5099 publicly.
 
 ## LAN
 
-The installer's second question offers `2. LAN`, which sets the bind address to `0.0.0.0`. You can also switch later under service → listener → 「所有网卡」 (all interfaces) and save, then restart.
+- Change the bind address under Settings → `服务` → `服务监听`, or choose LAN during install.
+- Restrict access to trusted networks with a firewall.
+- Plain HTTP on a LAN can expose passwords and sessions; use TLS or keep access inside SSH.
+- Restart Nowluma after changing the listener.
 
-The cost, stated plainly:
+## Reverse proxy
 
-- Anyone who can reach the port sees the login page.
-- Without TLS, the access password crosses the network in plaintext.
-- The interface itself warns you when you choose all interfaces: enable HTTPS and set strong credentials.
-
-**Do not expose the console or desktop entry directly to the internet.** For public access, put a reverse proxy with TLS in front.
-
-## TLS and reverse proxies
-
-### Enable HTTPS inside the console
-
-Under 「服务 → HTTPS / TLS」, paste the certificate and private key PEM, press 「保存证书」, enable HTTPS, save, and restart the service.
-
-- An invalid certificate is rejected.
-- A broken TLS configuration makes startup fail instead of downgrading to HTTP.
-
-### Nginx reverse proxy
-
-Terminate TLS on the proxy first. The important parts:
+Preserve the real Host, forwarded protocol and WebSocket upgrade. Example (configure TLS first):
 
 ```nginx
 location / {
@@ -69,9 +45,7 @@ location / {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_buffering off;
     proxy_read_timeout 3600s;
-    # Keep X-Nowluma-Token; Authorization stays available for proxy Basic Auth
 }
-
 location /desktop/ {
     proxy_pass http://127.0.0.1:5099;
     proxy_http_version 1.1;
@@ -82,77 +56,49 @@ location /desktop/ {
 }
 ```
 
-Rules:
+- Do not drop the `/desktop/` prefix or proxy it to the old 6080.
+- Set `trust-proxy` to `1`, `loopback` or explicit IPs only behind a trusted proxy. Trusting every forwarded header defeats source checks.
+- Proxy Basic Auth does not replace the Nowluma password; both can coexist.
 
-- `Host` must keep the real access port, or origin checks will be wrong.
-- `proxy_buffering off` is required for SSE (log and state streaming); otherwise “live” logs arrive in batches.
-- `/desktop/` must be proxied as-is, WebSocket upgrade headers must pass through, and the read timeout must be generous.
-- The session token travels in `X-Nowluma-Token`, leaving `Authorization` for the proxy's own auth; the backend also accepts `Authorization: Bearer`.
-- Set `trustProxy` only when requests really come from **your** proxy. Trusting public forwarded headers abandons origin checking.
+## HTTPS / TLS
 
-## Bot endpoints vs access paths
+- Under Settings → `服务` → `HTTPS / TLS`, paste a valid PEM certificate and key. The key is written to `config/key.pem` (0600) and never echoed.
+- If the certificate cannot load after TLS is enabled, WebUI startup fails rather than downgrading to HTTP.
+- A reverse proxy may terminate TLS and forward to loopback HTTP; ensure the proxy-to-local hop is on the same host or a trusted network.
+- Expired, mismatched or incomplete chains are rejected by the browser; verify the certificate there first.
 
-| You want | Configure here |
+## Desktop authentication
+
+Docker desktop is served under `/desktop/`:
+
+- HttpOnly, SameSite=Strict, path-scoped cookies; console tokens and VNC passwords never appear in URLs.
+- The gateway validates the console session server-side; the VNC backend listens only on loopback 5900 and keeps independent authentication. Its password is not returned to the browser.
+- Logout, password change or session expiry stops desktop operations; WebSocket also checks Origin.
+- The automatic `打开 QQ 桌面` entry always uses same-origin `/desktop/`; it does not use browser user agent or a configured external URL, and appears only when the server has actually applied the gateway.
+
+## Tokens, passwords and sessions
+
+- Sessions live in the browser; `退出登录` clears the current browser token.
+- Changing the access password immediately invalidates other sessions.
+- `?token=<password>` is a one-shot convenience removed from the address bar after reading; never share such a link.
+- With 2FA enabled, a one-time code or recovery code is also required; recovery codes are shown once.
+
+## Recovery
+
+| Situation | Action |
 | --- | --- |
-| Browser access to the console | Bind address / reverse proxy / SSH tunnel (this chapter) |
-| A local bot talking OneBot | Endpoints in [Endpoint configuration](onebot-config.md) plus published ports in your deployment |
-| A usable QQ desktop | Desktop entry settings plus `/desktop/` (next section) |
+| Forgot access password | Stop, back up and move `config/webui.json`, restart to get a new initial password; this also clears 2FA and sessions |
+| Lost 2FA | Use a recovery code; otherwise reset as above |
+| Suspected session leak | Change the password to expire other sessions; review proxy and network access |
+| Insecure banner | Non-loopback without HTTPS; use SSH or TLS |
+| Wrong source behind proxy | Check `trust-proxy` and forwarded headers, never trust all sources |
 
-These do not substitute for each other: the console password is not an OneBot token, and an OneBot token does not open the console.
+Recovery is documented in [First run](first-run.md#forgot-password-or-lost-2fa). Resetting authentication does not delete accounts, messages or connections.
 
-## The desktop entry `/desktop/`
+## Troubleshooting
 
-In Docker, the QQ desktop is not a separate site — it is a same-origin path of the console.
-
-| Fact | Detail |
-| --- | --- |
-| Path | `/desktop/`, served on the console port |
-| Exposed ports | 5099 only. **6080 is no longer published** |
-| Browser-side auth | A path-scoped HttpOnly, SameSite=Strict session cookie; neither the console token nor a VNC password goes into the URL |
-| Gateway checks | Desktop HTTP, scripts and WebSocket all require a valid console session; forced password change and agreement consent cannot be bypassed |
-| Origin check | The WebSocket must carry an Origin matching the current host |
-| Session lifetime | After sign-out, a password change or expiry the desktop cannot be operated; idle connections are closed |
-| Backend VNC | Listens on loopback `5900` only with its own password authentication; that password is never returned to the browser |
-| External desktop URL | Configurable under service → QQ desktop. Such a service protects itself and does not inherit the console session |
-
-In short: only someone who can open the console can open the desktop, and VNC's own password is an internal second gate you never type.
-
-**Why no token in the URL**: URLs end up in browser history, proxy logs, `Referer` headers and screenshots. A session in an HttpOnly cookie is unreadable by scripts and absent from proxy logs.
-
-## Example — putting the console behind an HTTPS domain
-
-1. Keep `BIND_ADDRESS=127.0.0.1` in `deploy/.env`.
-2. Configure Nginx for `https://nowluma.example.invalid` → `127.0.0.1:5099` with both `location` blocks above.
-3. Under service → listener set `trustProxy` to `1`, save, and restart.
-4. Browse to `https://nowluma.example.invalid`, sign in, and press 「打开 QQ 桌面」.
-
-**Expected result**: the address bar shows HTTPS, no insecure-access banner appears, and the desktop opens and works.
-
-**If it fails**:
-
-| Symptom | Check |
-| --- | --- |
-| Desktop will not open | Is `/desktop/` proxied, are upgrade headers passed, is the session valid? |
-| Logs are not live | Is `proxy_buffering` off? |
-| Origin shows the proxy IP | `trustProxy` is missing or wrong |
-| Insecure-access banner persists | The browser sees non-HTTPS (often TLS terminates at the proxy but `X-Forwarded-Proto` is not forwarded) |
-| 502 / connection refused | Is the backend listening, and does the port match `deploy/.env`? |
-
-## Port exposure rules
-
-| Port | Published by default | Purpose |
-| --- | --- | --- |
-| 5099 | Host loopback | Console + desktop (same origin) |
-| 3000 | Host loopback | OneBot HTTP |
-| 3001 | Host loopback | OneBot WebSocket |
-| 5900 (VNC) | **Not published** | Container loopback, reachable only through the gateway |
-| 6080 | **Not used** | Removed with the old approach |
-
-Accounts sharing a listener need distinct ports, and each must be published by your deployment.
-
-## Safety reminders
-
-- A non-loopback address without HTTPS keeps the insecure-access banner visible; it is not a dismissible nit.
-- Do not add a second plain-HTTP hop from the proxy to the public internet.
-- Do not share a URL containing `?token=`.
-- Use LAN mode only on your own trusted network; on public Wi-Fi, use a tunnel.
+- **Cannot open**: bind address, port, firewall, tunnel or proxy; use `doctor` for container health.
+- **Session expires immediately**: proxy rewrites cookies, Host mismatch or clock skew.
+- **Blank desktop**: missing `/desktop/` prefix or WebSocket upgrade; check the console session.
+- **Mixed content**: an HTTPS page requesting HTTP resources is blocked; unify on HTTPS or relative URLs.
+- **LAN works but bots do not**: publish the bot ports, allow them in the firewall and check tokens.

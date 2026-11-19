@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
 import { AlertTriangle, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SessionProvider } from '@/contexts/SessionContext';
 import { LoginPage } from '@/components/pages/login-page';
 import {
@@ -37,6 +37,7 @@ import {
 } from '@/lib/onboarding-navigation';
 import { onboardingExecution } from '@/lib/onboarding-actions';
 import { KernelOnboardingStep } from '@/components/kernel-onboarding-step';
+import { DisplayEffectsOnboardingStep } from '@/components/display-effects';
 
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
@@ -500,9 +501,32 @@ function OnboardingGate({
     onDecline: () => void;
 }) {
     const api = useApi();
-    const { runAction } = useActionFeedback();
+    const { runAction, registerViewportHost } = useActionFeedback();
+    const { setAppearancePreview } = useTheme();
+    const feedbackHostRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        const host = feedbackHostRef.current;
+
+        if (host) {
+            return registerViewportHost(host);
+        }
+    }, [registerViewportHost]);
+    // Replayed theme controls and display choices share a reversible presentation;
+    // no setters in the wizard write real preferences until an explicit setup save.
+    useLayoutEffect(() => {
+        setAppearancePreview({});
+        return () => setAppearancePreview(null);
+    }, [setAppearancePreview]);
+
     // Snapshot only when a setup/replay gate actually mounts, not on every authenticated tab.
     const [activeAdditionalSteps] = useState<AdditionalOnboardingStep[]>(() => [
+        {
+            id: 'display-effects',
+            label: '显示效果',
+            content: <DisplayEffectsOnboardingStep replay={replay} />,
+            canSkip: false,
+            hideAdvance: true,
+        },
         {
             id: 'kernel-choice',
             label: '选择接入内核',
@@ -554,6 +578,7 @@ function OnboardingGate({
             onPasswordComplete={replay ? () => undefined : onPasswordComplete}
             onComplete={onComplete}
             additionalSteps={activeAdditionalSteps}
+            feedbackHostRef={feedbackHostRef}
             checkStrength={(password) => api.checkPasswordStrength(password)}
             submitPassword={execution.actions.changePassword}
             onAccept={execution.actions.acceptAgreements}

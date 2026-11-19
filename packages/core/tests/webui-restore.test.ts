@@ -57,6 +57,7 @@ describe('restoreBackup transaction', () => {
     const readLive = (name: string) => fs.readFileSync(livePath(name), 'utf8');
     const transactionDirs = () =>
         fs.readdirSync(root).filter((name) => name.startsWith('.restore-transaction-'));
+
     // Windows exposes only the read-only attribute, not POSIX private modes, so the
     // file type and restored contents carry the check there.
     const expectPrivate = (target: string, mode: number, kind: 'file' | 'directory') => {
@@ -317,7 +318,7 @@ describe('restoreBackup transaction', () => {
     });
 
     it('fails preflight when a required current OneBot file cannot be read', () => {
-        fs.symlinkSync('onebot.json', livePath('onebot.json'));
+        fs.mkdirSync(livePath('onebot.json'));
 
         let thrown: unknown;
 

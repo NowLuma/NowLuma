@@ -15,15 +15,33 @@ neutral. Text stays neutral for readability. Sidebar-only accents tint only the
 sidebar; OLED keeps a true-black canvas. Named palettes, custom CSS variables and
 host appearance overlays retain control of their own surfaces.
 
-Keep the server defaults in `packages/core/src/webui/ui-config.ts`, the frontend
-defaults and preset in `src/contexts/ThemeContext.tsx`, and the pre-mount tokens
-in `src/index.css` aligned when changing the default accent.
+Keep the shared defaults in `packages/common/src/webui-appearance.ts`, their backend
+and frontend consumers, and the pre-mount tokens in `src/index.css` aligned when
+changing the default accent.
 
 The browser favicon, home-screen icon and in-app logo use the single monochrome
 mark in [`src/assets/nowluma-mark.svg`](src/assets/nowluma-mark.svg),
 imported through `src/brand.ts` so Vite applies the deployment base. The Apple
 touch fallback is exported at 180 px from the same mark; do not add a second
 master or redraw the mark per size.
+
+Reading blocks and forms use a stable paper/ink hierarchy with quiet hairlines.
+Only navigation, search and short menus use optical chrome. Login and first setup
+share a portrait field sampled from the canonical mark: source brightness chooses
+four discrete vertical stroke widths, rather than masking an ordinary logo over
+a column-weighted lattice. The source raster is cached once and rendered as four
+SVG paths; no canvas runs per animation frame. See [the design contract](DESIGN.md)
+for material, motion and layout boundaries.
+
+Motion and full/frosted glass are manual choices shared by first setup and
+Settings. The `disableMotion` preference is the single on/off owner; OS/manual
+accessibility reduction remains independent. No FPS sampling changes the UI.
+Older `auto` quality preferences become full glass without overwriting saved
+motion, theme, layout or other settings. OOBE has four stages: notices, access
+password, display effects and account kernel; previews restore the underlying
+appearance on exit, and developer replay never persists it.
+
+
 
 ## Host appearance integration
 
@@ -36,9 +54,11 @@ target startup, theme ownership, host messaging or scoped styles.
 ## Interaction conventions
 
 - Destructive actions and second confirmations stay in modal dialogs.
-- Operations that may take time show a bottom-right running state.
-- Completed and failed operations use bottom-right result notices that close
-  automatically after a visible countdown.
+- Operations that may take time show a running state; completed and failed operations
+  show result notices with a visible countdown.
+- First setup hosts this same viewport inside the document so notices cannot cover
+  its primary actions. Outside setup it floats at the bottom right. Moving the owned
+  portal preserves countdowns, dismissal, keyboard focus and in-flight feedback.
 - Routine, high-frequency adjustments should not generate a notice for every
   intermediate edit.
 - Foreground polling pauses in hidden tabs and waits for each request to finish
@@ -49,8 +69,8 @@ target startup, theme ownership, host messaging or scoped styles.
   Submission, upload, and other explicit operation progress keeps its spinner.
 - Variable-height content must release the skeleton's reserved box after it is
   ready; do not introduce a second scrolling region inside the page.
-- The mobile navigation menu uses a controlled Icon Morph whose visual state
-  follows the actual drawer state.
+- The single primary dock owns route navigation; workspace management remains a
+  secondary sheet and returns keyboard focus to its session trigger on close.
 - Failures must remain visible in the affected control and in the operation
   result; do not convert failed responses into successful feedback.
 - JSON endpoints must return an object. Malformed or non-object responses are

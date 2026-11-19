@@ -78,13 +78,17 @@ git push origin refs/tags/v2.5.0
 `gates` 失败时草稿保持私有，也不会推送镜像；之后的作业失败时草稿仍保持私有，但已推送的
 版本化镜像 tag 可能已经可见。
 
+Docker smoke 使用全新 HOME，验证真实 QQ 进程发现、未确认账号不会自动接入、只有按账号
+选择内核后才允许接入、同源桌面认证，以及停止/重启/重建后的数据与 HOME 持久化。真实原生
+hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过记录不构成本次账号验收。
+
 ## 4. 产物
 
 | 文件                                       | 说明                                                                         |
 | ------------------------------------------ | ---------------------------------------------------------------------------- |
 | `Nowluma-v<version>-linux-x64-lite.tar.gz` | Linux x64 发行包，含 `release.json` 清单与法律文件                           |
 | `Nowluma-v<version>-win-x64-lite.zip`      | Windows 更新归档，不内置 Node；与更新器使用同一资产名称                      |
-| `Nowluma-win32-x64-<version>.exe`          | Windows 一键启动器，内嵌同一版本的 payload；**未签名**                       |
+| `Nowluma-win32-x64-<version>.exe`          | Windows 一键启动器，内嵌同一版本 payload；自带 Node 24 与 .NET 自包含运行时；**未签名** |
 | `nowluma-win32-x64-<version>-build.json`   | Windows 构建元数据：版本、目标、Node、payload/exe 的 SHA256、`signed: false` |
 | `nowluma-ghcr-linux-x64-<version>.txt`     | GHCR 镜像名、版本 tag 与 `sha256:` 摘要                                      |
 | `SHA256SUMS`                               | 上述全部文件的 SHA256，发布前重新下载校验                                    |
@@ -95,6 +99,7 @@ git push origin refs/tags/v2.5.0
 - Linux 包、Windows 产物与容器镜像都通过 `actions/attest-build-provenance` 生成构建来源证明。
 - 不发布 npm 包，也不使用 Docker Hub。发行说明取自 `CHANGELOG.md` 的对应版本小节。
 - Windows exe 没有代码签名，发行说明与文档都不应声称已签名。
+- 归档重新打开后会校验 `release.json`、`LICENSE`、`LICENSING.md`、`EULA.md` 与 `PRIVACY.md`；更新包不能缺少这些文件。
 
 ## 5. 仓库设置
 
@@ -120,8 +125,8 @@ git push origin refs/tags/v2.5.0
 - `## 验证` 中写下实际运行的命令与结果（模板注释不算）。
 
 模板与检查脚本的检查项由 `.github/scripts/pr-check.test.cjs` 保持一致，改动其中一处必须
-同时改另一处。完整 CI 只在 `pull_request` 与 `main` 的推送（以及 `release.yml` 的
-`gates`）中运行，使用只读 token，不接触任何 secret。
+同时改另一处。完整 CI 在功能分支推送、`pull_request`、`main` 推送和 `release.yml` 的
+`gates` 中运行；验证作业使用只读 token。
 
 ## 7. 已知限制
 
@@ -132,4 +137,8 @@ git push origin refs/tags/v2.5.0
 - 没有生成 SBOM：仓库没有固定的 SBOM 工具，发行只提供 `SHA256SUMS` 与 `build.json`。
 - Docker 镜像构建需要访问固定版本的 QQ deb（校验 SHA256，失败时回退到固定镜像），
   因此发行作业需要外网。
-- 归档、镜像与 exe 都只证明构建来源与内容，不证明 QQ 账号可登录或长期可用。
+- 归档、镜像与 exe 都只证明构建来源与内容，不证明 QQ 账号可登录、消息可投递、重启后免扫码或重写内核可用。
+- 最新 Docker smoke 使用全新 HOME：真实原生 hook 接入与真实 QQ 登录是 NOT RUN。此前 CI 的历史通过记录不能写成当前版本的真实账号验收。
+- 当前源码门禁和发行状态以[Actions](https://github.com/WSXYT/Nowluma/actions)与[发行页面](https://github.com/WSXYT/Nowluma/releases)对应的源码提交为准，历史成功不能替代本次验收。
+- Pages 使用工作流部署，是否上线以成功部署与实际站点 HTTP 结果为准。
+- 不要用构建成功、来源证明或健康检查结果声称机器人会自动回复；回复逻辑由用户的机器人程序决定。

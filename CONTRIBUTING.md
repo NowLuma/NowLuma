@@ -52,14 +52,13 @@ docker build -f deploy/docker/Dockerfile -t nowluma:ci .
 node deploy/docker/smoke.mjs nowluma:ci
 ```
 
-smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。它验证真实 QQ 进程发现、同源桌面、未确认账号的接入门禁和重建持久化；空白 HOME 不伪造账号确认，因此真实 hook 接入与账号登录单列实机验证。
-它验证启动、原生连接、桌面、配置、完整 HOME 和机器 ID 的重启/重建保留；不会替用户扫码，也不证明 QQ 服务端长期接受某个账号。
+smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。它验证真实 QQ 进程发现、同源桌面、未确认账号的接入门禁和重建持久化；空白 HOME 不伪造账号确认，真实 hook 接入与真实 QQ 登录是 NOT RUN。历史 CI 通过记录不能替代当前账号验收。
 
 ## 格式与变更
 
 保留账号隔离、输入校验、错误上下文和数据保护。不要用静默回退掩盖配置/存储失败。
 不要为排障关闭全部容器隔离；只声明运行时实际需要的能力。
-改动 UI 遵循 `packages/webui/README.md` 的交互约定；本轮不大改 QQ 接入内核。
+改动 UI 遵循 `packages/webui/README.md` 的交互约定。账号内核的选择与风险确认必须绑定真实 UIN：未确认不能接入，换账号要重新确认，保存选择不等于接入，`重写内核` 未验证时不可选且不得静默回退。
 
 ```bash
 pnpm exec eslint --config eslint.format.config.ts --fix <修改的文件>
@@ -74,6 +73,7 @@ pnpm exec prettier --write <修改的文件>
 
 `.github/workflows/ci.yml` 执行类型/静态/测试/发行布局检查，并实际构建、启动和重建 Linux/amd64 Docker 测试容器。
 成功的构建会产生对应平台的 Lite 发行产物和 Windows x64 单文件 exe（当前未签名）。
+Docker smoke 使用全新 HOME，验证进程发现、未确认账号的接入门禁、桌面认证和重建持久化；真实 hook 接入与真实 QQ 登录是 NOT RUN，不能据此声称消息投递或重启免扫码已验证。
 尚未配置 npm、Docker Hub 或跨仓库自动发布；源码中的 SDK/UI/MCP 包可在工作区构建，不能把 npm 示例理解为已经发布的版本。
 公开分发遵循 LICENSE（GNU GPLv3，GPL-3.0-only）与 LICENSING.md；GPL 源码可自由使用、修改和分发（含商业用途），无需另行授权。EULA.md 是使用说明，PRIVACY.md 说明数据处理，二者都不构成 GPL 之外的许可条件。
 贡献代码按仓库的 GPL-3.0-only 许可发布；请只提交你有权授权的代码，并在分发时保留许可与版权声明、标注修改。

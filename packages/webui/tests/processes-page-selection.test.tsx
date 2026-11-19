@@ -74,34 +74,6 @@ afterEach(() => {
 });
 
 describe('ProcessesPage PID selection', () => {
-    it.each([false, true])(
-        'keeps terminal banner entry and exit together (reduced=%s)',
-        (reduced) => {
-            state.reduced = reduced;
-            state.banner = '已从进程 100 卸载';
-            const tree = render();
-            const notice = elements(tree).find((item) => item.props.role === 'status')!;
-            expect(
-                elements(notice).some((item) =>
-                    String(item.props.className).includes('animate-spin'),
-                ),
-            ).toBe(false);
-            const shell = elements(tree).find(
-                (item) => item.props.exit && item.props.className === 'overflow-hidden',
-            )!;
-            expect(shell.props.animate).toMatchObject({ height: 'auto', opacity: 1, marginTop: 0 });
-            expect(shell.props.exit).toMatchObject({
-                height: 0,
-                opacity: 0,
-                marginTop: '-0.75rem',
-            });
-            expect(shell.props.transition).toMatchObject({ duration: reduced ? 0 : 0.2 });
-
-            if (reduced) {
-                expect(shell.props.initial).toBe(false);
-            }
-        },
-    );
 
     it('requires a choice when more than one process is present', () => {
         expect(detail(render())).toBeUndefined();

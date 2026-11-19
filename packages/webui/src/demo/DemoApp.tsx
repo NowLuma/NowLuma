@@ -118,12 +118,12 @@ export function DemoApp({ api }: { api: DemoApi }) {
                 <aside
                     id="demo-guide"
                     className="demo-guide"
-                    aria-label="English practice guide / 操作引导"
+                    aria-label="Practice guide / 操作引导"
                 >
                     <div className="demo-guide-heading">
                         <div>
                             <span className="demo-eyebrow">INTERACTIVE PRACTICE</span>
-                            <h2>Try the actual console</h2>
+                            <h2>Try the actual console / 操作真实控制台</h2>
                         </div>
                         <Button
                             variant="ghost"
@@ -135,19 +135,20 @@ export function DemoApp({ api }: { api: DemoApi }) {
                         </Button>
                     </div>
                     <p>
-                        All controls below belong to the real React console. Every result is a
-                        labelled simulation. Refresh or Reset clears all writes.
+                        登录后依次阅读说明、设置密码、选择显示效果和账号内核。
+                        / Log in, then complete notices, password, display effects and account kernel.
                     </p>
                     <div className="demo-credentials">
                         <strong>Public examples only — never real secrets</strong>
                         <dl>
-                            <dt>Login / 登录</dt>
+                            <dt>访问密码 / Login</dt>
                             <dd>
                                 <code>{api.examplePassword}</code>
                             </dd>
-                            <dt>New password / 新密码</dt>
+                            <dt>新密码 / New password</dt>
                             <dd>
-                                <code>{DEMO_NEW_PASSWORD}</code>
+                                <code>{DEMO_NEW_PASSWORD}</code> · 填写新密码与确认新密码 →{' '}
+                                <strong>保存并继续</strong>
                             </dd>
                             <dt>2FA code / 验证码</dt>
                             <dd>
@@ -208,7 +209,7 @@ export function DemoApp({ api }: { api: DemoApi }) {
                             onClick={() => {
                                 api.failNextMutation = true;
                                 setLinkError(
-                                    'DEMO: The next non-auth write will fail without changing memory.',
+                                    'DEMO: 下一次非认证写入会失败且不改变内存；检查后可重试。Next non-auth write fails without changing memory.',
                                 );
                             }}
                         >
@@ -219,19 +220,26 @@ export function DemoApp({ api }: { api: DemoApi }) {
                         Session: {summary.authenticated ? 'example login' : 'signed out'} ·{' '}
                         {summary.online
                             ? 'simulated online'
-                            : summary.scanned
-                              ? 'scan detected'
-                              : 'awaiting mock scan'}{' '}
+                            : summary.stopped
+                              ? 'manual stop / 已停止'
+                              : summary.scanned
+                                ? 'scan detected'
+                                : 'awaiting mock scan'}{' '}
                         · {summary.messages} sample messages
                     </p>
                     <p className="demo-notice" role="status">
                         {linkError || notice}
                     </p>
-                    <p className="demo-limits">
-                        No real login, delivery, rendering, notification, download or ban-risk
-                        claim. Custom CSS is disabled. Backup imports accept only DEMO exports;
-                        credential restoration is rejected.
-                    </p>
+                    <details className="demo-limits">
+                        <summary>演练边界 / Practice limits</summary>
+                        <p>
+                            只使用公开示例。无真实 QQ、VNC 或消息投递；自定义 CSS 禁用，备份仅接受
+                            DEMO 导出。刷新或重置会清空内存，生产控制台会保存手动显示偏好。
+                            / Public examples only. No QQ, VNC or delivery; custom CSS is disabled.
+                            Only DEMO backups are accepted. Reload resets memory; production saves
+                            manual display preferences.
+                        </p>
+                    </details>
                 </aside>
             )}
             <Modal
@@ -257,8 +265,8 @@ export function DemoApp({ api }: { api: DemoApi }) {
                     Simulate scan / 模拟扫码
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                    Next: use 加载 on DEMO process 4242 in the real 进程 page. Local detection alone
-                    is not a completed QQ login.
+                    Next: 在进程页对 DEMO 4242 点「加载」并完成每账号内核风险确认。Local detection
+                    alone is not a completed QQ login.
                 </p>
             </Modal>
             {!guideOpen && linkError && (

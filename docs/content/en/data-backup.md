@@ -1,163 +1,103 @@
 ---
 title: Data, backup and updates
-description: Where program and QQ data live, how to back up and restore, cleanup, upgrades, update sources, and how to verify QQ really signs in by itself.
+description: Where configuration, messages, logs and QQ HOME live; backup, restore, cleanup, upgrades, the updater and manual QQ persistence checks.
 ---
 
 # Data, backup and updates
 
-This chapter covers what must be kept, how to back it up, how to upgrade, and how to avoid fooling yourself about “it works”.
+Nowluma keeps program data separate from QQ's own user environment. Back up, upgrade and clean up with that distinction in mind, so you do not delete account login state or the message store.
 
-## Where data lives
+## Locations
 
-### Native runs
-
-| Path | Contents | Across upgrades |
+| Content | Native | Docker volume → path |
 | --- | --- | --- |
-| `config/` | Console password/2FA, connection settings, runtime and appearance settings | Kept |
-| `data/` | Account message store and media | Kept |
-| `logs/` | Runtime logs | Kept |
-| QQ's own profile directory | QQ settings, credentials, user storage, machine ID | Untouched |
+| Password/2FA, connections, kernel choices, runtime and appearance | `config/` | `nowluma_config` → `/app/config` |
+| Account message store and media | `data/` | `nowluma_data` → `/app/data` |
+| Runtime logs | `logs/` | `nowluma_logs` → `/app/logs` |
+| QQ environment, credentials, auto-login, machine ID | QQ's own directory | `nowluma_qq-home` → `/home/nowluma` |
 
-### Docker
+`dist/` is build output and is replaced on upgrade; do not store your own files there. Kernel choices live in `config/kernel-selections.json`, keyed by real UIN; never copy them to another account by hand.
 
-| Volume | Container path | Contents |
-| --- | --- | --- |
-| `nowluma_config` | `/app/config` | Console password/2FA, connections, runtime, appearance |
-| `nowluma_data` | `/app/data` | Account message store and media |
-| `nowluma_logs` | `/app/logs` | Runtime logs |
-| `nowluma_qq-home` | `/home/nowluma` | Complete QQ HOME: settings, credentials, user storage, machine ID |
+## Backup
 
-The Compose project name is fixed to `nowluma`, so volume names do not depend on the source directory.
-
-### Three different “backups”
-
-| Backup | Contents | Where |
-| --- | --- | --- |
-| Configuration backup | Program configuration, optionally including credentials | Service → configuration backup / restore |
-| UI configuration backup | Appearance, layout, page preferences, custom CSS | Advanced → backup and reset |
-| Data backup | Message stores, media, logs, QQ HOME | You copy the volumes or directories |
-
-They do not cover each other. **The configuration backup contains no message database**, and the UI export does not even include background images.
-
-## Backing up
-
-### The correct order
-
-1. Stop the service: `bash deploy/manage.sh stop` (or end the process for a native run).
-
-   Stop first so you are not copying a live SQLite database with its WAL files.
-
-2. Copy the data. In Docker, use a throwaway container to export a volume, for example:
-
-   ```bash
-   docker run --rm -v nowluma_config:/src -v "$PWD/backup":/backup alpine \
-       tar -czf /backup/config.tgz -C /src .
-   ```
-
-   All four volumes (`nowluma_config`, `nowluma_data`, `nowluma_logs`, `nowluma_qq-home`) need a backup.
-
-3. Start the service again: `bash deploy/manage.sh start`.
-
-4. Move the archive somewhere else (another machine or object storage). A backup on the same disk as the data is not a backup.
-
-### Using the configuration backup
-
-Service → configuration backup / restore exports and restores configuration. Two checkboxes control whether the export includes sensitive configuration and whether a restore also applies it.
-
-Sensitive items are: console session state, TLS private key, notification URLs, OneBot tokens. The restore summary reports 「已恢复 N 项」, 「跳过 N 项（敏感配置，含 OneBot 配置）」, 「兼容转换 N 项」 and whether a restart is needed.
-
-**Cross-version restores**: a 「兼容转换」 (compatible conversion) entry means the backup came from an older shape and was converted. Verify the important parts afterwards (ports, tokens, accounts).
-
-## Cleaning data
-
-Cleanup lives under service → storage:
-
-| Scope | Precondition | Reversible |
-| --- | --- | --- |
-| Logs | None | No |
-| File-transfer temporary data | None | No |
-| One category of one account | None | No |
-| All accounts | Every account offline plus typing `清理全部账号` | No |
-
-Ask yourself before running it:
-
-- Is this data still needed?
-- Do I have a backup, and have I verified the backup opens?
-- Am I only short on space? Logs and temporary data are the cheap wins.
-
-One Docker-specific trap: `docker compose down -v`. It deletes every volume, including QQ's HOME and program configuration. A plain `stop` keeps them, and upgrades must not use `-v`.
-
-## Upgrading
-
-### Docker
+Stop the service before copying so SQLite/WAL is not being written:
 
 ```bash
-git pull                    # or replace the source directory
-bash deploy/manage.sh start # build and start, reusing existing volumes
+bash deploy/manage.sh stop
 ```
 
-**Expected result**: `start` returns after the health check passes, with accounts, messages, appearance settings and the QQ HOME intact.
+For Docker, back up all four volumes; for native installs copy `config/`, `data/`, `logs/`, and QQ's user directory if you need login state. Encrypt backups and restrict access: they may contain tokens, sessions and chat data.
 
-**On failure**: read `bash deploy/manage.sh logs` for the build or startup error. No volume was deleted; fix it and run `start` again.
+Start again:
 
-### Native
+```bash
+bash deploy/manage.sh start
+```
 
-Replace the release files, keep `config/`, `data/` and `logs/`, restart the program.
+A backup is not a chat export. Restore the database into the same layout; do not hot-copy a single database file into a running service.
 
-### Before any upgrade
+## Restore
 
-1. Back up (previous section).
-2. Note the current version (shown in About).
-3. Choose a time when nobody is relying on the bot — a restart disconnects every account.
+1. Stop the service.
+2. Keep a copy of the current directories/volumes for rollback.
+3. Restore `config/`, `data/` and `logs/` in their original structure; replace QQ HOME only if you really need the old login state.
+4. Start and check login, accounts, connections and logs.
+5. If configuration is corrupt, the program reports the error and preserves the original; do not overwrite it with defaults or silently delete it.
 
-### Applying a downloaded update
+Service configuration can also be exported/restored under Settings → `服务` → `服务配置备份`, but that excludes message databases. The panel states `备份外观、服务设置与证书。不含消息数据库；通知渠道与 OneBot 配置仅随敏感配置导出。`. Sensitive inclusion is your choice: `导出时包含敏感配置` adds `kernel-selections.json`, notification channels and OneBot configuration; without it those files are skipped and no risk consent is implied. On restore, `恢复时一并恢复敏感配置` decides whether those files are overwritten; the format, acknowledgement values and UINs are validated and malformed data or a false acknowledgement is rejected. An old risk version or rewrite choice is preserved but not auto-authorized; older backups without kernel choices remain valid. A successful restore needs a Nowluma restart. UI configuration can be exported/imported separately under `高级`.
 
-About → software update can download a release. When it is ready it shows 「更新已就绪 · 重启后生效」 and asks for confirmation before restarting. That restart interrupts every connected bot.
+A service snapshot restores desired configuration only; it does not hot-replace live kernel authorization or process state. Restart to apply the restored configuration.
 
-「检查已关闭」 means this build has no update source; 「无法检查」 usually means a source checkout or an unreachable network. Neither is “already up to date”.
+## Cleanup
+
+- **Logs**: set total size and retention under Storage; save applies immediately. Temporary-data cleanup skips active transfers.
+- **Account databases**: clean message history, media index or reactions for the selected account. Online accounts cannot be cleaned; all-account cleanup requires every account offline and a confirmation phrase.
+- **QQ HOME**: never delete the whole HOME to “clean up”; that loses login state, machine ID and QQ settings.
+- **Unused connections/account records**: remove them in the UI first, then clean databases if needed; do not edit JSON directly.
+
+Deletion is irreversible. Confirm the backup is readable first.
 
 ## QQ persistence and manual verification
 
-All the program can do is preserve QQ's complete profile directory, keep HOME and XDG config directories fixed, and keep the hostname and the machine ID generated on first run. It does **not** regenerate credentials and does **not** sign in for you.
+Docker must keep the **complete** HOME volume, not just `login.db`. The app uses UID/GID 1000, `XDG_CONFIG_HOME=/home/nowluma/.config`, and the machine ID is created in HOME and reused.
 
-So:
+Verify:
 
-1. Scan the QR code in QQ the first time and enable automatic login **in QQ's own settings**.
-2. Restart the service to verify:
+1. Log in inside QQ and enable QQ's own auto-login.
+2. `bash deploy/manage.sh restart`.
+3. Open the QQ desktop and see whether QQ restored the session; do not rely only on the console health badge.
+4. Run `stop` and `start`, or recreate the container, and confirm the volume is still used.
 
-   ```bash
-   bash deploy/manage.sh restart
-   ```
+Even with all files present, QQ's servers may expire the session or require verification; complete it inside QQ. The app does not store the QQ password, forge device tokens or guarantee QR-free login. Native QQ directories depend on QQ's own user environment; do not move them during upgrades.
 
-3. Open 「QQ 桌面」 and check whether QQ returns to a signed-in state by itself. **Do not rely on the console's health status alone** — it proves processes and ports, not that the QQ session is still valid.
-4. Run `stop` then `start` once more to verify it survives container recreation.
+## Upgrade
 
-What failures mean:
+- Docker: stop, back up, update source/image, then `start`; existing volumes are reused. Do not use `down -v`.
+- Native: replace program files in the release directory, keeping `config/`, `data/`, `logs/` and the QQ directory.
+- The program migrates database schemas itself. During migration the UI may mark accounts unavailable or migrating; do not start duplicate instances.
+- After upgrading, check accounts, connections, kernel choices and appearance. Kernel choices persist per UIN, but an account identity change still requires a new acknowledgement.
 
-| Symptom | Meaning | What to do |
-| --- | --- | --- |
-| QQ asks for a QR scan again | Server-side session expiry, location verification or risk control | Complete verification in QQ; local credentials cannot help |
-| The auto-login setting vanished | The QQ HOME volume was not reused, HOME/XDG was overridden, or `down -v` was used | Check volume mounts and the start command |
-| Files are present but QQ still asks | Local state does not equal server acceptance | Normal; see the first row |
+## Updater
 
-Automated tests can verify directories, settings markers, machine ID and the bridge path. **Without your account's QR scan they will never claim “real QQ auto-login verified”** — which also means any promise of “no scanning ever” is false.
+`关于` checks for and installs updates. Sources are auto, GitHub direct or a specified mirror; auto tries GitHub first, then candidates. Reachability is not download speed.
 
-## Moving to another machine
+Release assets:
 
-1. Stop the service on the old machine.
-2. Back up the four volumes (or the three native directories plus QQ's profile).
-3. Install on the new machine and **do not start it yet**.
-4. Restore the volumes or directories.
-5. Start and check: are the directories writable under service → runtime environment and save locations? What version does About report? Does the account need a new scan?
+| Asset | Purpose |
+| --- | --- |
+| `Nowluma-v<version>-linux-x64-lite.tar.gz` | Linux x64 Lite package, used by runtime updates |
+| `Nowluma-v<version>-win-x64-lite.zip` | Windows runtime update archive, no bundled Node |
+| `Nowluma-win32-x64-<version>.exe` | Windows launcher with Node 24 and self-contained .NET, unsigned |
+| `SHA256SUMS` | Checksums for all release files |
 
-QQ's device state and machine ID live inside HOME, so the whole HOME travels together; copying only `login.db` is not enough.
+Update packages retain `LICENSE`, `LICENSING.md`, `EULA.md` and `PRIVACY.md`. After download, `重启并更新`; connections drop briefly, configuration and data remain. Do not install packages without checksums or from untrusted sources.
 
-## Recovery checklist
+An update proves the file came from that build; it does not prove QQ login, message delivery or long-term stability.
 
-1. Stop the service.
-2. Back up the current state, even if it is broken.
-3. Restore configuration or data from the most recent backup.
-4. Start and read the log.
-5. Change one variable at a time, or you will not know which step fixed it.
+## Do not
 
-More symptoms are listed in [Troubleshooting](troubleshooting.md).
+- Hot-copy SQLite as a backup while the service runs.
+- Use `docker compose down -v` to upgrade or “clean up”.
+- Delete the whole QQ HOME to fix a small issue.
+- Copy `kernel-selections.json` to another UIN.
+- Publish backups containing tokens, sessions or chat data.

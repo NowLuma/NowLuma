@@ -50,52 +50,42 @@ export function GeneralSettingsTab({ config, onChange }: GeneralSettingsTabProps
                         ariaLabel={`启用 ${sc.trigger} 状态命令`}
                     />
                 </SettingRow>
-                <div className="grid gap-5 px-5 py-4 sm:grid-cols-2">
-                    <div className="flex min-w-0 flex-col gap-2">
-                        <Label
-                            htmlFor={`${id}-trigger`}
-                            className={!sc.enabled ? 'text-muted-foreground' : undefined}
-                        >
-                            触发词
-                        </Label>
-                        <Input
-                            id={`${id}-trigger`}
-                            className="font-mono"
-                            value={sc.trigger}
-                            disabled={!sc.enabled}
-                            maxLength={32}
-                            onChange={(e) => setStatusCommand({ trigger: e.target.value })}
-                        />
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                            默认 #nl，最长 32 字符。匹配时忽略首尾空格与大小写。
-                        </p>
-                    </div>
-                    <div className="flex min-w-0 flex-col gap-2">
-                        <Label
-                            htmlFor={`${id}-cooldown`}
-                            className={!sc.enabled ? 'text-muted-foreground' : undefined}
-                        >
-                            回复冷却（秒）
-                        </Label>
-                        <Input
-                            id={`${id}-cooldown`}
-                            type="number"
-                            min={0}
-                            className="tabular-nums"
-                            value={sc.cooldownSeconds}
-                            disabled={!sc.enabled}
-                            onChange={(e) => {
-                                const n = Math.trunc(Number(e.target.value));
-                                setStatusCommand({
-                                    cooldownSeconds: Number.isFinite(n) && n >= 0 ? n : 0,
-                                });
-                            }}
-                        />
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                            同一会话在冷却期间不重复回复。0 表示不限。
-                        </p>
-                    </div>
-                </div>
+                <SettingRow
+                    label="触发词"
+                    hint="默认 #nl，最长 32 字符。匹配时忽略首尾空格与大小写。"
+                    layout="stack"
+                >
+                    <Label htmlFor={`${id}-trigger`} className="sr-only">触发词</Label>
+                    <Input
+                        id={`${id}-trigger`}
+                        className="max-w-sm font-mono"
+                        value={sc.trigger}
+                        disabled={!sc.enabled}
+                        maxLength={32}
+                        onChange={(e) => setStatusCommand({ trigger: e.target.value })}
+                    />
+                </SettingRow>
+                <SettingRow
+                    label="回复冷却（秒）"
+                    hint="同一会话在冷却期间不重复回复。0 表示不限。"
+                    layout="stack"
+                >
+                    <Label htmlFor={`${id}-cooldown`} className="sr-only">回复冷却（秒）</Label>
+                    <Input
+                        id={`${id}-cooldown`}
+                        type="number"
+                        min={0}
+                        className="max-w-sm tabular-nums"
+                        value={sc.cooldownSeconds}
+                        disabled={!sc.enabled}
+                        onChange={(e) => {
+                            const n = Math.trunc(Number(e.target.value));
+                            setStatusCommand({
+                                cooldownSeconds: Number.isFinite(n) && n >= 0 ? n : 0,
+                            });
+                        }}
+                    />
+                </SettingRow>
                 <SettingRow
                     label="拦截已命中的消息"
                     hint="不再转发给下游 Bot，仍会回复并记录。"

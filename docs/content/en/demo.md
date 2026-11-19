@@ -1,56 +1,50 @@
 ---
-title: Practice mode
-description: A static practice environment for console operations with simulated data — what you can practise, what it cannot prove, and how to open /demo/.
+title: Practice demo
+description: The /demo/ environment in the static documentation site: explore the new workspace with simulated data, without connecting a real QQ.
 ---
 
-# Practice mode
+# Practice demo
 
-> **Status: the static simulated interface is generated with the documentation site at `/demo/` (when that build includes the simulator).**
-> It is rendered from console components and simulated data; it does not connect to a real QQ account. This chapter describes its boundaries.
+The documentation site includes a `/demo/` environment that renders console components with simulated data. Use it to learn the new workspace before touching a real instance.
 
-## The problem it solves
+**Status:** it is part of the static documentation build and exists only when that build includes the simulator. Publishing is performed by the maintainer; this page does not claim it is already live.
 
-On a first run, the hard part is usually not the features themselves but:
+## Opening it
 
-- Not daring to press load, unload or “trigger crash” because a live bot might break.
-- Not having a second QQ account to try “send a message”.
-- Not being able to tell 「已保存，下次连接时应用」 from 「已保存并应用」, because reproducing both in a real environment is awkward.
+- Use `模拟练习` in the site header or the link on this page to open `/demo/`.
+- Paths are relative, so it works under the `/Nowluma/` base path and in a local static preview.
+- Use only the public example password and code shown on the page; no real QQ account or OneBot token is required.
 
-Practice mode renders the same interface over **a data set that is explicitly labelled as simulated**, so you can press everything.
+## What you can practise
 
-## Three boundaries
-
-1. **It is labelled simulated.** The page keeps a permanent marker such as “simulated data — no real QQ connection”, and nothing on it pretends to be real state.
-2. **It uses no real credentials.** It asks for no QQ account, no OneBot token and no access password, and it sends no requests to external addresses. It never calls real APIs and never uses dummy passwords that look like real secrets.
-3. **It proves nothing about your setup.** “Connected” in practice mode does not mean QQ is signed in on your machine; “sent successfully” does not mean a bot will reply.
-
-## What you will be able to practise
-
-| Scenario | Relevant chapter |
+| Scenario | Chapter |
 | --- | --- |
-| First start: agreements, setting the access password, the 2FA step | [First start](first-run.md) |
-| What a failed sign-in and its error banner look like | [First start](first-run.md) |
-| Layout editing: drag widgets, change settings, restore defaults | [Overview](overview.md) |
-| Presentation (kiosk) mode and the mobile layout | [Overview](overview.md) |
-| QQ process state flow: loadable → loading → waiting for sign-in → online | [QQ connection](qq-connection.md) |
-| Endpoint save chips: saved and applied / applied on next connection / hot reload failed | [Endpoint configuration](onebot-config.md) |
-| Log filtering, presets, reading the TRACE warning | [Logs](logs.md) |
-| The difference between read-only and side-effecting actions in the tester | [Debug](debug.md) |
-| Settings save and restart notices | [Settings: Nowluma and platform](settings-runtime.md) |
+| Floating navigation, masthead, connection workflow, runtime readings | [Workspace](overview.md) |
+| Four-stage setup: notices, access password, manual display effects and account kernel | [First run](first-run.md) |
+| Process states and the attach confirmation | [QQ sessions](qq-connection.md) |
+| Four transport tabs and save states | [Bot connections](onebot-config.md) |
+| Log presets, search and the TRACE warning | [Run log](logs.md) |
+| Action testing, message composition and live activity | [Debug tools](debug.md) |
+| Settings categories and save/restart hints | [Settings: appearance and account](settings-console.md) |
 
-Those branches are exactly the ones the documentation struggles to explain in prose and that are hardest to reproduce safely in a real environment.
+The simulated data covers normal, empty and error branches, including the difference between `已保存并应用` and `已保存，下次连接时应用`.
 
-## When not to use it
+## What it cannot prove
 
-- To check whether your own QQ account can be bridged: that needs the real environment, see [QQ connection](qq-connection.md).
-- To check whether your bot replies: test against a real account and real endpoint.
-- To check persistence or restart semantics: the simulated environment does not persist, so see [Data, backup and updates](data-backup.md) instead.
+- `已连接` does not mean your QQ is logged in or that a bot receives messages.
+- `发送成功` does not mean a real account delivered anything or that the other side will reply.
+- It writes no real configuration, reads no real tokens and contacts no real service.
+- It cannot verify persistence, restart, permissions, kernel risk acknowledgement or desktop authentication.
+- It cannot assess account restriction risk.
 
-## Current status and follow-up
+## Differences from the real console
 
-- Page path: `/demo/`, built together with the documentation site.
-- Data: a separate simulated API layer that never touches the real server.
-- Entry: the “Practice demo” link in the site header and this page.
-- Upstream dependency: the simulator and the site build are maintained separately; this documentation only describes the boundaries.
+| Item | Demo | Real console |
+| --- | --- | --- |
+| Data | Fixed simulated data | Your accounts, processes and connections |
+| Network | No real requests | Reads the local service and QQ |
+| Account | Not needed | You must log in inside QQ |
+| Saves | Not persisted | Written to config; applied or restarted as indicated |
+| Kernel | UI demonstration only | Confirmed per real UIN and persisted |
 
-If you just want to see the interface without connecting QQ, use the practice demo in the site header; it connects no real QQ account. For real use, walk through [First start](first-run.md) — it usually takes under ten minutes.
+There is no hidden bypass in the demo. For real use, follow [First run](first-run.md) and [QQ sessions](qq-connection.md). Real behaviour must be verified with a real account and endpoint.

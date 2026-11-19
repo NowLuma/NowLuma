@@ -1,153 +1,115 @@
 ---
-title: First start — sign-in, agreements and the access password
-description: Every screen between opening the console and reaching the overview, including ?token= links, two-factor codes, agreements, the forced password change, and how to recover from each failure.
+title: First run
+description: From the splash and console password through 2FA, the notices step and setting a new password, to the first account entry point.
 ---
 
-# First start
+# First run
 
-This chapter covers everything between opening the browser and seeing the overview. On a fresh install the console enforces a fixed order: sign in → accept agreements (if required) → set the access password (if required).
+The first visit checks the console password, then completes four browser-based stages: notices, password, display effects and account kernel.
 
-## Three credentials that are not interchangeable
+During first setup, running and result feedback occupies a dedicated row in the document rather than covering confirmation/save controls. After setup, the same viewport returns to the workspace's bottom-right position, preserving in-flight operations, notification countdowns and keyboard focus.
 
-| Credential | Used for | Who can reset it |
+## Splash
+
+The centre shows `初始化中…` with skeleton placeholders while the app checks the local session and backend.
+
+If it never leaves this screen: confirm the service is running (`bash deploy/manage.sh logs` in Docker), the port is free, and a reverse proxy preserves `/api/`. See [Troubleshooting](troubleshooting.md).
+
+## Login
+
+The login page heading is `进入工作台`, with the subtitle `管理 QQ 会话与机器人连接。`. Enter the **console access password** (not the QQ password) in `访问密码` and press `打开工作台`; the eye button toggles `显示密码` / `隐藏密码`.
+
+- A wrong password reports `登录失败`; the failure is never treated as success.
+- Motion and glass quality are selected manually during first setup and under Settings → Appearance. Login uses the saved choices; no frame-rate detector turns motion off. System accessibility preferences still take precedence.
+- Network errors or a required second factor leave you on the login page with the error preserved.
+
+The installer or startup log prints the initial password. It is only for the first entry; after onboarding, use the password you chose.
+
+## Two-factor authentication
+
+When 2FA is enabled, a correct password also needs a one-time code:
+
+| Control | Use |
+| --- | --- |
+| `验证码` | 6-digit Authenticator code; paste the whole code into any cell |
+| `使用恢复码` | Switch to a recovery code; hyphens are ignored |
+| `改用验证码` | Switch back to the 6-digit code |
+| `恢复码` | Each code works once; remaining count is shown under Settings → `账号安全` |
+
+Wrong second factors show `验证码不正确，改错的那一位即可。` or `恢复码不正确，改错的那一位即可。` without clearing the other cells.
+
+## Link login
+
+Append `?token=<access password>` to the console URL to skip manual entry. The page removes the parameter from the address bar and browser history immediately so it does not leak through Referer or screenshots.
+
+This is a one-shot convenience, not a long-lived token. Do not share the link; use an [SSH tunnel or HTTPS](access-network.md) for remote access.
+
+## Reading notices and setting a password
+
+After login, `完成首次使用设置` opens with four stages: `阅读使用说明`, `设置访问密码`, `显示效果` and `选择接入内核`.
+
+`选择接入内核` is an extra step before attaching: it saves a kernel choice for a detected QQ account. With no account detected, press `继续` and choose later once QQ is logged in.
+
+### Reading the notices
+
+- Heading `阅读使用说明`, subtitle `阅读后确认，即可继续设置。`.
+- The `说明文档` control switches between the Usage notice and Privacy notice; each shows `版本 / Version … · 生效 / Effective …`.
+- `确认并继续` becomes available only after checking `我已阅读《使用说明》和《隐私说明》`; the footer shows `说明版本 …`.
+- `退出` returns to login without recording an acknowledgement.
+- If text fails to load: `未能加载说明文本，请刷新页面重试。`; submission failures show `提交失败，请重试` or `网络错误，请重试`.
+
+This is an acknowledgement that you read the notices, not consent to an extra commercial contract. It does not change the GPL licence or add obligations.
+
+### Setting the access password
+
+- Heading `设置新的访问密码`, with the hint `设置用于打开控制台的密码。`.
+- The password you just logged in with is the current one, so it is not asked for again; enter the new password twice (`新密码`, `确认新密码`).
+- The page rules: at least 10 characters, lowercase, uppercase, a special character, and no spaces.
+- `保存并继续` invalidates sessions on other devices; choose display effects and the account kernel next to enter the workspace.
+- Entering from Settings → `开发者 → 重新进入` runs a rehearsal: the button becomes `完成演练`, nothing is saved, and the real password and acknowledgement record are untouched.
+
+### Display effects
+
+Actively select `动效` (on/off) and `玻璃材质` (full/frosted), then press `保存并继续`. Neither choice is preselected. The preview changes immediately; the next stage opens only after the server confirms the save.
+
+Motion-off retains static glass. Frosted quality reduces refraction cost without changing motion. System reduced-motion, reduced-transparency and high-contrast settings remain accessibility constraints. Developer replay previews locally, restores the previous presentation on exit, and never saves appearance.
+
+## What happens next
+
+1. The workspace connection workflow asks you to open or log in to QQ.
+2. In `QQ 会话`, select a process and press `加载`.
+3. On the first attach for that account, `选择接入内核` opens: select `兼容内核`, check the risk acknowledgement, then press `确认并接入`; see [QQ sessions](qq-connection.md).
+4. After attach, add an HTTP or WebSocket endpoint in `机器人连接`.
+
+When you need the graphical QQ, press `打开 QQ 桌面` (shown only when the server provides the same-origin desktop). The desktop reuses the current console session; no separate VNC password is needed, and Windows native does not show this entry.
+
+## Forgot password or lost 2FA
+
+There is one local account and no email recovery. If you cannot log in:
+
+```bash
+bash deploy/manage.sh stop
+cp -a config config.backup-$(date +%F)
+mv config/webui.json config/webui.json.old
+bash deploy/manage.sh start
+bash deploy/manage.sh logs
+```
+
+The startup log prints a new initial password. This also clears 2FA and all sessions; `config.backup-*` is a rollback copy, not something to delete. `NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` only supplies an initial password when `webui.json` does not exist.
+
+## Notice status failed to load
+
+If the page says `协议状态加载失败`, the console cannot confirm the notice state. It refuses entry rather than bypassing the required acknowledgement.
+
+- `重新加载` retries.
+- `退出登录` returns to login.
+- Check `/api/agreements`, reverse-proxy path rewriting, and server time.
+
+## Save and restart
+
+| Action | Stored in | Restart? |
 | --- | --- | --- |
-| Console access password | Signing in to this browser console | You, on the server; see the recovery steps at the end |
-| Two-factor (2FA) code | The second sign-in step | Recovery codes, or a fresh enrolment |
-| OneBot access token | What a bot program presents to an endpoint | Regenerate it in 「节点配置」; unrelated to console sign-in |
-
-Your QQ password is not on this list. The program never asks for it and never stores it.
-
-## 1. Splash
-
-Before anything else you see 「初始化中…」 (initialising) with a skeleton. This only waits for the frontend and session state.
-
-**Expected result**: within a few seconds you reach the login page, or straight to the overview if the browser already holds a valid session.
-
-**If it never finishes**: confirm the console process is running (Docker: `bash deploy/manage.sh doctor`), that the URL and port are right, and that a reverse proxy is not blocking `/api/`. See [Troubleshooting](troubleshooting.md).
-
-## 2. The login page
-
-The subtitle reads 「OneBot v11 协议网关 · 安全登录」 *(OneBot v11 protocol gateway · secure sign-in)* and there is a single field whose placeholder is 「输入访问令牌」 *(enter access token)*.
-
-Despite the wording, this field wants the **console access password**, not a OneBot token and not your QQ password.
-
-| Control | Purpose |
-| --- | --- |
-| Password field | Enter the access password |
-| 「显示密码」 / 「隐藏密码」 | Show or hide the plaintext |
-| Submit | Submit; a wrong password shows an error banner and shakes the form |
-| 「界面有点卡顿？」 | Opens a small dialog that turns off the animated login background — a purely local toggle |
-
-The login page themes itself from a public appearance endpoint that works before sign-in, so your chosen theme applies immediately. Custom CSS is excluded from that subset and never affects the login page.
-
-### One-shot sign-in with a URL
-
-If the URL carries `?token=<access password>`, the page consumes it, signs you in, and then strips it from the address bar with `replaceState` before using it.
-
-If a second factor is required, the password is carried into the code step, so you only type the code.
-
-**Warning**: this path is for one-off devices only. Do not paste a URL containing your password into chat logs, issue trackers or screenshots.
-
-### Two-factor authentication
-
-An account with 2FA enabled sees a second step:
-
-| Control | Purpose |
-| --- | --- |
-| 6-digit code | Read it from your authenticator app |
-| 「使用恢复码」 | Switch to an 8-character alphanumeric recovery code |
-| 「改用验证码」 | Switch back to the 6-digit code |
-| 「返回」 | Back to the password step |
-
-The code can be pasted into any cell and is distributed across the six boxes. Recovery codes are single-use; the remaining count is shown under 「账号安全」 (Account security).
-
-**Expected result**: you reach the onboarding wizard or the overview.
-
-**If it fails**: codes depend on the local clock, so check that the device syncs time. If the recovery codes are also exhausted, regenerate them from a signed-in device as described in [Settings: console](settings-console.md#two-factor-authentication), or use the recovery steps at the end of this chapter.
-
-## 3. Agreement state failed to load
-
-If even the agreement state cannot be read, the whole console is replaced by an error screen:
-
-- Title 「协议状态加载失败」 *(agreement state failed to load)*.
-- Buttons 「重新加载」 (reload) and 「退出登录」 (sign out).
-
-The copy states that agreement confirmation cannot be skipped. That is intentional: without the agreement version there is no way to know whether you already consented.
-
-**Order of attempts**: press 「重新加载」 → check the server is healthy → confirm a reverse proxy is not blocking `/api/agreements` → read the server log.
-
-## 4. First-use setup (onboarding)
-
-When required, the wizard 「完成首次使用设置」 *(complete first-use setup)* appears with the subtitle 「按顺序完成必要步骤后即可进入控制台。」 *(finish the required steps in order to enter the console)*.
-
-The order comes from two server-side flags:
-
-1. `needsConsent` gives you the 「阅读并同意协议」 (read and accept the agreements) step.
-2. `mustChangePassword` gives you the 「设置访问密码」 (set the access password) step.
-
-When neither applies you go straight to the console. The server has already applied environment policy — for example accepting the legal terms through an environment flag removes the agreement step.
-
-### 4.1 Read and accept the agreements
-
-- Heading 「请阅读并同意以下协议」 *(read and accept the following agreements)* with a scrolling document region.
-- Note: 「同意一次后无需重复确认；仅当协议内容更新时才会再次请求确认。」 *(you consent once; you are only asked again when the content changes)*.
-- Checkbox 「我已阅读并同意《用户协议》与《隐私政策》」 *(I have read and accept the User Agreement and Privacy Policy)*.
-- Buttons 「不同意并退出」 (decline and sign out) and 「同意并继续」 (accept and continue), showing 「提交中…」 while submitting.
-
-**Example**: tick the checkbox → press 「同意并继续」 → expected result: the next step or the overview. After the agreement version changes, this step returns on the next sign-in.
-
-### 4.2 Set the access password
-
-- Heading 「设置访问密码」 with live strength rules while you type.
-- Rules: at least 10 characters, contains a lowercase letter, contains an uppercase letter, contains a special character (such as `!@#$%`), and contains no spaces.
-- Submit button 「保存并完成」 (save and finish).
-
-The password is stored as a salted scrypt hash in `webui.json` inside the program config directory; no plaintext is kept. Saving it invalidates sessions on other devices.
-
-**Example**: `EXAMPLE-Aa1!` satisfies every rule (it is a formatting example — do not reuse it). Press 「保存并完成」 → expected result: the wizard closes and the overview appears.
-
-**If it fails**: the rule list marks exactly which rule is unmet; a failed submission keeps you in the dialog with the error rather than silently succeeding.
-
-### 4.3 Wizard footnotes
-
-「上一步」 (back), 「下一步」 (next), 「完成」 (finish) and 「跳过」 (skip) are available as appropriate. 「跳过」 is only usable when no step is mandatory.
-
-## 5. What to do first after signing in
-
-1. The guidance panel on [Overview](overview.md) lists whichever step is still missing.
-2. Click 「打开 QQ 桌面」 (Open QQ desktop), scan the QR code inside the QQ window, and enable automatic login in QQ's own settings.
-3. Go to [QQ connection](qq-connection.md) and load the account.
-4. Only when a bot needs it, continue with [Endpoint configuration](onebot-config.md).
-
-## 6. Insecure-access banner
-
-When the console is reached over a non-loopback address and the protocol is not HTTPS, a warning banner appears at the top. It does not block you, but it means the password and session travel in plaintext.
-
-Fix it by using an SSH tunnel, configuring TLS, or binding back to loopback only. See [Access and networking](access-network.md).
-
-## 7. Forgot the password or lost 2FA
-
-Run these steps on the server itself; they need filesystem access. Back up before changing anything.
-
-1. Stop the service: `bash deploy/manage.sh stop` (or end the process for a native run).
-2. Back up the config directory: `cp -a config config.backup-$(date +%F)`.
-3. Delete or rename `config/webui.json`.
-4. Start the service: `bash deploy/manage.sh start`.
-5. Read the new initial password from the startup log: `bash deploy/manage.sh logs`, search for `initial credentials`.
-
-Alternatively, set `NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` to a temporary password before starting. It only applies when `webui.json` is absent.
-
-**The cost, stated plainly**: this file holds both the password hash and the 2FA binding. Removing it also removes 2FA (you must re-enrol) and invalidates every signed-in session. That is why step 2 exists.
-
-If only the 2FA device is lost and you still know the password, do not delete the file — sign in with a recovery code, or regenerate recovery codes / disable 2FA under 「系统设置 → 账号安全」 (Settings → Account security).
-
-## 8. Save and restart semantics
-
-| Action | Stored where | Takes effect | Restart needed |
-| --- | --- | --- | --- |
-| Agreement consent | Program config directory | Immediately, for good (asked again after a version change) | No |
-| Change access password | `webui.json` | Immediately; other devices are signed out | No |
-| Enable / disable 2FA | `webui.json` | Immediately | No |
-| Sign out | Server-side session | Immediately | No |
-
-Next: [Overview](overview.md), [Settings: console](settings-console.md#account-security).
+| Notice acknowledgement | Server config | No |
+| Password change | scrypt hash in `config/webui.json` | No; other sessions expire |
+| Enable/disable 2FA | `config/webui.json` | No |
+| Log out | Current browser session only | No |

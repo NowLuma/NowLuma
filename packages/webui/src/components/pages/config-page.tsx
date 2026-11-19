@@ -1,9 +1,8 @@
 // OneBot per-UIN configuration page.
 //
-// Layout: an account context strip (the selected QQ identity gates every
-// adapter below) + a tabbed editor pane (通用 / 4 network kinds). Each
-// network tab is an aligned row table of adapters with inline enable
-// toggles; create + edit both go through `NodeEditDialog`. All changes
+// Layout: compact account context + local category navigation + a document
+// editor. Network adapters are aligned rows; create and edit share
+// `NodeEditDialog`. Account changes keep the unsaved-edit gate.
 // auto-save: network mutations persist immediately; general-settings edits
 // are debounced (500 ms). The editor surface reports unsaved state, save
 // results and load errors in place.
@@ -12,9 +11,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, MousePointerClick, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollableTabList } from '@/components/ui/tabs';
-import { GlassMaterial } from '@/components/ui/glass-material';
+import { GlassSurface } from '@/components/ui/glass-material';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { cn, copyText } from '@/lib/utils';
@@ -249,14 +247,15 @@ export function ConfigPage() {
 
     return (
         <div className="cp-page">
-            <header className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">
-                    按账号管理连接方式与消息行为，改动自动保存。
-                </p>
+            <header className="cp-document-header">
+                <div className="min-w-0">
+                    <h2 className="cp-page-heading">账号连接</h2>
+                    <p className="cp-lede">按 QQ 账号配置连接与消息行为，改动自动保存。</p>
+                </div>
                 {resources.qqList.error && qqList.length > 0 && (
                     <div
                         role="alert"
-                        className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                        className="cp-inline-notice text-destructive"
                     >
                         {resources.qqList.error}；当前显示上次成功读取的账号列表。
                     </div>
@@ -301,7 +300,12 @@ export function ConfigPage() {
                                         onRetry={reload}
                                     />
                                 ) : (
-                                    <div className="flex flex-col gap-4">
+                                    <div className="cp-config-document">
+                                        <TabStrip
+                                            activeTab={activeTab}
+                                            onChange={setActiveTab}
+                                            counts={countMap(config.networks)}
+                                        />
                                         <EditorBar
                                             title={
                                                 activeTab === 'general'
@@ -321,15 +325,10 @@ export function ConfigPage() {
                                             }
                                         />
 
-                                        <TabStrip
-                                            activeTab={activeTab}
-                                            onChange={setActiveTab}
-                                            counts={countMap(config.networks)}
-                                        />
 
                                         <div
                                             key={`${selectedUin}-${activeTab}`}
-                                            className="cp-fade min-w-0"
+                                            className="cp-fade cp-config-body"
                                             id={`config-panel-${activeTab}`}
                                             role="tabpanel"
                                             aria-labelledby={`config-tab-${activeTab}`}
@@ -444,7 +443,7 @@ function EditorBar({
     onCreate,
 }: EditorBarProps) {
     return (
-        <div className="cp-toolbar">
+        <div className="cp-toolbar cp-editorbar">
             <div className="min-w-0">
                 <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
                 <code className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums">
@@ -455,7 +454,7 @@ function EditorBar({
                 {(saveStatus || dirty) && (
                     <span
                         role={saveStatusTone === 'error' ? 'alert' : 'status'}
-                        className="inline-flex min-w-0 max-w-xl items-center gap-1.5 break-words text-xs font-medium [overflow-wrap:anywhere] [&>svg]:shrink-0"
+                        className="cp-save-state"
                     >
                         {saveStatusTone === 'saving' ? (
                             <>
@@ -488,7 +487,7 @@ function EditorBar({
                 {onCreate && (
                     <Button
                         size="sm"
-                        variant="outline"
+                        variant="glass"
                         onClick={onCreate}
                         disabled={saveStatusTone === 'saving'}
                     >
@@ -496,7 +495,7 @@ function EditorBar({
                         添加连接
                     </Button>
                 )}
-                <Button onClick={onSave} size="sm" disabled={saveStatusTone === 'saving'}>
+                <Button variant="glass" onClick={onSave} size="sm" disabled={saveStatusTone === 'saving'}>
                     <Save className="size-3.5" /> 立即保存
                 </Button>
             </div>
@@ -536,8 +535,7 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
     };
 
     return (
-        <div className="ui-glass cp-category-chrome">
-            <GlassMaterial />
+        <GlassSurface className="cp-category-chrome">
             <ScrollableTabList
                 activeValue={activeTab}
                 role="tablist"
@@ -599,18 +597,15 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
                             )}
                             <span className="relative">{label}</span>
                             {count != null && (
-                                <Badge
-                                    variant={active ? 'default' : 'secondary'}
-                                    className="relative h-5 px-1.5 font-mono text-micro tabular-nums"
-                                >
+                                <span className="relative font-mono text-xs text-muted-foreground tabular-nums">
                                     {count}
-                                </Badge>
+                                </span>
                             )}
                         </button>
                     );
                 })}
             </ScrollableTabList>
-        </div>
+        </GlassSurface>
     );
 }
 
@@ -699,9 +694,9 @@ function NetworkTabView({
 
     if (list.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
+            <div className="cp-empty-state text-muted-foreground">
                 <p className="text-sm">还没有{tab.title}连接</p>
-                <Button variant="outline" size="sm" onClick={onCreateClick}>
+                <Button variant="glass" size="sm" onClick={onCreateClick} disabled={busy}>
                     <Plus className="size-3.5" /> 添加连接
                 </Button>
             </div>
@@ -718,7 +713,12 @@ function NetworkTabView({
                     {copyError}
                 </p>
             )}
-            <div className="cp-panel overflow-hidden">
+            <div className="cp-adapter-table">
+                <div aria-hidden="true" className="cp-adapter-table-head">
+                    <span>连接</span>
+                    <span>地址与运行状态</span>
+                    <span>操作</span>
+                </div>
                 {list.map((item, idx) => {
                     const duplicate = !!item.name && (nameCounts.get(item.name) ?? 0) > 1;
                     return (
@@ -745,7 +745,7 @@ function NetworkTabView({
 
 function EmptyState() {
     return (
-        <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-muted-foreground">
+        <div className="cp-empty-state text-muted-foreground">
             <MousePointerClick className="size-8 opacity-40" strokeWidth={1.5} />
             <p className="text-sm">先选择 QQ 账号，再设置连接方式和状态回复。</p>
             <p className="text-xs">
@@ -757,11 +757,11 @@ function EmptyState() {
 
 function ConfigLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
     return (
-        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-dashed text-muted-foreground">
-            <p role="alert" className="max-w-md text-center text-sm text-destructive">
+        <div className="cp-empty-state text-muted-foreground">
+            <p role="alert" className="max-w-xl break-words text-sm text-destructive">
                 {message}
             </p>
-            <Button variant="outline" size="sm" onClick={onRetry}>
+            <Button variant="glass" size="sm" onClick={onRetry}>
                 重试
             </Button>
         </div>

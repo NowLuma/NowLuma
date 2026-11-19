@@ -1,14 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { LineField } from '../src/components/ui/line-field';
-import { LINE_FIELD, quantizeLineWidth } from '../src/lib/line-field';
-
-const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8').replaceAll("'", '"');
-const workspaceCss = readFileSync(
-    new URL('../src/styles/workspace.css', import.meta.url),
-    'utf8',
-).replaceAll("'", '"');
+import { quantizeLineWidth, sampleLineWidths } from '../src/lib/line-field';
 
 describe('quantizeLineWidth', () => {
     it.each([
@@ -29,63 +20,32 @@ describe('quantizeLineWidth', () => {
     });
 });
 
-describe('LineField', () => {
-    it('renders a finite fine lattice through the canonical mark, not another coarse analytical N', () => {
-        expect(LINE_FIELD).toHaveLength(48);
-        expect([...new Set(LINE_FIELD.map((line) => line.width))].sort()).toEqual([1, 2, 3, 4]);
+describe('source-brightness line field', () => {
+    const raster = (...grays: number[]) =>
+        new Uint8ClampedArray(grays.flatMap((gray) => [gray, gray, gray, 255]));
 
-        for (const line of LINE_FIELD) {
-            expect(line.x - line.width / 2).toBeGreaterThanOrEqual(0);
-            expect(line.x + line.width / 2).toBeLessThanOrEqual(192);
-        }
-
-        const markup = renderToStaticMarkup(<LineField />);
-        expect(markup).toContain('aria-hidden="true"');
-        expect(markup).toContain('focusable="false"');
-        expect(markup).toContain('viewBox="0 0 192 192"');
-        expect(markup).toContain('mask-type:alpha');
-        expect(markup).toContain('<image href=');
-        expect(markup.match(/<line /g)).toHaveLength(48);
-        expect(markup.match(/vector-effect="non-scaling-stroke"/g)).toHaveLength(48);
-        expect(markup).not.toContain('data-line-motion');
+    it('samples each row and column from the image, rather than assigning widths by column position', () => {
+        const pixels = raster(0, 255, 64, 128);
+        expect([...sampleLineWidths(pixels, 2, 2, 2, 2)]).toEqual([4, 1, 3, 2]);
+        expect([...sampleLineWidths(raster(255, 0, 128, 64), 2, 2, 2, 2)]).toEqual([
+            1, 4, 2, 3,
+        ]);
     });
 
-    it('uses independent mask IDs when shared surfaces render more than one identity', () => {
-        const html = renderToStaticMarkup(
-            <>
-                <LineField />
-                <LineField />
-            </>,
-        );
-        const ids = [...html.matchAll(/<mask id="([^"]+)"/g)].map((match) => match[1]);
-        expect(ids).toHaveLength(2);
-        expect(new Set(ids).size).toBe(2);
-
-        for (const id of ids) {
-            expect(html).toContain(`mask="url(#${id})"`);
-        }
+    it('averages all source pixels covered by a cell, including uneven edge partitions', () => {
+        expect([...sampleLineWidths(raster(0, 0, 255, 255, 255, 255), 3, 2, 2, 1)]).toEqual([
+            2, 1,
+        ]);
     });
 
-    it('only opts into calm continuous movement when explicitly requested', () => {
-        expect(renderToStaticMarkup(<LineField animated />)).toContain('data-line-motion="true"');
-        expect(css).toMatch(
-            /\.ui-line-field\[data-line-motion="true"\] \.ui-line-field-lines\s*\{\s*animation: line-field-drift 24s ease-in-out infinite;/,
-        );
-        expect(workspaceCss).toContain(
-            'animation: workspace-stream-glide 10s ease-in-out infinite;',
-        );
-        expect(workspaceCss).toContain('transform: translate(-3px, 2px);');
-        expect(workspaceCss).toContain('transform: translate(3px, -2px);');
+    it('composites transparent source pixels onto paper instead of reconstructing transparent black as ink', () => {
+        const pixels = new Uint8ClampedArray([0, 0, 0, 0, 0, 0, 0, 128]);
+        expect([...sampleLineWidths(pixels, 2, 1, 2, 1)]).toEqual([1, 3]);
     });
 
-    it('stops movement for application switches, the OS preference and the low rendering budget', () => {
-        expect(css).toMatch(
-            /html\[data-reduce-motion="1"\] \.ui-line-field-lines,\s*html\[data-no-motion="1"\] \.ui-line-field-lines\s*\{\s*animation: none !important;\s*transform: none !important;/,
-        );
-        expect(css).toMatch(
-            /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.ui-line-field-lines\s*\{\s*animation: none !important;\s*transform: none !important;/,
-        );
-        expect(workspaceCss).toContain('html[data-low-performance="1"] .workspace-auth-stream');
-        expect(workspaceCss).toContain('transition-duration: 0ms !important;');
+    it('rejects a truncated raster or empty cells instead of displaying a misleading source', () => {
+        expect(() => sampleLineWidths(raster(0), 2, 1, 2, 1)).toThrow(RangeError);
+        expect(() => sampleLineWidths(raster(0), 1, 1, 2, 1)).toThrow(RangeError);
     });
 });
+

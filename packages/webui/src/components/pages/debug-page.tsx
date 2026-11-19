@@ -1,13 +1,11 @@
-// Debug — a multi-tab developer workspace over /api/debug/*. Workspaces: the
-// action tester, the visual message composer, the live activity feed, and an
-// embedded API reference (the action library). The browser's 试一下 prefills
-// the tester and switches to it. Tester / composer / activity stay MOUNTED so
-// the live SSE feed and in-progress edits survive tab switches.
+// Developer workbench over the real debug API. Editors and activity stay
+// mounted across local navigation; the reference retains state after its
+// first visit. Prefilling the tester cannot replace an in-flight invocation.
 import { useEffect, useState } from 'react';
 import { Activity, Library, Send, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs } from '@/components/ui/tabs';
-import { GlassMaterial } from '@/components/ui/glass-material';
+import { GlassSurface } from '@/components/ui/glass-material';
 import { ActionTester } from '@/components/debug/action-tester';
 import { MessageComposer } from '@/components/debug/message-composer';
 import { LiveActivity } from '@/components/debug/live-activity';
@@ -26,6 +24,8 @@ export function DebugPage() {
     const [ready, setReady] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [tab, setTab] = useState<Tab>('tester');
+    const [apiOpened, setApiOpened] = useState(false);
+    const [testerInvoking, setTesterInvoking] = useState(false);
     const [preset, setPreset] = useState<{ name: string; nonce: number } | undefined>();
 
     useEffect(() => {
@@ -44,36 +44,49 @@ export function DebugPage() {
     }, [api]);
 
     const tryAction = (name: string) => {
+        if (testerInvoking) {
+            return;
+        }
+
         setPreset((p) => ({ name, nonce: (p?.nonce ?? 0) + 1 }));
         setTab('tester');
     };
 
     return (
         <div className="cp-page">
-            <header className="flex flex-col gap-3">
-                <div className="cp-toolbar text-sm text-muted-foreground">
-                    <p>选择账号与接口，构建消息并查看实时结果。</p>
+            <header className="cp-document-header">
+                <div className="cp-toolbar">
+                    <div className="min-w-0">
+                        <h2 className="cp-page-heading">开发者工具</h2>
+                        <p className="cp-lede">选择实际账号调用接口，构建消息并阅读运行结果。</p>
+                    </div>
                     {ready && (
-                        <span className="font-mono text-xs tabular-nums">
+                        <span className="cp-runtime-context font-mono tabular-nums">
                             {accounts.length} 个账号 · {docs.length} 个接口
+                            {testerInvoking && <span role="status">调用进行中</span>}
                         </span>
                     )}
                 </div>
                 {loadError && (
                     <div
                         role="alert"
-                        className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                        className="cp-inline-notice text-destructive"
                     >
                         {loadError}
                     </div>
                 )}
-                <div className="ui-glass cp-category-chrome">
-                    <GlassMaterial />
+                <GlassSurface className="cp-category-chrome">
                     <Tabs
                         className="border-0"
                         aria-label="调试工具"
                         value={tab}
-                        onChange={setTab}
+                        onChange={(next) => {
+                            setTab(next);
+
+                            if (next === 'api') {
+                                setApiOpened(true);
+                            }
+                        }}
                         items={[
                             {
                                 value: 'tester',
@@ -98,7 +111,7 @@ export function DebugPage() {
                             },
                         ]}
                     />
-                </div>
+                </GlassSurface>
             </header>
 
             <SkeletonSwap
@@ -112,35 +125,49 @@ export function DebugPage() {
             >
                 {ready ? (
                     <>
-                        {/* Tester / compose / activity stay MOUNTED and toggle via CSS so the
-                live feed's SSE never drops (it must capture events fired from other
-                tabs) and in-progress params/messages survive a peek at another tab.
-                ApiBrowser has no state worth preserving and is heavy (~520 rows), so
-                it mounts on demand. */}
+                        {/* Editors remain mounted during local navigation. The activity
+                            subscription deliberately captures calls from the other tabs. */}
                         <div
                             role="tabpanel"
                             aria-label="接口调用"
-                            className={cn('min-w-0', tab === 'tester' ? 'cp-fade' : 'hidden')}
+                            hidden={tab !== 'tester'}
+                            inert={tab !== 'tester'}
+                            className={cn('min-w-0', tab === 'tester' && 'cp-fade')}
                         >
-                            <ActionTester accounts={accounts} docs={docs} presetAction={preset} />
+                            <ActionTester
+                                accounts={accounts}
+                                docs={docs}
+                                presetAction={preset}
+                                onInvokingChange={setTesterInvoking}
+                            />
                         </div>
                         <div
                             role="tabpanel"
                             aria-label="发送消息"
-                            className={cn('min-w-0', tab === 'compose' ? 'cp-fade' : 'hidden')}
+                            hidden={tab !== 'compose'}
+                            inert={tab !== 'compose'}
+                            className={cn('min-w-0', tab === 'compose' && 'cp-fade')}
                         >
                             <MessageComposer accounts={accounts} />
                         </div>
                         <div
                             role="tabpanel"
                             aria-label="活动记录"
-                            className={cn('min-w-0', tab === 'activity' ? 'cp-fade' : 'hidden')}
+                            hidden={tab !== 'activity'}
+                            inert={tab !== 'activity'}
+                            className={cn('min-w-0', tab === 'activity' && 'cp-fade')}
                         >
                             <LiveActivity />
                         </div>
-                        {tab === 'api' && (
-                            <div role="tabpanel" aria-label="接口库">
-                                <ApiBrowser docs={docs} onTry={tryAction} />
+                        {apiOpened && (
+                            <div
+                                role="tabpanel"
+                                aria-label="接口库"
+                                hidden={tab !== 'api'}
+                                inert={tab !== 'api'}
+                                className={cn('min-w-0', tab === 'api' && 'cp-fade')}
+                            >
+                                <ApiBrowser docs={docs} onTry={tryAction} tryDisabled={testerInvoking} />
                             </div>
                         )}
                     </>

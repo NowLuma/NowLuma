@@ -8,6 +8,7 @@ import {
     useReducedMotionConfig,
     useTransform,
 } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 const CELL = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 } as const;
 const SEG =
@@ -44,8 +45,8 @@ export function SegmentedControl({
 
     const controlled = value !== undefined;
     const current = controlled ? value : internal;
-    const found = options.findIndex((option) => option.value === current);
-    const index = found < 0 ? 0 : found;
+    const index = options.findIndex((option) => option.value === current);
+    const focusIndex = index >= 0 ? index : options.findIndex((option) => !option.disabled);
 
     const buttons = useRef<(HTMLButtonElement | null)[]>([]);
     const emit = useRef(onValueChange);
@@ -54,17 +55,17 @@ export function SegmentedControl({
     }, [onValueChange]);
 
     const reduced = useReducedMotionConfig();
-    const pos = useMotionValue(index);
+    const pos = useMotionValue(Math.max(0, index));
     const thumbX = useTransform(pos, (next) => `${next * 100}%`);
     const maskX = useTransform(pos, (next) => `${next * -100}%`);
 
     useEffect(() => {
         if (reduced) {
-            pos.set(index);
+            pos.set(Math.max(0, index));
             return;
         }
 
-        const controls = animate(pos, index, CELL);
+        const controls = animate(pos, Math.max(0, index), CELL);
         return () => controls.stop();
     }, [index, reduced, pos]);
 
@@ -132,8 +133,9 @@ export function SegmentedControl({
         <div
             role="radiogroup"
             aria-label={label}
-            className={`ui-segmented relative inline-block select-none rounded-[9px] border border-border bg-muted/70 p-[3px] shadow-[inset_0_1px_2px_rgb(0_0_0/0.07)] ${className}`}
+            className={`ui-glass ui-segmented relative inline-block select-none rounded-full p-[4px] ${className}`}
         >
+            <GlassMaterial />
             <div
                 className="relative grid"
                 style={{ gridTemplateColumns: template, touchAction: 'manipulation' }}
@@ -156,8 +158,8 @@ export function SegmentedControl({
 
                 <motion.div
                     aria-hidden
-                    className="ui-segmented-thumb pointer-events-none absolute inset-y-0 left-0 overflow-hidden rounded-[6px] bg-foreground text-background shadow-[0_1px_2px_rgb(0_0_0/0.28)]"
-                    style={{ width: `${100 / count}%`, x: thumbX }}
+                    className="ui-segmented-thumb pointer-events-none absolute inset-y-0 left-0 overflow-hidden rounded-full bg-foreground text-background shadow-sm"
+                    style={{ width: `${100 / count}%`, x: thumbX, opacity: index >= 0 ? 1 : 0 }}
                     initial={false}
                 >
                     <motion.div className="absolute inset-0" style={{ x: maskX }} initial={false}>
@@ -188,7 +190,8 @@ export function SegmentedControl({
                             role="radio"
                             aria-checked={optionIndex === index}
                             aria-disabled={option.disabled || undefined}
-                            tabIndex={optionIndex === index ? 0 : -1}
+                            disabled={option.disabled}
+                            tabIndex={optionIndex === focusIndex ? 0 : -1}
                             onClick={() => !option.disabled && select(option.value)}
                             onKeyDown={(event) => onKeyDown(event, optionIndex)}
                             onPointerEnter={() => !option.disabled && setHovered(optionIndex)}

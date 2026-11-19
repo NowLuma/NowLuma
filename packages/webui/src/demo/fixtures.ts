@@ -113,6 +113,7 @@ export function demoProcess(): HookProcessInfo {
         name: 'QQ · DEMO',
         path: '/DEMO/QQ',
         injected: false,
+        manualStopped: false,
         connected: false,
         loggedIn: false,
         uin: '',

@@ -570,11 +570,7 @@ export function normalizeAppearance(
         density: oneOf<Density>(v.density, ['cozy', 'compact'], DEFAULT_APPEARANCE.density),
         reduceMotion: boolOr(v.reduceMotion, DEFAULT_APPEARANCE.reduceMotion),
         disableMotion: boolOr(v.disableMotion, DEFAULT_APPEARANCE.disableMotion),
-        performanceMode: oneOf<'auto' | 'high' | 'low'>(
-            v.performanceMode,
-            ['auto', 'high', 'low'],
-            'auto',
-        ),
+        performanceMode: oneOf<'high' | 'low'>(v.performanceMode, ['high', 'low'], 'high'),
         customPointerSystem: boolOr(v.customPointerSystem, DEFAULT_APPEARANCE.customPointerSystem),
         customContextMenu: boolOr(v.customContextMenu, DEFAULT_APPEARANCE.customContextMenu),
         highContrast: boolOr(v.highContrast, DEFAULT_APPEARANCE.highContrast),

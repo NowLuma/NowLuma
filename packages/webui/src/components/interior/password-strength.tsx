@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 
 const CELL = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 } as const;
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const;
@@ -174,7 +174,7 @@ export function PasswordStrength({
         guessable,
         announcement,
     } = usePasswordStrength(value, { rules, labels, announceDelay });
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const tone = toneFor(score, max);
 
     return (

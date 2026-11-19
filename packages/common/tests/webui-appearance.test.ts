@@ -63,6 +63,8 @@ describe('shared WebUI appearance contract', () => {
         expect(DEFAULT_APPEARANCE.accentPreset).toBe('neutral');
         expect(DEFAULT_APPEARANCE.accentCustom.toLowerCase()).not.toContain('8561bd');
         expect(DEFAULT_APPEARANCE.background.type).toBe('none');
+        expect(DEFAULT_APPEARANCE.performanceMode).toBe('high');
+        expect(DEFAULT_APPEARANCE.disableMotion).toBe(false);
         expect(DEFAULT_APPEARANCE.background.color.toLowerCase()).not.toContain('b99ae6');
     });
 });

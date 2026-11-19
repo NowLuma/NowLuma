@@ -1,8 +1,13 @@
 import * as React from 'react';
 import { vi } from 'vitest';
 
+export interface HookHost {
+    render<T>(component: () => T): T;
+    unmount(): void;
+}
+
 // A single-component hook host for callback tests; layout and DOM events stay in browser checks.
-export function hookHost() {
+export function hookHost(): HookHost {
     const slots: unknown[] = [];
     let cursor = 0;
     let pending: (() => void)[] = [];

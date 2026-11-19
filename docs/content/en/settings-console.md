@@ -1,162 +1,122 @@
 ---
-title: "Settings: console (appearance, data and format, account security)"
-description: Every appearance sub-group, the data refresh and time-format options, changing the access password, signing out, and two-factor authentication with its recovery paths.
+title: "Settings: appearance and account"
+description: Ten settings categories, theme and background, manual display effects, accessibility, data format, access password and 2FA.
 ---
 
-# Settings: console
+# Settings: appearance and account
 
-The 「系统设置」 page (`/settings`) groups ten tabs into three sections: **console** (this chapter), **Nowluma**, and **platform** (both in [Settings: Nowluma and platform](settings-runtime.md)).
+Path `/settings`; ten categories use a document-style index and the active one is stored in `?tab=`. The index wraps on narrow screens; direct links remain available.
 
-The left rail is a grouped navigation; desktop widths show the three section headers and mobile shows a flat strip. The active tab lives in the `?tab=` URL parameter, so a settings link can be shared directly; the default tab is 「外观」 (appearance).
-
-| Section | Tabs |
+| Category | Content |
 | --- | --- |
-| 控制台 (console) | 外观 (appearance), 数据与格式 (data and format), 账号安全 (account security) |
-| Nowluma | 全局配置 (global config), 存储管理 (storage), 通知 (notifications) |
-| 平台 (platform) | 服务 (service), 高级 (advanced), 开发者 (developer), 关于 (about) |
+| `外观` | Theme, palette, background, typography, top bar, manual motion/glass, accessibility |
+| `数据与格式` | Polling interval, default page, time format |
+| `账号安全` | Access password, 2FA, logout |
+| `全局配置` | rkey fallback, video upload connections, music signing |
+| `存储管理` | Space usage, log retention, cleanup |
+| `通知` | Debounce window, notification channels |
+| `服务` | WebUI listener, desktop, TLS, backup, runtime |
+| `高级` | Custom CSS, UI config import/export/reset |
+| `开发者` | Re-enter onboarding, trigger crash |
+| `关于` | Version, updates, licence, feedback |
+
+Appearance changes apply immediately and auto-save. Service settings state whether a restart is required. Runtime categories are covered in [Settings: runtime and services](settings-runtime.md).
 
 ## Appearance
 
-Appearance affects **this browser's** display only and is stored in the UI configuration. Changes debounce for 400 ms and save automatically; a failure shows 「外观同步失败」 (appearance sync failed) in the bottom-right while the local value keeps applying.
+### Theme and palette
 
-### Theme
+- `主题`: light, dark or follow system.
+- `配色方案`: default or Catppuccin. Catppuccin decides its own light/dark mode, so mode and darkness controls no longer change it.
+- `深色强度`: `纯黑` suits OLED and is visible only in dark mode.
+- `导航样式`: follow background, light panel or accent.
+- `显示密度`: comfortable or compact.
 
-| Control | Options |
-| --- | --- |
-| Palette | Eleven presets, including the default lavender accent |
-| 「显示模式」 (display mode) | Light / dark / follow system |
-| 「深色强度」 (dark intensity) | Soft / true black (OLED) |
+The UI explains that changes synchronise across devices. When a host manages appearance, a banner says appearance follows the host and the previous colours, fonts and background are retained until the integration exits.
 
-Choosing a palette with a fixed light/dark identity (Catppuccin variants, for example) makes display mode and dark intensity inert. That is by design, not a defect.
+### Accent
 
-### Accent colour
-
-- Presets plus a custom colour picker.
-- 「应用范围」 (scope): global / sidebar only.
-- 「侧栏样式」 (sidebar style): follow background / light panel / accent.
-
-A low-contrast choice raises a once-per-session dialog 「强调色对比度较低」 (accent contrast is low) offering 「恢复默认色」 (restore the default) or 「仍然使用」 (use it anyway). It warns once and does not nag on every edit.
+Preset colours or a custom colour; `应用范围` is `全局` or `仅导航`. If contrast is below about 3:1, `强调色对比度较低` offers `恢复默认色` or `仍然使用` once per session. The choice is not blocked.
 
 ### Background
 
-| Control | Description |
-| --- | --- |
-| Type | None / solid / gradient / image |
-| Solid | Colour picker |
-| Gradient | Preset gradients |
-| Image | Upload a wallpaper — PNG / JPEG / WebP, up to 5 MB — with a preview and 「移除」 (remove) |
-| 「遮罩强度」 (overlay strength) | 0–1, how much the background is dimmed |
-| 「背景模糊」 (background blur) | 0–40 px |
+Solid colour, gradient or wallpaper, shown between cards and on the login page. Wallpapers accept PNG/JPEG/WebP up to 5 MB; `遮罩强度` and `背景模糊` improve foreground readability. Removing the wallpaper leaves other appearance settings intact.
 
-Uploaded wallpapers live in the UI configuration and are **not** included in the 「高级 → 备份与重置」 export; re-upload them on another machine.
+### Typography and UI
 
-### Typography and interface
+`界面字体` and `等宽字体` (monospace is used by logs and code), `圆角`, `界面缩放`, `显示密度`. Font loading failures report a browser-permission problem.
 
-| Control | Description |
-| --- | --- |
-| 「界面字体」 / 「等宽字体」 | Preset fonts, or 「自定义」 with a free-form family name |
-| Local font list | Chromium-only; on failure it reports 「无法读取本机字体，请检查浏览器权限后重试。」 *(cannot read local fonts; check browser permissions and retry)* and you can still type a family manually |
-| 「圆角」 (corner radius) | Interface corner rounding |
-| 「界面缩放」 (zoom) | Whole-interface scale slider |
-| 「显示密度」 (density) | Comfortable / compact |
-
-### Theme variables
-
-Ten whitelisted CSS variables, each with its own picker and per-token reset, plus 「全部恢复默认」 (restore all defaults).
-
-The login page receives these values too (whitelist and colour values only), so the pre-sign-in page matches the console.
+`主题微调` overrides ten theme variables: page background, foreground, card, primary, muted foreground, border, navigation background, destructive, success and warning. Unset values follow the palette; `全部恢复默认` clears them.
 
 ### Top bar
 
-Three toggles for the togglable top-bar elements: 「连接状态徽章」 (connection badge), 「主题切换按钮」 (theme toggle), 「展示模式按钮」 (presentation-mode button). Sign-out is always present.
+`连接状态`, `主题菜单` and `展示模式` can be hidden independently. The page title, workspace management and logout always remain. This only affects display.
 
 ### Context menu
 
-「自定义右键菜单」 decides whether the browser context menu is replaced by the console's own.
+`自定义右键菜单` is on by default; turning it off restores the browser menu immediately.
 
 ### Interaction and accessibility
 
-| Toggle | Effect |
+| Setting | Effect |
 | --- | --- |
-| 「自定义光标」 | Use a drawn cursor |
-| 「性能模式」 (performance mode) | Auto-detect (default) / full effects / low performance with motion off; auto mode degrades only on sustained low foreground frame rates, does not write results back to the server, and promises no frame-rate or power gain |
-| 「减弱动效」 (reduce motion) | Lower animation amplitude |
-| 「关闭全部动效」 (disable all motion) | No animation at all — for low-end devices or motion sensitivity |
-| 「高对比模式」 (high contrast) | Increase contrast |
-| 「钉住侧栏展开」 (pin the sidebar) | Desktop width only; keeps the sidebar expanded |
+| `自定义光标` | Themed adaptive cursor, off by default |
+| `动效` | Manually enable or disable motion; static glass remains when off |
+| `玻璃材质` | Manually choose full or frosted glass; no automatic degradation |
+| `减弱动效` | System or manual accessibility reduction for movement and springs |
+| `高对比模式` | Strengthens borders and secondary text |
+| `显示导航说明` | Shows each destination's purpose in the wide dock; persisted as `sidebarPinned` |
 
-### When a host manages appearance
+Motion and glass quality are independent: full glass can be static and frosted glass can animate. System reduced-motion, reduced-transparency and high-contrast preferences are accessibility constraints, not frame-rate-driven settings.
 
-If a host program drives this console's appearance through integration mode (configured with `NOWLUMA_WEBUI_TARGET` at deployment), most appearance controls are disabled and a note explains: 「外观跟随{host}。原有配色、字体和背景已保留，退出集成后恢复；缩放与无障碍设置仍可调整。」 *(appearance follows {host}; your palette, fonts and background are preserved and restored when the integration ends; zoom and accessibility remain adjustable)*.
+### Display effects
 
-Zoom, custom cursor, high contrast and similar accessibility items keep working. Custom CSS is preserved but suspended.
+- **Full glass**: supported Chromium renders real backdrop displacement; labels and focus rings are not filtered.
+- **Frosted glass**: skips displacement maps while retaining readable edges and the selected motion setting.
+- **Motion**: changes immediately and is chosen during first setup or in Appearance; no continuous FPS detector runs.
+
+Choices use the existing UI configuration and synchronise across devices. Legacy automatic quality becomes full glass; saved motion-off, palette and unrelated preferences are preserved. Material quality does not change account, message or network behavior.
+
+Glass itself degrades: high contrast, system reduced transparency or a host overlay use solid surfaces; only Chromium with backdrop-filter support attempts refraction, others use frost. Optics are limited to small chrome, never a full-page filter.
 
 ## Data and format
 
-| Control | Options | Effect |
-| --- | --- | --- |
-| 「轮询间隔」 (poll interval) | Seconds; `0` pauses foreground polling | Cadence for system metrics. QQ list, process and connection reconciliation use their own throttle (max of interval ×10 and 10 seconds) and prefer SSE pushes |
-| 「登录后落地页」 (landing page) | Any navigation entry | Where you land after the next sign-in |
-| 「时间格式」 (time format) | 24-hour / 12-hour (AM/PM) | How timestamps render; the log content itself is unchanged |
+- `轮询间隔`: refresh accounts, processes and system info; may be paused.
+- `默认页面`: where login lands; options come from the six navigation entries.
+- `时制`: 24-hour or 12-hour.
 
-**Example**: set the poll interval to `0` and the resource numbers stop refreshing while logs and connection state keep streaming over SSE. Useful on a constrained network or when you want a static snapshot.
-
-These auto-save to the UI configuration. The interval changes browser behaviour only, never the server.
+These are UI preferences, auto-saved and immediate.
 
 ## Account security
 
-### Change the access password
+There is one local `admin` account. The password is stored as a scrypt hash in `config/webui.json`, never in plaintext.
 
-| Element | Description |
+- `访问密码` → `修改密码`: requires the current password and a matching new password; other sessions expire immediately.
+- `退出登录`: clears the current browser session only.
+- Password recovery: see [First run](first-run.md#forgot-password-or-lost-2fa).
+
+## Two-factor authentication
+
+2FA is off by default. Enabling it:
+
+1. `开启 2FA`; scan the QR with an Authenticator or copy the secret.
+2. Enter the current password and a 6-digit code; `确认开启`.
+3. Save the recovery codes shown once.
+
+| Action | Requirement |
 | --- | --- |
-| Entry | 「访问密码」 → 「修改密码」 (change password) |
-| Hint | 「修改后其他设备的会话将立即失效。」 *(sessions on other devices are invalidated immediately)* |
-| On success | 「已更新（hh:mm:ss）— 其他设备的会话已失效。」 |
+| Regenerate recovery codes | Current password and a code; old codes become invalid |
+| Disable 2FA | Current password plus a code or recovery code; sessions expire |
+| Login with `使用恢复码` | Each recovery code works once; hyphens ignored |
 
-The password is stored as a salted scrypt hash in `webui.json` in the program config directory; no plaintext is kept.
+The remaining recovery-code count appears in `账号安全`. Store the codes separately from the password.
 
-**Example**: change the password → another signed-in device is asked to sign in on its next request. That is the point: it is how you cut off someone who has your old password.
+## Save and apply
 
-### Sign out
-
-「退出登录」 asks 「确认退出登录？」 and then clears the current session.
-
-### Two-factor authentication
-
-The card has two states:
-
-| State | Shows | Actions |
+| Item | Storage | Applies |
 | --- | --- | --- |
-| Off | An `Authenticator` row and 「开启 2FA」 | Start enrolment |
-| On | 「已绑定 {label} · 剩余 {n} 个恢复码」 and a status row | 「恢复码」 → 「重新生成」, 「关闭 2FA」 |
+| Appearance, data and format | Server UI config, auto-save | Immediately, cross-device |
+| Password, 2FA | `config/webui.json` | Immediately; relevant sessions expire |
+| UI config import/export | Manual | Reloads the interface after import |
 
-Enrolment flow:
-
-1. Press 「开启 2FA」; a QR code and a copyable one-time secret appear.
-2. Scan the QR code or type the secret into your authenticator app.
-3. Confirm with the current 6-digit code.
-4. The page shows a set of recovery codes and states 「这些恢复码只显示一次…」 *(these recovery codes are shown only once)*. **Write them down now and store them safely.**
-
-Disabling 2FA warns: 「关闭后，只需访问密码即可登录。其他已登录会话会立即失效。」 *(after disabling, only the access password is needed to sign in; other signed-in sessions are invalidated immediately)*.
-
-**Example (using a recovery code)**: the phone is lost → on the second sign-in step choose 「使用恢复码」 → enter an 8-character recovery code → reach the console → regenerate codes or disable and re-enrol.
-
-**If it fails**:
-
-| Symptom | Fix |
-| --- | --- |
-| Codes are always rejected | Check that the device clock syncs; codes rotate every 30 seconds |
-| Recovery codes exhausted | Regenerate from another signed-in device; if none exists, follow [First start](first-run.md#7-forgot-the-password-or-lost-2fa) (which also clears the 2FA binding) |
-| Other devices signed out after a password change | Expected behaviour |
-
-## Save and effect summary for this section
-
-| Setting | Stored in | Takes effect | Restart |
-| --- | --- | --- | --- |
-| All appearance sub-groups | UI configuration | Immediately (debounced auto-save) | No |
-| Data and format | UI configuration | Immediately | No |
-| Access password | `webui.json` | Immediately; other devices are signed out | No |
-| Two-factor authentication | `webui.json` | Immediately | No |
-| Sign out | Server-side session | Immediately | No |
-
-Next: [Settings: Nowluma and platform](settings-runtime.md), [Access and networking](access-network.md).
+Failures keep the current state and show the reason; defaults never overwrite your configuration silently.

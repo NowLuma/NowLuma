@@ -7,12 +7,20 @@ import { useId, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { BookOpen, ChevronRight, PlayCircle, Search, ShieldCheck, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GlassMaterial } from '@/components/ui/glass-material';
+import { Button } from '@/components/ui/button';
+import { GlassSurface } from '@/components/ui/glass-material';
 import type { DebugActionDoc } from '@/types';
 
-const cardCls = 'cp-panel';
 
-function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) => void }) {
+function ActionRow({
+    doc,
+    onTry,
+    tryDisabled,
+}: {
+    doc: DebugActionDoc;
+    onTry: (name: string) => void;
+    tryDisabled: boolean;
+}) {
     const [open, setOpen] = useState(false);
     const id = useId();
     const reduced = useReducedMotionConfig();
@@ -23,7 +31,7 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
                 aria-controls={id}
-                className="flex min-h-16 w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                className="flex min-h-16 min-w-0 w-full items-start gap-3 py-3 text-left transition-colors hover:bg-muted/30"
             >
                 <ChevronRight
                     className={cn(
@@ -67,7 +75,7 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                             transition={{ duration: reduced ? 0 : 0.32, ease: [0.16, 1, 0.3, 1] }}
                             className="overflow-hidden"
                         >
-                            <div className="flex flex-col gap-3 border-t border-border/50 px-4 py-4 text-[13px]">
+                            <div className="flex min-w-0 flex-col gap-3 border-t border-border/50 py-4 text-[13px]">
                                 {doc.aliases.length > 0 && (
                                     <p className="text-xs text-muted-foreground">
                                         别名:
@@ -79,14 +87,15 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                                     </p>
                                 )}
                                 {doc.params.length > 0 ? (
-                                    <div className="overflow-x-auto rounded-lg border border-border/50">
-                                        <table className="w-full min-w-[28rem] text-left text-xs">
-                                            <thead className="bg-muted/40 text-muted-foreground">
+                                    <div className="min-w-0">
+                                        <table className="cp-api-table">
+                                            <caption className="sr-only">{doc.name} 参数</caption>
+                                            <thead>
                                                 <tr>
-                                                    <th className="px-2 py-1 font-medium">参数</th>
-                                                    <th className="px-2 py-1 font-medium">类型</th>
-                                                    <th className="px-2 py-1 font-medium">必填</th>
-                                                    <th className="px-2 py-1 font-medium">说明</th>
+                                                    <th scope="col">参数</th>
+                                                    <th scope="col">类型</th>
+                                                    <th scope="col">必填</th>
+                                                    <th scope="col">说明</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -95,10 +104,10 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                                                         key={p.name}
                                                         className="border-t border-border/40"
                                                     >
-                                                        <td className="px-2 py-1 font-mono">
+                                                        <td data-label="参数" className="font-mono">
                                                             {p.name}
                                                         </td>
-                                                        <td className="px-2 py-1 font-mono text-muted-foreground">
+                                                        <td data-label="类型" className="font-mono text-muted-foreground">
                                                             {p.values
                                                                 ? p.values.map(String).join(' | ')
                                                                 : p.type}
@@ -108,10 +117,10 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                                                                 </span>
                                                             ) : null}
                                                         </td>
-                                                        <td className="px-2 py-1">
-                                                            {p.required ? '✓' : '–'}
+                                                        <td data-label="必填">
+                                                            {p.required ? '是' : '否'}
                                                         </td>
-                                                        <td className="px-2 py-1 text-muted-foreground">
+                                                        <td data-label="说明" className="text-muted-foreground">
                                                             {p.desc ?? ''}
                                                             {p.default !== undefined
                                                                 ? ` (默认 ${JSON.stringify(p.default)})`
@@ -136,13 +145,14 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
                                     </p>
                                 )}
                                 <div>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="glass"
+                                        size="sm"
                                         onClick={() => onTry(doc.name)}
-                                        className="cp-control inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/15"
+                                        disabled={tryDisabled}
                                     >
                                         <PlayCircle className="h-3.5 w-3.5" /> 试一下
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         </motion.div>
@@ -156,9 +166,11 @@ function ActionRow({ doc, onTry }: { doc: DebugActionDoc; onTry: (name: string) 
 export function ApiBrowser({
     docs,
     onTry,
+    tryDisabled = false,
 }: {
     docs: DebugActionDoc[];
     onTry: (name: string) => void;
+    tryDisabled?: boolean;
 }) {
     const reduced = useReducedMotionConfig();
     const [query, setQuery] = useState('');
@@ -213,18 +225,17 @@ export function ApiBrowser({
             initial={reduced ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: reduced ? 0 : 0.28 }}
-            className={cn(cardCls, 'flex min-h-[28rem] min-w-0 flex-col gap-5 p-4 sm:p-6')}
+            className="cp-panel flex min-w-0 flex-col gap-5"
         >
             <div className="flex items-center gap-2.5">
-                <BookOpen className="h-[18px] w-[18px] text-primary" />
+                <BookOpen className="size-4 text-muted-foreground" />
                 <h2 className="text-[15px] font-semibold tracking-tight">接口库</h2>
                 <span className="text-xs text-muted-foreground tabular-nums">
                     {filtered.length}/{docs.length}
                 </span>
             </div>
 
-            <div className="ui-glass ui-glass-search cp-search">
-                <GlassMaterial />
+            <GlassSurface className="ui-glass-search cp-search max-w-3xl">
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
                     type="search"
@@ -234,7 +245,7 @@ export function ApiBrowser({
                     placeholder="搜索接口名、摘要或别名…"
                     className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
-            </div>
+            </GlassSurface>
 
             <div role="group" aria-label="接口分类" className="flex flex-wrap gap-1.5">
                 <button
@@ -242,10 +253,8 @@ export function ApiBrowser({
                     onClick={() => setCat('')}
                     aria-pressed={cat === ''}
                     className={cn(
-                        'cp-control rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        cat === ''
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted/70 text-muted-foreground hover:text-foreground',
+                        'cp-level-toggle',
+                        cat === '' ? 'text-foreground' : 'text-muted-foreground',
                     )}
                 >
                     全部
@@ -257,10 +266,8 @@ export function ApiBrowser({
                         onClick={() => setCat(c)}
                         aria-pressed={cat === c}
                         className={cn(
-                            'cp-control rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                            cat === c
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted/70 text-muted-foreground hover:text-foreground',
+                            'cp-level-toggle',
+                            cat === c ? 'text-foreground' : 'text-muted-foreground',
                         )}
                     >
                         {c}
@@ -270,7 +277,7 @@ export function ApiBrowser({
 
             <div className="flex min-w-0 flex-col gap-6">
                 {grouped.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">
+                    <p className="py-12 text-sm text-muted-foreground">
                         没有匹配的接口
                     </p>
                 ) : (
@@ -280,9 +287,9 @@ export function ApiBrowser({
                                 {category}{' '}
                                 <span className="font-normal tabular-nums">{items.length}</span>
                             </h3>
-                            <div className="overflow-hidden rounded-xl border border-border">
+                            <div className="min-w-0 border-y border-border">
                                 {items.map((d) => (
-                                    <ActionRow key={d.name} doc={d} onTry={onTry} />
+                                    <ActionRow key={d.name} doc={d} onTry={onTry} tryDisabled={tryDisabled} />
                                 ))}
                             </div>
                         </div>

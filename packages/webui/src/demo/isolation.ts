@@ -1,6 +1,8 @@
 import { DEMO_AVATAR } from './constants';
 import type { DemoApi } from './api';
 
+// Storage is isolated to this page's memory; reset and reload discard every
+// simulated preference rather than reading credentials from real site storage.
 export function memoryStorage(): Storage {
     const values = new Map<string, string>();
     return {

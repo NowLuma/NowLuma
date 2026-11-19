@@ -12,6 +12,7 @@ import { demoSystem, demoSystemSettings } from '../src/demo/fixtures';
 import { demoLinkTarget } from '../src/demo/isolation';
 import { createApiClient } from '../src/lib/api/client';
 import type { ApiClient } from '../src/lib/api/types';
+import { persistAppearance } from '../src/appearance/persistence';
 
 let api: DemoApi;
 let client: ApiClient;
@@ -191,6 +192,51 @@ describe('DEMO API guided journey using the production client', () => {
             status: 'ok',
             detail: expect.stringContaining('no socket'),
         });
+    });
+
+    it('keeps an explicit unload manually stopped until an explicit load', async () => {
+        await ready();
+        const stopped = await client.processes.unload(DEMO_PID);
+        expect(stopped.process).toMatchObject({
+            injected: false,
+            connected: false,
+            loggedIn: false,
+            status: 'available',
+            manualStopped: true,
+        });
+        expect(api.summary).toMatchObject({ online: false, stopped: true });
+        expect((await client.processes.list())[0]).toMatchObject({ manualStopped: true });
+        expect((await client.processes.refresh(DEMO_PID)).process).toMatchObject({
+            status: 'available',
+            manualStopped: true,
+        });
+        expect((await client.processes.load(DEMO_PID)).process).toMatchObject({
+            status: 'online',
+            manualStopped: false,
+        });
+        expect(api.summary).toMatchObject({ online: true, stopped: false });
+        api.setScenario('ready');
+        expect((await client.processes.list())[0]).toMatchObject({
+            status: 'online',
+            manualStopped: false,
+        });
+    });
+
+    it('settles the real first-run appearance save without changing layout and preserves a rejected later write', async () => {
+        await setup();
+        vi.stubGlobal('localStorage', {
+            getItem: (key: string) => key === 'nowluma_token' ? token : null,
+        });
+        const before = await client.ui.get();
+        const selected = { ...before.appearance, disableMotion: true, performanceMode: 'low' as const };
+        await persistAppearance(selected);
+        const saved = await client.ui.get();
+        expect(saved.appearance).toEqual(selected);
+        expect(saved.layout).toEqual(before.layout);
+
+        api.failNextMutation = true;
+        await expect(persistAppearance({ ...selected, disableMotion: false })).rejects.toThrow('Simulated write failure');
+        expect((await client.ui.get()).appearance).toEqual(selected);
     });
 
     it('does not apply config while offline, but preserves the desired in-memory save', async () => {
@@ -522,6 +568,7 @@ describe('DEMO API guided journey using the production client', () => {
             mustChange: true,
             scanned: false,
             online: false,
+            stopped: false,
             messages: 1,
         });
         expect(listener).toHaveBeenCalled();
@@ -555,6 +602,7 @@ describe('DEMO API guided journey using the production client', () => {
             mustChange: true,
             scanned: false,
             online: false,
+            stopped: false,
             messages: 1,
         });
         expect(api.failNextMutation).toBe(false);

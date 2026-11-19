@@ -2,6 +2,7 @@
 // so it uses a direct fetch with the bearer token from localStorage.
 import { DEFAULT_APPEARANCE, UI_APPEARANCE_CACHE_KEY } from '@nowluma/common/webui-appearance';
 import { webuiSessionHeaders } from '@/lib/api/session-headers';
+import { normalizePerformanceMode } from '@/lib/performance-mode';
 import type { UiAppearance } from '@/types';
 
 const LS_CACHE = UI_APPEARANCE_CACHE_KEY;
@@ -16,18 +17,25 @@ export function authToken(): string | null {
 }
 
 function withAppearanceDefaults(value: Partial<UiAppearance>): UiAppearance {
-    return {
+    const appearance = {
         ...DEFAULT_APPEARANCE,
         ...value,
+        performanceMode: normalizePerformanceMode(value.performanceMode),
         background: {
             ...DEFAULT_APPEARANCE.background,
             ...value.background,
         },
     };
+    // The old device-local latch is not a preference, even in older browser caches.
+    delete (appearance as UiAppearance & { autoLow?: unknown }).autoLow;
+    return appearance;
 }
 
-export async function fetchAppearance(): Promise<UiAppearance | null> {
+export async function fetchAppearance(authenticatedOnly = false): Promise<UiAppearance | null> {
     const token = authToken();
+    if (authenticatedOnly && !token) {
+        return null;
+    }
 
     try {
         // Authed: fetch the full config so we get `customCss` (which the public
@@ -39,12 +47,19 @@ export async function fetchAppearance(): Promise<UiAppearance | null> {
                 const data = (await res.json()) as {
                     config?: { appearance?: Partial<UiAppearance> };
                 };
+                if (authToken() !== token) {
+                    return null;
+                }
 
                 if (data.config?.appearance) {
                     return withAppearanceDefaults(data.config.appearance);
                 }
             }
             // 401/expired → fall through to the public subset.
+        }
+
+        if (authenticatedOnly || authToken() !== token) {
+            return null;
         }
 
         const res = await fetch('/api/ui/public');
@@ -54,7 +69,9 @@ export async function fetchAppearance(): Promise<UiAppearance | null> {
         }
 
         const data = (await res.json()) as { appearance?: Partial<UiAppearance> };
-        return data.appearance ? withAppearanceDefaults(data.appearance) : null;
+        return authToken() === token && data.appearance
+            ? withAppearanceDefaults(data.appearance)
+            : null;
     } catch {
         return null;
     }
@@ -77,12 +94,17 @@ export function isSafeMode(): boolean {
     }
 }
 
-export async function persistAppearance(appearance: UiAppearance): Promise<void> {
-    const token = authToken();
-
+export async function persistAppearance(
+    appearance: UiAppearance,
+    token: string | null = authToken(),
+): Promise<void> {
     if (!token) {
         return;
-    } // pre-auth: local cache only (no settings UI exists there anyway)
+    } // Pre-auth changes are local only; an explicit setup save requires a session.
+
+    if (authToken() !== token) {
+        throw new Error('登录状态已变化，请重新登录后保存显示效果。');
+    }
 
     const response = await fetch('/api/ui', {
         method: 'POST',
@@ -99,6 +121,24 @@ export async function persistAppearance(appearance: UiAppearance): Promise<void>
         throw new Error(
             payload.message || payload.error || `外观保存失败（HTTP ${response.status}）`,
         );
+    }
+
+    const payload = (await response.json()) as {
+        success?: boolean;
+        config?: { appearance?: Partial<UiAppearance> };
+        message?: string;
+    } | null;
+    if (authToken() !== token) {
+        throw new Error('登录状态已变化，请重新登录后保存显示效果。');
+    }
+    const saved = payload?.config?.appearance;
+    if (
+        payload?.success !== true ||
+        saved === null ||
+        typeof saved !== 'object' ||
+        Array.isArray(saved)
+    ) {
+        throw new Error(payload?.message || '服务器未确认外观已保存。');
     }
 }
 

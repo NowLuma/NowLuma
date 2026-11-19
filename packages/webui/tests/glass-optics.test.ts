@@ -78,6 +78,18 @@ describe('glassDisplacementAt', () => {
             }
         }
     });
+
+    it('keeps backdrop sampling monotonic across a wide capsule rim instead of duplicating its edge', () => {
+        const capsule = glassGeometry(580, 112, 56)!;
+        let previous = 0;
+
+        for (let index = 1; index <= 1600; index++) {
+            const x = index / 100;
+            const sample = x + glassDisplacementAt(capsule, x, capsule.height / 2).x;
+            expect(sample).toBeGreaterThanOrEqual(previous);
+            previous = sample;
+        }
+    });
 });
 
 describe('glassDisplacementMap', () => {

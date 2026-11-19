@@ -39,22 +39,34 @@ describe('normalizeAppearance — defaults & coercion', () => {
         expect(a.density).toBe('cozy');
     });
 
-    it('persists only a valid performance preference, preserving legacy animation-off choices', () => {
-        expect(normalizeAppearance({}).performanceMode).toBe('auto');
+    it('normalizes legacy automatic quality without changing manual motion or other preferences', () => {
+        expect(normalizeAppearance({}).performanceMode).toBe('high');
 
-        for (const performanceMode of ['auto', 'high', 'low']) {
+        for (const performanceMode of ['high', 'low']) {
             expect(normalizeAppearance({ performanceMode }).performanceMode).toBe(performanceMode);
         }
 
-        expect(
-            normalizeAppearance({ performanceMode: 'turbo', disableMotion: true }),
-        ).toMatchObject({
-            performanceMode: 'auto',
+        const preferences = {
+            disableMotion: true,
+            reduceMotion: true,
+            accentPreset: 'violet',
+            palette: 'rose-pine',
+            uiScale: 1.1,
+            background: { type: 'solid', color: '#123456' },
+            cssVars: { '--primary': '#234567' },
+            customCss: 'body { color: inherit; }',
+        };
+        const saved = normalizeAppearance({ ...preferences, performanceMode: 'auto', autoLow: true });
+        expect(saved).toMatchObject({ ...preferences, performanceMode: 'high' });
+        expect(saved).not.toHaveProperty('autoLow');
+        expect(normalizeAppearance({ ...preferences, performanceMode: 'low' })).toMatchObject({
+            ...preferences,
+            performanceMode: 'low',
+        });
+        expect(normalizeAppearance({ performanceMode: 'turbo', disableMotion: true })).toMatchObject({
+            performanceMode: 'high',
             disableMotion: true,
         });
-        const saved = normalizeAppearance({ performanceMode: 'auto', autoLow: true });
-        expect(saved.disableMotion).toBe(false);
-        expect(saved).not.toHaveProperty('autoLow');
     });
 
     it('keeps the custom pointer opt-in while enabling the independent context menu by default', () => {

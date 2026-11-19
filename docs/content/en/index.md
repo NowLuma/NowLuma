@@ -1,65 +1,57 @@
 ---
-title: Nowluma documentation (English)
-description: Complete English guide index for first-time users — install, first start, every console page, settings, data persistence and troubleshooting.
+title: Nowluma documentation
+description: Complete English guide to the new workspace, account kernel and GPL licensing: install, first run, six pages, settings, deployment, data and recovery.
 ---
 
 # Nowluma documentation
 
-Nowluma is self-hosted software that runs on **your own machine or server**. It connects to a real QQ client, exposes the account through the OneBot v11 protocol for bot programs, and provides a browser console for accounts, connections, logs and appearance.
-
-This documentation is written for someone using the project for the first time. Every chapter says what a feature does, where to click, a copy-pasteable example, what you should see, where the change is stored, whether a restart is needed, and how to recover when it fails.
-
-The console itself has no language switcher, so the interface is Chinese. Each label is quoted here as it appears on screen, with the English meaning next to it — for example 「总览」 (Overview).
+Nowluma connects to a running QQ client, exposes the account through OneBot v11, and provides a browser workspace. It does not log in to QQ and never stores your QQ password.
 
 ## Reading paths
 
-| Your situation | Suggested order |
+| Your situation | Start here |
 | --- | --- |
-| First deployment with Docker | [Docker install](install-docker.md) → [First start](first-run.md) → [QQ connection](qq-connection.md) |
-| Service is running, you need bot endpoints | [Endpoint configuration](onebot-config.md) → [Logs](logs.md) |
-| You want the concepts first | [What Nowluma is](introduction.md) → [Access and networking](access-network.md) |
-| You are debugging someone else's install | [Troubleshooting](troubleshooting.md) → [Logs](logs.md) |
-| You only want to see the interface | [Practice mode](demo.md) |
-| You plan to change code or open a PR | [Contributing](developing.md) |
+| First Linux Docker deployment | [Docker install](install-docker.md) → [First run](first-run.md) → [QQ sessions](qq-connection.md) |
+| Console works, want to connect a bot | [Bot connections](onebot-config.md) → [Run log](logs.md) |
+| Want the concepts first | [What Nowluma is](introduction.md) → [Access and network](access-network.md) |
+| Troubleshooting for someone else | [Troubleshooting](troubleshooting.md) → [Run log](logs.md) |
+| Just want to explore the UI | [Practice demo](demo.md) |
+| Contributing code | [Development](developing.md) |
 
 ## Chapters
 
 | Chapter | Contents |
 | --- | --- |
-| [What Nowluma is](introduction.md) | Boundaries, three meanings of online/offline, saved vs applied, platform status |
-| [Docker install (Linux)](install-docker.md) | Every installer step, ports and timezone, initial password, daily commands, volumes |
-| [Native install](install-native.md) | Linux Lite release package and the Windows single-file exe |
-| [First start](first-run.md) | Sign-in, `?token=` link, two-factor, agreements, access password |
-| [Overview](overview.md) | Widgets, layout editing, navigation, guidance panel, presentation mode |
-| [QQ connection](qq-connection.md) | Process states, load and unload, opening the QQ desktop |
-| [Endpoint configuration](onebot-config.md) | Per-account general settings and the four OneBot network endpoints |
-| [Logs](logs.md) | Levels, presets, the cost of TRACE, exports |
-| [Debug](debug.md) | Action tester, message composer, live activity, API browser |
-| [Settings: console](settings-console.md) | Appearance, data and format, account security |
-| [Settings: Nowluma and platform](settings-runtime.md) | Global config, storage, notifications, service, advanced, developer, about |
-| [Access and networking](access-network.md) | Local, LAN, SSH, TLS and reverse proxies, desktop authentication |
-| [Data, backup and updates](data-backup.md) | Where data lives, backup and restore, cleanup, upgrades |
-| [Troubleshooting](troubleshooting.md) | Symptom table and recovery ladder |
-| [Practice mode](demo.md) | A static practice environment without a real account |
-| [Planned and unverified](planned.md) | Features not yet shipped or not yet verified |
-| [Contributing](developing.md) | Licence, boundaries, tests, submission workflow |
+| [What Nowluma is](introduction.md) | Components, connection states, save semantics, account kernel and licence |
+| [Docker install](install-docker.md) | Linux wizard, ports, volumes, daily commands |
+| [Native install](install-native.md) | Linux Lite, Windows exe, running from source |
+| [First run](first-run.md) | Login, 2FA, reading the notices, setting a password |
+| [Workspace](overview.md) | Masthead, floating navigation, workflow, layout, widgets, kiosk |
+| [QQ sessions](qq-connection.md) | Process states, attach, kernel choice, unload, desktop |
+| [Bot connections](onebot-config.md) | Per-account message behaviour and four transports |
+| [Run log](logs.md) | Live log, presets, levels, TRACE, export |
+| [Debug tools](debug.md) | Action tester, message composer, live activity, API library |
+| [Settings: appearance and account](settings-console.md) | Theme, performance mode, accessibility, password, 2FA |
+| [Settings: runtime and services](settings-runtime.md) | Global config, storage, notifications, services, updates |
+| [Access and network](access-network.md) | SSH, LAN, reverse proxy, TLS, desktop auth |
+| [Data, backup and updates](data-backup.md) | Locations, backup, restore, cleanup, QQ persistence |
+| [Troubleshooting](troubleshooting.md) | From symptom to safe recovery |
+| [Practice demo](demo.md) | What `/demo/` can and cannot prove |
+| [Planned and unverified](planned.md) | Rewrite kernel, platforms and release status |
+| [Development](developing.md) | GPL, layout, validation, PRs and release |
 
 ## Conventions
 
-- Console labels are quoted in their original Chinese form, with the meaning in brackets where useful: 「节点配置」 (Endpoint configuration). There is no i18n layer yet, so these are the exact strings on screen.
-- Status vocabulary follows the interface: QQ processes use 「可加载」 (loadable), 「等待登录」 (waiting for sign-in), 「已在线」 (online); OneBot endpoints use 「正常」 (ok), 「注意」 (warn), 「异常」 (down), 「应用失败」 (apply failed), 「未启用」 (disabled).
-- External addresses are always examples: `http://127.0.0.1:5700`, `https://bot.example.invalid`, `admin@example.invalid`. No real account, token or traffic capture appears here.
-- "Saved", "applied" and "connected" are three different things; see [What Nowluma is](introduction.md#three-different-senses-of-saved).
-- This documentation was checked against the source and the existing tests but has **not been through a new visual regression pass**. The interface is still changing, so exact positions may differ from your build; labels and behaviour are what this text describes.
-- Cross-chapter links are relative paths, so they work offline.
-
-## Practice mode
-
-If you only want to look at the console without connecting a real QQ account, read [Practice mode](demo.md). It is a clearly labelled **simulated** environment; it does not replace a real QQ sign-in and cannot prove that a bot replies.
+- Quoted Chinese text is the exact label on screen; this English guide explains the same controls without inventing a separate UI language.
+- Process states: `可加载`, `加载中`, `等待连接`, `等待登录`, `已在线`, `错误`, `已断开`. Endpoint states: `正常`, `注意`, `异常`, `应用失败`, `未启用`.
+- External addresses are examples: `http://127.0.0.1:5700`, `https://bot.example.invalid`, `admin@example.invalid`.
+- “Saved”, “applied” and “connected” are different; see [Three kinds of save result](introduction.md#three-kinds-of-save-result).
+- Content is checked against source and tests, but the current UI has not had a browser visual acceptance pass. No pixel coordinates, FPS or visual-quality claims.
+- Links are relative so the site works offline. The site build targets `https://wsxyt.github.io/Nowluma/`; publishing is performed by maintainers, and this documentation does not claim it is already live. `/demo/` is produced by the same static build.
 
 ## What this documentation does not promise
 
-- That the QQ server will keep accepting a stored session forever. Expiry, location verification or risk-control challenges still have to be completed in QQ itself.
-- That any account is safe from risk control or bans.
-- That 「正常」 (ok) on an endpoint means the bot works. It means a listener is bound or a connection is established.
-- Any detail about packages, signed binaries, image registries or performance numbers that has not shipped yet — see [Planned and unverified](planned.md).
+- That QQ's servers will always accept a saved session; re-verification may still be required in QQ.
+- That an account will not be restricted; no ban/risk probability is offered.
+- That an endpoint showing `正常` means a bot will reply. It only means listening or connected.
+- That unreleased capabilities, signed binaries, image tags or performance benchmarks exist. See [Planned and unverified](planned.md).

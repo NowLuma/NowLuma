@@ -66,11 +66,34 @@ export function GlassMaterial() {
         const root = document.documentElement;
         const transparency = window.matchMedia('(prefers-reduced-transparency: reduce)');
         const contrast = window.matchMedia('(forced-colors: active)');
+        const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const surface = element.parentElement;
+        let pointerX = 0;
+        let pointerY = 0;
+        let pointerActive = false;
         let frame = 0;
         let previous = '';
 
         const update = () => {
             frame = 0;
+            const lightAllowed =
+                !motion.matches &&
+                root.dataset.reduceMotion !== '1' &&
+                root.dataset.noMotion !== '1' &&
+                !root.hasAttribute('data-webui-target') &&
+                !contrast.matches &&
+                !transparency.matches;
+
+            if (surface && lightAllowed && pointerActive) {
+                const bounds = surface.getBoundingClientRect();
+                const x = Math.min(1, Math.max(0, (pointerX - bounds.left) / Math.max(1, bounds.width)));
+                const y = Math.min(1, Math.max(0, (pointerY - bounds.top) / Math.max(1, bounds.height)));
+                element.style.setProperty('--glass-light-x', `${Math.round(x * 100)}%`);
+                element.style.setProperty('--glass-light-y', `${Math.round(y * 100)}%`);
+            } else if (surface) {
+                element.style.removeProperty('--glass-light-x');
+                element.style.removeProperty('--glass-light-y');
+            }
             const renderer = glassRenderer({
                 userAgent: navigator.userAgent,
                 supportsBackdropFilter:
@@ -119,6 +142,30 @@ export function GlassMaterial() {
             }
         };
 
+        const trackLight = (event: PointerEvent) => {
+            if (
+                event.pointerType === 'touch' ||
+                motion.matches ||
+                root.dataset.reduceMotion === '1' ||
+                root.dataset.noMotion === '1' ||
+                root.hasAttribute('data-webui-target')
+            ) {
+                return;
+            }
+
+            pointerX = event.clientX;
+            pointerY = event.clientY;
+            pointerActive = true;
+            schedule();
+        };
+        const resetLight = () => {
+            pointerActive = false;
+            schedule();
+        };
+
+        surface?.addEventListener('pointermove', trackLight, { passive: true });
+        surface?.addEventListener('pointerleave', resetLight);
+
         const resize = new ResizeObserver(schedule);
         resize.observe(element);
         const preferences = new MutationObserver(schedule);
@@ -129,10 +176,13 @@ export function GlassMaterial() {
                 'data-contrast',
                 'data-webui-target',
                 'style',
+                'data-reduce-motion',
+                'data-no-motion',
             ],
         });
         transparency.addEventListener('change', schedule);
         contrast.addEventListener('change', schedule);
+        motion.addEventListener('change', schedule);
         update();
 
         return () => {
@@ -141,6 +191,9 @@ export function GlassMaterial() {
             preferences.disconnect();
             transparency.removeEventListener('change', schedule);
             contrast.removeEventListener('change', schedule);
+            motion.removeEventListener('change', schedule);
+            surface?.removeEventListener('pointermove', trackLight);
+            surface?.removeEventListener('pointerleave', resetLight);
         };
     }, []);
 

@@ -2,7 +2,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { desktopLink, normalizeVncUrl } from '@nowluma/common/desktop-url';
 import {
-    AlertTriangle,
     Database,
     Download,
     Loader2,
@@ -15,7 +14,7 @@ import {
     Trash2,
     Upload,
 } from 'lucide-react';
-import { Group } from '@/components/settings/settings-controls';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Button } from '@/components/ui/button';
@@ -76,7 +75,7 @@ export function SystemPanel() {
             return true;
         } catch (error) {
             console.error('load system settings failed', error);
-            setMsg({ kind: 'err', text: '加载系统设置失败' });
+            setMsg({ kind: 'err', text: error instanceof Error ? error.message : '加载系统设置失败' });
             return false;
         } finally {
             setLoading(false);
@@ -133,10 +132,14 @@ export function SystemPanel() {
                         hookAutoLoad: overridden('hookAutoLoad') ? undefined : hookAutoLoad,
                     }),
             );
-            await load();
-            flash('ok', '已保存，重启 Nowluma 后生效');
+            const refreshed = await load();
+            if (refreshed) {
+                flash('ok', '已保存，重启 Nowluma 后生效');
+            } else {
+                setMsg({ kind: 'err', text: '已保存，但状态刷新失败；请手动刷新页面，重启后应用。' });
+            }
         } catch (e) {
-            flash('err', e instanceof Error ? e.message : '保存失败');
+            setMsg({ kind: 'err', text: e instanceof Error ? e.message : '保存失败' });
         } finally {
             setSaving(false);
         }
@@ -164,10 +167,15 @@ export function SystemPanel() {
             setCertPem('');
             setKeyPem('');
             setEditingCert(false);
-            await load();
-            flash('ok', '证书已保存，重启后生效');
+            setData((previous) => previous && !previous.hasCert ? { ...previous, hasCert: true } : previous);
+            const refreshed = await load();
+            if (refreshed) {
+                flash('ok', '证书已保存，重启后生效');
+            } else {
+                setMsg({ kind: 'err', text: '证书已保存，但状态刷新失败；请手动刷新页面，重启后应用。' });
+            }
         } catch (e) {
-            flash('err', e instanceof Error ? e.message : '证书保存失败');
+            setMsg({ kind: 'err', text: e instanceof Error ? e.message : '证书保存失败' });
         } finally {
             setSaving(false);
         }
@@ -187,10 +195,15 @@ export function SystemPanel() {
                 () => api.systemSettings.deleteCert(),
             );
             setEditingCert(false);
-            await load();
-            flash('ok', '证书已删除');
+            setData((previous) => previous?.hasCert ? { ...previous, hasCert: false } : previous);
+            const refreshed = await load();
+            if (refreshed) {
+                flash('ok', '证书已删除');
+            } else {
+                setMsg({ kind: 'err', text: '证书已删除，但状态刷新失败；请手动刷新页面。' });
+            }
         } catch (e) {
-            flash('err', e instanceof Error ? e.message : '删除失败');
+            setMsg({ kind: 'err', text: e instanceof Error ? e.message : '删除失败' });
             throw e;
         } finally {
             setSaving(false);
@@ -216,7 +229,7 @@ export function SystemPanel() {
             );
             flash('ok', '已导出备份');
         } catch (e) {
-            flash('err', e instanceof Error ? e.message : '导出失败');
+            setMsg({ kind: 'err', text: e instanceof Error ? e.message : '导出失败' });
         } finally {
             setSaving(false);
         }
@@ -259,14 +272,15 @@ export function SystemPanel() {
 
             const summary = `${parts.join('，')}${res.restartRequiredToApply ? '，重启后生效' : ''}`;
             const refreshed = await load();
-            flash(
-                refreshed ? 'ok' : 'err',
-                refreshed ? summary : `${summary}；但界面状态刷新失败，请手动刷新页面`,
-            );
+            if (refreshed) {
+                flash('ok', summary);
+            } else {
+                setMsg({ kind: 'err', text: `${summary}；但界面状态刷新失败，请手动刷新页面` });
+            }
         } catch (e) {
             const message = e instanceof Error ? e.message : '恢复失败';
             const refreshed = await load();
-            flash('err', refreshed ? message : `${message}；界面状态刷新失败，请手动刷新页面`);
+            setMsg({ kind: 'err', text: refreshed ? message : `${message}；界面状态刷新失败，请手动刷新页面` });
             throw e;
         } finally {
             setSaving(false);
@@ -290,11 +304,11 @@ export function SystemPanel() {
                 {!loading && !data ? (
                     <div
                         role="alert"
-                        className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+                        className="flex flex-wrap items-center justify-between gap-3 border-b py-4 text-sm text-destructive"
                     >
                         <span>{msg?.text ?? '加载系统设置失败'}</span>
                         <Button
-                            variant="outline"
+                            variant="glass"
                             size="sm"
                             onClick={() => {
                                 setLoading(true);
@@ -320,8 +334,8 @@ export function SystemPanel() {
 
     const EnvBadge = ({ field }: { field: string }) =>
         overridden(field) ? (
-            <Badge variant="secondary" className="ml-2 gap-1 text-micro">
-                <Lock className="h-3 w-3" /> 被环境变量覆盖
+            <Badge variant="secondary" className="gap-1 text-micro">
+                <Lock className="h-3 w-3" /> 运行值由环境变量覆盖
             </Badge>
         ) : null;
 
@@ -334,24 +348,17 @@ export function SystemPanel() {
             label="系统设置"
             className="skeleton-swap-fluid min-h-[182px]"
         >
-            <div className="flex min-w-0 flex-col gap-5">
-                {/* restart-to-apply notice */}
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>
-                        监听相关设置（端口 / 绑定地址 / HTTPS）属服务级配置，保存后需
-                        <strong>重启 Nowluma</strong> 才生效；本机无自动重启。
-                    </span>
-                </div>
+            <div className="flex min-w-0 flex-col gap-7">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                    监听、桌面入口与 HTTPS 设置保存后需重启 Nowluma。本机不会自动重启。
+                </p>
 
                 {msg && (
                     <div
                         role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
-                            'rounded-lg px-3 py-2 text-xs',
-                            msg.kind === 'ok'
-                                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-red-500/10 text-red-700 dark:text-red-300',
+                            'text-xs',
+                            msg.kind === 'ok' ? 'text-success' : 'text-destructive',
                         )}
                     >
                         {msg.text}
@@ -361,324 +368,236 @@ export function SystemPanel() {
                 <Group
                     title="服务监听"
                     icon={Server}
-                    description={<>WebUI 当前监听端口：{data.listeningPort}</>}
+                    description={<>当前监听端口：<code className="font-mono">{data.listeningPort}</code>。下方编辑保存配置。</>}
                 >
-                    <div className="flex min-w-0 flex-col gap-5 p-5">
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor={`${id}-port`} className="flex items-center">
-                                端口
-                                <EnvBadge field="webuiPort" />
-                            </Label>
-                            <Input
-                                id={`${id}-port`}
-                                value={port}
-                                onChange={(e) => setPort(e.target.value)}
-                                inputMode="numeric"
-                                placeholder="5099"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor={`${id}-host`} className="flex items-center">
-                                绑定地址
-                                <EnvBadge field="webuiHost" />
-                            </Label>
+                    <SettingRow label="端口" hint={<EnvBadge field="webuiPort" />}>
+                        <Input
+                            id={`${id}-port`}
+                            aria-label="端口"
+                            value={port}
+                            onChange={(e) => setPort(e.target.value)}
+                            inputMode="numeric"
+                            disabled={saving}
+                            placeholder="5099"
+                            className="max-w-xs tabular-nums"
+                        />
+                    </SettingRow>
+                    <SettingRow label="绑定地址" hint={<EnvBadge field="webuiHost" />}>
+                        <div className="flex min-w-0 flex-col gap-2">
                             <Input
                                 id={`${id}-host`}
+                                aria-label="绑定地址"
                                 value={host}
                                 onChange={(event) => setHost(event.target.value)}
                                 placeholder="127.0.0.1"
                                 spellCheck={false}
+                                disabled={saving}
                             />
                             <div className="flex flex-wrap gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setHost('127.0.0.1')}
-                                >
+                                <Button type="button" variant="glass" size="sm" disabled={saving} onClick={() => setHost('127.0.0.1')}>
                                     仅本机
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setHost('0.0.0.0')}
-                                >
+                                <Button type="button" variant="glass" size="sm" disabled={saving} onClick={() => setHost('0.0.0.0')}>
                                     所有网卡
                                 </Button>
                             </div>
-                            <p
-                                className={cn(
-                                    'text-xs',
-                                    host.trim() === '0.0.0.0'
-                                        ? 'text-amber-700 dark:text-amber-300'
-                                        : 'text-muted-foreground',
-                                )}
-                            >
+                            <p className={cn('text-xs leading-relaxed', host.trim() === '0.0.0.0' ? 'text-warning' : 'text-muted-foreground')}>
                                 {host.trim() === '0.0.0.0'
-                                    ? '所有网卡会允许局域网访问；建议同时启用 HTTPS，并设置强访问凭据。'
-                                    : '默认仅本机访问；也可填写其他明确的绑定地址。'}
+                                    ? '允许局域网访问；建议启用 HTTPS 并使用强访问凭据。'
+                                    : '默认仅本机访问，也可填写明确的绑定地址。'}
                             </p>
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor={`${id}-proxy`} className="flex items-center">
-                                信任代理 (trust-proxy)
-                                <EnvBadge field="trustProxy" />
-                            </Label>
+                    </SettingRow>
+                    <SettingRow label="信任代理 (trust-proxy)" hint={<EnvBadge field="trustProxy" />}>
+                        <div className="flex min-w-0 flex-col gap-2">
                             <Input
                                 id={`${id}-proxy`}
+                                aria-label="信任代理 (trust-proxy)"
                                 value={trustProxy}
                                 onChange={(e) => setTrustProxy(e.target.value)}
+                                disabled={saving}
                                 placeholder="留空=只信任 socket 对端；1=信任反代头"
                             />
-                            <p className="text-xs text-muted-foreground">
-                                仅在 WebUI 位于受信任反向代理之后时才设为 1 / loopback / IP 列表。
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                                仅在受信任反向代理之后设置 1 / loopback / IP 列表。
                             </p>
                         </div>
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <Label>
-                                    自动连接已打开的 QQ <EnvBadge field="hookAutoLoad" />
-                                </Label>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                    保存后重启生效。这不是 QQ 自动登录；账号登录仍在 QQ 窗口完成。
-                                </p>
-                            </div>
-                            <ToggleSwitch
-                                value={hookAutoLoad}
-                                onChange={setHookAutoLoad}
-                                ariaLabel="自动连接已打开的 QQ"
-                                disabled={saving || overridden('hookAutoLoad')}
-                            />
-                        </div>
-                        <div>
-                            <Button onClick={saveSettings} disabled={saving} className="gap-1.5">
-                                {saving ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="h-4 w-4" />
-                                )}{' '}
-                                保存
-                            </Button>
-                        </div>
-                    </div>
+                    </SettingRow>
+                    <SettingRow
+                        label="自动连接已打开的 QQ"
+                        hint={<><EnvBadge field="hookAutoLoad" /> QQ 登录仍在客户端完成。</>}
+                        layout="inline"
+                    >
+                        <ToggleSwitch
+                            value={hookAutoLoad}
+                            onChange={setHookAutoLoad}
+                            ariaLabel="自动连接已打开的 QQ"
+                            disabled={saving || overridden('hookAutoLoad')}
+                        />
+                    </SettingRow>
                 </Group>
 
-                <Group
-                    title="QQ 桌面"
-                    icon={Monitor}
-                    description={
-                        '在浏览器中操作 QQ 登录与客户端弹窗。端口为 0 且地址留空时隐藏入口。'
-                    }
-                >
-                    <div className="flex min-w-0 flex-col gap-5 p-5">
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor={`${id}-desktop-port`} className="flex items-center">
-                                noVNC 端口
-                                <EnvBadge field="vncPort" />
-                            </Label>
-                            <Input
-                                id={`${id}-desktop-port`}
-                                value={vncPort}
-                                onChange={(e) => setVncPort(e.target.value)}
-                                inputMode="numeric"
-                                placeholder="0"
-                                disabled={overridden('vncPort')}
-                            />
-                            <Label htmlFor={`${id}-desktop-url`}>
-                                桌面地址（可选） <EnvBadge field="vncUrl" />
-                            </Label>
-                            <Input
-                                id={`${id}-desktop-url`}
-                                value={vncUrl}
-                                onChange={(e) => setVncUrl(e.target.value)}
-                                placeholder="/desktop/vnc.html 或 https://地址/vnc.html"
-                                disabled={overridden('vncUrl')}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                留空时使用当前主机名和上面的发布端口；同源 HTTPS
-                                反向代理请填代理地址。
-                                此设置只改变入口，不改变桌面服务监听端口。不传递控制台令牌或 QQ
-                                密码。
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Docker 桌面使用当前控制台会话，不需要另填桌面密码。 QQ
-                                扫码与自动登录仍在 QQ 窗口内完成。
-                            </p>
-                        </div>
-                        {desktopError && (
-                            <p role="alert" className="px-6 text-sm text-destructive">
-                                {desktopError}
-                            </p>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                            <Button onClick={saveSettings} disabled={saving}>
-                                保存入口设置
-                            </Button>
-                            <DesktopButton />
-                        </div>
-                    </div>
+                <Group title="QQ 桌面" icon={Monitor} description="只设置入口，不改变桌面服务监听端口。">
+                    <SettingRow label="noVNC 端口" hint={<EnvBadge field="vncPort" />}>
+                        <Input
+                            id={`${id}-desktop-port`}
+                            aria-label="noVNC 端口"
+                            value={vncPort}
+                            onChange={(e) => setVncPort(e.target.value)}
+                            inputMode="numeric"
+                            placeholder="0"
+                            disabled={saving || overridden('vncPort')}
+                            className="max-w-xs tabular-nums"
+                        />
+                    </SettingRow>
+                    <SettingRow label="桌面地址（可选）" hint={<EnvBadge field="vncUrl" />}>
+                        <Input
+                            id={`${id}-desktop-url`}
+                            aria-label="桌面地址（可选）"
+                            value={vncUrl}
+                            onChange={(e) => setVncUrl(e.target.value)}
+                            placeholder="/desktop/vnc.html 或 https://地址/vnc.html"
+                            disabled={saving || overridden('vncUrl')}
+                        />
+                    </SettingRow>
+                    <SettingRow label="当前桌面" hint="端口为 0 且地址留空时隐藏入口。">
+                        <DesktopButton />
+                    </SettingRow>
+                    {desktopError && <p role="alert" className="py-3 text-xs text-destructive">{desktopError}</p>}
+                    <details className="py-3 text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            桌面地址与认证
+                        </summary>
+                        <p className="max-w-prose leading-relaxed">
+                            地址留空时使用当前主机名和发布端口；同源 HTTPS 反向代理请填代理地址。
+                            入口不传递控制台令牌或 QQ 密码。Docker 桌面使用当前控制台会话，
+                            QQ 扫码与自动登录仍在客户端完成。
+                        </p>
+                    </details>
                 </Group>
 
                 <Group
                     title="HTTPS / TLS"
                     icon={ShieldCheck}
-                    description={
-                        <>
-                            {data.hasCert ? '证书已安装。' : '尚未安装证书。'} 启用 HTTPS
-                            前需安装有效证书与私钥（PEM）。
-                        </>
-                    }
+                    description={data.hasCert ? '证书与私钥已安装。' : '启用前需安装有效的 PEM 证书与私钥。'}
                 >
-                    <div className="flex min-w-0 flex-col gap-5 p-5">
-                        <div className="flex items-center justify-between">
-                            <Label>启用 HTTPS</Label>
-                            <ToggleSwitch
-                                value={tlsEnabled}
-                                onChange={setTlsEnabled}
-                                ariaLabel="启用 HTTPS"
-                            />
-                        </div>
-
-                        {data?.hasCert && !editingCert ? (
-                            // Cert already installed — don't re-render the sensitive PEM. Show a
-                            // summary + actions; private key is never sent back to the client.
-                            <div className="flex flex-col gap-3">
-                                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                                    <span>证书与私钥已安装（出于安全不回显，未改变）。</span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setEditingCert(true)}
-                                        className="gap-1.5"
-                                    >
-                                        <Pencil className="h-4 w-4" /> 更改证书
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setConfirmDeleteCert(true)}
-                                        disabled={saving}
-                                        className="gap-1.5"
-                                    >
-                                        <Trash2 className="h-4 w-4" /> 删除证书
-                                    </Button>
-                                </div>
+                    <SettingRow label="启用 HTTPS" hint={<EnvBadge field="tlsEnabled" />} layout="inline">
+                        <ToggleSwitch value={tlsEnabled} onChange={setTlsEnabled} ariaLabel="启用 HTTPS" disabled={saving} />
+                    </SettingRow>
+                    {data.hasCert && !editingCert ? (
+                        <SettingRow label="已安装证书" hint="私钥不回显；未编辑时保留原内容。">
+                            <div className="flex flex-wrap gap-2">
+                                <Button variant="glass" disabled={saving} onClick={() => setEditingCert(true)}>
+                                    <Pencil className="size-4" /> 更改证书
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setConfirmDeleteCert(true)}
+                                    disabled={saving}
+                                    className="text-destructive hover:text-destructive"
+                                >
+                                    <Trash2 className="size-4" /> 删除证书
+                                </Button>
                             </div>
-                        ) : (
-                            <>
-                                <div className="flex flex-col gap-1.5">
+                        </SettingRow>
+                    ) : (
+                        <div className="flex min-w-0 flex-col gap-3 py-3">
+                            <div className="grid min-w-0 gap-3 md:grid-cols-2">
+                                <div className="flex min-w-0 flex-col gap-1.5">
                                     <Label htmlFor={`${id}-cert`}>证书 (cert.pem)</Label>
                                     <Textarea
                                         id={`${id}-cert`}
-                                        className="min-h-28 font-mono text-xs"
+                                        className="min-h-28 rounded-[4px] font-mono text-xs"
                                         value={certPem}
                                         onChange={(e) => setCertPem(e.target.value)}
                                         placeholder="-----BEGIN CERTIFICATE-----"
+                                        disabled={saving}
                                     />
                                 </div>
-                                <div className="flex flex-col gap-1.5">
+                                <div className="flex min-w-0 flex-col gap-1.5">
                                     <Label htmlFor={`${id}-key`}>私钥 (key.pem)</Label>
                                     <Textarea
                                         id={`${id}-key`}
-                                        className="min-h-28 font-mono text-xs"
+                                        className="min-h-28 rounded-[4px] font-mono text-xs"
                                         value={keyPem}
                                         onChange={(e) => setKeyPem(e.target.value)}
                                         placeholder="-----BEGIN PRIVATE KEY-----"
+                                        disabled={saving}
                                     />
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button variant="glass" onClick={uploadCert} disabled={saving}>
+                                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                                    保存证书
+                                </Button>
+                                {data.hasCert && editingCert && (
                                     <Button
-                                        onClick={uploadCert}
+                                        variant="glass"
                                         disabled={saving}
-                                        className="gap-1.5"
+                                        onClick={() => {
+                                            setEditingCert(false);
+                                            setCertPem('');
+                                            setKeyPem('');
+                                        }}
                                     >
-                                        {saving ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Save className="h-4 w-4" />
-                                        )}{' '}
-                                        保存证书
+                                        取消
                                     </Button>
-                                    {data?.hasCert && editingCert && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => {
-                                                setEditingCert(false);
-                                                setCertPem('');
-                                                setKeyPem('');
-                                            }}
-                                            className="gap-1.5"
-                                        >
-                                            取消
-                                        </Button>
-                                    )}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    私钥仅写入服务器 config/key.pem（0600
-                                    权限），不会回显。证书无效时保存会被拒绝；启用 TLS
-                                    后证书无法加载将阻止 WebUI 启动，不会降级为 HTTP。
-                                </p>
-                            </>
-                        )}
-                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <details className="py-3 text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            TLS 校验与私钥存储
+                        </summary>
+                        <p className="max-w-prose leading-relaxed">
+                            私钥仅写入服务器 <code className="font-mono">config/key.pem</code>（0600 权限）。
+                            无效证书会被拒绝。启用 TLS 后若证书无法加载，WebUI 将停止启动，不会降级为 HTTP。
+                        </p>
+                    </details>
                 </Group>
 
-                <Group
-                    title="服务配置备份"
-                    icon={Database}
-                    description={
-                        '备份外观、服务设置与证书。不含消息数据库；通知渠道与 OneBot 配置仅随敏感配置导出。'
-                    }
-                >
-                    <div className="flex min-w-0 flex-col gap-5 p-5">
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                                <Label>导出时包含敏感配置</Label>
-                                <ToggleSwitch
-                                    value={exportCreds}
-                                    onChange={setExportCreds}
-                                    ariaLabel="导出包含敏感配置"
-                                />
-                            </div>
-                            {exportCreds && (
-                                <p className="text-sm leading-relaxed text-red-600 dark:text-red-400">
-                                    ⚠ 将额外包含 WebUI 登录状态、TLS 私钥、通知渠道地址与 OneBot
-                                    访问令牌，请妥善保管。
-                                </p>
-                            )}
-                            <div>
-                                <Button
-                                    onClick={exportBackup}
-                                    disabled={saving}
-                                    className="gap-1.5"
-                                >
-                                    {saving ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Download className="h-4 w-4" />
-                                    )}{' '}
+                <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+                    <Button variant="glass" onClick={saveSettings} disabled={saving}>
+                        {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                        保存服务设置
+                    </Button>
+                    <span className="text-xs text-muted-foreground">监听、桌面入口与 HTTPS · 重启后应用</span>
+                </div>
+
+                <Group title="服务配置备份" icon={Database}>
+                    <SettingRow label="导出备份" hint="外观、服务设置与证书；不含消息数据库。">
+                        <div className="flex min-w-0 flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <ToggleSwitch value={exportCreds} onChange={setExportCreds} ariaLabel="导出包含敏感配置" disabled={saving} />
+                                <span className="text-xs">包含敏感配置</span>
+                                <Button variant="glass" onClick={exportBackup} disabled={saving}>
+                                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                                     导出备份
                                 </Button>
                             </div>
+                            {exportCreds && (
+                                <p className="text-xs leading-relaxed text-destructive">
+                                    包含 WebUI 登录状态、TLS 私钥、通知渠道地址与 OneBot 访问令牌，请妥善保管。
+                                </p>
+                            )}
                         </div>
-
-                        <div className="h-px bg-border" />
-
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                                <Label>恢复时一并恢复敏感配置</Label>
-                                <ToggleSwitch
-                                    value={restoreCreds}
-                                    onChange={setRestoreCreds}
-                                    ariaLabel="恢复包含敏感配置"
-                                />
+                    </SettingRow>
+                    <SettingRow label="恢复备份" hint="选择文件后确认覆盖。恢复完成需重启。">
+                        <div className="flex min-w-0 flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <ToggleSwitch value={restoreCreds} onChange={setRestoreCreds} ariaLabel="恢复包含敏感配置" disabled={saving} />
+                                <span className="text-xs">恢复敏感配置</span>
+                                <Button variant="glass" onClick={() => fileRef.current?.click()} disabled={saving}>
+                                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                                    选择备份文件
+                                </Button>
                             </div>
                             {restoreCreds && (
-                                <p className="text-sm leading-relaxed text-red-600 dark:text-red-400">
-                                    ⚠ 将覆盖当前 WebUI 登录状态、TLS 私钥、通知渠道地址与 OneBot
-                                    访问令牌；若备份口令未知可能登不进。
+                                <p className="text-xs leading-relaxed text-destructive">
+                                    将覆盖 WebUI 登录状态、TLS 私钥、通知渠道地址与 OneBot 访问令牌；
+                                    不知道备份中的口令可能无法登录。
                                 </p>
                             )}
                             <input
@@ -688,34 +607,23 @@ export function SystemPanel() {
                                 className="hidden"
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
-
                                     if (file) {
                                         setPendingBackup(file);
                                     }
-
                                     e.target.value = '';
                                 }}
                             />
-                            <div>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => fileRef.current?.click()}
-                                    disabled={saving}
-                                    className="gap-1.5"
-                                >
-                                    {saving ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Upload className="h-4 w-4" />
-                                    )}{' '}
-                                    选择备份文件并恢复
-                                </Button>
-                            </div>
-                            <p className="text-xs leading-relaxed text-muted-foreground">
-                                恢复前会校验本次要恢复的配置；写入过程中出错会自动回滚，成功后临时快照会删除。恢复后需重启生效。
-                            </p>
                         </div>
-                    </div>
+                    </SettingRow>
+                    <details className="py-3 text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            备份范围与恢复方式
+                        </summary>
+                        <p className="max-w-prose leading-relaxed">
+                            通知渠道与 OneBot 配置仅随敏感配置导出。恢复前先校验，写入出错会回滚；
+                            成功后删除临时快照。
+                        </p>
+                    </details>
                 </Group>
 
                 <DeploymentDiagnostics />

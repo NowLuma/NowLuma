@@ -4,7 +4,7 @@ import { OnboardingWizardPage } from '../src/components/pages/onboarding-wizard-
 
 vi.mock('@/contexts/ThemeContext', () => ({
     useTheme: () => ({
-        appearance: { palette: 'default', reduceMotion: true, disableMotion: true },
+        appearance: { palette: 'default', background: { type: 'none' }, reduceMotion: true, disableMotion: true },
         mode: 'system',
         setMode: vi.fn(),
     }),

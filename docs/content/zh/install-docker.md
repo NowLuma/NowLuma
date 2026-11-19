@@ -1,161 +1,138 @@
 ---
 title: Docker 安装（Linux）
-description: 用安装向导在 Linux 上部署 Nowluma：语言选择、Docker 来源选择、端口与时区、初始密码、日常命令与数据卷。
+description: 在 Linux 上用安装向导部署 Nowluma：访问方式、端口、时区、数据卷、日常命令、桌面、升级与验证现状。
 ---
 
 # Docker 安装（Linux）
 
-这是目前验证最完整的一条安装路径：宿主机不需要安装 Node 或 QQ，全部依赖都在容器里。
+适合长期运行的 Linux 服务器或 NAS。安装向导会检查 Docker Engine 与 Compose v2，生成私有配置并启动容器。
 
-## 开始之前
+## 准备
 
-| 条件 | 说明 |
+- Linux x86_64（amd64）。arm64 有构建输入，但未实际验证。
+- Docker Engine 与 Compose v2；需要 sudo 时，后续命令也要加 sudo。
+- 服务器能访问容器镜像、Node 与固定版本的 QQ 包。
+- 至少保留 `config`、`data`、`logs` 和完整 QQ HOME 四个卷。
+
+## 安装向导
+
+在源码目录执行：
+
+```bash
+bash deploy/install.sh --docker
+```
+
+首次会依次询问：
+
+| 提示 | 说明 |
 | --- | --- |
-| 系统 | Linux。安装脚本会在非 Linux 上直接退出并提示使用 Windows 的一键运行方式 |
-| 架构 | amd64 有实际构建与启动验证；arm64 有构建输入但**未验证**，见 [计划中与未验证](planned.md) |
-| 权限 | 能用 `sudo`，或当前用户在 `docker` 组里 |
-| 网络 | 首次构建要下载依赖、Node 与固定校验的 Linux QQ 包 |
-| 磁盘 | 建议预留数 GB；镜像、QQ 与依赖都在其中 |
+| 语言 | `1. 简体中文` 或 `2. English` |
+| 访问方式 | `1. 仅本机/SSH（推荐）` 或 `2. 局域网` |
+| 控制台与 QQ 桌面端口 | 默认 `5099` |
+| 机器人 HTTP 接口端口 | 默认 `3000` |
+| 机器人 WebSocket 接口端口 | 默认 `3001` |
+| 时区 | 例如 `Asia/Shanghai` |
 
-在解压后的源码目录执行：
+回车使用默认值。三个端口不能重复。配置保存在私有 `deploy/.env`，已有配置逐字保留，不会被重新生成。
 
-```bash
-bash deploy/install.sh --docker
-```
+缺少 Docker 时，向导会显示安装命令并让你确认；不会静默安装，也不会要求关闭防火墙或 SELinux。镜像源可选官方或第三方，由你决定。
 
-也可以先只选语言：`bash deploy/install.sh --docker --lang zh`。
+安装成功后直接在终端显示本次生成的控制台初始密码和实际地址。已有部署不会重置密码。
 
-## 第 1 步：选择语言
-
-向导的第一件事是问语言，后面的确认、错误和数据卷说明都跟着它走：
-
-```
-Nowluma — 1. 简体中文  2. English
-Language / 语言 [1]:
-```
-
-- 直接回车 = 简体中文。
-- 输入 `2` = English。
-- 时区默认值随语言变化：中文默认 `Asia/Shanghai`，英文默认 `UTC`。
-
-## 第 2 步：检查 Docker
-
-向导分三种情况处理，行为不同：
-
-1. **已装 Docker**：打印「已检测到 Docker，保留已有 Docker 和镜像源设置。」，不重装、不改镜像源。
-2. **没有 Docker**：问一句「是否使用第三方 LinuxMirrors 安装脚本并配置 Docker 镜像源？y=使用，n=官方安装。」，默认 `n`（官方脚本）。
-   - 选 `n`：显示将执行的官方命令 `curl -fsSL https://get.docker.com | bash -s docker`。
-   - 选 `y`：显示将执行的第三方命令 `bash <(curl -sSL https://linuxmirrors.cn/docker.sh)`，并提示该脚本可能询问是否关闭防火墙或 SELinux——**那不是 Nowluma 的要求**，按你自己的安全策略选择。
-   - 两种情况都会再问一次「是否继续执行？」，回车为 `y`（默认执行），输入 `n` 则取消安装。
-3. **Docker 装了但守护进程没跑**：问「Docker 服务未运行，是否启动并设置开机启动？」，确认后执行 `systemctl enable --now docker`。
-
-随后检查 Compose v2。缺少时问「缺少 Docker Compose v2，是否安装插件？」，按发行版用 `apt-get`/`dnf`/`yum`/`apk`/`pacman`/`zypper` 安装对应插件；拒绝则退出，不写入任何配置。
-
-## 第 3 步：首次部署设置（只问一次）
-
-只有在 `deploy/.env` 不存在时才会问这三组问题。`deploy/.env` 已存在时，向导打印「已有部署设置、账号与 QQ 用户目录将保留，不会重置密码。」并**逐字保留**原文件。
-
-| 问题 | 默认 | 影响 |
-| --- | --- | --- |
-| 访问方式：`1. 仅本机/SSH（推荐）` / `2. 局域网` | `1` | 决定宿主上的绑定地址是 `127.0.0.1` 还是 `0.0.0.0`；选局域网会提示 HTTP 未加密 |
-| 控制台与 QQ 桌面端口 | `5099` | 浏览器访问端口，也是「打开 QQ 桌面」的入口端口 |
-| 机器人 HTTP 接口端口 | `3000` | OneBot HTTP 服务端 / 上报使用的端口 |
-| 机器人 WebSocket 接口端口 | `3001` | OneBot WS 服务的端口 |
-| 时区 | `Asia/Shanghai`（中文）/ `UTC`（英文） | 写进容器的 `TZ` |
-
-约束：
-
-- 端口必须是 `1–65535` 的整数，三个端口不能重复，重复会要求重填。
-- 时区只允许字母、数字和 `_ + / -`，不允许 `..`，否则安装中止。
-- 写入的 `deploy/.env` 权限是 `600`。它不是符号链接；`.env` 是符号链接时直接报错。
-
-## 第 4 步：构建并等待启动检查
-
-向导会提示「首次构建会下载 Node、QQ 和依赖，请等待启动检查完成。」然后执行 `manage.sh start`，它做的是 `docker compose up -d --build --wait`，最多等 240 秒。
-
-成功后会打印：
-
-- 控制台初始密码（**仅首次**，16 位十六进制）；已有部署时打印「控制台密码保持不变」。
-- 控制台地址，例如 `http://127.0.0.1:5099`；选局域网时用本机 IP。
-- 安装目录与日常命令。
-
-首次密码来自容器日志里的 `initial credentials: user=admin password=...` 行。日志已经滚掉时用 `bash deploy/manage.sh logs` 查找。
-
-## 示例：一台全新的 Ubuntu 服务器
+## 首次进入
 
 ```bash
-git clone <仓库地址> Nowluma && cd Nowluma
-bash deploy/install.sh --docker
+bash deploy/manage.sh logs
 ```
 
-交互过程（示例，实际提示语言取决于你选的选项）：
+打开 `http://127.0.0.1:5099`，用初始密码登录，按[首次启动](first-run.md)完成说明阅读和改密。然后：
 
-```
-Nowluma — 1. 简体中文  2. English
-Language / 语言 [1]: 1
-未检测到 Docker。
-是否使用第三方 LinuxMirrors 安装脚本并配置 Docker 镜像源？y=使用，n=官方安装。 [y/N]: n
-将执行 Docker 官方安装脚本，不额外配置镜像源：
-curl -fsSL https://get.docker.com | bash -s docker
-是否继续执行？ [Y/n]:
-访问方式：1. 仅本机/SSH（推荐）  2. 局域网 [1]:
-控制台与 QQ 桌面端口： [5099]:
-机器人 HTTP 接口端口： [3000]:
-机器人 WebSocket 接口端口： [3001]:
-时区： [Asia/Shanghai]:
-```
+1. 点「打开 QQ 桌面」进入容器内的图形 QQ。
+2. 在 QQ 窗口扫码或密码登录，可在 QQ 自己的设置里勾选自动登录。
+3. 回到「QQ 会话」，刷新并接入账号。
+4. 第一次接入会要求为该真实 UIN 选择并确认内核。
+5. 在「机器人连接」添加端点，把地址与令牌填进机器人程序。
 
-**预期结果**：最后的输出里有「Nowluma 已启动。」、一行控制台初始密码、一行控制台地址，以及 `bash deploy/manage.sh start|stop|restart|logs|doctor` 五条日常命令。
-
-## 安装完成后要做的三件事
-
-1. 打开控制台地址，按 [首次启动](first-run.md) 完成协议确认和修改访问密码。
-2. 在控制台点「打开 QQ 桌面」，在里面的 QQ 窗口扫码登录，并在 **QQ 自己的设置**里勾选自动登录。
-3. 回控制台按 [QQ 连接](qq-connection.md) 把账号加载起来。需要机器人回复时，再按 [节点配置](onebot-config.md) 建端点。
-
-桌面复用当前控制台会话，**不需要另填 VNC 密码**。浏览器、脚本与 WebSocket 都会校验控制台会话，后台 VNC 只监听容器内回环并保留自己的认证。
-
-## 数据卷与运行用户
-
-Compose 项目名固定为 `nowluma`，卷名不随源码目录名变化，因此换目录重新部署也能复用：
-
-| 卷 | 容器路径 | 内容 |
-| --- | --- | --- |
-| `nowluma_config` | `/app/config` | 控制台密码/2FA、连接、运行与外观设置 |
-| `nowluma_data` | `/app/data` | 账号消息库与媒体 |
-| `nowluma_logs` | `/app/logs` | 运行日志 |
-| `nowluma_qq-home` | `/home/nowluma` | QQ 完整用户环境、自动登录设置、凭据、用户存储、机器 ID |
-
-程序与 QQ 都以 UID/GID **1000** 运行，共用同一 HOME；`XDG_CONFIG_HOME=/home/nowluma/.config`，QQ 的配置目录是其中的 `QQ`。整个 HOME 都会保留，不只是 `login.db`。XDG 运行目录是临时目录 `/tmp/nowluma-runtime`，不持久化陈旧锁文件。
-
-机器 ID 第一次在 HOME 中生成，容器重建后继续复用；主机名固定为 `nowluma`。
+桌面复用当前控制台会话，不需要额外 VNC 密码；不要把它直接暴露到公网。
 
 ## 日常命令
 
 ```bash
-bash deploy/manage.sh start     # 构建并启动，等待健康检查
-bash deploy/manage.sh stop      # 停止，不删除卷
-bash deploy/manage.sh restart   # 正常结束进程后重启并等待恢复
-bash deploy/manage.sh logs      # 持续查看日志
-bash deploy/manage.sh doctor    # 检查进程、目录、权限和监听
+bash deploy/manage.sh start
+bash deploy/manage.sh stop
+bash deploy/manage.sh restart
+bash deploy/manage.sh logs
+bash deploy/manage.sh doctor
 ```
 
-需要 sudo 才能用 Docker 时，向导打印的日常命令会自动带 `sudo`。
+- `start` 构建并等待健康检查；失败返回非零状态并保留原数据。
+- `restart` 正常结束进程再等待恢复。
+- `stop` 不删除任何数据卷。
+- `doctor` 检查容器、进程、端口与目录。
+- 日志里出现错误不等于安装完成。
 
-`doctor` 会以 UID 1000 执行容器内健康检查，并打印 `id`、`HOME`、`XDG_CONFIG_HOME` 以及 `/home/nowluma`、`/home/nowluma/.config/QQ`、`/app/config`、`/app/data`、`/app/logs` 的权限。
+## 端口与网络
 
-## 安装失败与时区之外的常见问题
+默认只发布到宿主机回环地址。远程服务器推荐在自己的电脑建立隧道：
 
-| 现象 | 处理 |
+```bash
+ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
+```
+
+保持隧道窗口打开，再访问本机 `http://127.0.0.1:5099`。
+
+如果明确选择局域网访问，安装向导会绑定 `0.0.0.0` 并提示 HTTP 未加密。此时应配置 HTTPS 或只允许可信网络访问；不要把管理界面和桌面直接暴露到公网。详见[访问方式与网络](access-network.md)。
+
+机器人端口 3000/3001 是否对机器人程序开放，取决于 Compose 的发布地址；每个端点仍需自己的访问令牌，控制台密码不能替代。
+
+## 数据卷
+
+Compose 项目名固定为 `nowluma`，卷名不随源码目录变化：
+
+| 卷 | 容器目录 | 内容 |
+| --- | --- | --- |
+| `nowluma_config` | `/app/config` | 控制台密码/2FA、连接、内核选择、运行与外观设置 |
+| `nowluma_data` | `/app/data` | 账号消息库与媒体 |
+| `nowluma_logs` | `/app/logs` | 运行日志 |
+| `nowluma_qq-home` | `/home/nowluma` | QQ 完整用户环境、自动登录设置、凭据与机器 ID |
+
+QQ 与程序固定以 UID/GID 1000 运行，共用 HOME 和 XDG 环境。机器 ID 在 HOME 中生成并在容器重建后复用；XDG 运行目录是临时 `/tmp/nowluma-runtime`，不要持久化陈旧的进程锁或套接字。
+
+普通 `stop`、`restart`、重新创建容器都应复用这些卷。`docker compose down -v` 会删除数据，只有明确要清空一切时才使用。
+
+## 桌面与认证
+
+- 桌面通过同源 `/desktop/` 访问，只发布控制台一个管理端口，不再单独发布 6080。
+- QQ、Xvfb、openbox 与 x11vnc 运行在同一个容器、同一个完整 HOME 中，不是每个账号一台 VM；多账号共用这个桌面环境。
+- 浏览器使用 HttpOnly、SameSite=Strict 的路径限定会话 Cookie；控制台令牌或 VNC 密码不进入 URL。
+- 后台 VNC 只监听回环 5900，并保留独立认证；网关在服务器侧完成会话校验。
+- 退出、改密或会话过期后，桌面操作不再可用；WebSocket 还校验 Origin。
+
+反向代理要保留 `/desktop/` 路径、真实 Host、WebSocket 升级头和足够的读超时。示例见[访问方式与网络](access-network.md)。
+
+## 升级与卸载
+
+1. 先停服务，再备份四个卷，避免复制正在写入的 SQLite/WAL。
+2. 更新源码或发行目录，运行 `bash deploy/manage.sh start`；原卷继续使用。
+3. 不要用 `down -v` 升级。
+4. 彻底删除前确认备份；普通 `stop` 不删除数据。
+
+## 自动化验证现状
+
+容器 smoke 使用全新 HOME，验证 QQ 进程发现、未确认账号不会被自动接入、桌面认证、重启/重建后的数据持久化。它不伪造账号确认，也不把「进程发现」说成真实 QQ 登录。
+
+真实 hook 接入、真实账号登录与长期会话在最新 smoke 中是 **NOT RUN**；历史 CI 记录不构成本次真实账号验收，且当前 HEAD 的 CI 尚未运行；不要把它理解成 QQ 消息必达、重启一定免扫码或重写内核可用。
+
+## 排障
+
+| 现象 | 检查 |
 | --- | --- |
-| 卡在拉取依赖 / QQ 包 | 检查网络与 DNS；官方地址不可用时安装脚本会明确提示改用固定发行镜像，而不是静默换版本 |
-| 「启动失败，数据已保留。」 | `bash deploy/manage.sh logs` 看原因；数据卷没有被删，修好后再次 `start` |
-| 端口被占用 | 改 `deploy/.env` 里的端口后 `restart`；不要直接改 Compose 文件 |
-| 构建成功但打不开控制台 | 确认绑定地址；`manage.sh doctor` 检查容器状态；远程服务器先建 SSH 隧道，见 [访问方式与网络](access-network.md) |
-| 用 `docker compose down -v` 清过环境 | 数据卷已被删除，QQ 需要重新扫码；备份策略见 [数据、备份与更新](data-backup.md) |
+| 控制台打不开 | 容器健康、端口冲突、隧道或局域网发布地址 |
+| 桌面打不开 | 控制台会话、首次改密/说明确认、反向代理的 Host 与 WebSocket |
+| 没有 QQ 进程 | QQ 是否启动、Xvfb/QQ 日志；空列表不是安装成功 |
+| 无法接入 | 原生组件与架构、`SYS_PTRACE`、QQ 与程序用户是否一致 |
+| 重启后自动登录消失 | `nowluma_qq-home` 是否复用、HOME/XDG 是否被覆盖、是否用了 `down -v` |
+| 文件都在但仍要扫码 | QQ 服务端会话失效；需要在 QQ 窗口验证 |
+| 配置损坏 | 程序会报错并保留原文件，不会静默覆盖 |
 
-## 关于“安装成功”的说明
-
-安装脚本只有在启动检查通过后才打印成功。健康检查会验证 QQ 进程存在、桌面监听正常、控制台可访问；必要进程退出时入口脚本会结束服务并让 Docker 重启，不会留下一个只有控制台的容器。
-
-这不等于 QQ 已登录，也不等于机器人会回复。继续读 [首次启动](first-run.md) 和 [QQ 连接](qq-connection.md)。
+更多入口见[排障与失败恢复](troubleshooting.md)。

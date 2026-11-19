@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -421,7 +421,7 @@ export function Modal({
     maxHeight = 'min(78dvh, 620px)',
     className = '',
 }: ModalProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const [viewport, setViewport] = useState({ top: 0, height: '100%', alignStart: false });
 
     useEffect(() => {

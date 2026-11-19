@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
 import { DEFAULT_WEBHOOK_BODY } from '@nowluma/common/notification-templates';
 import { Bell, Loader2, Pencil, Plus, Send, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 import { useApi } from '@/lib/api';
 import { useFlashMessage } from '@/hooks/use-flash-message';
-import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
     notificationChannelType,
@@ -126,7 +123,7 @@ export function NotificationsPanel() {
                     }
 
                     console.error('save notifications config failed', error);
-                    flash('err', '保存失败，请检查服务器日志');
+                    setMsg({ kind: 'err', text: error instanceof Error ? error.message : '保存通知配置失败' });
                 });
         }, 350);
     };
@@ -144,7 +141,7 @@ export function NotificationsPanel() {
                 {!loading && !config ? (
                     <div
                         role="alert"
-                        className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+                        className="flex flex-wrap items-center justify-between gap-3 border-b py-4 text-sm text-destructive"
                     >
                         <span>{msg?.text ?? '加载通知配置失败'}</span>
                         <Button variant="outline" size="sm" onClick={() => void load()}>
@@ -206,13 +203,14 @@ export function NotificationsPanel() {
                     return api.notifications.test(id);
                 },
             );
-            flash(
-                res.success ? 'ok' : 'err',
-                res.message ?? (res.success ? '测试发送成功' : '测试发送失败'),
-            );
+            if (res.success) {
+                flash('ok', res.message ?? '测试发送成功');
+            } else {
+                setMsg({ kind: 'err', text: res.message || '测试发送失败' });
+            }
         } catch (error) {
             console.error('test notification channel failed', error);
-            flash('err', '测试请求失败');
+            setMsg({ kind: 'err', text: error instanceof Error ? error.message : '测试请求失败' });
         } finally {
             setTesting(null);
         }
@@ -227,63 +225,50 @@ export function NotificationsPanel() {
             label="通知配置"
             className="skeleton-swap-fluid min-h-[156px]"
         >
-            <div className="flex flex-col gap-4">
-                {/* Global settings */}
-                <div className="flex flex-col gap-4 rounded-xl border bg-card/40 p-4">
-                    <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                        <Bell className="mt-0.5 size-3.5 shrink-0" />
-                        <p>在此管理通知渠道，再到账号「配置」页选择启用。</p>
-                    </div>
-                    <div className="flex flex-col gap-1.5 border-t pt-3">
-                        <Label>去抖窗口（秒）</Label>
-                        <Input
-                            type="number"
-                            min={0}
-                            max={3600}
-                            className="w-32 tabular-nums"
-                            value={config.debounceSeconds}
-                            onChange={(e) => {
-                                const n = Math.trunc(Number(e.target.value));
-                                commit({
-                                    ...config,
-                                    debounceSeconds: Number.isFinite(n)
-                                        ? Math.min(3600, Math.max(0, n))
-                                        : 0,
-                                });
-                            }}
-                        />
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                            下线持续超过此时长才通知，恢复时再通知。0 表示立即通知。
-                        </p>
-                    </div>
-                </div>
-
-                {/* Channels */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold tracking-tight">通知渠道</h3>
-                        {channels.length > 0 && (
-                            <Button variant="outline" size="sm" onClick={openCreate}>
-                                <Plus className="size-3.5" /> 新增渠道
-                            </Button>
-                        )}
-                    </div>
-
-                    {channels.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
-                            <Bell className="size-8 opacity-40" strokeWidth={1.5} />
-                            <p className="text-sm">还没有通知渠道</p>
-                            <Button variant="outline" size="sm" onClick={openCreate}>
-                                <Plus className="size-3.5" /> 创建第一个
-                            </Button>
+            <div className="flex min-w-0 flex-col gap-7">
+                <Group title="通知策略" icon={Bell}>
+                    <SettingRow label="下线等待" hint="下线超过此时长才通知；恢复时再通知。0 表示立即通知。">
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="number"
+                                aria-label="去抖窗口（秒）"
+                                min={0}
+                                max={3600}
+                                className="w-28 tabular-nums"
+                                value={config.debounceSeconds}
+                                disabled={testing !== null}
+                                onChange={(e) => {
+                                    const n = Math.trunc(Number(e.target.value));
+                                    commit({
+                                        ...config,
+                                        debounceSeconds: Number.isFinite(n)
+                                            ? Math.min(3600, Math.max(0, n))
+                                            : 0,
+                                    });
+                                }}
+                            />
+                            <span className="text-xs text-muted-foreground">秒</span>
                         </div>
+                    </SettingRow>
+                </Group>
+
+                <Group title="通知渠道" description="在账号的配置页选择要启用的渠道。">
+                    <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+                        <span className="text-xs tabular-nums text-muted-foreground">{channels.length} 个渠道</span>
+                        <Button variant="glass" size="sm" onClick={openCreate} disabled={testing !== null}>
+                            <Plus className="size-3.5" /> 新增渠道
+                        </Button>
+                    </div>
+                    {channels.length === 0 ? (
+                        <p className="py-5 text-sm text-muted-foreground">尚未添加渠道。</p>
                     ) : (
-                        <div className="flex flex-col gap-2">
+                        <div className="divide-y divide-border/60">
                             {channels.map((ch, i) => (
-                                <ChannelCard
+                                <ChannelRow
                                     key={ch.id}
                                     channel={ch}
                                     testing={testing === ch.id}
+                                    disabled={testing !== null}
                                     onToggle={(v) =>
                                         setChannels(
                                             channels.map((c, idx) =>
@@ -310,10 +295,11 @@ export function NotificationsPanel() {
                             ))}
                         </div>
                     )}
-                </div>
+                </Group>
 
                 {msg && (
                     <p
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
                             'text-xs',
                             msg.kind === 'ok' ? 'text-success' : 'text-destructive',
@@ -338,9 +324,10 @@ export function NotificationsPanel() {
     );
 }
 
-interface ChannelCardProps {
+interface ChannelRowProps {
     channel: NotificationChannel;
     testing: boolean;
+    disabled: boolean;
     onToggle: (v: boolean) => void;
     onTest: () => void;
     onEdit: () => void;
@@ -348,84 +335,72 @@ interface ChannelCardProps {
 }
 
 /** Info-only row + inline actions. No live-typed fields — editing is the dialog. */
-function ChannelCard({ channel, testing, onToggle, onTest, onEdit, onDelete }: ChannelCardProps) {
-    const off = useTheme().appearance.disableMotion;
+function ChannelRow({ channel, testing, disabled, onToggle, onTest, onEdit, onDelete }: ChannelRowProps) {
+    const kind = notificationChannelType(channel);
     return (
-        <motion.div
-            initial={off ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={off ? { duration: 0 } : { duration: 0.18 }}
-            className={cn(
-                'flex flex-col gap-2 rounded-xl border bg-card/40 p-3.5 transition-[background-color,opacity] duration-150 ease-out hover:bg-accent/20 sm:flex-row sm:items-center sm:gap-3',
-                !channel.enabled && 'opacity-60',
-            )}
-        >
-            <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{channel.name || channel.id}</span>
-                    <Badge variant="secondary" className="font-mono font-normal">
-                        {channel.id}
-                    </Badge>
-                    <Badge variant="outline" className="font-normal">
-                        {notificationChannelType(channel) === 'email' ? '邮件' : 'Webhook'}
-                    </Badge>
-                    {!channel.enabled && (
-                        <Badge variant="secondary" className="font-normal">
-                            已停用
-                        </Badge>
-                    )}
+        <div className={cn('grid min-w-0 gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start', !channel.enabled && 'opacity-60')}>
+            <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h3 className="break-words text-sm font-medium">{channel.name || channel.id}</h3>
+                    {channel.name && <code className="break-all text-xs text-muted-foreground">{channel.id}</code>}
+                    <span className="text-xs text-muted-foreground">{kind === 'email' ? '邮件' : 'Webhook'}</span>
+                    {!channel.enabled && <span className="text-xs text-muted-foreground">已停用</span>}
                 </div>
-                <div className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-                    {notificationChannelType(channel) === 'email'
+                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                    {kind === 'email'
                         ? [channel.to, channel.smtpHost].filter(Boolean).join(' · ')
                         : channel.url}
-                </div>
-                <div className="mt-1 truncate font-mono text-meta text-muted-foreground/80">
-                    {notificationChannelType(channel) === 'email'
-                        ? channel.subjectTemplate || channel.bodyTemplate
-                        : channel.bodyTemplate}
-                </div>
+                </p>
+                <details className="mt-1 text-xs text-muted-foreground">
+                    <summary className="min-h-11 cursor-pointer py-3 font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        消息模板
+                    </summary>
+                    {kind === 'email' && channel.subjectTemplate && (
+                        <div className="pb-3">
+                            <p className="mb-1 font-medium text-foreground">主题</p>
+                            <pre className="max-w-prose whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                                {channel.subjectTemplate}
+                            </pre>
+                        </div>
+                    )}
+                    {kind === 'email' && <p className="mb-1 font-medium text-foreground">正文</p>}
+                    <pre className="max-w-prose whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                        {channel.bodyTemplate}
+                    </pre>
+                </details>
             </div>
-
-            <div className="flex items-center gap-1.5 sm:justify-end">
+            <div className="flex flex-wrap items-center gap-1.5">
                 <ToggleSwitch
                     value={channel.enabled}
                     onChange={onToggle}
                     ariaLabel={`启用 ${channel.name || channel.id}`}
+                    disabled={disabled}
                 />
                 <Button
-                    variant="ghost"
-                    size="icon-sm"
+                    variant="glass"
+                    size="sm"
                     onClick={onTest}
-                    disabled={testing}
-                    aria-label="测试发送"
+                    disabled={disabled}
+                    aria-label={`测试发送 ${channel.name || channel.id}`}
                     className="text-muted-foreground hover:text-foreground"
                 >
-                    {testing ? (
-                        <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                        <Send className="optical-forward size-4" />
-                    )}
+                    {testing ? <Loader2 className="size-4 animate-spin" /> : <Send className="optical-forward size-4" />}
+                    测试
+                </Button>
+                <Button variant="glass" size="sm" onClick={onEdit} disabled={disabled} aria-label={`编辑 ${channel.name || channel.id}`}>
+                    <Pencil className="size-4" /> 编辑
                 </Button>
                 <Button
                     variant="ghost"
-                    size="icon-sm"
-                    onClick={onEdit}
-                    aria-label="编辑"
-                    className="text-muted-foreground hover:text-foreground"
-                >
-                    <Pencil className="size-4" />
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
+                    size="sm"
                     onClick={onDelete}
-                    aria-label="删除"
+                    aria-label={`删除 ${channel.name || channel.id}`}
+                    disabled={disabled}
                     className="text-muted-foreground hover:text-destructive"
                 >
-                    <Trash2 className="size-4" />
+                    <Trash2 className="size-4" /> 删除
                 </Button>
             </div>
-        </motion.div>
+        </div>
     );
 }

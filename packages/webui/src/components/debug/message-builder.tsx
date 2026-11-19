@@ -1,32 +1,16 @@
-// MessageBuilder — a visual OneBot message composer so you never hand-write a
-// segment array. Common segments are first-class (text / @ / image / face /
-// reply / record / video); advanced ones fold away (file / mface / poke / json
-// / xml / markdown / forward-node). `node` nests a full builder (merged
-// forward). Rows reorder by drag. Emits the live OneBot segment array up.
+// Visual OneBot message composer with stable segment identity, keyboard-aware
+// type selection and drag/keyboard reordering. Forward nodes retain their
+// own builder and the same serialization/validation contract.
 import { useState } from 'react';
-import {
-    AtSign,
-    ChevronDown,
-    Code2,
-    FileText,
-    Film,
-    Forward,
-    GripVertical,
-    Hand,
-    Image as ImageIcon,
-    Mic,
-    Plus,
-    Quote,
-    Smile,
-    Sticker,
-    Trash2,
-    Type,
-} from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Picker } from '@/components/ui/picker';
 import { FaceGrid } from '@/components/ui/face-grid';
 import { FileSource } from '@/components/debug/file-source';
 import { useGroupMembers } from '@/hooks/use-debug-contacts';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Dropdown } from '@/components/interior/dropdown';
 
 // ── segment model ──
 // `_id` is a stable React key tied to a segment's identity (so editing one field
@@ -126,23 +110,21 @@ export function toOneBot(segs: Seg[]): Array<{ type: string; data: Record<string
     });
 }
 
-const COMMON: { k: SegBody['k']; label: string; icon: React.ReactNode }[] = [
-    { k: 'text', label: '文本', icon: <Type className="h-4 w-4" /> },
-    { k: 'at', label: '@', icon: <AtSign className="h-4 w-4" /> },
-    { k: 'image', label: '图片', icon: <ImageIcon className="h-4 w-4" /> },
-    { k: 'face', label: '表情', icon: <Smile className="h-4 w-4" /> },
-    { k: 'reply', label: '回复', icon: <Quote className="h-4 w-4" /> },
-    { k: 'record', label: '语音', icon: <Mic className="h-4 w-4" /> },
-    { k: 'video', label: '视频', icon: <Film className="h-4 w-4" /> },
-];
-const ADVANCED: { k: SegBody['k']; label: string; icon: React.ReactNode }[] = [
-    { k: 'file', label: '文件', icon: <FileText className="h-4 w-4" /> },
-    { k: 'mface', label: '商城表情', icon: <Sticker className="h-4 w-4" /> },
-    { k: 'poke', label: '戳一戳', icon: <Hand className="h-4 w-4" /> },
-    { k: 'json', label: 'JSON 卡片', icon: <Code2 className="h-4 w-4" /> },
-    { k: 'xml', label: 'XML 卡片', icon: <Code2 className="h-4 w-4" /> },
-    { k: 'markdown', label: 'Markdown', icon: <Code2 className="h-4 w-4" /> },
-    { k: 'node', label: '合并转发节点', icon: <Forward className="h-4 w-4" /> },
+const SEGMENT_KINDS: SegBody['k'][] = [
+    'text',
+    'at',
+    'image',
+    'face',
+    'reply',
+    'record',
+    'video',
+    'file',
+    'mface',
+    'poke',
+    'json',
+    'xml',
+    'markdown',
+    'node',
 ];
 
 /** Segment kinds exposed by the add menu for a builder context. */
@@ -150,7 +132,7 @@ export function messageBuilderSegmentKinds(
     mode: MessageBuilderMode,
     segments: Seg[],
 ): SegBody['k'][] {
-    const all = [...COMMON, ...ADVANCED].map((item) => item.k);
+    const all = SEGMENT_KINDS.slice();
 
     if (mode === 'auto') {
         return all;
@@ -217,12 +199,10 @@ export function MessageBuilder({
     depth?: number;
     mode?: MessageBuilderMode;
 }) {
-    const [showAdd, setShowAdd] = useState(false);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
 
     const add = (k: SegBody['k']) => {
         onChange([...segments, newSeg(k)]);
-        setShowAdd(false);
     };
 
     const patch = (i: number, next: Seg) => onChange(segments.map((s, j) => (j === i ? next : s)));
@@ -239,42 +219,16 @@ export function MessageBuilder({
         onChange(next);
     };
 
-    // Keep the top-level canvas concentric with its rows at any operator-selected
-    // corner radius. At the default 12px radius this is 20px → 12px over the 8px
-    // inset. Nested forward builders deliberately avoid another canvas surface:
-    // cards-inside-cards add visual noise and cannot remain concentric with a
-    // parent row once the operator selects a compact radius.
-    const nested = depth > 0;
-    const canvasRadius = 'calc(var(--radius) + 0.5rem)';
-    const rowRadius =
-        depth === 0
-            ? 'var(--radius)'
-            : depth === 1
-              ? 'max(0px, calc(var(--radius) - 0.25rem))'
-              : 'max(0px, calc(var(--radius) - 0.5rem))';
-    const allowedKinds = new Set(messageBuilderSegmentKinds(mode, segments));
-    const commonOptions = COMMON.filter((item) => allowedKinds.has(item.k));
-    const advancedOptions = ADVANCED.filter((item) => allowedKinds.has(item.k));
-    const primaryOptions = mode === 'forward' ? advancedOptions : commonOptions;
-    const secondaryOptions = mode === 'forward' ? [] : advancedOptions;
+    const segmentOptions = messageBuilderSegmentKinds(mode, segments).map((kind) => ({
+        value: kind,
+        label: LABELS[kind],
+    }));
 
     return (
-        // The root is a bounded compose canvas, so its empty hint reads as an
-        // intentional empty state rather than a stray line. Nested builders inherit
-        // the surrounding node surface instead of drawing another card within it.
-        <div
-            className={
-                nested
-                    ? 'flex flex-col gap-2'
-                    : 'flex flex-col gap-2 border border-border/50 bg-muted/20 p-2'
-            }
-            style={nested ? undefined : { borderRadius: canvasRadius }}
-        >
+        <div className="flex min-w-0 flex-col gap-2">
             {segments.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">
-                    {mode === 'forward'
-                        ? '空转发 — 点下方添加转发节点'
-                        : '空消息 — 点下方「添加段」开始'}
+                <p className="py-4 text-xs text-muted-foreground">
+                    {mode === 'forward' ? '添加转发节点开始构建。' : '添加消息段开始构建。'}
                 </p>
             )}
 
@@ -291,8 +245,7 @@ export function MessageBuilder({
 
                         setDragFrom(null);
                     }}
-                    className="border border-border/50 bg-card/60 p-2"
-                    style={{ borderRadius: rowRadius }}
+                    className="border-b border-border/60 bg-transparent py-3"
                 >
                     {/* Drag is scoped to the grip handle only — making the whole row
               draggable hijacked text selection inside the segment inputs (you
@@ -323,32 +276,38 @@ export function MessageBuilder({
                             </span>
                         </span>
                         <div className="flex shrink-0 items-center gap-0.5">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => move(i, i - 1)}
                                 disabled={i === 0}
-                                className="rounded px-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                                variant="glass"
+                                size="icon-sm"
+                                aria-label={`上移第 ${i + 1} 段`}
                                 title="上移"
                             >
                                 ↑
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={() => move(i, i + 1)}
                                 disabled={i === segments.length - 1}
-                                className="rounded px-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                                variant="glass"
+                                size="icon-sm"
+                                aria-label={`下移第 ${i + 1} 段`}
                                 title="下移"
                             >
                                 ↓
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={() => remove(i)}
-                                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                                variant="glass"
+                                size="icon-sm"
+                                aria-label={`删除第 ${i + 1} 段`}
                                 title="删除"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                         </div>
                     </div>
                     <SegmentEditor
@@ -361,54 +320,15 @@ export function MessageBuilder({
                 </div>
             ))}
 
-            <div className="relative">
-                <button
-                    type="button"
-                    onClick={() => setShowAdd((v) => !v)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border/70 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                >
-                    <Plus className="h-3.5 w-3.5" /> 添加段
-                </button>
-                {showAdd && (
-                    <div className="absolute z-30 mt-1.5 w-64 rounded-xl border border-border/60 bg-popover p-2 shadow-lg">
-                        <div className="grid grid-cols-4 gap-1">
-                            {primaryOptions.map((c) => (
-                                <button
-                                    key={c.k}
-                                    type="button"
-                                    onClick={() => add(c.k)}
-                                    className="flex flex-col items-center gap-1 rounded-sm p-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                                >
-                                    {c.icon}
-                                    {c.label}
-                                </button>
-                            ))}
-                        </div>
-                        {secondaryOptions.length > 0 && (
-                            <details className="mt-1.5">
-                                <summary className="cursor-pointer list-none px-1 text-xs text-muted-foreground hover:text-foreground">
-                                    <span className="inline-flex items-center gap-1">
-                                        <ChevronDown className="h-3 w-3" /> 进阶段
-                                    </span>
-                                </summary>
-                                <div className="mt-1 grid grid-cols-4 gap-1">
-                                    {secondaryOptions.map((c) => (
-                                        <button
-                                            key={c.k}
-                                            type="button"
-                                            onClick={() => add(c.k)}
-                                            className="flex flex-col items-center gap-1 rounded-sm p-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                                        >
-                                            {c.icon}
-                                            {c.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </details>
-                        )}
-                    </div>
-                )}
-            </div>
+            <Dropdown
+                label="消息段类型"
+                placeholder="添加段"
+                value=""
+                items={segmentOptions}
+                onChange={(kind) => add(kind as SegBody['k'])}
+                disabled={segmentOptions.length === 0}
+                className="w-full sm:w-60"
+            />
         </div>
     );
 }
@@ -457,11 +377,12 @@ function SegmentEditor({
     switch (seg.k) {
         case 'text':
             return (
-                <textarea
+                <Textarea
                     value={seg.text}
                     onChange={(e) => onChange({ ...seg, text: e.target.value })}
                     placeholder="文本内容"
-                    className="min-h-16 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                    aria-label="文本段内容"
+                    className="min-h-16"
                 />
             );
         case 'at':
@@ -531,29 +452,32 @@ function SegmentEditor({
             );
         case 'json':
             return (
-                <textarea
+                <Textarea
                     value={seg.data}
                     onChange={(e) => onChange({ ...seg, data: e.target.value })}
                     placeholder='JSON 卡片原文 {"app":…}'
-                    className="min-h-16 w-full rounded-md border border-border bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring"
+                    aria-label="JSON 卡片原文"
+                    className="min-h-16 font-mono text-xs"
                 />
             );
         case 'xml':
             return (
-                <textarea
+                <Textarea
                     value={seg.data}
                     onChange={(e) => onChange({ ...seg, data: e.target.value })}
                     placeholder="XML 卡片原文 <msg>…"
-                    className="min-h-16 w-full rounded-md border border-border bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring"
+                    aria-label="XML 卡片原文"
+                    className="min-h-16 font-mono text-xs"
                 />
             );
         case 'markdown':
             return (
-                <textarea
+                <Textarea
                     value={seg.content}
                     onChange={(e) => onChange({ ...seg, content: e.target.value })}
                     placeholder="Markdown 内容"
-                    className="min-h-16 w-full rounded-md border border-border bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring"
+                    aria-label="Markdown 段内容"
+                    className="min-h-16 font-mono text-xs"
                 />
             );
         case 'mface':

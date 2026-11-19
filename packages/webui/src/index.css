@@ -7,28 +7,28 @@
    Theme tokens (neutral base; ThemeContext owns the accent)
    ────────────────────────────────────────────── */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.25rem;
 
   /* Neutral paper and ink are the stable base; palettes and personal tokens
      remain the owners of their surfaces. The accent is only a light gray tint. */
-  --background: color-mix(in oklab, var(--primary) 2%, #ffffff);
-  --foreground: #171717;
+  --background: color-mix(in oklab, var(--primary) 1%, #f7f6f3);
+  --foreground: #37352f;
 
-  --card: color-mix(in oklab, var(--primary) 1%, #ffffff);
-  --card-foreground: #171717;
+  --card: color-mix(in oklab, var(--primary) 1%, #fcfcfa);
+  --card-foreground: #37352f;
 
-  --popover: color-mix(in oklab, var(--primary) 1%, #ffffff);
-  --popover-foreground: #171717;
+  --popover: color-mix(in oklab, var(--primary) 1%, #fcfcfa);
+  --popover-foreground: #37352f;
 
   /* A near-black primary keeps white button labels readable. */
   --primary: oklch(21% 0 0);
   --primary-foreground: oklch(99% 0 0);
 
-  --secondary: color-mix(in oklab, var(--primary) 4%, #f5f5f5);
-  --secondary-foreground: #171717;
+  --secondary: color-mix(in oklab, var(--primary) 3%, #efedea);
+  --secondary-foreground: #37352f;
 
-  --muted: color-mix(in oklab, var(--primary) 4%, #f5f5f5);
-  --muted-foreground: #737373;
+  --muted: color-mix(in oklab, var(--primary) 3%, #efedea);
+  --muted-foreground: #6b6860;
 
   --accent: oklch(95% 0 0);
   --accent-foreground: oklch(20% 0 0);
@@ -45,12 +45,12 @@
   --log-warn: oklch(52% 0.16 80);
   --log-error: oklch(55% 0.22 27);
 
-  --border: color-mix(in oklab, var(--primary) 3%, #e5e5e5);
-  --input: color-mix(in oklab, var(--primary) 3%, #e5e5e5);
+  --border: color-mix(in oklab, var(--primary) 2%, #e9e7e4);
+  --input: color-mix(in oklab, var(--primary) 2%, #e9e7e4);
   --ring: oklch(21% 0 0);
 
   --sidebar: color-mix(in oklab, var(--sidebar-primary) 4%, #fafafa);
-  --sidebar-foreground: #171717;
+  --sidebar-foreground: #272723;
   --sidebar-primary: oklch(21% 0 0);
   --sidebar-primary-foreground: oklch(99% 0 0);
   --sidebar-accent: oklch(94% 0 0);
@@ -63,10 +63,10 @@
 }
 
 .dark {
-  --background: color-mix(in oklab, var(--primary) 3%, #0a0a0a);
+  --background: color-mix(in oklab, var(--primary) 2%, #111212);
   --foreground: #f5f5f5;
 
-  --card: color-mix(in oklab, var(--primary) 4%, #171717);
+  --card: color-mix(in oklab, var(--primary) 3%, #171818);
   --card-foreground: #f5f5f5;
 
   --popover: color-mix(in oklab, var(--primary) 4%, #171717);
@@ -251,17 +251,22 @@
 
   .ui-glass {
     position: relative;
+    isolation: isolate;
   }
 
   html:not([data-webui-target]) .ui-glass {
-    border: 1px solid color-mix(in oklab, var(--border) 85%, var(--foreground) 15%);
+    border: 1px solid color-mix(in oklab, var(--border) 78%, var(--foreground) 22%);
     background: transparent;
-    box-shadow: 0 6px 20px -10px color-mix(in oklab, var(--foreground) 22%, transparent);
+    box-shadow:
+      0 8px 24px -12px color-mix(in oklab, var(--foreground) 24%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 68%, transparent);
   }
 
   .ui-glass-material {
     position: absolute;
+    z-index: -1;
     inset: 0;
+    overflow: hidden;
     pointer-events: none;
     border-radius: inherit;
     background: color-mix(in oklab, var(--popover) 90%, transparent);
@@ -275,7 +280,7 @@
   .ui-glass-material::after {
     position: absolute;
     top: 0;
-    left: 18%;
+    left: var(--glass-light-x, 42%);
     width: 34%;
     height: 1px;
     background: linear-gradient(
@@ -287,14 +292,29 @@
     content: '';
     opacity: 0.65;
     pointer-events: none;
+    translate: -50% 0;
+    transition: left 180ms ease-out, opacity 150ms;
+  }
+
+  .ui-glass-material::before {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      ellipse at var(--glass-light-x, 42%) var(--glass-light-y, 0%),
+      color-mix(in oklab, #fff 12%, transparent),
+      transparent 66%
+    );
+    content: '';
+    pointer-events: none;
   }
 
   .ui-glass-material[data-glass-renderer='refracted'] {
-    background: color-mix(in oklab, var(--popover) 78%, transparent);
+    background: color-mix(in oklab, var(--popover) 28%, transparent);
   }
 
   .ui-glass-menu .ui-glass-material[data-glass-renderer='refracted'] {
-    background: color-mix(in oklab, var(--popover) 88%, transparent);
+    background: color-mix(in oklab, var(--popover) 82%, transparent);
   }
 
   .ui-glass-material[data-glass-renderer='solid'] {
@@ -303,26 +323,23 @@
     backdrop-filter: none;
   }
 
-  .ui-glass > :not(.ui-glass-material):not(.ui-line-field) {
-    position: relative;
-    z-index: 1;
-  }
 
   .ui-glass-search:focus-within {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 
-  html:not([data-webui-target]) .ui-glass [data-press-scale] {
+  /* Press physics override generic transition utilities without affecting document actions. */
+  html:not([data-webui-target]) :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
     transition:
       color 150ms,
       background-color 150ms,
-      scale 420ms cubic-bezier(0.16, 1, 0.3, 1);
+      scale 420ms linear(0, 0.42 13%, 0.82 29%, 1.025 48%, 0.99 76%, 1) !important;
   }
 
-  html:not([data-webui-target]) .ui-glass [data-press-scale]:active:not(:disabled) {
+  html:not([data-webui-target]) :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]):active:not(:disabled) {
     scale: 0.96;
-    transition-duration: 110ms;
+    transition-duration: 110ms !important;
   }
 
   html[data-contrast='high'] .ui-glass-material {
@@ -336,11 +353,11 @@
     transform: none !important;
   }
 
-  html[data-low-performance='1'] .ui-glass [data-press-scale] {
+  html[data-low-performance='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
     transition:
       color 150ms,
       background-color 150ms,
-      scale 180ms ease-out;
+      scale 180ms ease-out !important;
   }
 
   html[data-webui-target] .ui-glass-material {
@@ -351,6 +368,29 @@
   html[data-no-motion='1'] .ui-line-field-lines {
     animation: none !important;
     transform: none !important;
+  }
+
+  html[data-low-performance='1'] .ui-line-field-impulse,
+  html[data-reduce-motion='1'] .ui-line-field-impulse,
+  html[data-no-motion='1'] .ui-line-field-impulse,
+  html[data-webui-target] .ui-line-field-impulse {
+    transform: none !important;
+  }
+
+  .ui-glass-action {
+    min-height: 44px;
+    padding-inline: 18px;
+  }
+
+  html[data-reduce-motion='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]),
+  html[data-no-motion='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    scale: 1 !important;
+    transition: none !important;
+  }
+
+  html[data-reduce-motion='1'] .ui-glass-material::after,
+  html[data-no-motion='1'] .ui-glass-material::after {
+    transition: none !important;
   }
 
   /* Skeleton Swap reserves a fixed box by default. Data panels that can grow
@@ -390,9 +430,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-line-field-lines {
+  .ui-line-field-lines,
+  .ui-line-field-impulse {
     animation: none !important;
     transform: none !important;
+  }
+
+  :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    scale: 1 !important;
+    transition: none !important;
+  }
+
+  .ui-glass-material::after {
+    transition: none !important;
   }
 }
 
@@ -1063,57 +1113,6 @@ html[data-kiosk='1'] [data-kiosk-hide] {
   display: none !important;
 }
 
-/* New log rows fade without moving the reading baseline. Virtual positioning
-   remains on the outer wrapper; burst and motion gates stay in the page. */
-@keyframes log-row-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.log-row-in {
-  animation: log-row-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Soft edge fade for the log scroll viewport — rows dissolve at a boundary as
-   they scroll past it (Apple-style). Scroll-position-aware: each edge only fades
-   when there is actually hidden content in that direction, so a fully-scrolled
-   top/bottom row is never dimmed (readability). A static mask, not motion: kept
-   under reduce-motion, dropped only on the hard 关闭全部动效 switch. */
-.log-fade-top,
-.log-fade-bottom,
-.log-fade-both {
-  -webkit-mask-image: none;
-  mask-image: none;
-  -webkit-mask-source-type: alpha;
-  mask-mode: alpha;
-}
-.log-fade-top {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff 100%);
-}
-.log-fade-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, #fff 0, #fff calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(to bottom, #fff 0, #fff calc(100% - 18px), transparent 100%);
-}
-.log-fade-both {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #fff 14px,
-    #fff calc(100% - 18px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #fff 14px,
-    #fff calc(100% - 18px),
-    transparent 100%
-  );
-}
 
 /* Reduce motion: a CSS fallback for non-Framer transitions/animations.
    Framer Motion itself is handled by <MotionConfig reducedMotion>. */
@@ -1277,21 +1276,24 @@ html {
   height: 3rem;
   align-items: center;
   overflow: hidden;
-  border: 0.5px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
   cursor: grab;
   touch-action: pan-y;
   user-select: none;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
   transition-property: background-color, border-color, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
+
+.slider-root > .slider-radix-root,
+.slider-root > .slider-ticks,
+.slider-root > .slider-labels {
+  position: absolute;
+}
 .slider-root:hover {
-  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
-  background: color-mix(in oklab, var(--primary) 6%, var(--muted));
+  border-color: color-mix(in oklab, var(--foreground) 30%, var(--border));
 }
 .slider-root:active {
   cursor: grabbing;

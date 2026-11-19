@@ -1,104 +1,72 @@
 ---
-title: Debug
-description: The four developer-tools tabs — action tester, message composer, live activity and API browser — including real side effects and failure handling.
+title: Debug tools
+description: Four workspaces for action calls, message composition, live activity and the API library, plus side-effect and account safety boundaries.
 ---
 
-# Debug
+# Debug tools
 
-The 「调试」 page (`/debug`) is titled 「开发者工具」 (developer tools) with the subtitle 「接口测试 · 消息构建 · 实时观测 · API 参考」 *(interface testing · message building · live observation · API reference)*. It is meant for development and troubleshooting; it is visible to any signed-in user by default and can be hidden from layout editing.
+Path `/debug`. It is a developer and troubleshooting workspace: call OneBot actions, compose and send messages, watch live activity, and read the API catalog. The header says `选择账号与接口，构建消息并查看实时结果。` and shows `N 个账号 · N 个接口`.
 
-**Read this first: calls made here really happen.** Sending a message really sends it; kicking a member really kicks them. There is no simulation mode and no “dry run” button.
+## Four workspaces
 
-## The four tabs
+| Tab | Purpose |
+| --- | --- |
+| `接口调用` | Choose account/action, fill parameters, run; streaming and history |
+| `发送消息` | Choose group or friend, compose OneBot segments, send |
+| `活动记录` | Live events and calls; pause, export, search |
+| `接口库` | Browse signatures, parameters, constraints and returns; `试一下` opens the tester |
 
-| Tab | Purpose | Kept mounted |
-| --- | --- | --- |
-| 测试台 (tester) | Pick an account and action, fill parameters, run, read the result | Yes (switching keeps state) |
-| 消息构建 (message builder) | Visually compose a message and send it to a group or friend | Yes |
-| 实时活动 (live activity) | Merged live stream of events and action calls | Yes |
-| API 浏览器 (API browser) | Search action docs, see side-effect badges, prefill the tester | Loaded on demand |
+The first three stay mounted when switching tabs, so drafts and the live feed survive a glance elsewhere. The large API library loads on demand.
 
 ## Action tester
 
-| Area | Description |
-| --- | --- |
-| Account selector | Which account the call applies to |
-| Action selector | Choose from the available action list |
-| Parameter area | A form generated from the action's fields; switch to JSON mode to paste directly |
-| Run | A normal call; actions that stream show frames as they arrive |
-| Result area | Return code, data and error |
-| History | Calls made in this session, reviewable |
+1. Choose `账号` and `接口` (searchable).
+2. Fill `请求参数` as a form or JSON; a no-parameter action says `该接口无参数。`.
+3. Read the badges: `只读`, `有副作用`, `流式`.
+4. Press `运行调用` or `运行流式调用`; `取消` aborts.
 
-The safety line is always visible in the tester: 「调用会真实生效 (真发消息 / 真踢人等), 请谨慎。」 *(calls take real effect — real messages, real kicks; be careful)*.
+Results show `响应内容` or `实时帧` / `N 帧`. Failures show the reason rather than a fabricated success. `历史` keeps this session's calls for replay; `清空` clears only history.
 
-Non-read-only actions first open 「确认执行破坏性操作」 *(confirm destructive operation)*, whose body reads 「该操作会真实生效且通常不可撤销」 *(it takes real effect and is usually irreversible)*.
+Validation blocks malformed input: `参数 JSON 格式无效`, `参数必须是 JSON 对象`, `请选择账号`, `请选择或输入接口名称`.
 
-Parameter fields carry semantic roles (`group_id`, `user_id`, `member_id`, `message_id`, `file`, `image`, `record`, …), so the form knows whether a value is a number, a file choice or a message segment.
+Upload-style actions can also be found in `接口库` and run from `接口调用`; confirm the account and target first, and do not auto-retry a failed upload.
 
-**Example (a safe first call)**: choose an account → choose a read-only action such as querying sign-in information → run. Expected result: the result area shows a return code and data, and history gains an entry. No side effects — a good way to confirm the link works.
+**Destructive actions** open `确认执行破坏性操作`: `即将以账号 … 执行 …，该操作会真实生效且通常不可撤销。` Confirm with `确认执行`.
 
-**Example (a call with side effects)**: choose `send_group_msg`, fill a real group number and message text → run → confirm. Expected result: the message really lands in that group and the result returns a message ID. **There is no undo.**
+## Send message
 
-## Message composer
+- Choose `账号` and `目标` (`群聊` / `私聊`).
+- Compose `消息内容`; `内容预览` shows the actual segments.
+- A merge-forward may contain only forward nodes; other segments must be placed inside one, otherwise the UI explains the error.
+- `发送` becomes `发送 (合并转发)` when forward nodes are present.
+- Failure shows `发送失败`; success shows `请求完成`. A completed request is not proof of delivery or that the bot will reply.
 
-| Control | Description |
-| --- | --- |
-| Segment list | Add and remove segments — text, image, voice, file and so on |
-| Upload | Select a local file, upload it, and reference the returned path; uploads use a separate temporary directory |
-| Target | Choose group or friend and fill in the ID |
-| Send | Really sends |
-
-The segment structure is OneBot's 「数组」 (array) format, so what you build here matches what a downstream bot sees when an endpoint uses 「数组」 — see [Endpoint configuration](onebot-config.md#every-field-in-the-node-dialog).
-
-**Example**: add a text segment “test: ignore this” plus an image segment (upload a small image) → target your own alt account → send. Expected result: the alt account receives text and image in the same order as the list.
-
-**Upload note**: uploads consume 「文件传输临时数据」 (file-transfer temporary data) space and can be cleaned under storage settings — see [Settings: Nowluma and platform](settings-runtime.md#storage).
+Empty messages, missing account or target are rejected with a reason.
 
 ## Live activity
 
-One line per event or action call, merged, so you can watch what the program is doing.
+Shows `调用` and `事件`.
 
-| Control | Description |
+| Control | Effect |
 | --- | --- |
-| Pause | Stop appending/scrolling so you can read |
-| Search | Text filter |
-| 「导出 JSON」 | Export the current view as JSON |
-| 「清空」 | Clear the view (server side untouched) |
+| State | `已连接`, `重连中`, `未连接`; a deliberate pause reads `已暂停` |
+| Pause / resume | Stops UI updates, not the server |
+| `导出 JSON` | Exports current activity |
+| `清空` | Clears the current view |
+| Search | Filter by type/account/content; type `全部` / `事件` / `调用` |
 
-**Example**: send a message to the account from your phone and watch for the matching event. Seeing it proves the event path works; not seeing it means switching to DEBUG in [Logs](logs.md) for more detail.
+If the client is too slow, the UI states `因客户端过慢丢弃了 N 条` instead of pretending the feed is complete.
 
-## API browser
+## API library
 
-| Element | Description |
-| --- | --- |
-| Search | Filter by action name or description |
-| Category counts | Number of entries per category |
-| 「只读」 / 「有副作用」 badges | Whether a call is safe |
-| 「试一下」 | Prefill the tester with that action and its default parameters |
+Browse by category; search name, summary or alias. Each action shows `只读` / `有副作用` / `流式`, aliases, a parameter table (name, type, required, description, default, constraints) and returns.
 
-The fastest way to learn: read the badge first. Read-only actions are safe to poke; actions with side effects deserve a careful look at the parameters before running.
+`试一下` carries the action into the tester and switches tabs; it does not execute automatically. The catalog is derived from the debug action definitions, not hand-maintained separately.
 
-## Save and restart semantics
+## Safety boundaries
 
-The debug page stores no configuration. What it leaves behind:
-
-| Item | Lifetime |
-| --- | --- |
-| Tester history | This page session |
-| Live activity view | This page session; clearing only clears the view |
-| Uploaded temporary files | Written to the transfer temp directory, cleaned manually |
-
-Refreshing the page loses history, but **side effects that already happened do not disappear**.
-
-## Failure and recovery
-
-| Symptom | Fix |
-| --- | --- |
-| Empty action list | The account is not online; bridge it first via [QQ connection](qq-connection.md) |
-| Returns a “not connected” style error | The account dropped or the endpoint is not ready; check node state |
-| A streaming call returns only a few frames | The action or the peer finished early; reproduce once with TRACE logging |
-| Upload fails | Check file size and disk space; large files time out |
-| Sent a message by mistake | There is no recall control; use the QQ client to recall it manually if still within the window |
-| Kicked a member by mistake | Not reversible — a group admin has to re-invite |
-
-**Advice**: test parameters against a test environment or your own alt account before touching a real group. The debug page offers no privilege separation — anything the signed-in account can do, this page can do.
+- Every call is bound to the account you selected.
+- Side-effect actions ask again, but confirmation is not undo.
+- No QQ password, login bypass, account forgery or kernel-selection override is exposed here.
+- Activity and exports may contain account, message or path data; redact before sharing.
+- The console still does not auto-reply; your bot owns reply logic.

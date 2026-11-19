@@ -1,7 +1,7 @@
 {
   "license": "GPL-3.0-only",
   "name": "@nowluma/common",
-  "version": "2.4.2",
+  "version": "2.5.0-rc.1",
   "private": true,
   "type": "module",
   "description": "Nowluma shared infrastructure — leaf-package utilities with zero business dependencies. Logger / hex codec / log file transport / log line summariser / packet sender wire-protocol types / runtime config loader. Consumed by @nowluma/protocol, @nowluma/core, and @nowluma/onebot. Per-file subpath exports keep import sites unambiguous and let the bundler tree-shake aggressively (importing `@nowluma/common/hex` doesn't pull in `node:fs` from the logger transport).",

@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type RefObject } from 'react';
 import { useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, ScrollText, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LineField } from '@/components/ui/line-field';
+import { PaperBackdrop } from '@/components/layout/paper-backdrop';
 import { SegmentedControl } from '@/components/interior/segmented-control';
 import {
     useWizardNavigation,
@@ -50,6 +51,7 @@ interface OnboardingWizardPageProps {
     onPasswordComplete: () => void;
     onComplete: () => void;
     additionalSteps?: AdditionalOnboardingStep[];
+    feedbackHostRef?: RefObject<HTMLDivElement | null>;
 }
 
 const DOCUMENT_LABELS: Record<AgreementDoc['id'], string> = {
@@ -72,6 +74,7 @@ export function OnboardingWizardPage({
     onPasswordComplete,
     onComplete,
     additionalSteps = [],
+    feedbackHostRef,
 }: OnboardingWizardPageProps) {
     const { appearance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
@@ -159,7 +162,13 @@ export function OnboardingWizardPage({
     }
 
     return (
-        <div className="workspace-onboarding-shell bg-background antialiased">
+        <div
+            className={cn(
+                'workspace-onboarding-shell antialiased',
+                appearance.background.type === 'none' && 'bg-background',
+            )}
+        >
+            {appearance.background.type === 'none' && <PaperBackdrop />}
             <header className="workspace-auth-masthead">
                 <div className="workspace-auth-wordmark">
                     <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
@@ -190,6 +199,7 @@ export function OnboardingWizardPage({
                         <p className="workspace-eyebrow">欢迎使用 {APP_NAME}</p>
                         <h1>完成首次使用设置</h1>
                     </header>
+                    <div ref={feedbackHostRef} className="workspace-onboarding-feedback" />
                     <WizardSteps
                         steps={steps}
                         index={index}
@@ -256,8 +266,8 @@ function AgreementStep({
     return (
         <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-start gap-3 sm:gap-4">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20 sm:size-12 sm:rounded-2xl">
-                    <ScrollText className="size-5 text-primary" />
+                <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+                    <ScrollText className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
@@ -390,9 +400,9 @@ function PasswordStep({
 
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-start py-2 sm:py-5">
-            <div className="mb-8 flex items-start gap-4">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-                    <ShieldAlert className="size-5 text-primary" />
+            <div className="mb-6 flex items-start gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+                    <ShieldAlert className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
@@ -400,8 +410,8 @@ function PasswordStep({
                     </h2>
                     <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
                         {mode === 'rehearsal'
-                            ? '验证密码设置步骤的界面与规则；本次演练不会保存输入内容。'
-                            : '将首次启动生成的临时密码替换为符合要求的强密码。'}
+                            ? '演练密码设置，不保存输入内容。'
+                            : '设置用于打开控制台的密码。'}
                     </p>
                 </div>
             </div>
@@ -415,9 +425,9 @@ function PasswordStep({
                 submitLabel={
                     mode === 'rehearsal' ? '完成演练' : isLast ? '保存并完成' : '保存并继续'
                 }
-                className="gap-5"
+                className="gap-4"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
-                    <div className="workspace-onboarding-actions grid gap-3 pt-2 sm:flex sm:items-center">
+                    <div className="workspace-onboarding-actions grid grid-cols-2 gap-3 pt-2 sm:flex sm:items-center">
                         <Button
                             type="button"
                             variant="outline"

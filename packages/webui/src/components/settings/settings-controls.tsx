@@ -16,8 +16,7 @@ export interface Opt<T> {
 // segmented radiogroup gets an accessible name without prop-threading).
 const RowLabelContext = createContext<{ id: string; label: string } | undefined>(undefined);
 
-// iOS/macOS segmented control: a recessed track with a raised pill on the
-// selected segment. Single-select → exposed as a radiogroup.
+// Single-select settings use the shared keyboard-accessible radiogroup.
 export function Segmented<T extends string | number>({
     value,
     options,
@@ -58,10 +57,10 @@ export function Segmented<T extends string | number>({
 }
 
 /**
- * A grouped-list row. `layout`:
- *  - 'auto'   — control sits right of the label on sm+, stacks under it on mobile (short controls)
- *  - 'inline' — control always pinned right (switches)
- *  - 'stack'  — control always full-width under the label (color grids, sliders, wide segments)
+ * A compact document row. `layout`:
+ *  - 'auto'   — label and control share columns on sm+, stack on mobile
+ *  - 'inline' — switches stay beside their label
+ *  - 'stack'  — wide controls stay below their label
  */
 export function SettingRow({
     label,
@@ -76,12 +75,12 @@ export function SettingRow({
 }) {
     const labelId = useId();
     const head = (
-        <div className="min-w-0">
+        <div className="min-w-0 break-words">
             <p id={labelId} className="text-sm font-medium">
                 {label}
             </p>
             {hint && (
-                <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{hint}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hint}</p>
             )}
         </div>
     );
@@ -93,7 +92,7 @@ export function SettingRow({
 
     if (layout === 'stack') {
         return (
-            <div className="flex flex-col gap-3 px-5 py-4">
+            <div className="flex min-w-0 flex-col gap-2.5 py-3">
                 {head}
                 {control}
             </div>
@@ -102,17 +101,17 @@ export function SettingRow({
 
     if (layout === 'inline') {
         return (
-            <div className="flex items-center justify-between gap-4 px-5 py-4">
+            <div className="flex min-w-0 items-center justify-between gap-4 py-3">
                 {head}
-                <div className="shrink-0">{control}</div>
+                <div className="min-w-0 max-w-[60%] shrink-0">{control}</div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="grid min-w-0 gap-2.5 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:items-start sm:gap-6">
             {head}
-            <div className="min-w-0 sm:shrink-0 sm:max-w-full">{control}</div>
+            <div className="min-w-0 max-w-full">{control}</div>
         </div>
     );
 }
@@ -127,7 +126,7 @@ export function SliderSettingRow({
 } & Omit<ComponentProps<typeof Slider>, 'label'>) {
     const hintId = useId();
     return (
-        <div className="flex flex-col gap-2.5 px-5 py-4">
+        <div className="flex min-w-0 flex-col gap-2.5 py-3">
             <Slider {...sliderProps} label={label} aria-describedby={hint ? hintId : undefined} />
             {hint && (
                 <p id={hintId} className="text-[12px] leading-snug text-muted-foreground">
@@ -138,7 +137,7 @@ export function SliderSettingRow({
     );
 }
 
-// Section context stays beside its controls on wide screens.
+// Stable section headings lead an unboxed document surface.
 export function Group({
     title,
     description,
@@ -153,15 +152,15 @@ export function Group({
     const titleId = useId();
     return (
         <section aria-labelledby={titleId} className="cp-settings-group">
-            <header className="flex min-w-0 flex-col gap-2 pt-1">
+            <header className="flex min-w-0 flex-col gap-1.5">
                 <h2 id={titleId} className="flex items-center gap-2 text-[15px] font-semibold">
-                    {Icon && <Icon className="size-4 text-muted-foreground" />}
+                    {Icon && <Icon aria-hidden="true" className="size-4 text-muted-foreground" />}
                     {title}
                 </h2>
                 {description && (
-                    <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
+                    <div className="max-w-prose text-xs leading-relaxed text-muted-foreground">
                         {description}
-                    </p>
+                    </div>
                 )}
             </header>
             <div className="cp-settings-rows divide-y divide-border/60">{children}</div>

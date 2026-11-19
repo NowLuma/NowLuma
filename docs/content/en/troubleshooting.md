@@ -1,147 +1,107 @@
 ---
 title: Troubleshooting
-description: A symptom-first table, a recovery ladder, how to use logs and diagnostics, and the boundaries of every "it works" claim.
+description: Locate login, QQ attach, account-kernel, desktop, bot, data and UI problems, and recover without deleting data or faking success.
 ---
 
 # Troubleshooting
 
-Use this chapter by finding your symptom first, then doing only what that row says. Do not change three things at once — you will not know which one fixed it.
+Identify the layer first, then open the matching page. Do not “fix” a symptom by deleting data, disabling isolation or fabricating success.
 
-## Start with these three
+## Where to look
+
+| Symptom | Start |
+| --- | --- |
+| Console unreachable or login fails | “Login and console”; [Access and network](access-network.md) |
+| No QQ, attach fails, new kernel acknowledgement | “QQ sessions and account kernel”; [QQ sessions](qq-connection.md) |
+| Desktop blank or disconnected | “Desktop” |
+| Bot receives nothing | “Bot connections”; [Bot connections](onebot-config.md) |
+| Messages, logs or databases | “Data and storage”; [Run log](logs.md) |
+| Layout or animation problems | “Pages and appearance” |
+
+Run first:
 
 ```bash
-bash deploy/manage.sh doctor   # processes, directories, permissions, listeners
-bash deploy/manage.sh logs     # follow the log
+bash deploy/manage.sh doctor
+bash deploy/manage.sh logs
 ```
 
-Third: open service → runtime environment and save locations in the console, press 「复制诊断」 (copy diagnostics) and keep the output. It lists the working directory, HOME, and the config/messages/logs directories plus writability.
+For native installs use the startup terminal and `logs/`. An error in the log is not a completed install.
 
-## Look up the symptom
+## Login and console
 
-### The console will not open
+- **Stuck at `初始化中…`**: service not running, port conflict, or `/api/` rewritten by a proxy.
+- **`登录失败`**: use the console access password, not the QQ password; if 2FA is on, supply the code or recovery code.
+- **`协议状态加载失败`**: notice state cannot be confirmed and entry is refused. Check `/api/agreements`, proxy rewrites and server time, then `重新加载`.
+- **Logged out immediately**: rewritten cookies, Host/protocol mismatch, clock skew, or another session’s password change expired yours.
+- **Forgot password / lost 2FA**: back up and reset `config/webui.json` per [First run](first-run.md#forgot-password-or-lost-2fa); 2FA and sessions are cleared.
 
-| Check | Where |
+## QQ sessions and account kernel
+
+| Symptom | Cause and action |
 | --- | --- |
-| Is the process running? | `docker compose ps` or `manage.sh doctor` |
-| Is the port right? | `manage.sh start` prints the actually published port |
-| Bind address | `BIND_ADDRESS` in `deploy/.env`; remote servers default to loopback only |
-| Firewall or security group | Your host or cloud provider settings |
-| Reverse proxy | Does it point at 5099, and does it keep `Host`? |
+| `未检测到可加载 QQ 主进程` | Open and log in to QQ, then refresh; Docker needs `/proc`, `SYS_PTRACE` and matching users |
+| Stuck at `加载中` | Native component architecture or permission problem; wait for an error, do not spam clicks |
+| Stuck at `等待连接` | Use `刷新管道`; then check ports, permissions and the log |
+| Stuck at `等待登录` | Complete login inside QQ, then `已登录，检查状态` |
+| Online but no bot messages | Check endpoints and tokens in [Bot connections](onebot-config.md) |
+| Kernel dialog does not open | No real UIN recognized; log in to QQ first and choose the account. A PID is never used as an account |
+| Asked to confirm again | Different UIN, changed identity or new risk version; expected per-account isolation |
+| `重写内核` unavailable | Unverified; there is no hidden fallback or fake selection |
+| Saved kernel choice but not attached | Saving is not attaching; press `加载`. With auto-connect enabled, an UIN with a current acknowledgement can attach after QQ login |
+| Local account differs from channel account | Re-check login; the app does not guess the correct one |
+| Unload failed | Restart QQ as prompted; configuration and QQ data remain |
 
-### The login page loads but sign-in fails
+Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confirmation. A new account cannot reuse the previous PID’s acknowledgement. A PID explicitly unloaded stays manually stopped; refresh and auto-connect do not attach it again; press `加载` to resume.
 
-| Symptom | Fix |
-| --- | --- |
-| Wrong password | Confirm you are using the console access password, not an OneBot token |
-| 2FA keeps being demanded | Use 「使用恢复码」; if that is exhausted see [First start](first-run.md#7-forgot-the-password-or-lost-2fa) |
-| 「协议状态加载失败」 | The server cannot read the agreements; press 「重新加载」, then check whether the proxy blocks `/api/agreements` |
-| Signed out immediately | Session expiry, or two tabs on different hosts/ports overwriting each other |
+## Desktop
 
-### No QQ process is found
+- **Entry missing**: the server did not report an applied same-origin desktop capability (Windows native, an old server, or only a VNC address); do not force it with an external address.
+- **Blank/unreachable**: valid console session, onboarding complete, and `/desktop/` plus WebSocket preserved by the proxy.
+- **Authentication fails**: the desktop reuses the console session; no separate VNC password is entered.
+- **QQ does not auto-login**: QQ behaviour. Check the full HOME volume, QQ auto-login setting and server session; see [manual verification](data-backup.md#qq-persistence-and-manual-verification).
 
-| Check | Notes |
-| --- | --- |
-| Is QQ really running? | In Docker, read the Xvfb/QQ output from `manage.sh logs` |
-| Architecture match | The bridge supports specific platform architectures |
-| Privileges | Docker needs `SYS_PTRACE`, granted only to the fixed UID |
-| Windows | Watch for the low-integrity warning; account detection needs QQ on the same machine |
+## Bot connections
 
-### Stuck at 「等待登录」 (waiting for sign-in)
+- **Cannot connect**: enabled, address, port, path and token. Copied addresses exclude tokens.
+- **`未启用`**: turn the toggle on; deleting is not pausing.
+- **`应用失败`**: saved but hot reload failed; read the hover error and log, fix, save again.
+- **Token change dropped bots**: expected; update and reconnect them.
+- **Saved while offline**: shows `已保存，下次连接时应用`; verify after attach.
+- **Multiple accounts**: listener ports must differ; one working account does not prove the others.
 
-QQ is not signed in yet. Complete the scan or verification in the QQ window (or 「打开 QQ 桌面」), then refresh.
+## Data and storage
 
-### 「已在线」 but the bot does not work
+- **Disk full**: inspect Storage usage, clean logs or inactive temporary data; never delete QQ HOME.
+- **Database preparing**: wait for migration; failures preserve files and retry. Do not start multiple instances.
+- **Corrupt configuration**: the program reports and preserves it; restore from backup, do not overwrite with defaults.
+- **QR scan required after restart**: files remaining does not mean the server session is valid; verify in QQ.
+- **Accounts missing after upgrade**: volumes/directories mounted, UID consistent, no `down -v`.
 
-These are two different layers:
+## Pages and appearance
 
-1. The account layer is fine.
-2. You still need an endpoint in 「节点配置」 with the right address and token, and the bot program itself must handle the traffic.
+- **Broken layout**: `恢复默认`; it resets layout only.
+- **Navigation item missing**: `工作台` and `偏好设置` cannot be hidden; restore others under `工作区管理` → `调整导航`.
+- **Page broken**: append `?safe-mode=1` to disable custom CSS temporarily.
+- **Too much animation**: try `减弱动效` and `关闭全部动效`; the system reduced-motion setting wins.
+- **Still slow in low mode**: low performance only simplifies refraction and displacement; reduce wallpaper/widgets or use a lighter browser. No FPS guarantee.
+- **Low contrast**: enable high contrast; a low-contrast accent offers a reset.
 
-Check in order: is the node disabled → address/port/path → token → the bot's own log. See [Endpoint configuration](onebot-config.md).
+## Logs and debug
 
-### A save did not take effect
+- Stream `未连接`: check service/network, press refresh; already-read entries remain.
+- Missing events: clear search, check level filters and auto-scroll.
+- TRACE export fails: TRACE enabled, file exists, disk writable.
+- Debug call fails: keep the error; side-effect actions only run after confirmation and are not retried blindly.
 
-Read the save-state chip:
+## Recovery matrix
 
-| Chip | Meaning | Fix |
+| Action | Scope | Reversible? |
 | --- | --- | --- |
-| 已保存，下次连接时应用 | The account is offline | Bridge the account first |
-| 已保存，但热重载失败 | Endpoint hot swap failed | Fix the configuration using the error and save again |
-| 保存失败 | Nothing was written | Read the error; usually a port conflict or validation failure |
-| 未保存 | Edits not submitted yet | General settings debounce — wait, or press 「保存」 |
+| `恢复默认` layout | Widget layout and settings | Re-editable; old layout not restored |
+| `重置全部` UI config | Appearance, layout, navigation, custom CSS | Not reversible; accounts/messages unaffected |
+| Remove `config/webui.json` | Password, 2FA, sessions | Restorable from backup; account data remains |
+| Clean account database category | Selected messages/media/reactions | Irreversible; back up first |
+| `down -v` / delete volumes | All program data and QQ HOME | Irreversible; never for upgrades |
+| Unload QQ injection | Current session disconnects | Re-attachable; config/data remain |
 
-Service-level settings (ports, TLS, desktop entry, auto-connect) need a **program restart** after saving; the console will not do it for you.
-
-### Logs are not live
-
-| Check | Notes |
-| --- | --- |
-| Status dot says `重连中` | SSE dropped; it reconnects when the server recovers |
-| Proxy buffering | Requires `proxy_buffering off` |
-| Proxy read timeout too short | Give it at least 3600 s |
-| Server level too high | Check the server level under 「显示选项」; the file level comes from an environment variable |
-
-### The desktop will not open
-
-| Check | Notes |
-| --- | --- |
-| Is the session valid? | After sign-out or a password change the desktop stops working by design |
-| Is `/desktop/` proxied? | Forward the path unchanged and pass WebSocket upgrade headers |
-| `Origin` | Must match the current host; old tabs fail after a domain change |
-| Entry hidden? | Port 0 with an empty address hides the entry |
-| External desktop URL | That service handles its own auth; the console session is not forwarded |
-
-### QQ asks for a QR scan after a restart
-
-See [Data, backup and updates](data-backup.md#qq-persistence-and-manual-verification). The usual causes are a volume that was not reused, HOME/XDG overridden by a custom start command, or `down -v`.
-
-### The interface is broken or unclickable
-
-1. Open the console with `?safe-mode=1` appended (skips custom CSS).
-2. Go to advanced → custom CSS and delete or clear the rules.
-3. Still broken: advanced → backup and reset → 「重置全部界面配置」 (irreversible; loses appearance customisation).
-
-### Old data is still showing
-
-On a read failure the interface keeps the last successful data and labels it. Such data cannot tell you the current state: fix the read first, then look at the numbers.
-
-## Recovery ladder
-
-From cheapest to heaviest:
-
-1. **Retry** — press 「重试」, 「刷新」 or 「重新连接」.
-2. **Save again** — resubmit and see whether the error changes.
-3. **Restart the service** — `bash deploy/manage.sh restart`. Disconnects bots.
-4. **Restart QQ** — for failed unloads and stuck pipes. QQ signs in again.
-5. **Rule out the interface** — `?safe-mode=1`.
-6. **Restore configuration** — service → configuration backup / restore.
-7. **Restore data** — stop, restore volumes or directories, start.
-8. **Rebuild the environment** — only with a verified backup. Note that `down -v` deletes volumes.
-
-## Common misreadings
-
-| Claim | Reality |
-| --- | --- |
-| “Health check passed, so QQ is signed in” | The check verifies processes, the desktop listener and console reachability only |
-| “Endpoint is ok, so the bot replies” | It means listening or connected, nothing more |
-| “Local files are still there, so no QR scan” | Local state avoids a new environment; QQ decides session acceptance |
-| “No errors in the log, so everything is fine” | Errors can be filtered out by level; only TRACE has full detail |
-| “CI is green, so every platform works” | It covers only the platforms and scenarios actually exercised |
-
-## Reporting a problem
-
-Include:
-
-- Diagnostics copied from service → runtime environment and save locations (no credentials).
-- Reproduction steps and the expected result.
-- The relevant log excerpt. **Remove account identifiers, tokens, message content and any personal data first.**
-- Platform, architecture and version.
-
-Do not include: QQ password, console password, 2FA recovery codes, raw traffic captures, or account database files.
-
-## Related chapters
-
-- Log detail: [Logs](logs.md)
-- Endpoint fields: [Endpoint configuration](onebot-config.md)
-- Access and proxies: [Access and networking](access-network.md)
-- Backup and restore: [Data, backup and updates](data-backup.md)
+When unsure: stop, back up, change one thing. Record the actual command, exit status and original error instead of repeating attempts.

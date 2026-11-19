@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MotionConfig } from 'motion/react';
-import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { elements, hookHost } from './helpers/hook-host';
 import { MainLayout } from '../src/components/layout/main-layout';
@@ -155,14 +154,6 @@ describe('MainLayout workspace', () => {
         expect(elements(render()).some((element) => element.props.open === true)).toBe(false);
     });
 
-    it('keeps optical response bounded inside the capsule, without the rejected exposed stripe scene', () => {
-        const css = readFileSync(new URL('../src/styles/workspace.css', import.meta.url), 'utf8');
-        expect(css).not.toContain('repeating-linear-gradient');
-        expect(css).not.toContain('workspace-dock-scene::before');
-        expect(css).toContain('translate: 6px 0;');
-        expect(css).toContain('transition-duration: 180ms;');
-        expect(css).toContain('transition-duration: 0ms !important;');
-    });
 
     it('retains custom wallpaper between the stable content surfaces', () => {
         state.wallpaper = true;

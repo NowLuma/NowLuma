@@ -75,10 +75,10 @@ export interface UiAppearance {
     density: Density;
     /** Soften animations (transforms off, shorter durations). */
     reduceMotion: boolean;
-    /** Hard-disable all UI animations (stronger than reduceMotion). */
+    /** Manual motion switch: false enables effects; true disables all animations. */
     disableMotion: boolean;
-    /** Slow-device detection is local; only this manual preference is persisted. */
-    performanceMode?: 'auto' | 'high' | 'low';
+    /** Manual glass quality; legacy stored `auto` normalizes to `high`. */
+    performanceMode?: 'high' | 'low';
     /** Use Nowluma's adaptive cursor. */
     customPointerSystem: boolean;
     /** Replace the browser context menu with Nowluma's context menu. */
@@ -136,11 +136,11 @@ export const DEFAULT_APPEARANCE: UiAppearance = {
     fontMono: 'default',
     fontMonoCustom: '',
     uiScale: 1,
-    radius: 0.75,
+    radius: 0.25,
     density: 'cozy',
     reduceMotion: false,
     disableMotion: false,
-    performanceMode: 'auto',
+    performanceMode: 'high',
     customPointerSystem: false,
     customContextMenu: true,
     highContrast: false,

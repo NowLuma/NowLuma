@@ -116,7 +116,7 @@ export function useDropdown({
         (index: number) => {
             const item = items[index];
 
-            if (!item || item.disabled) {
+            if (disabled || !item || item.disabled) {
                 return;
             }
 
@@ -127,8 +127,14 @@ export function useDropdown({
             emit.current?.(item.value);
             close();
         },
-        [items, value, close],
+        [disabled, items, value, close],
     );
+
+    useEffect(() => {
+        if (disabled) {
+            close(false);
+        }
+    }, [disabled, close]);
 
     const typeahead = useCallback(
         (char: string) => {

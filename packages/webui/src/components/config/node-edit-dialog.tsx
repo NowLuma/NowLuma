@@ -3,12 +3,10 @@
 // throw away changes). Validation is minimal — blank-name and dup-name
 // disable the save button; everything else is best-effort coercion.
 //
-// Visual language: Apple-HIG grouped-list flavour (matches debug-page) —
-// captioned sections, soft rounded cards, settings rows with a label on the
-// left and a control (toggle / custom dropdown) on the right.
+// The local draft lives in a stable, unboxed document form. Only the modal
+// actions are short operations; save settlement still controls dismissal.
 
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     ArrowLeftRight,
     ArrowUpRight,
@@ -79,7 +77,6 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
     const [draft, setDraft] = useState<AnyAdapter<K>>(initial);
     const [busy, setBusy] = useState(false);
     const [saveError, setSaveError] = useState('');
-    const reduced = useReducedMotionConfig();
 
     const trimmedName = draft.name?.trim() ?? '';
     const blankName = trimmedName.length === 0;
@@ -131,7 +128,7 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
             className="cp-dialog"
             title={
                 <span className="inline-flex items-center gap-2">
-                    <span className="grid size-8 place-items-center rounded-[10px] bg-primary/10 text-primary">
+                    <span className="grid size-8 place-items-center text-muted-foreground">
                         <Icon className="size-4" />
                     </span>
                     {isEdit ? `编辑 ${tab.noun}` : `新建 ${tab.noun}`}
@@ -147,6 +144,7 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
                         取消
                     </Button>
                     <Button
+                        variant="glass"
                         disabled={!canSave || busy}
                         onClick={async () => {
                             setBusy(true);
@@ -174,18 +172,13 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
             {saveError && (
                 <p
                     role="alert"
-                    className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                    className="mb-4 break-words border-l-2 border-destructive pl-3 text-sm text-destructive"
                 >
                     {saveError}
                 </p>
             )}
             <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
-                <motion.div
-                    initial={reduced ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: reduced ? 0 : 0.42, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card/60 px-4 py-3.5 shadow-[0_1px_2px_rgb(0_0_0/0.04)]"
-                >
+                <div className="flex min-w-0 items-center justify-between gap-4 border-b border-border py-3">
                     <div className="min-w-0">
                         <Label className="text-sm font-medium text-foreground">启用</Label>
                         <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
@@ -199,10 +192,10 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
                         }
                         ariaLabel="启用"
                     />
-                </motion.div>
+                </div>
 
-                <Section caption="连接" delay={0.05}>
-                    <div className="flex flex-col gap-3 p-4">
+                <Section caption="连接">
+                    <div className="flex min-w-0 flex-col gap-3">
                         <Field
                             label="名称"
                             placeholder="自定义"
@@ -220,8 +213,8 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
                     </div>
                 </Section>
 
-                <Section caption="鉴权" delay={0.1}>
-                    <div className="p-4">
+                <Section caption="鉴权">
+                    <div className="min-w-0">
                         <TokenField
                             label="授权 Token"
                             placeholder={
@@ -243,7 +236,7 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
                     </div>
                 </Section>
 
-                <Section caption="行为" delay={0.15}>
+                <Section caption="行为">
                     <div className="divide-y divide-border/60">
                         {isHttpServer && (
                             <SettingRow
@@ -320,31 +313,15 @@ export function NodeEditDialog<K extends NetworkKind>(props: NodeEditDialogProps
     );
 }
 
-// ─────────────── grouped-list scaffolding ───────────────
+// ─────────────── document form scaffolding ───────────────
 
-/** Captioned inset section — the iOS "grouped list" unit. */
-function Section({
-    caption,
-    delay,
-    children,
-}: {
-    caption: string;
-    delay: number;
-    children: ReactNode;
-}) {
-    const reduced = useReducedMotionConfig();
+/** A document section, without nested inset cards or reading-surface motion. */
+function Section({ caption, children }: { caption: string; children: ReactNode }) {
     return (
-        <motion.section
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduced ? 0 : 0.2, delay: reduced ? 0 : delay }}
-            className="flex flex-col gap-1.5"
-        >
-            <span className="px-1 text-xs font-medium text-muted-foreground">{caption}</span>
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
-                {children}
-            </div>
-        </motion.section>
+        <section className="flex min-w-0 flex-col gap-3">
+            <h3 className="text-sm font-semibold">{caption}</h3>
+            <div className="min-w-0">{children}</div>
+        </section>
     );
 }
 
@@ -359,7 +336,7 @@ function SettingRow({
     children: ReactNode;
 }) {
     return (
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 py-3">
             <div className="min-w-0">
                 <Label className="text-[13px] text-foreground">{label}</Label>
                 {desc && (

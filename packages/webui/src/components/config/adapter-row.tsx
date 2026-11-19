@@ -13,11 +13,11 @@ import type { AdapterCommon } from './defaults';
 import type { AdapterStatus } from '@/types';
 
 const LIVE_STYLE: Record<AdapterStatus['status'], string> = {
-    ok: 'bg-success/10 text-success',
-    warn: 'bg-warning/10 text-warning',
-    down: 'bg-destructive/10 text-destructive',
-    degraded: 'bg-destructive/10 text-destructive',
-    disabled: 'bg-muted text-muted-foreground',
+    ok: 'text-success',
+    warn: 'text-warning',
+    down: 'text-destructive',
+    degraded: 'text-destructive',
+    disabled: 'text-muted-foreground',
 };
 const LIVE_LABEL: Record<AdapterStatus['status'], string> = {
     ok: '运行中',
@@ -56,7 +56,7 @@ export function AdapterRow<T extends AdapterCommon>({
     const blankName = !item.name?.trim();
 
     return (
-        <div className={cn('cp-tablerow', !enabled && 'bg-muted/30')}>
+        <div className="cp-tablerow">
             <div className="cp-tablerow-identity min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -98,7 +98,7 @@ export function AdapterRow<T extends AdapterCommon>({
                 {liveStatus && (
                     <span
                         className={cn(
-                            'mt-2 inline-block max-w-full break-words rounded-md px-2 py-1 text-xs font-medium',
+                            'mt-2 inline-block max-w-full break-words text-xs font-medium',
                             LIVE_STYLE[liveStatus.status],
                         )}
                         title={
@@ -110,6 +110,11 @@ export function AdapterRow<T extends AdapterCommon>({
                         {LIVE_LABEL[liveStatus.status]} · {liveStatus.detail}
                     </span>
                 )}
+                {liveStatus?.lastError && (
+                    <p role="alert" className="mt-1 break-words text-xs text-destructive">
+                        {liveStatus.lastError}
+                    </p>
+                )}
             </div>
 
             <div className="cp-tablerow-actions flex flex-wrap items-center gap-2">
@@ -120,7 +125,7 @@ export function AdapterRow<T extends AdapterCommon>({
                     disabled={busy}
                 />
                 <Button
-                    variant="outline"
+                    variant="glass"
                     size="sm"
                     disabled={busy}
                     onClick={onEdit}
@@ -130,7 +135,7 @@ export function AdapterRow<T extends AdapterCommon>({
                 </Button>
                 <div className="flex items-center gap-0.5">
                     <Button
-                        variant="ghost"
+                        variant="glass"
                         size="icon-sm"
                         onClick={onCopy}
                         aria-label="复制端点地址（不含凭据）"

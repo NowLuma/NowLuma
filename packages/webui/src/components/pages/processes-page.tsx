@@ -1,13 +1,11 @@
 // The selected PID owns every detail and action; sorting or a disappearing
 // process must never retarget an operation to another QQ process.
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { AlertCircle, Cpu, Info, Loader2, PlugZap, RefreshCw, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/interior/segmented-control';
 import { DesktopButton } from '@/components/desktop-button';
-import { Badge } from '@/components/ui/badge';
-import { GlassMaterial } from '@/components/ui/glass-material';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
@@ -48,20 +46,16 @@ const processStatusLabel: Record<HookProcessInfo['status'], string> = {
     disconnected: '已断开',
 };
 
-function processBadgeVariant(status: HookProcessInfo['status']) {
+function processStatusClass(status: HookProcessInfo['status']) {
     if (status === 'online') {
-        return 'success' as const;
+        return 'text-success';
     }
 
     if (status === 'error' || status === 'disconnected') {
-        return 'destructive' as const;
+        return 'text-destructive';
     }
 
-    if (status === 'loading' || status === 'connecting' || status === 'loaded') {
-        return 'default' as const;
-    }
-
-    return 'secondary' as const;
+    return 'text-muted-foreground';
 }
 
 /** Locally detected identity (QQ's own account data), never a login claim. */
@@ -83,7 +77,6 @@ export function ProcessesPage() {
     const [selectedPid, setSelectedPid] = useState<number | null>(() =>
         processList.length === 1 ? processList[0]!.pid : null,
     );
-    const selectionId = useId();
     const reduced = useReducedMotionConfig();
     useEffect(() => {
         if (selectedPid === null && processList.length === 1) {
@@ -113,15 +106,16 @@ export function ProcessesPage() {
 
     return (
         <div className="cp-page">
-            <header className="flex flex-col gap-3">
+            <header className="cp-document-header">
                 <div className="cp-toolbar">
-                    <p className="text-sm text-muted-foreground">
-                        选择 QQ 进程，查看状态并接入账号。
-                    </p>
+                    <div className="min-w-0">
+                        <h2 className="cp-page-heading">QQ 进程</h2>
+                        <p className="cp-lede">选择实际 PID，查看账号识别与接入状态。</p>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <DesktopButton />
                         <Button
-                            variant="outline"
+                            variant="glass"
                             size="sm"
                             onClick={refreshProcesses}
                             disabled={!resources.processList.ready}
@@ -146,7 +140,7 @@ export function ProcessesPage() {
                                 role="status"
                                 aria-live="polite"
                                 aria-atomic="true"
-                                className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-primary"
+                                className="cp-inline-notice"
                             >
                                 <Info aria-hidden="true" className="size-3.5 shrink-0" />
                                 {processActionStatus}
@@ -157,7 +151,7 @@ export function ProcessesPage() {
                 {resources.processList.error && processList.length > 0 && (
                     <div
                         role="alert"
-                        className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                        className="cp-inline-notice text-destructive"
                     >
                         {resources.processList.error}；当前显示上次成功读取的进程状态。
                     </div>
@@ -177,16 +171,16 @@ export function ProcessesPage() {
                     resources.processList.error && processList.length === 0 ? (
                         <div
                             role="alert"
-                            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 py-16 text-destructive"
+                            className="cp-empty-state text-destructive"
                         >
                             <AlertCircle className="size-8 opacity-70" strokeWidth={1.5} />
                             <p className="text-sm">{resources.processList.error}</p>
-                            <Button variant="outline" size="sm" onClick={refreshProcesses}>
+                            <Button variant="glass" size="sm" onClick={refreshProcesses}>
                                 <RefreshCw className="size-3.5" /> 重试
                             </Button>
                         </div>
                     ) : processList.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-muted-foreground">
+                        <div className="cp-empty-state text-muted-foreground">
                             <Cpu className="size-8 opacity-40" strokeWidth={1.5} />
                             <p className="text-sm">未检测到可加载 QQ 主进程</p>
                             <p className="text-xs text-muted-foreground/80">启动 QQ 后刷新</p>
@@ -194,7 +188,7 @@ export function ProcessesPage() {
                     ) : (
                         <div className="cp-split">
                             {/* master: compact process list */}
-                            <section aria-label="进程列表" className="cp-panel overflow-hidden">
+                            <section aria-label="进程列表" className="cp-panel cp-process-list">
                                 <div className="cp-panel-head">
                                     <h2 className="text-sm font-semibold">
                                         进程{' '}
@@ -223,29 +217,17 @@ export function ProcessesPage() {
                                                 type="button"
                                                 onClick={() => setSelectedPid(proc.pid)}
                                                 aria-current={isCurrent ? 'true' : undefined}
-                                                className="cp-row outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:ring-inset"
+                                                aria-label={`选择进程 PID ${proc.pid}${identity ? `，QQ ${identity.uin}` : ''}`}
+                                                className="cp-row cp-process-row outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:ring-inset"
                                             >
                                                 {isCurrent && (
-                                                    <motion.span
+                                                    <span
                                                         aria-hidden="true"
-                                                        layoutId={
-                                                            reduced
-                                                                ? undefined
-                                                                : `process-selection-${selectionId}`
-                                                        }
                                                         className="cp-process-indicator"
-                                                        transition={
-                                                            reduced
-                                                                ? { duration: 0 }
-                                                                : {
-                                                                      duration: 0.42,
-                                                                      ease: [0.16, 1, 0.3, 1],
-                                                                  }
-                                                        }
                                                     />
                                                 )}
                                                 {identity ? (
-                                                    <Avatar size={36}>
+                                                    <Avatar size={28}>
                                                         <AvatarImage
                                                             src={qqAvatarUrl(identity.uin)}
                                                             alt={identity.nickname || identity.uin}
@@ -259,10 +241,8 @@ export function ProcessesPage() {
                                                 ) : (
                                                     <div
                                                         className={cn(
-                                                            'flex size-9 shrink-0 items-center justify-center rounded-lg',
-                                                            proc.status === 'error'
-                                                                ? 'bg-destructive/15 text-destructive'
-                                                                : 'bg-primary/10 text-primary',
+                                                            'flex size-7 shrink-0 items-center justify-center text-muted-foreground',
+                                                            proc.status === 'error' && 'text-destructive',
                                                         )}
                                                     >
                                                         {proc.status === 'error' ? (
@@ -273,22 +253,22 @@ export function ProcessesPage() {
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="min-w-0 truncate text-sm font-semibold">
+                                                    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                                                        <span className="min-w-0 break-words text-sm font-medium">
                                                             {identity?.nickname ||
                                                                 identity?.uin ||
                                                                 proc.name}
                                                         </span>
-                                                        <Badge
-                                                            variant={processBadgeVariant(
-                                                                proc.status,
+                                                        <span
+                                                            className={cn(
+                                                                'shrink-0 text-xs',
+                                                                processStatusClass(proc.status),
                                                             )}
-                                                            className="shrink-0 whitespace-nowrap"
                                                         >
                                                             {processStatusLabel[proc.status]}
-                                                        </Badge>
+                                                        </span>
                                                     </div>
-                                                    <div className="mt-0.5 truncate font-mono text-meta text-muted-foreground tabular-nums">
+                                                    <div className="mt-0.5 break-words font-mono text-meta text-muted-foreground tabular-nums">
                                                         PID {proc.pid}
                                                         {identity ? ` · QQ ${identity.uin}` : ''}
                                                     </div>
@@ -318,7 +298,7 @@ export function ProcessesPage() {
                             ) : (
                                 <section
                                     aria-label="进程详情"
-                                    className="cp-panel flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground"
+                                    className="cp-panel cp-empty-state text-muted-foreground"
                                 >
                                     <Cpu className="size-8 opacity-40" strokeWidth={1.5} />
                                     <h2 className="text-base font-medium text-foreground">
@@ -376,7 +356,6 @@ function ProcessDetail({
     onUnload,
     onRefreshPipe,
 }: ProcessDetailProps) {
-    const reduced = useReducedMotionConfig();
     const identity = detectedIdentity(proc);
     const name = identity?.nickname || identity?.uin || proc.name;
     const op = statusOf(proc.pid);
@@ -391,17 +370,11 @@ function ProcessDetail({
         proc.injected || proc.status === 'connecting' || proc.status === 'disconnected';
 
     return (
-        <motion.section
-            aria-label="进程详情"
-            className="cp-panel overflow-hidden"
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-        >
-            <div className="flex flex-col gap-6 p-5 sm:p-6">
+        <section aria-label="进程详情" className="cp-panel cp-process-detail">
+            <div className="cp-toolbar">
                 <div className="flex min-w-0 items-center gap-3">
                     {identity ? (
-                        <Avatar size={48}>
+                        <Avatar size={32}>
                             <AvatarImage
                                 src={qqAvatarUrl(identity.uin)}
                                 alt={identity.nickname || identity.uin}
@@ -411,134 +384,105 @@ function ProcessDetail({
                             </AvatarFallback>
                         </Avatar>
                     ) : (
-                        <div
-                            className={cn(
-                                'flex size-12 shrink-0 items-center justify-center rounded-xl',
-                                proc.status === 'error'
-                                    ? 'bg-destructive/15 text-destructive'
-                                    : 'bg-primary/10 text-primary',
-                            )}
-                        >
-                            {proc.status === 'error' ? (
-                                <AlertCircle className="size-6" />
-                            ) : (
-                                <Cpu className="size-6" />
-                            )}
-                        </div>
+                        <Cpu className="size-6 shrink-0 text-muted-foreground" />
                     )}
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="min-w-0 break-words text-xl font-semibold tracking-tight">
-                                {name}
-                            </h2>
-                            <Badge variant={processBadgeVariant(proc.status)}>
-                                {processStatusLabel[proc.status]}
-                            </Badge>
-                        </div>
-                        <div className="mt-0.5 truncate font-mono text-meta text-muted-foreground tabular-nums">
+                    <div className="min-w-0">
+                        <h3 className="break-words text-lg font-semibold tracking-tight">{name}</h3>
+                        <p className="break-words font-mono text-xs text-muted-foreground tabular-nums">
                             PID {proc.pid}
                             {identity ? ` · QQ ${identity.uin}` : ''}
-                        </div>
+                        </p>
                     </div>
                 </div>
-
-                <dl className="grid min-w-0 gap-5 border-y border-border py-5 text-sm sm:grid-cols-2">
-                    <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">进程</dt>
-                        <dd className="mt-1 break-all font-medium">
-                            {proc.name}{' '}
-                            <span className="font-mono text-xs font-normal text-muted-foreground">
-                                · {proc.pid}
-                            </span>
-                        </dd>
-                    </div>
-                    <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">账号</dt>
-                        <dd className="mt-1 font-mono">{identity?.uin || '未识别'}</dd>
-                    </div>
-                    <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">接入状态</dt>
-                        <dd className="mt-1">{proc.injected ? 'Nowluma 已加载' : '尚未加载'}</dd>
-                    </div>
-                    <div className="min-w-0">
-                        <dt className="text-xs text-muted-foreground">会话连接</dt>
-                        <dd className="mt-1">{proc.connected ? '已建立连接' : '尚未连接'}</dd>
-                    </div>
-                    {proc.path && (
-                        <div className="min-w-0 sm:col-span-2">
-                            <dt className="text-xs text-muted-foreground">路径</dt>
-                            <dd className="mt-1 break-all font-mono text-xs leading-relaxed">
-                                {proc.path}
-                            </dd>
-                        </div>
-                    )}
-                    {proc.error && (
-                        <div
-                            role="alert"
-                            className="min-w-0 rounded-lg bg-destructive/10 p-3 text-destructive sm:col-span-2"
-                        >
-                            <dt className="text-xs font-medium">错误</dt>
-                            <dd className="mt-1 break-all text-sm">{proc.error}</dd>
-                        </div>
-                    )}
-                </dl>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-                        {canUnload
-                            ? '已登录账号会自动接入；卸载将断开当前会话。'
-                            : '向此进程加载 Nowluma，已登录账号将自动接入。'}
-                    </p>
-                    <div className="ui-glass flex flex-wrap items-center gap-2 rounded-xl p-1">
-                        <GlassMaterial />
-                        {showRefresh && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={busy}
-                                aria-label={`刷新进程 ${proc.pid} 管道状态`}
-                                title="刷新管道状态 / 重连"
-                                onClick={onRefreshPipe}
-                            >
-                                {refreshing ? (
-                                    <Loader2 className="size-3.5 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="size-3.5" />
-                                )}
-                                刷新管道
-                            </Button>
-                        )}
-                        <Button
-                            size="sm"
-                            variant={canUnload ? 'outline' : 'default'}
-                            disabled={busy && !(canUnload && canCancelAttach?.(proc.pid))}
-                            onClick={canUnload ? onUnload : onLoad}
-                            className={cn(
-                                canUnload &&
-                                    'text-destructive hover:bg-destructive/10 hover:text-destructive',
-                            )}
-                        >
-                            {(loading || unloading) && (
-                                <Loader2 className="size-3.5 animate-spin" />
-                            )}
-                            {!loading &&
-                                !unloading &&
-                                (canUnload ? (
-                                    <Unplug className="size-4" />
-                                ) : (
-                                    <PlugZap className="size-4" />
-                                ))}
-                            {canUnload
-                                ? unloading
-                                    ? '卸载中'
-                                    : '卸载'
-                                : loading
-                                  ? '加载中'
-                                  : '加载'}
-                        </Button>
-                    </div>
-                </div>
+                <span className={cn('text-sm font-medium', processStatusClass(proc.status))}>
+                    {processStatusLabel[proc.status]}
+                </span>
             </div>
-        </motion.section>
+
+            <div className="cp-document-actions">
+                {showRefresh && (
+                    <Button
+                        variant="glass"
+                        size="sm"
+                        disabled={busy}
+                        aria-label={`刷新进程 ${proc.pid} 管道状态`}
+                        title="刷新管道状态 / 重连"
+                        onClick={onRefreshPipe}
+                    >
+                        {refreshing ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                            <RefreshCw className="size-3.5" />
+                        )}
+                        刷新管道
+                    </Button>
+                )}
+                <Button
+                    size="sm"
+                    variant={canUnload ? 'outline' : 'glass'}
+                    disabled={busy && !(canUnload && canCancelAttach?.(proc.pid))}
+                    onClick={canUnload ? onUnload : onLoad}
+                    className={cn(
+                        canUnload &&
+                            'text-destructive hover:bg-destructive/10 hover:text-destructive',
+                    )}
+                >
+                    {(loading || unloading) && <Loader2 className="size-3.5 animate-spin" />}
+                    {!loading &&
+                        !unloading &&
+                        (canUnload ? <Unplug className="size-4" /> : <PlugZap className="size-4" />)}
+                    {canUnload
+                        ? unloading
+                            ? '卸载中'
+                            : '卸载'
+                        : loading
+                          ? '加载中'
+                          : '加载'}
+                </Button>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+                {canUnload
+                    ? '卸载仅作用于此 PID，并会断开当前会话。'
+                    : '向此 PID 加载 Nowluma；账号确认与内核选择仍由接入流程处理。'}
+            </p>
+
+            <dl className="cp-facts">
+                <div className="cp-fact-row">
+                    <dt>进程</dt>
+                    <dd className="break-all">{proc.name}</dd>
+                </div>
+                <div className="cp-fact-row">
+                    <dt>账号</dt>
+                    <dd>
+                        <span className="font-mono">{identity?.uin || '未识别'}</span>
+                        {identity && !proc.loggedIn && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                                本地识别，尚未确认登录
+                            </span>
+                        )}
+                    </dd>
+                </div>
+                <div className="cp-fact-row">
+                    <dt>接入状态</dt>
+                    <dd>{proc.injected ? 'Nowluma 已加载' : '尚未加载'}</dd>
+                </div>
+                <div className="cp-fact-row">
+                    <dt>会话连接</dt>
+                    <dd>{proc.connected ? '已建立连接' : '尚未连接'}</dd>
+                </div>
+                {proc.path && (
+                    <div className="cp-fact-row">
+                        <dt>路径</dt>
+                        <dd className="break-all font-mono text-xs leading-relaxed">{proc.path}</dd>
+                    </div>
+                )}
+                {proc.error && (
+                    <div role="alert" className="cp-fact-row text-destructive">
+                        <dt>错误</dt>
+                        <dd className="break-all">{proc.error}</dd>
+                    </div>
+                )}
+            </dl>
+        </section>
     );
 }

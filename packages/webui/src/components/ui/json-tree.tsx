@@ -5,6 +5,7 @@
 import { useState, type ReactNode } from 'react';
 import { Check, ChevronRight, Copy, Image as ImageIcon } from 'lucide-react';
 import { cn, copyText } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const IMAGE_URL_RE = /^https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp)(?:[?#][^\s]*)?$/i;
 // QQ multimedia rkey image URLs don't end in an extension but carry these hints.
@@ -197,16 +198,18 @@ export function JsonTree({
     };
 
     return (
-        <div className={cn('relative rounded-xl border border-border/60 bg-muted/30', className)}>
-            <button
+        <div className={cn('relative rounded-[4px] border border-border/60 bg-muted/30', className)}>
+            <Button
                 type="button"
                 onClick={copy}
                 title="复制 JSON"
-                className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-card/80 px-1.5 py-1 text-xs text-muted-foreground shadow-sm ring-1 ring-border/50 backdrop-blur hover:text-foreground"
+                variant="glass"
+                size="sm"
+                className="absolute right-2 top-2 z-10 gap-1 text-xs"
             >
                 {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                 {copied ? '已复制' : '复制'}
-            </button>
+            </Button>
             <div
                 className="overflow-auto p-3 font-mono text-[11.5px] leading-relaxed"
                 style={{ maxHeight }}

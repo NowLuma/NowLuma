@@ -1,10 +1,13 @@
 import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NATIVE_KERNEL_LABEL } from '@nowluma/common/kernel-display';
+import { DEFAULT_APPEARANCE } from '@nowluma/common/webui-appearance';
 import App from '../src/App';
 import { KernelOnboardingStep } from '../src/components/kernel-onboarding-step';
 import { KernelChoiceForm } from '../src/components/kernel-choice';
 import { Dropdown } from '../src/components/interior/dropdown';
+import { DisplayEffectsOnboardingStep } from '../src/components/display-effects';
+import { buildRequiredOnboardingStepIds } from '../src/components/pages/onboarding-steps';
 import { demoKernelCatalog, demoProcess } from '../src/demo/fixtures';
 import type { ApiClient, KernelChoiceInput } from '../src/lib/api/types';
 import { elements, hookHost } from './helpers/hook-host';
@@ -22,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     },
     runAction: vi.fn(async (_options: unknown, action: () => Promise<unknown>) => action()),
     next: vi.fn(),
+    setAppearancePreview: vi.fn(),
     router: {
         history: {
             subscribe: vi.fn<(listener: () => void) => () => void>(() => vi.fn()),
@@ -39,6 +43,13 @@ vi.mock('@/lib/api', async (load) => ({
 vi.mock('@/contexts/ActionFeedbackContext', async (load) => ({
     ...(await load<Record<string, unknown>>()),
     useActionFeedback: () => ({ runAction: mocks.runAction }),
+}));
+vi.mock('@/contexts/ThemeContext', async (load) => ({
+    ...(await load<Record<string, unknown>>()),
+    useTheme: () => ({
+        appearance: DEFAULT_APPEARANCE,
+        setAppearancePreview: mocks.setAppearancePreview,
+    }),
 }));
 vi.mock('@/components/interior/skeleton-swap', async (load) => ({
     ...(await load<Record<string, unknown>>()),
@@ -144,7 +155,7 @@ describe('AuthBoundary kernel onboarding activation', () => {
         expect(mocks.api.processes.list).not.toHaveBeenCalled();
     });
 
-    it('latches an initial setup and preserves the kernel step after document/password completion', async () => {
+    it('retains all four setup stages in order through document/password completion', async () => {
         mocks.api.agreements.get.mockResolvedValue({ ...agreements, consentRequired: true });
         mocks.api.mustChangePassword.mockResolvedValue(true);
         auth();
@@ -160,9 +171,15 @@ describe('AuthBoundary kernel onboarding activation', () => {
             content: ReactElement;
         }[];
         expect(additional).toMatchObject([
+            { id: 'display-effects', canSkip: false, hideAdvance: true },
             { id: 'kernel-choice', canSkip: false, hideAdvance: true },
         ]);
-        expect(additional[0].content.type).toBe(KernelOnboardingStep);
+        expect([
+            ...buildRequiredOnboardingStepIds({ needsConsent: true, mustChangePassword: true }),
+            ...additional.map((entry) => entry.id),
+        ]).toEqual(['agreements', 'password', 'display-effects', 'kernel-choice']);
+        expect(additional[0].content.type).toBe(DisplayEffectsOnboardingStep);
+        expect(additional[1].content.type).toBe(KernelOnboardingStep);
         expect(mocks.api.kernel.get).not.toHaveBeenCalled();
         expect(mocks.api.processes.list).not.toHaveBeenCalled();
 
@@ -218,6 +235,8 @@ describe('AuthBoundary kernel onboarding activation', () => {
             content: ReactElement<{ replay: boolean }>;
         }[];
         expect(additional[0].content.props.replay).toBe(true);
+        expect(additional[1].content.props.replay).toBe(true);
+        expect(mocks.setAppearancePreview).toHaveBeenCalledWith({});
         expect(await (wizard.props.onAccept as () => Promise<unknown>)()).toEqual({
             success: true,
         });
@@ -239,6 +258,17 @@ describe('AuthBoundary kernel onboarding activation', () => {
         expect(mocks.api.kernel.get).not.toHaveBeenCalled();
         expect(mocks.api.kernel.save).not.toHaveBeenCalled();
         expect(mocks.api.processes.load).not.toHaveBeenCalled();
+    });
+
+    it('restores setup/replay presentation when the gate unmounts', async () => {
+        Object.assign(window.location, { pathname: '/onboarding', search: '?mode=developer' });
+        auth();
+        await vi.waitFor(() => expect(named(auth(), 'OnboardingGate')).toBeDefined());
+        gate(named(auth(), 'OnboardingGate')!);
+        expect(mocks.setAppearancePreview).toHaveBeenLastCalledWith({});
+        gateHost.unmount();
+        expect(mocks.setAppearancePreview).toHaveBeenLastCalledWith(null);
+        gateHost = hookHost();
     });
 });
 

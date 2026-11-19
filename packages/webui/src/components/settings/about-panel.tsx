@@ -66,20 +66,19 @@ function UpdateGroup() {
         }
     };
 
-    const disabledCheck = updateInfo?.error === 'disabled';
+    const disabledCheck = !resources.updateInfo.error && updateInfo?.error === 'disabled';
+    const updateError = resources.updateInfo.error || (!disabledCheck ? updateInfo?.error : null);
 
     let status: ReactNode;
 
-    if (!updateInfo && resources.updateInfo.error) {
+    if (updateError) {
         status = <span className="text-muted-foreground">无法检查</span>;
-    } else if (!updateInfo) {
-        status = null;
     } else if (disabledCheck) {
         status = <span className="text-muted-foreground">检查已关闭</span>;
-    } else if (updateInfo.error) {
-        status = <span className="text-muted-foreground">无法检查</span>;
+    } else if (!updateInfo) {
+        status = null;
     } else if (updateInfo.hasUpdate && updateInfo.latest) {
-        status = <span className="font-medium text-primary">发现新版本</span>;
+        status = <span className="font-medium">发现新版本</span>;
     } else {
         status = (
             <span className="inline-flex items-center gap-1.5 text-success">
@@ -91,12 +90,11 @@ function UpdateGroup() {
     // Rich detail block, only when an update is available (narrows `latest`).
     let detail: ReactNode = null;
 
-    if (updateInfo?.hasUpdate && updateInfo.latest) {
+    if (!updateError && !disabledCheck && updateInfo?.hasUpdate && updateInfo.latest) {
         const latest = updateInfo.latest;
         detail = (
-            <div className="bg-primary/[0.05] px-5 py-4 text-left">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-primary" />
+            <div className="flex min-w-0 flex-col gap-3 py-3 text-left">
+                <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium">v{latest}</span>
                     {updateInfo.publishedAt && (
                         <span className="ml-auto text-meta tabular-nums text-muted-foreground">
@@ -104,16 +102,21 @@ function UpdateGroup() {
                         </span>
                     )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                     当前 v{updateInfo.current} → 最新 v{latest}
                 </p>
                 {updateInfo.notes && (
-                    <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
-                        {updateInfo.notes}
-                    </pre>
+                    <details className="text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            版本变更
+                        </summary>
+                        <pre className="max-w-prose whitespace-pre-wrap break-words border-l pl-4 font-mono text-xs leading-relaxed">
+                            {updateInfo.notes}
+                        </pre>
+                    </details>
                 )}
                 {updateInfo.htmlUrl && (
-                    <Button asChild size="sm" className="mt-3">
+                    <Button asChild variant="glass" size="sm" className="self-start">
                         <a href={updateInfo.htmlUrl} target="_blank" rel="noreferrer noopener">
                             <ExternalLink className="size-4" /> 发布说明
                         </a>
@@ -125,13 +128,8 @@ function UpdateGroup() {
 
     return (
         <Group title="软件更新" icon={Sparkles}>
-            <SettingRow label="当前版本" layout="inline">
-                <code className="rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-xs tabular-nums">
-                    v{APP_VERSION}
-                </code>
-            </SettingRow>
             <SettingRow label="检查更新">
-                <div className="flex items-center gap-2.5 text-[12px]">
+                <div className="flex flex-wrap items-center gap-2.5 text-xs">
                     <SkeletonSwap
                         ready={resources.updateInfo.ready}
                         reserve={24}
@@ -148,7 +146,7 @@ function UpdateGroup() {
                         {resources.updateInfo.ready ? status : null}
                     </SkeletonSwap>
                     {!disabledCheck && (
-                        <Button variant="outline" size="sm" onClick={onCheck} disabled={checking}>
+                        <Button variant="glass" size="sm" onClick={onCheck} disabled={checking}>
                             {checking ? (
                                 <Loader2 className="size-4 animate-spin" />
                             ) : (
@@ -160,40 +158,31 @@ function UpdateGroup() {
                 </div>
             </SettingRow>
             {detail}
-            {updateInfo?.error && !disabledCheck && (
-                <p role="alert" className="px-5 py-3 text-xs text-destructive">
-                    {updateInfo.error}
-                </p>
+            {updateError && (
+                <p role="alert" className="py-3 text-xs text-destructive">{updateError}</p>
             )}
             <UpdateSources />
-            <UpdateInstaller version={updateInfo?.hasUpdate ? updateInfo.latest : null} />
+            <UpdateInstaller version={!updateError && !disabledCheck && updateInfo?.hasUpdate ? updateInfo.latest : null} />
         </Group>
     );
 }
 
 export function AboutPanel() {
     return (
-        <div className="flex min-w-0 flex-col gap-5">
-            <section
-                aria-label="Nowluma"
-                className="cp-panel flex flex-wrap items-center gap-4 p-5 sm:p-6"
-            >
-                <img src={BRAND_LOGO_URL} alt="" className="size-12 shrink-0 object-contain" />
+        <div className="flex min-w-0 flex-col gap-7">
+            <header aria-label="Nowluma" className="flex flex-wrap items-center gap-3 border-b pb-5">
+                <img src={BRAND_LOGO_URL} alt="" className="size-9 shrink-0 object-contain" />
                 <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-semibold tracking-tight">Nowluma</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        连接 QQ NT，提供标准 OneBot v11 接口。
-                    </p>
+                    <h2 className="font-serif text-xl font-semibold tracking-tight">Nowluma</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">QQ NT · OneBot v11</p>
                 </div>
-                <code className="font-mono text-sm text-muted-foreground tabular-nums">
-                    v{APP_VERSION}
-                </code>
-            </section>
+                <code className="font-mono text-xs text-muted-foreground tabular-nums">v{APP_VERSION}</code>
+            </header>
 
             <UpdateGroup />
 
             <Group title="项目与许可" icon={Scale} description="© 2026 Nowluma contributors">
-                <SettingRow label="源代码" hint="版本、发布说明与问题反馈。" layout="stack">
+                <SettingRow label="源代码">
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
                         <AboutLink href={REPO_URL} icon={Github}>
                             GitHub
@@ -206,7 +195,7 @@ export function AboutPanel() {
                         </AboutLink>
                     </div>
                 </SettingRow>
-                <SettingRow label="GPLv3" hint="允许商业使用；第三方组件与原生组件遵循各自的许可。">
+                <SettingRow label="GPLv3" hint="允许使用、修改和分发（含商业用途），无担保；第三方与原生组件遵循各自许可。">
                     <AboutLink href="https://www.gnu.org/licenses/gpl-3.0.html" icon={Scale}>
                         查看许可
                     </AboutLink>
@@ -231,15 +220,12 @@ function AboutLink({
     children: ReactNode;
 }) {
     return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex min-h-11 items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
-        >
-            <Icon className="size-3.5" />
-            {children}
-            <ExternalLink className="size-3 opacity-50" />
-        </a>
+        <Button asChild variant="glass" size="sm" className="max-w-full whitespace-normal">
+            <a href={href} target="_blank" rel="noreferrer noopener">
+                <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="min-w-0 break-all">{children}</span>
+                <ExternalLink aria-hidden="true" className="size-3 shrink-0 opacity-50" />
+            </a>
+        </Button>
     );
 }

@@ -11,7 +11,7 @@ const Textarea = React.forwardRef<
         ref={ref}
         data-ui-control=""
         className={cn(
-            'flex min-h-10 w-full min-w-0 appearance-none rounded-md border border-border bg-transparent px-3 py-2 text-base transition-colors outline-none md:text-sm',
+            'flex min-h-11 w-full min-w-0 appearance-none rounded-[var(--radius)] border border-border bg-transparent px-3 py-2 text-base transition-colors outline-none md:text-sm',
             'placeholder:text-muted-foreground',
             'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             'disabled:cursor-not-allowed disabled:opacity-50',

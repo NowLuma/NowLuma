@@ -3,8 +3,8 @@ import {
     Accessibility,
     Check,
     Monitor,
+    Layers,
     Moon,
-    MousePointer2,
     Palette,
     PanelTop,
     RotateCcw,
@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { TOPBAR_CATALOGUE } from '@/components/layout/top-bar';
 import { BackgroundCard } from '@/components/settings/background-card';
+import { DisplayEffectsControls } from '@/components/display-effects';
 import {
     Group,
     Segmented,
@@ -123,8 +124,7 @@ function contrastRatio(a: string, b: string): number | null {
     return (hi + 0.05) / (lo + 0.05);
 }
 
-// Top-bar element show/hide. Essential controls (menu, page title, logout) are
-// not listed — they always render.
+// Optional tools in the top bar and more-actions menu retain their saved visibility.
 function TopbarPanel() {
     const { topbarItems, setTopbarItems } = useLayout();
     const reconciled = reconcileLayoutItems(
@@ -136,9 +136,9 @@ function TopbarPanel() {
         setTopbarItems(reconciled.map((i) => (i.id === id ? { ...i, visible: !i.visible } : i)));
     return (
         <Group
-            title="顶栏"
+            title="顶栏工具"
             icon={PanelTop}
-            description="控制顶栏右侧元素的显示；菜单、页面标题与登出始终保留。"
+            description="工作区管理与更多操作入口始终保留。"
         >
             {TOPBAR_CATALOGUE.map((t) => (
                 <SettingRow key={t.id} label={t.label} layout="inline">
@@ -162,7 +162,6 @@ export function AppearancePanel() {
         removeBackground,
         resolved,
         managedBy,
-        performance: performanceStatus,
     } = useTheme();
     const a = appearance;
     // A Catppuccin flavor fixes its own light/dark + darkness, so the mode and
@@ -204,33 +203,24 @@ export function AppearancePanel() {
     };
 
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-7">
             {managedBy && (
                 <p className="text-sm leading-relaxed text-muted-foreground" role="status">
-                    外观跟随{managedBy}
-                    。原有配色、字体和背景已保留，退出集成后恢复；缩放与无障碍设置仍可调整。
+                    外观由{managedBy}管理；个人配色、字体与背景已保留。动效、材质、缩放和无障碍仍可调整。
                 </p>
             )}
             <fieldset disabled={!!managedBy} className="contents" aria-label="主题、配色与背景">
                 <Group
                     title="主题"
                     icon={Sun}
-                    description={
-                        managedBy
-                            ? '下方显示已保留的个人设置；当前界面外观由宿主管理。'
-                            : '配色方案、明暗模式与深色风格。所有改动立即生效并保存到服务器，跨设备同步。'
-                    }
+                    description={managedBy ? '以下为已保留的个人设置。' : '改动立即应用并同步到服务器。'}
                 >
                     <SettingRow
                         label="配色方案"
-                        hint="“默认”跟随下方明暗模式；Catppuccin 为整套配色，会自行决定明暗。"
+                        hint="默认配色跟随显示模式；Catppuccin 自带明暗。"
                         layout="stack"
                     >
-                        <div
-                            className="flex flex-wrap gap-2.5"
-                            role="radiogroup"
-                            aria-label="配色方案"
-                        >
+                        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="配色方案">
                             {PALETTE_OPTIONS.map((p) => {
                                 const active = a.palette === p.id;
                                 return (
@@ -242,30 +232,21 @@ export function AppearancePanel() {
                                         aria-label={p.label}
                                         onClick={() => setAppearance({ palette: p.id })}
                                         className={cn(
-                                            'flex w-[5.5rem] flex-col items-center gap-1.5 rounded-xl border p-1.5 transition-[border-color,box-shadow] duration-150 ease-out cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
-                                            active
-                                                ? 'border-primary ring-2 ring-primary/30'
-                                                : 'border-border hover:border-foreground/30',
+                                            'inline-flex min-h-11 items-center gap-2 rounded-[4px] border px-3 text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                            active ? 'border-foreground' : 'border-border hover:bg-muted/40',
                                         )}
                                     >
-                                        <span
-                                            className="flex h-11 w-full items-center justify-center rounded-lg"
-                                            style={{ backgroundColor: p.preview.bg }}
-                                        >
-                                            <span
-                                                className="flex gap-1 rounded-md px-1.5 py-1 shadow-sm"
-                                                style={{ backgroundColor: p.preview.surface }}
-                                            >
-                                                {p.preview.dots.map((d, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className="size-1.5 rounded-full"
-                                                        style={{ backgroundColor: d }}
-                                                    />
-                                                ))}
-                                            </span>
+                                        <span aria-hidden="true" className="flex overflow-hidden rounded-[2px] border border-border/60">
+                                            <span className="size-3.5" style={{ backgroundColor: p.preview.bg }} />
+                                            <span className="size-3.5" style={{ backgroundColor: p.preview.surface }} />
+                                            {p.preview.dots.map((color, i) => (
+                                                <span key={i} className="size-3.5" style={{ backgroundColor: color }} />
+                                            ))}
                                         </span>
-                                        <span className="text-xs font-medium">{p.label}</span>
+                                        <span>{p.label}</span>
+                                        <span aria-hidden="true" className="size-3.5">
+                                            {active && <Check className="size-3.5" />}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -295,9 +276,8 @@ export function AppearancePanel() {
                                 ? '深色材质由宿主外观决定。'
                                 : paletteFixed
                                   ? 'Catppuccin 配色自带明暗，无需调节。'
-                                  : '“纯黑”将深色背景压到接近纯黑，适合 OLED 屏幕（仅深色模式下可见）。'
+                                  : '纯黑用于 OLED，仅在深色模式下可见。'
                         }
-                        layout="stack"
                     >
                         <Segmented
                             value={a.darkIntensity}
@@ -311,7 +291,7 @@ export function AppearancePanel() {
                 <Group
                     title="强调色"
                     icon={Palette}
-                    description="按钮、链接与高亮使用的主色调；默认配色下，界面底色也会轻微跟随。"
+                    description="按钮、链接与高亮的颜色。"
                 >
                     <SettingRow label="预设色" layout="stack">
                         <div className="flex flex-wrap items-center gap-2">
@@ -322,6 +302,7 @@ export function AppearancePanel() {
                                     <button
                                         key={spec.id}
                                         type="button"
+                                        aria-pressed={active}
                                         onClick={() =>
                                             setAppearance({
                                                 accentMode: 'preset',
@@ -331,50 +312,37 @@ export function AppearancePanel() {
                                         title={spec.label}
                                         aria-label={spec.label}
                                         className={cn(
-                                            'relative flex size-11 items-center justify-center rounded-full border transition-colors cursor-pointer',
-                                            active
-                                                ? 'border-foreground/30 ring-2 ring-primary'
-                                                : 'border-border',
+                                            'inline-flex min-h-11 items-center gap-2 rounded-[4px] border px-3 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                            active ? 'border-foreground' : 'border-border hover:bg-muted/40',
                                         )}
-                                        style={{ backgroundColor: spec.swatch }}
                                     >
-                                        {active && (
-                                            <Check
-                                                className="size-4 text-white drop-shadow-sm"
-                                                strokeWidth={3}
-                                            />
-                                        )}
+                                        <span aria-hidden="true" className="size-4 rounded-[2px] border border-border/60" style={{ backgroundColor: spec.swatch }} />
+                                        <span>{spec.label}</span>
+                                        <span aria-hidden="true" className="size-3.5">
+                                            {active && <Check className="size-3.5" />}
+                                        </span>
                                     </button>
                                 );
                             })}
                             <label
                                 title="自定义颜色"
                                 className={cn(
-                                    'relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border transition-colors',
-                                    a.accentMode === 'custom'
-                                        ? 'border-foreground/30 ring-2 ring-primary'
-                                        : 'border-border',
+                                    'relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[4px] border px-3 text-xs focus-within:ring-2 focus-within:ring-ring',
+                                    a.accentMode === 'custom' ? 'border-foreground' : 'border-border',
                                 )}
-                                style={{
-                                    background:
-                                        a.accentMode === 'custom'
-                                            ? a.accentCustom
-                                            : 'conic-gradient(from 0deg, #f43f5e, #f59e0b, #10b981, #0ea5e9, #8b5cf6, #f43f5e)',
-                                }}
                             >
                                 <input
                                     type="color"
                                     value={toColorInputValue(a.accentCustom)}
                                     onChange={(e) => pickCustomAccent(e.target.value)}
-                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                     aria-label="自定义强调色"
                                 />
-                                {a.accentMode === 'custom' && (
-                                    <Check
-                                        className="pointer-events-none size-4 text-white drop-shadow-sm"
-                                        strokeWidth={3}
-                                    />
-                                )}
+                                <span aria-hidden="true" className="size-4 rounded-[2px] border border-border/60" style={{ backgroundColor: a.accentCustom }} />
+                                <span>自定义</span>
+                                <span aria-hidden="true" className="size-3.5">
+                                    {a.accentMode === 'custom' && <Check className="size-3.5" />}
+                                </span>
                             </label>
                         </div>
                     </SettingRow>
@@ -401,10 +369,11 @@ export function AppearancePanel() {
                     removeBackground={removeBackground}
                 />
             </fieldset>
-            <Group title="排版与界面" icon={Palette} description="字体、圆角、缩放与密度。">
+            <Group title="排版与界面" icon={Palette}>
                 <fieldset disabled={!!managedBy} className="contents" aria-label="字体与圆角">
                     <SettingRow label="界面字体" layout="stack">
                         <FontField
+                            label="界面字体"
                             value={a.fontSans}
                             custom={a.fontSansCustom}
                             presets={FONT_SANS_OPTIONS}
@@ -415,6 +384,7 @@ export function AppearancePanel() {
                     </SettingRow>
                     <SettingRow label="等宽字体" hint="用于日志与代码。" layout="stack">
                         <FontField
+                            label="等宽字体"
                             value={a.fontMono}
                             custom={a.fontMonoCustom}
                             presets={FONT_MONO_OPTIONS}
@@ -436,7 +406,7 @@ export function AppearancePanel() {
                 </fieldset>
                 <SliderSettingRow
                     label="界面缩放"
-                    hint="整体放大或缩小界面，适合高分屏或视力需要。"
+                    hint="整体缩放界面。"
                     min={UI_SCALE.min}
                     max={UI_SCALE.max}
                     step={UI_SCALE.step}
@@ -454,19 +424,33 @@ export function AppearancePanel() {
                 </SettingRow>
             </Group>
 
+            <details>
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    主题颜色变量
+                </summary>
             <fieldset disabled={!!managedBy} className="contents" aria-label="主题变量">
                 <ThemeVarsPanel
                     cssVars={a.cssVars}
                     onChange={(cssVars) => setAppearance({ cssVars })}
                 />
             </fieldset>
+            </details>
 
             <TopbarPanel />
+            <Group
+                title="显示效果"
+                icon={Layers}
+                description="手动选择动效与材质。改动立即应用，并通过同一外观设置同步保存。"
+            >
+                <DisplayEffectsControls
+                    value={{ disableMotion: a.disableMotion, performanceMode: a.performanceMode ?? 'high' }}
+                    onChange={setAppearance}
+                />
+            </Group>
 
             <Group
-                title="右键菜单"
-                icon={MousePointer2}
-                description="控制网页内右键操作的呈现方式。"
+                title="交互与无障碍"
+                icon={Accessibility}
             >
                 <SettingRow
                     label="自定义右键菜单"
@@ -479,16 +463,9 @@ export function AppearancePanel() {
                         ariaLabel="自定义右键菜单"
                     />
                 </SettingRow>
-            </Group>
-
-            <Group
-                title="交互与无障碍"
-                icon={Accessibility}
-                description="光标、动效、对比度与导航。"
-            >
                 <SettingRow
                     label="自定义光标"
-                    hint="默认关闭；开启后使用主题化自适应光标。"
+                    hint="使用主题化自适应光标。"
                     layout="inline"
                 >
                     <ToggleSwitch
@@ -499,46 +476,14 @@ export function AppearancePanel() {
                     />
                 </SettingRow>
                 <SettingRow
-                    label="性能模式"
-                    hint="自动按设备流畅度调整效果；也可手动选择。"
-                    layout="stack"
-                >
-                    <Segmented<'auto' | 'high' | 'low'>
-                        value={a.performanceMode ?? 'auto'}
-                        onChange={(performanceMode) => setAppearance({ performanceMode })}
-                        options={[
-                            { value: 'auto', label: '自动检测（默认）' },
-                            { value: 'high', label: '完整效果' },
-                            { value: 'low', label: '低性能' },
-                        ]}
-                    />
-                    <p className="text-xs text-muted-foreground" role="status">
-                        {performanceStatus?.low ? '当前已使用低性能效果' : '当前使用完整效果'}
-                        {performanceStatus?.mode === 'auto' && performanceStatus.fps > 0
-                            ? ` · 最近检测 ${Math.round(performanceStatus.fps)} FPS`
-                            : ''}
-                    </p>
-                </SettingRow>
-                <SettingRow
                     label="减弱动效"
-                    hint="弱化页面切换、弹簧等装饰性动画（保留轻微淡入），对低端设备与晕动敏感者更友好。"
+                    hint="减少位移与弹簧，保留轻微淡入。"
                     layout="inline"
                 >
                     <ToggleSwitch
                         value={a.reduceMotion}
                         onChange={(reduceMotion) => setAppearance({ reduceMotion })}
                         ariaLabel="减弱动效"
-                    />
-                </SettingRow>
-                <SettingRow
-                    label="关闭全部动效"
-                    hint="比“减弱动效”更彻底：移除所有界面动画，包括入场淡入与状态点闪烁。"
-                    layout="inline"
-                >
-                    <ToggleSwitch
-                        value={a.disableMotion}
-                        onChange={(disableMotion) => setAppearance({ disableMotion })}
-                        ariaLabel="关闭全部动效"
                     />
                 </SettingRow>
                 <SettingRow label="高对比模式" hint="加强边框与次要文字的对比度。" layout="inline">
@@ -594,6 +539,7 @@ type LocalFont = { family: string };
 type FontQueryWindow = Window & { queryLocalFonts?: () => Promise<LocalFont[]> };
 
 function FontField({
+    label,
     value,
     custom,
     presets,
@@ -601,6 +547,7 @@ function FontField({
     onCustomChange,
     placeholder,
 }: {
+    label: string;
     value: string;
     custom: string;
     presets: FontSpec[];
@@ -649,6 +596,7 @@ function FontField({
                 <div className="flex flex-col gap-1.5">
                     <input
                         type="text"
+                        aria-label={`自定义${label}`}
                         value={custom}
                         list={canQuery ? listId : undefined}
                         onChange={(e) => onCustomChange(e.target.value)}
@@ -658,7 +606,7 @@ function FontField({
                         autoComplete="off"
                         style={custom ? { fontFamily: custom } : undefined}
                         data-ui-control=""
-                        className="w-full rounded-lg border bg-card/40 px-3 py-2 text-base outline-none focus:border-primary md:text-sm"
+                        className="min-h-11 w-full rounded-[4px] border bg-transparent px-3 py-2 text-base outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
                     />
                     {canQuery && fonts && fonts.length > 0 && (
                         <datalist id={listId}>
@@ -675,11 +623,11 @@ function FontField({
                         className={!loading ? 'skeleton-swap-fluid' : ''}
                     >
                         {fontLoadError ? (
-                            <div className="flex items-center gap-2 text-xs leading-snug text-destructive">
+                            <div role="alert" className="flex flex-wrap items-center gap-2 text-xs leading-snug text-destructive">
                                 <span>{fontLoadError}</span>
                                 <button
                                     type="button"
-                                    className="shrink-0 font-medium underline underline-offset-2"
+                                    className="min-h-11 shrink-0 px-2 font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     onClick={() => void loadFonts()}
                                 >
                                     重试
@@ -688,8 +636,8 @@ function FontField({
                         ) : (
                             <p className="text-xs leading-snug text-muted-foreground">
                                 {canQuery
-                                    ? '可输入字体名称，或聚焦后从已安装字体中选择；找不到时回退到系统字体。'
-                                    : '输入已安装的字体名称（可写多个，用逗号分隔）；找不到时回退到系统字体。'}
+                                    ? '可选择本机字体或输入名称；未安装时使用系统字体。'
+                                    : '可输入多个已安装字体，用逗号分隔；未安装时使用系统字体。'}
                             </p>
                         )}
                     </SkeletonSwap>
@@ -736,9 +684,9 @@ function ThemeVarsPanel({
 
     return (
         <Group
-            title="主题微调"
+            title="颜色覆盖"
             icon={Palette}
-            description="逐个覆盖主题颜色变量，叠加在当前配色之上；未设置的保持配色默认值。登录页也会应用（安全：仅白名单变量与颜色值）。"
+            description="覆盖当前配色；未设置的沿用默认值。白名单颜色变量也应用于登录页。"
         >
             {CSS_VAR_FIELDS.map((f) => {
                 const override = cssVars[f.token];
@@ -749,7 +697,7 @@ function ThemeVarsPanel({
                         hint={<code className="font-mono text-meta">{f.token}</code>}
                         layout="inline"
                     >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                             {override ? (
                                 <span className="font-mono text-meta text-muted-foreground tabular-nums">
                                     {override}
@@ -759,21 +707,14 @@ function ThemeVarsPanel({
                             )}
                             <label
                                 title="选择颜色"
-                                className="relative size-11 cursor-pointer overflow-hidden rounded-lg border"
-                                style={
-                                    override
-                                        ? { backgroundColor: override }
-                                        : {
-                                              background:
-                                                  'repeating-conic-gradient(#cbd5e1 0% 25%, #fff 0% 50%) 50% / 10px 10px',
-                                          }
-                                }
+                                className="relative size-11 cursor-pointer overflow-hidden rounded-[4px] border bg-muted/40 focus-within:ring-2 focus-within:ring-ring"
+                                style={override ? { backgroundColor: override } : undefined}
                             >
                                 <input
                                     type="color"
                                     value={toColorInputValue(override || '#888888', '#888888')}
                                     onChange={(e) => set(f.token, e.target.value)}
-                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                     aria-label={`${f.label}颜色`}
                                 />
                             </label>
@@ -782,7 +723,7 @@ function ThemeVarsPanel({
                                 onClick={() => clear(f.token)}
                                 disabled={!override}
                                 aria-label={`重置${f.label}`}
-                                className="rounded-md p-1 text-muted-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 enabled:hover:text-destructive disabled:opacity-30"
+                                className="flex size-11 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:text-destructive disabled:opacity-30"
                             >
                                 <RotateCcw className="size-3.5" />
                             </button>
@@ -791,7 +732,7 @@ function ThemeVarsPanel({
                 );
             })}
             {count > 0 && (
-                <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <span className="text-meta text-muted-foreground">已覆盖 {count} 个变量</span>
                     <Button
                         variant="ghost"

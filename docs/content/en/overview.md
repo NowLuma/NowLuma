@@ -1,189 +1,139 @@
 ---
-title: Overview
-description: The overview page — widget library, layout editing, the guidance panel, navigation editing, presentation (kiosk) mode and the mobile layout.
+title: Workspace
+description: The workspace page: connection workflow, runtime readings, editable widgets, bottom dock, navigation editing, kiosk and mobile layout.
 ---
 
-# Overview
+# Workspace
 
-The overview is the page you land on after signing in, at `/`. It arranges service status, accounts, endpoints, alerts and host resources into draggable widgets, plus a fixed guidance panel that tells you which step is still missing.
+The landing page is `/`. The masthead title comes from the current navigation item and reads `工作台`; the page heading is `从会话，到结果`. It combines the connection workflow, runtime readings and an editable widget grid.
 
 ## Page structure
 
-From top to bottom:
+1. Masthead: brand, current page title, connection state, theme, direct `工作区管理` and `更多操作`.
+2. Connection workflow: fixed, not a widget; shows three stages and the next step.
+3. Five instruments, four content widgets, and an entry to the full run log.
+4. Floating main navigation with six labelled destinations; it is the only primary navigation.
 
-1. Top bar: page title 「总览」 (overview), subtitle 「主机与服务状态」 (host and service status), connection badge, theme toggle, presentation-mode button, sign-out.
-2. Toolbar: 「编辑布局」 / 「完成」 (edit layout / done), and 「恢复默认」 (restore defaults) while editing.
-3. Guidance panel: not a widget, fixed in place, cannot be dragged.
-4. Widget grid: nine visible widgets by default plus four optional ones in the 「部件库」 (widget library) on the right.
-
-## Layout editing
-
-| Control | Purpose |
-| --- | --- |
-| 「编辑布局」 | Enter edit mode; this also opens navigation editing in the sidebar |
-| 「完成」 | Leave edit mode and save the layout |
-| 「恢复默认」 | Discard the current layout and restore default widgets and order |
-| 「部件库」 area | Drag a widget from the right into the grid; drag a widget back to remove it |
-
-The help text differs by width:
-
-- Desktop: drag cards to move, drag the bottom-right corner to resize, use the top-right gear for settings, and drag a card back into the library to remove it.
-- Mobile: use the handle to reorder, the eye icon to show or hide, the gear for settings.
-
-If every widget is removed, the empty state offers 「恢复默认布局」 (restore the default layout).
-
-**Save and effect**: layout changes are auto-saved with a debounce while you edit, and persist on 「完成」. A failed save shows 「界面布局同步失败」 (layout sync failed) in the bottom-right; the local layout still applies, but a refresh may return to the last successfully saved version.
-
-**Example**: press 「编辑布局」 → drag 「便签」 (note) from the library into the grid → open its gear and type a memo of up to 4000 characters → press 「完成」. Expected result: the memo survives a page refresh.
-
-## The guidance panel
-
-The panel describes the twenty steps needed to get a bot actually working. It only reads data the page already has and never issues extra requests.
-
-Its main buttons:
-
-| Button | Purpose |
-| --- | --- |
-| 「重新检查」 | Re-read the current state and re-evaluate the steps |
-| 「我已打开 QQ」 | Assert that QQ is already running, skipping the “no QQ process” step |
-| 「选一个 QQ」 | Open the 「选择要使用的 QQ」 dialog; one account at a time |
-| 「连接这个 QQ」 | Open the 「连接这个 QQ？」 confirmation, then inject the bridge |
-| 「检查一下」 | Check whether the pipe or connection is ready |
-| 「我已登录，检查一下」 | Re-check sign-in after you finished it in QQ |
-| 「去设置」 | Jump to the relevant settings page |
-| 「查看原因」 | Open a details dialog explaining the failure |
-| 「再试一次」 / 「重新连接」 | Retry the current step |
-
-One message matters more than the rest: the completed-state dialog states that the console **does not reply to messages automatically**, and that 「连接状态显示正常，只说明服务在监听或已连上」 *(a healthy connection only means the service is listening or connected)*.
-
-**On read failures**: any resource read error is shown first, together with a note that the previously read data is being displayed. The guidance never treats a failure as success and moves on.
-
-## Widget catalogue
-
-| Widget | Visible by default | Minimum size | Contents |
-| --- | --- | --- | --- |
-| 服务状态 (service status) | Yes | 2×1 | Overall service health |
-| 在线账号 (online accounts) | Yes | 2×1 | Number of signed-in accounts |
-| 进程注入 (bridged processes) | Yes | 2×1 | Bridged QQ processes; links to 「QQ 连接」 |
-| 主机名 (hostname) | Yes | 2×1 | Current hostname |
-| 系统运行 (uptime) | Yes | 2×1 | Service uptime |
-| OneBot 连接 (connections) | Yes | 3×3 | Endpoints and their state per account |
-| 最近告警 (recent alerts) | Yes | 3×3 | Warnings and errors from the log stream |
-| 主机资源 (host resources) | Yes | 4×3 | CPU, memory and runtime resources |
-| 在线会话 (sessions) | Yes | 3×3 | Signed-in account sessions |
-| 便签 (note) | No | 2×2 | Personal memo, up to 4000 characters |
-| 链接卡 (link card) | No | 2×1 | Custom link |
-| 账号快捷卡 (account shortcut) | No | 2×1 | Summary pinned to one UIN |
-| 最近投递 (recent deliveries) | No | 3×3 | Recent notification deliveries |
-
-The five stat tiles have no gear and cannot be configured.
-
-### Configurable widgets and their options
-
-| Widget | Options | Default |
-| --- | --- | --- |
-| 最近告警 | 「显示条数」 (rows), 「显示级别」 (levels) | 5 entries, `warn` + `error` |
-| 在线会话 | 「排序」 (sort: recent / UIN / nickname), 「筛选（昵称 / QQ 号）」 (filter) | Recent first |
-| 主机资源 | 「显示的指标」 (metrics: CPU / memory / runtime) | All on |
-| OneBot 连接 | 「筛选（账号昵称 / QQ 号）」 (filter), 「仅显示异常端点」 (only abnormal), 「排序」 (sort) | Default order |
-| 便签 | 「便签内容（纯文本，保留换行）」 (plain text, newlines kept), up to 4000 characters | Empty |
-| 链接卡 | 「标题」 (label, ≤60), 「链接（http/https）」, 「图标」 (icon) | URL must start with `http://` or `https://` |
-| 账号快捷卡 | 「QQ 号」 | Empty |
-
-Link cards accept http/https only, which rules out executable schemes such as `javascript:`.
-
-### Honest numbers
-
-- A failed read with no cached value renders `—`.
-- A failed read with a cached value shows the old number plus 「更新失败，显示上次数据」 *(update failed, showing previous data)*.
-
-Both are deliberate: the interface refuses to paper over an error with an invented number.
-
-### Status labels in the connections widget
-
-| Label | Meaning |
-| --- | --- |
-| 正常 (ok) | The endpoint works — listening or connected |
-| 注意 (warn) | A recent error, service still up |
-| 异常 (down) | Listen or connect failed |
-| 应用失败 (apply failed) | Saved, but the hot reload failed |
-| 未启用 (disabled) | The node is switched off |
-
-Endpoint kinds read 「HTTP 服务端」, 「HTTP 上报」, 「WS 服务端」, 「WS 客户端」, matching the four tabs in [Endpoint configuration](onebot-config.md).
-
-## Navigation and sidebar
-
-The sidebar holds the brand block, version, the line `OneBot v11 控制台` and six entries:
-
-| Entry | Page | Subtitle |
-| --- | --- | --- |
-| 总览 | `/` | 主机与服务状态 |
-| QQ 连接 | `/processes` | 连接 / 断开 / 登录 |
-| 节点配置 | `/config` | OneBot 协议端点 |
-| 日志 | `/logs` | 实时事件流 |
-| 调试 | `/debug` | 测试台与实时活动 |
-| 系统设置 | `/settings` | 主题与账号 |
-
-Rules:
-
-- 「总览」 and 「系统设置」 are pinned: reorderable but **never hideable**. Hiding the overview would strand you with no entry to layout editing.
-- The other four can be hidden and reordered. 「调试」 is visible by default but is not in the stored default list — layout reconciliation appends it, so describe it as “visible by default, hideable”.
-- The sidebar collapses to an icon rail and expands on hover. 「钉住侧栏展开」 (pin the sidebar open) is a desktop-width setting under appearance.
-
-### Editing navigation
-
-While layout editing is active, the sidebar enters 「编辑导航」 (edit navigation) mode: drag rows to reorder, toggle each entry, press 「完成」 to leave.
-
-### Sidebar update notice
-
-When a new version is detected the sidebar shows 「有新版本 v{version} · 点击查看」 *(new version … — click to view)*, which jumps to Settings → About. It never appears when update checking is disabled.
-
-## Top bar
+## Masthead and workspace management
 
 | Element | Purpose |
 | --- | --- |
-| Connection badge | Console session state — **not** QQ online state |
-| Theme toggle | Light / dark |
-| Presentation-mode button | Enter or leave presentation mode |
-| Sign out | Asks 「确认登出？」 then clears the session |
+| Page title | Taken from the current navigation item, e.g. `工作台` |
+| Connection state | Whether the console session is usable; when connected it reads `服务在线`; not QQ online state |
+| Theme menu | Light, dark or follow system; one control, not an old three-icon pill |
+| `工作区管理` | Directly opens the management sheet: reorder/show navigation, open hidden pages, edit layout and see updates |
+| `更多操作` (`⋯`) | Session menu with `展示模式` and `退出登录`; logout is always available |
 
-All three togglable elements can be disabled under appearance → top bar. Sign-out is always present.
+`退出登录` first asks `退出登录？`, then clears the current session token. The connection state, theme menu and kiosk entry can each be hidden under Settings → `外观` → `顶栏`; the page title, workspace management and logout cannot.
 
-## Presentation (kiosk) mode
+## Floating navigation
 
-For a wall display or a duty screen:
+Desktop and mobile share a floating, labelled dock:
 
-- Enter with the top-bar button, or append `?kiosk=1` to the URL.
-- Leave with `Esc`.
-- The flag lives in browser session storage, so it survives a refresh and disappears with the tab.
-- It hides console chrome (for example the layout-edit entry). It **only affects presentation**; it never changes authentication and never exposes data to a signed-out visitor.
-
-## Mobile layout
-
-On narrow screens the grid becomes a single column with an order and visibility independent of the desktop grid: rearranging on a phone does not disturb the desktop arrangement. Editing switches to handle-drag, eye and gear.
-
-## Cross-cutting banners
-
-| Banner | When | What to do |
+| Label | Path | Description |
 | --- | --- | --- |
-| Insecure access notice | Non-loopback address over plain HTTP | Use SSH or TLS, see [Access and networking](access-network.md) |
-| Account database status | Some account database is preparing, migrating or failed | Wait or read the log; usable and unusable failures are counted separately |
-| Low integrity warning | Windows only, low process integrity | 「临时关闭」 or 「永久关闭」 |
+| 工作台 | `/` | 会话、连接与结果 |
+| QQ 会话 | `/processes` | 选择并接入会话 |
+| 机器人连接 | `/config` | 建立机器人连接 |
+| 运行记录 | `/logs` | 查看连接结果 |
+| 调试工具 | `/debug` | 测试动作与排查 |
+| 偏好设置 | `/settings` | 外观、账号与设备 |
 
-## Example — build a duty view from scratch
+This bottom dock is the only primary navigation: there is no collapse button and hover does not push the content. On wide screens, Settings → `外观` → `显示导航说明` controls whether each description is shown; it persists as `sidebarPinned`.
 
-1. Press 「编辑布局」.
-2. Remove the optional widgets except the ones you need; drag 「OneBot 连接」 and 「主机资源」 into the first row.
-3. Turn on 「仅显示异常端点」 (only show abnormal endpoints) for the connections widget.
-4. Press 「完成」, then the presentation-mode button.
-5. **Expected result**: only the two operational widgets remain, with no navigation or toolbar. `Esc` returns to the full interface.
+### Rearranging navigation
 
-## Saving and recovery
+Press `工作区管理` in the masthead, then `调整导航`:
 
-| Action | How it is saved | Failure |
+- Drag rows or use `上移` / `下移` to reorder.
+- Toggle `隐藏` / `显示`.
+- `工作台` and `偏好设置` are locked (`必选项，不可隐藏`): they can be reordered but not hidden, so you cannot lock yourself out of layout editing or account settings.
+- Hidden pages stay listed under `隐藏的页面` and can be opened from there.
+- Press `完成调整`. Order and visibility are saved automatically.
+
+## Connection workflow
+
+The workflow is a fixed region, not a widget. Hiding all widgets does not remove it. An explicitly stopped session suppresses idle reattachment prompts, never read errors or in-flight operations.
+
+Its `连接路径` shows three stages: `QQ 会话` → `机器人连接` → `查看结果`. The current stage is highlighted and finished stages show a check.
+
+Below it are the `当前 QQ` card and the next-step prompt:
+
+- The card shows the account nickname or `尚未选择`, plus `已登录`, `待确认` or `从会话开始`, followed by `QQ <UIN>` or `PID <pid>`. With more than one process, `更换会话` appears.
+- The prompt states what to do now, one hint and a primary action; when everything is ready the action is `查看结果`, which opens the run log.
+- `打开 QQ 桌面` appears next to the action only when the server actually provides the same-origin desktop.
+
+| Action | When | Result |
 | --- | --- | --- |
-| Layout, widget settings, mobile order | Auto-saved to the UI configuration | 「界面布局同步失败」 in the bottom-right; the local change still applies |
-| Navigation visibility | Same | Same |
-| Guidance step state | Not persisted; computed from live data | Read errors are shown rather than skipped |
+| `重新检查` | Read failed or state did not change | Re-reads processes and login state |
+| `我已打开 QQ` | No QQ detected | Re-reads the process list |
+| `选择 QQ` | Multiple processes | Opens `选择 QQ 会话`; one account at a time |
+| `重试接入` | Attach failed | Retries attaching the current session |
+| `重新连接` | Existing attachment disconnected | Reconnects the pipe without re-injecting |
+| `选择内核并接入` | Account has no current risk acknowledgement | Opens `选择接入内核`; attaching starts only after confirmation |
+| `已登录，检查状态` | Attached but not logged in | Re-checks login |
+| `配置机器人连接` | Attached but no enabled endpoint | Opens Bot connections |
+| `连接说明` | Everything ready | Explains that the console does not auto-reply |
+| `查看原因` | Read/attach/endpoint problem | Opens the error; failures are not only transient toasts |
 
-The cheapest recovery from a broken layout is 「恢复默认」. If the page is unusable, add `?safe-mode=1` to rule out custom CSS — see [Settings: Nowluma and platform](settings-runtime.md#advanced).
+If any read fails, the panel shows the error and `重新检查`; it never treats failure as success.
+
+## Layout editing
+
+`编辑布局` toggles to `完成编辑`; `恢复默认` appears in the page header.
+
+| Action | Desktop | Phone |
+| --- | --- | --- |
+| Move | Drag cards | Drag handles in the single column |
+| Resize | Bottom-right corner | Default widget height |
+| Add | `卡片库` plus button or drag | Eye toggle |
+| Remove | Drag back to `卡片库` | Eye toggle |
+| Configure | Gear on the card | Inline gear |
+| Reset | `恢复默认` | Same |
+
+Desktop is a free 12-column grid; cards do not auto-compact. Mobile order is independent and never rewrites the desktop layout.
+
+The desktop grid also supports the keyboard: select a card, then use the arrow keys to move it, `Shift` + arrow keys to resize and `Delete` to hide it into the card library. Hidden cards can be re-added from `卡片库`.
+
+Layout, widget settings and mobile order auto-save. On failure the local state remains and `界面布局同步失败` is shown. `恢复默认` resets only the layout, not accounts, connections or data. When every card is hidden, the empty state shows `所有工作台卡片都已隐藏` and `恢复默认布局`.
+
+## Widgets
+
+| Widget | Visible by default | Content |
+| --- | --- | --- |
+| 控制台连接 | Yes | Whether the console is `服务在线`; otherwise the current status |
+| 已登录会话 | Yes | Attached session count; `—` or `更新失败，显示上次数据` on read failure |
+| QQ 程序 | Yes | Process count with attached/unattached counts, links to QQ sessions |
+| 运行设备 | Yes | Hostname, OS and architecture |
+| 连续运行 | Yes | System and service process uptime |
+| 机器人连接 | Yes | Live endpoint states and filters |
+| 运行动态 | Yes | Recent warnings/errors |
+| 资源用量 | Yes | CPU, memory, processes, heap, external memory |
+| QQ 会话 | Yes | Online account sessions |
+| 便签 | No | Local note up to 4000 characters |
+| 链接卡 | No | Title and http/https link |
+| 账号快捷卡 | No | Summary for one UIN |
+| 通知投递 | No | Recent online/offline notification deliveries |
+
+Instruments show only real data: a failed read with no cache shows `—`; with cache it says `更新失败，显示上次数据`. There are no invented online counts or FPS metrics.
+
+Configurable widgets: `运行动态` (`显示条数`, `显示级别`), `QQ 会话` (sort/filter), `资源用量` (`CPU 使用率` / `内存使用` / `运行进程`), `机器人连接` (sort, `仅显示异常端点`, filter), plus note/link/account content. Link cards accept only http/https. Turning off every `资源用量` metric falls back to showing all instead of an empty card.
+
+## Kiosk
+
+- Enter from `更多操作` → `展示模式`, or `?kiosk=1`.
+- Exit with `Esc` or the on-screen exit control.
+- Hides the masthead, floating navigation and edit entry for wall displays. It only changes display, not authentication.
+- Session-scoped: survives refresh, ends when the tab closes.
+
+## Mobile
+
+The same pages and dock adapt to narrow screens: the workflow stacks, widgets become a single column, editing opens a drag-sort panel, and the page-navigation sheet slides in from the right. Mobile order and desktop coordinates are stored separately.
+
+## System banners
+
+| Banner | When | Action |
+| --- | --- | --- |
+| Insecure access | Non-loopback without HTTPS | Use SSH or TLS; see [Access and network](access-network.md) |
+| Account database status | Preparing, migrating or failed | Wait or check the log; states are counted separately |
+| Low integrity | Windows only | Follow the temporary/permanent dismissal notice |

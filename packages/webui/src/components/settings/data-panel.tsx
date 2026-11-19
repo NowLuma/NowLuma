@@ -16,8 +16,8 @@ export function DataPanel() {
     const { appearance, setAppearance } = useTheme();
     const { pages, setPages } = useLayout();
     return (
-        <div className="flex flex-col gap-5">
-            <Group title="数据刷新" icon={RefreshCw} description="定期更新账号、进程与系统信息。">
+        <div className="flex min-w-0 flex-col gap-7">
+            <Group title="数据刷新" icon={RefreshCw}>
                 <SettingRow
                     label="轮询间隔"
                     hint={
@@ -38,8 +38,8 @@ export function DataPanel() {
                 </SettingRow>
             </Group>
 
-            <Group title="登录后落地页" description="登录后默认打开的页面。">
-                <SettingRow label="默认页面" layout="stack">
+            <Group title="显示与启动" icon={Clock}>
+                <SettingRow label="登录后打开">
                     <Dropdown
                         label="默认页面"
                         value={pages.defaultRoute}
@@ -48,10 +48,7 @@ export function DataPanel() {
                         className="w-full max-w-xs"
                     />
                 </SettingRow>
-            </Group>
-
-            <Group title="时间格式" icon={Clock} description="日志与告警等时间戳的显示方式。">
-                <SettingRow label="时制" layout="stack">
+                <SettingRow label="时间格式">
                     <Segmented
                         value={appearance.timeFormat}
                         options={TIME_FORMAT_OPTIONS}
