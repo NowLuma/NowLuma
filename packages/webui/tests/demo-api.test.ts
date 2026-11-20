@@ -225,17 +225,23 @@ describe('DEMO API guided journey using the production client', () => {
     it('settles the real first-run appearance save without changing layout and preserves a rejected later write', async () => {
         await setup();
         vi.stubGlobal('localStorage', {
-            getItem: (key: string) => key === 'nowluma_token' ? token : null,
+            getItem: (key: string) => (key === 'nowluma_token' ? token : null),
         });
         const before = await client.ui.get();
-        const selected = { ...before.appearance, disableMotion: true, performanceMode: 'low' as const };
+        const selected = {
+            ...before.appearance,
+            disableMotion: true,
+            performanceMode: 'low' as const,
+        };
         await persistAppearance(selected);
         const saved = await client.ui.get();
         expect(saved.appearance).toEqual(selected);
         expect(saved.layout).toEqual(before.layout);
 
         api.failNextMutation = true;
-        await expect(persistAppearance({ ...selected, disableMotion: false })).rejects.toThrow('Simulated write failure');
+        await expect(persistAppearance({ ...selected, disableMotion: false })).rejects.toThrow(
+            'Simulated write failure',
+        );
         expect((await client.ui.get()).appearance).toEqual(selected);
     });
 
@@ -447,8 +453,15 @@ describe('DEMO API guided journey using the production client', () => {
         expect(temp.cleanup).toMatchObject({ skippedActiveItems: 1 });
         expect(temp.snapshot?.temporary.totalBytes).toBe(16384);
         const logs = await client.storage.cleanup({ scope: 'logs' });
-        expect(logs.success).toBe(true);
-        expect(logs.snapshot?.logs.totalBytes).toBeGreaterThan(0);
+        expect(logs.cleanup).toMatchObject({
+            deletedFiles: initial.snapshot.logs.fileCount,
+            freedBytes: initial.snapshot.logs.totalBytes,
+            status: {
+                totalBytes: 0,
+                fileCount: initial.snapshot.logs.activeFileCount,
+            },
+        });
+        expect(logs.snapshot?.logs.totalBytes).toBe(0);
     });
 
     it('restores only DEMO backups atomically and never restores credentials', async () => {

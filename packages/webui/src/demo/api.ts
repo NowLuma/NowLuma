@@ -1592,15 +1592,14 @@ export class DemoApi {
         let freedBytes: number;
         let deletedFiles: number;
 
-        // shortcut: sample bytes are evenly spread across files; use per-file fixtures for precise cleanup previews.
         if (request.scope === 'logs') {
-            deletedFiles = snapshot.logs.fileCount - snapshot.logs.activeFileCount;
-            freedBytes = Math.floor(
-                (snapshot.logs.totalBytes * deletedFiles) / Math.max(1, snapshot.logs.fileCount),
-            );
-            snapshot.logs.totalBytes -= freedBytes;
+            // The real transport closes old writers, clears their files, and reopens empty writers.
+            deletedFiles = snapshot.logs.fileCount;
+            freedBytes = snapshot.logs.totalBytes;
+            snapshot.logs.totalBytes = 0;
             snapshot.logs.fileCount = snapshot.logs.activeFileCount;
         } else if (request.scope === 'temporary') {
+            // Temporary fixtures retain the active transfers and their share of sample bytes.
             deletedFiles = snapshot.temporary.fileCount - snapshot.temporary.activeItemCount;
             freedBytes = Math.floor(
                 (snapshot.temporary.totalBytes * deletedFiles) /
