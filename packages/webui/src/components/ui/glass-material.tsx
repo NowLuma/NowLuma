@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type HTMLAttributes } from 'react';
+import { springValue } from 'motion';
 import {
     glassDisplacementMap,
     glassGeometry,
@@ -15,6 +16,7 @@ interface GlassImage {
 
 // Reopened menus reuse the same raster; resizing cannot grow this cache unbounded.
 const GLASS_IMAGE_CACHE = new Map<string, GlassImage>();
+const LIGHT_SPRING = { stiffness: 360, damping: 30, mass: 0.6 } as const;
 
 function glassImage(geometry: GlassGeometry, key: string): GlassImage | null {
     const cached = GLASS_IMAGE_CACHE.get(key);
@@ -68,6 +70,49 @@ export function GlassMaterial() {
         const contrast = window.matchMedia('(forced-colors: active)');
         const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
         const surface = element.parentElement;
+        const lightX = springValue<string>('42%', LIGHT_SPRING);
+        const lightY = springValue<string>('0%', LIGHT_SPRING);
+        const lightOpacity = springValue<number>(0, LIGHT_SPRING);
+        element.style.setProperty('--glass-light-x', lightX.get());
+        element.style.setProperty('--glass-light-y', lightY.get());
+        element.style.setProperty('--glass-light-opacity', `${lightOpacity.get()}`);
+        const removeLightX = lightX.on('change', (value) =>
+            element.style.setProperty('--glass-light-x', value),
+        );
+        const removeLightY = lightY.on('change', (value) =>
+            element.style.setProperty('--glass-light-y', value),
+        );
+        const removeLightOpacity = lightOpacity.on('change', (value) =>
+            element.style.setProperty('--glass-light-opacity', `${value}`),
+        );
+        let targetLightX = 42;
+        let targetLightY = 0;
+        let targetOpacity = 0;
+
+        const setLight = (x: number, y: number, opacity: number, immediate = false) => {
+            if (immediate) {
+                lightX.jump(`${x}%`);
+                lightY.jump(`${y}%`);
+                lightOpacity.jump(opacity);
+            } else {
+                if (targetLightX !== x) {
+                    lightX.set(`${x}%`);
+                }
+
+                if (targetLightY !== y) {
+                    lightY.set(`${y}%`);
+                }
+
+                if (targetOpacity !== opacity) {
+                    lightOpacity.set(opacity);
+                }
+            }
+
+            targetLightX = x;
+            targetLightY = y;
+            targetOpacity = opacity;
+        };
+
         let pointerX = 0;
         let pointerY = 0;
         let pointerActive = false;
@@ -82,18 +127,26 @@ export function GlassMaterial() {
                 root.dataset.noMotion !== '1' &&
                 !root.hasAttribute('data-webui-target') &&
                 !contrast.matches &&
+                root.dataset.contrast !== 'high' &&
                 !transparency.matches;
 
             if (surface && lightAllowed && pointerActive) {
                 const bounds = surface.getBoundingClientRect();
-                const x = Math.min(1, Math.max(0, (pointerX - bounds.left) / Math.max(1, bounds.width)));
-                const y = Math.min(1, Math.max(0, (pointerY - bounds.top) / Math.max(1, bounds.height)));
-                element.style.setProperty('--glass-light-x', `${Math.round(x * 100)}%`);
-                element.style.setProperty('--glass-light-y', `${Math.round(y * 100)}%`);
-            } else if (surface) {
-                element.style.removeProperty('--glass-light-x');
-                element.style.removeProperty('--glass-light-y');
+                const x = Math.min(
+                    1,
+                    Math.max(0, (pointerX - bounds.left) / Math.max(1, bounds.width)),
+                );
+                const y = Math.min(
+                    1,
+                    Math.max(0, (pointerY - bounds.top) / Math.max(1, bounds.height)),
+                );
+                setLight(x * 100, y * 100, 1);
+            } else if (surface && lightAllowed) {
+                setLight(42, 0, 0);
+            } else {
+                setLight(42, 0, 0, true);
             }
+
             const renderer = glassRenderer({
                 userAgent: navigator.userAgent,
                 supportsBackdropFilter:
@@ -158,11 +211,13 @@ export function GlassMaterial() {
             pointerActive = true;
             schedule();
         };
+
         const resetLight = () => {
             pointerActive = false;
             schedule();
         };
 
+        surface?.addEventListener('pointerenter', trackLight, { passive: true });
         surface?.addEventListener('pointermove', trackLight, { passive: true });
         surface?.addEventListener('pointerleave', resetLight);
 
@@ -187,11 +242,18 @@ export function GlassMaterial() {
 
         return () => {
             cancelAnimationFrame(frame);
+            removeLightX();
+            removeLightY();
+            removeLightOpacity();
+            lightX.destroy();
+            lightY.destroy();
+            lightOpacity.destroy();
             resize.disconnect();
             preferences.disconnect();
             transparency.removeEventListener('change', schedule);
             contrast.removeEventListener('change', schedule);
             motion.removeEventListener('change', schedule);
+            surface?.removeEventListener('pointerenter', trackLight);
             surface?.removeEventListener('pointermove', trackLight);
             surface?.removeEventListener('pointerleave', resetLight);
         };

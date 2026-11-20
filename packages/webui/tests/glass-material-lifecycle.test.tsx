@@ -89,7 +89,11 @@ afterEach(() => {
 });
 
 function mount(width: number, height = 44) {
-    const surface = { offsetWidth: width, offsetHeight: height };
+    const surface = {
+        offsetWidth: width,
+        offsetHeight: height,
+        style: { setProperty: vi.fn() },
+    };
     const host = hookHost();
     hosts.push(host);
     const render = () =>
@@ -148,7 +152,7 @@ describe('GlassMaterial cached optics lifecycle', () => {
         const low = glass.render();
         expect(renderer(low)).toBe('frosted');
         expect(images(low)).toHaveLength(0);
-        expect(low.props.style).toBeUndefined();
+        expect(low.props.style?.backdropFilter).toBeUndefined();
         dataset.lowPerformance = '0';
         preferenceChange();
         const restored = glass.render();

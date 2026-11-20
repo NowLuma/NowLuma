@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
 import { ArrowRight, KeyRound } from 'lucide-react';
-import { GlassMaterial } from '@/components/ui/glass-material';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +24,6 @@ interface LoginPageProps {
     initialNeedsTotp?: boolean;
     initialUseRecovery?: boolean;
 }
-
 
 export function LoginPage({
     onLogin,
@@ -121,11 +119,7 @@ export function LoginPage({
     };
 
     return (
-        <LoginShell
-            customBg={customBg}
-            reduce={reduce}
-            wide={useRecovery}
-        >
+        <LoginShell customBg={customBg} reduce={reduce} wide={useRecovery}>
             {needsTotp ? (
                 <>
                     <LoginBrand
@@ -319,15 +313,6 @@ function LoginShell({
                 <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
                     <div className="workspace-auth-artwork">
                         <LineField animated={!reduce && !lowCost && !managedBy} />
-                        {!managedBy && (
-                            <div
-                                className="ui-glass workspace-auth-lens"
-                                aria-hidden="true"
-                                data-ui-decoration=""
-                            >
-                                <GlassMaterial />
-                            </div>
-                        )}
                         <div className="workspace-auth-artwork-caption">
                             <span>01 — 连接，从这里开始</span>
                             <span aria-hidden="true" className="workspace-line-key">
@@ -368,4 +353,3 @@ function LoginShell({
         </div>
     );
 }
-

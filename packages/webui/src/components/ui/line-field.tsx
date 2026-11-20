@@ -21,6 +21,7 @@ function loadSourcePaths(): Promise<readonly string[]> {
     sourcePaths = promise;
     const source = new Image();
     source.onerror = () => reject(new Error('Unable to load the identity source'));
+
     source.onload = () => {
         try {
             const canvas = document.createElement('canvas');
@@ -35,8 +36,8 @@ function loadSourcePaths(): Promise<readonly string[]> {
             context.fillStyle = '#fff';
             context.fillRect(0, 0, canvas.width, canvas.height);
             const scale = Math.min(
-                (canvas.width - 32) / source.naturalWidth,
-                (canvas.width - 32) / source.naturalHeight,
+                (canvas.width - 16) / source.naturalWidth,
+                (canvas.height - 16) / source.naturalHeight,
             );
             const width = source.naturalWidth * scale;
             const height = source.naturalHeight * scale;
@@ -70,6 +71,7 @@ function loadSourcePaths(): Promise<readonly string[]> {
             reject(error);
         }
     };
+
     source.src = BRAND_LOGO_URL;
     return promise;
 }
@@ -110,6 +112,7 @@ export function LineField({
                 }
             },
         );
+
         return () => {
             mounted = false;
             movement.current?.stop();
@@ -166,6 +169,7 @@ export function LineField({
                             key={index}
                             d={path}
                             strokeWidth={index + 1}
+                            strokeOpacity={index === 0 ? 0.1 : index === 1 ? 0.65 : 1}
                             vectorEffect="non-scaling-stroke"
                         />
                     ))}

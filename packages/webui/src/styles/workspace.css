@@ -998,29 +998,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
   width: 100%;
   height: 100%;
   color: var(--foreground);
-  opacity: 0.62;
-}
-
-.workspace-auth-lens {
-  position: absolute;
-  right: 21%;
-  bottom: 25%;
-  width: 38%;
-  height: 28%;
-  border-radius: 28px;
-  pointer-events: none;
-}
-
-.workspace-auth-lens > .ui-glass-material {
-  background: color-mix(in oklab, var(--card) 58%, transparent);
-}
-
-.workspace-auth-lens > .ui-glass-material[data-glass-renderer='refracted'] {
-  background: color-mix(in oklab, var(--card) 22%, transparent);
-}
-
-.workspace-auth-lens > .ui-glass-material[data-glass-renderer='solid'] {
-  background: var(--card);
+  opacity: 0.9;
 }
 
 .workspace-auth-artwork-caption {
@@ -1200,7 +1178,6 @@ html[data-contrast='high'] .workspace-paper-pattern {
 .workspace-onboarding-actions {
   align-items: center;
 }
-
 
 @media (min-width: 1024px) {
   .workspace-masthead-inner,
@@ -1398,15 +1375,6 @@ html[data-contrast='high'] .workspace-paper-pattern {
     max-width: none;
   }
 
-
-  .workspace-auth-lens {
-    right: 20%;
-    bottom: 25%;
-    width: 38%;
-    height: 28%;
-    border-radius: 14px;
-  }
-
   .workspace-auth-artwork-caption {
     display: none;
   }
@@ -1483,7 +1451,6 @@ html[data-low-performance='1']
     scale 180ms ease-out,
     color 150ms;
 }
-
 
 html[data-reduce-motion='1'] :is(.workspace-shell, .workspace-auth-shell) *,
 html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {

@@ -51,14 +51,12 @@ function render() {
 }
 
 describe('LoginPage display effects and motion', () => {
-
     it.each(['reduceMotion', 'disableMotion'] as const)(
         'keeps static optics, but no drift, when %s disables movement',
         (setting) => {
             state[setting] = true;
             const html = render();
             expect(html).not.toContain('data-line-motion="true"');
-            expect(html).toContain('workspace-auth-lens');
         },
     );
 
@@ -75,7 +73,6 @@ describe('LoginPage display effects and motion', () => {
     it('uses frosted glass under an explicit low-quality preference without enabling motion', () => {
         state.low = true;
         const html = render();
-        expect(html).toContain('workspace-auth-lens');
         expect(html).toContain('data-glass-renderer="frosted"');
         expect(html).not.toContain('data-line-motion="true"');
     });
@@ -87,9 +84,6 @@ describe('LoginPage display effects and motion', () => {
         expect(html).not.toContain('workspace-theme-trigger');
         state.managedBy = 'maibot';
         const hosted = render();
-        expect(hosted).not.toContain('workspace-auth-lens');
         expect(hosted).not.toContain('data-line-motion="true"');
     });
-
-
 });

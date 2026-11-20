@@ -32,6 +32,9 @@ four discrete vertical stroke widths, rather than masking an ordinary logo over
 a column-weighted lattice. The source raster is cached once and rendered as four
 SVG paths; no canvas runs per animation frame. See [the design contract](DESIGN.md)
 for material, motion and layout boundaries.
+Background strokes stay subdued so the sampled mark is readable in both themes;
+decorative lenses never cover it. Pointer glints keep spring-driven position and
+opacity through entry, exit and rapid reversal, without resetting their coordinates.
 
 Motion and full/frosted glass are manual choices shared by first setup and
 Settings. The `disableMotion` preference is the single on/off owner; OS/manual
@@ -40,8 +43,6 @@ Older `auto` quality preferences become full glass without overwriting saved
 motion, theme, layout or other settings. OOBE has four stages: notices, access
 password, display effects and account kernel; previews restore the underlying
 appearance on exit, and developer replay never persists it.
-
-
 
 ## Host appearance integration
 

@@ -293,7 +293,6 @@
     opacity: 0.65;
     pointer-events: none;
     translate: -50% 0;
-    transition: left 180ms ease-out, opacity 150ms;
   }
 
   .ui-glass-material::before {
@@ -306,6 +305,7 @@
       transparent 66%
     );
     content: '';
+    opacity: var(--glass-light-opacity, 0);
     pointer-events: none;
   }
 
@@ -323,7 +323,6 @@
     backdrop-filter: none;
   }
 
-
   .ui-glass-search:focus-within {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -337,7 +336,8 @@
       scale 420ms linear(0, 0.42 13%, 0.82 29%, 1.025 48%, 0.99 76%, 1) !important;
   }
 
-  html:not([data-webui-target]) :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]):active:not(:disabled) {
+  html:not([data-webui-target])
+    :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]):active:not(:disabled) {
     scale: 0.96;
     transition-duration: 110ms !important;
   }
@@ -1112,7 +1112,6 @@ html[data-contrast='high'] {
 html[data-kiosk='1'] [data-kiosk-hide] {
   display: none !important;
 }
-
 
 /* Reduce motion: a CSS fallback for non-Framer transitions/animations.
    Framer Motion itself is handled by <MotionConfig reducedMotion>. */
