@@ -70,6 +70,9 @@ pnpm exec prettier --write <修改的文件>
 本仓库使用 `main` 和功能分支，不依赖原维护者的发布账号、跨仓库 GitHub App 或自动关闭 PR 的政策。
 若提交 issue，请通过仓库网页模板手动创建，记录可重现步骤，不上传私密账号数据。
 
+`.github/workflows/pr.yml` 只检出 PR 的 base 提交，并把标题与正文作为环境变量传给 `.github/scripts/pr-check.cjs`；工作流使用 `contents: read`，fork 不需要 secret，PR 不能修改用于检查自己的脚本。
+PR 标题必须符合 Conventional Commits，正文必须包含 `## 关联 Issue`、`## 变更说明`、`## 验证`，勾选模板全部检查项，并写明实际命令与结果（模板注释不算）。未执行的实机或平台验收必须明确标记 NOT_RUN，自动化成功不能代替真实 QQ 验收。
+
 ## CI 与发行
 
 `.github/workflows/ci.yml` 执行类型/静态/测试/发行布局检查，并实际构建、启动和重建 Linux/amd64 Docker 测试容器。
