@@ -20,14 +20,14 @@ export function TotpQr({ value, label }: { value: string; label: string }) {
     }, [qr]);
 
     return (
-        <div className="rounded-lg bg-white p-2">
+        <div className="max-w-full rounded-[4px] bg-white p-2">
             <svg
                 role="img"
                 aria-label={label}
                 width={px}
                 height={px}
                 viewBox={`0 0 ${px} ${px}`}
-                className="block text-black"
+                className="block h-auto max-w-full text-black"
                 shapeRendering="crispEdges"
             >
                 <rect width={px} height={px} fill="white" />

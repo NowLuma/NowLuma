@@ -6,10 +6,7 @@ import type { LogLevel, UiLayoutItem } from '@/types';
 // (render + min sizes), and the layout editor (labels) without import cycles.
 
 export const GRID_COLS = 12;
-/** px per grid row. Tiles are 1 row; cards a few rows. Sized so a 1-row stat
- *  tile's icon + 3 text lines (label + text-lg value + subtext) clear the
- *  py-3.5 padding with breathing room: item content ≈ cellHeight − 2·margin −
- *  card border ≈ 90px > the ~86px the content needs. */
+/** Keep the established row height so saved coordinates retain their physical layout. */
 export const GRID_CELL_HEIGHT = 108;
 export const GRID_MARGIN = 8;
 
@@ -26,7 +23,7 @@ export interface GridWidgetSpec {
     defaultVisible?: boolean;
 }
 
-/** The five top stat tiles, split out of the legacy single `stats` block. */
+/** Individual instruments retained from the legacy `stats` block. */
 export const STAT_TILE_IDS = [
     'stat:status',
     'stat:accounts',
@@ -36,22 +33,22 @@ export const STAT_TILE_IDS = [
 ] as const;
 
 export const GRID_WIDGETS: GridWidgetSpec[] = [
-    { id: 'stat:status', label: '服务状态', minW: 2, minH: 1, def: { x: 0, y: 0, w: 2, h: 1 } },
-    { id: 'stat:accounts', label: '在线账号', minW: 2, minH: 1, def: { x: 2, y: 0, w: 2, h: 1 } },
-    { id: 'stat:processes', label: '进程注入', minW: 2, minH: 1, def: { x: 4, y: 0, w: 2, h: 1 } },
-    { id: 'stat:host', label: '主机名', minW: 2, minH: 1, def: { x: 6, y: 0, w: 2, h: 1 } },
-    { id: 'stat:uptime', label: '系统运行', minW: 2, minH: 1, def: { x: 8, y: 0, w: 2, h: 1 } },
-    { id: 'connections', label: 'OneBot 连接', minW: 3, minH: 3, def: { x: 0, y: 1, w: 6, h: 4 } },
-    { id: 'alerts', label: '最近告警', minW: 3, minH: 3, def: { x: 6, y: 1, w: 6, h: 4 } },
-    { id: 'host', label: '主机资源', minW: 4, minH: 3, def: { x: 0, y: 5, w: 12, h: 4 } },
-    { id: 'sessions', label: '在线会话', minW: 3, minH: 3, def: { x: 0, y: 9, w: 12, h: 5 } },
+    { id: 'stat:status', label: '控制台连接', minW: 2, minH: 1, def: { x: 0, y: 0, w: 2, h: 1 } },
+    { id: 'stat:accounts', label: '已登录会话', minW: 2, minH: 1, def: { x: 2, y: 0, w: 2, h: 1 } },
+    { id: 'stat:processes', label: 'QQ 程序', minW: 2, minH: 1, def: { x: 4, y: 0, w: 2, h: 1 } },
+    { id: 'stat:host', label: '运行设备', minW: 2, minH: 1, def: { x: 6, y: 0, w: 3, h: 1 } },
+    { id: 'stat:uptime', label: '连续运行', minW: 2, minH: 1, def: { x: 9, y: 0, w: 3, h: 1 } },
+    { id: 'connections', label: '机器人连接', minW: 3, minH: 3, def: { x: 0, y: 1, w: 7, h: 4 } },
+    { id: 'alerts', label: '运行动态', minW: 3, minH: 3, def: { x: 7, y: 1, w: 5, h: 4 } },
+    { id: 'host', label: '资源用量', minW: 4, minH: 3, def: { x: 4, y: 5, w: 8, h: 4 } },
+    { id: 'sessions', label: 'QQ 会话', minW: 3, minH: 3, def: { x: 0, y: 5, w: 4, h: 4 } },
     // Static, opt-in widgets — content lives in block.config, hidden by default.
     {
         id: 'note',
         label: '便签',
         minW: 2,
         minH: 2,
-        def: { x: 0, y: 14, w: 4, h: 2 },
+        def: { x: 0, y: 9, w: 4, h: 2 },
         defaultVisible: false,
     },
     {
@@ -59,7 +56,7 @@ export const GRID_WIDGETS: GridWidgetSpec[] = [
         label: '链接卡',
         minW: 2,
         minH: 1,
-        def: { x: 4, y: 14, w: 4, h: 1 },
+        def: { x: 4, y: 9, w: 4, h: 1 },
         defaultVisible: false,
     },
     {
@@ -67,15 +64,15 @@ export const GRID_WIDGETS: GridWidgetSpec[] = [
         label: '账号快捷卡',
         minW: 2,
         minH: 1,
-        def: { x: 8, y: 14, w: 4, h: 1 },
+        def: { x: 8, y: 9, w: 4, h: 1 },
         defaultVisible: false,
     },
     {
         id: 'deliveries',
-        label: '最近投递',
+        label: '通知投递',
         minW: 3,
         minH: 3,
-        def: { x: 0, y: 16, w: 6, h: 3 },
+        def: { x: 0, y: 11, w: 7, h: 3 },
         defaultVisible: false,
     },
 ];
@@ -113,13 +110,29 @@ export function defaultOverviewGrid(): UiLayoutItem[] {
     return GRID_WIDGETS.map((w) => ({ id: w.id, visible: w.defaultVisible !== false, ...w.def }));
 }
 
-/** The widget ids in single-column (mobile) default order — same catalogue as
- *  the desktop grid, flattened. Mobile items carry id+visible only (no coords). */
-export const MOBILE_WIDGET_IDS: readonly string[] = GRID_WIDGETS.map((w) => w.id);
+/** Mobile starts with the connection task and activity, then the instruments. */
+export const MOBILE_WIDGET_IDS: readonly string[] = [
+    'stat:status',
+    'connections',
+    'alerts',
+    'sessions',
+    'host',
+    'stat:accounts',
+    'stat:processes',
+    'stat:host',
+    'stat:uptime',
+    'note',
+    'link',
+    'account',
+    'deliveries',
+];
 
 /** Default single-column mobile overview (id+visible, no coords). */
 export function defaultOverviewMobile(): UiLayoutItem[] {
-    return GRID_WIDGETS.map((w) => ({ id: w.id, visible: w.defaultVisible !== false }));
+    return MOBILE_WIDGET_IDS.map((id) => ({
+        id,
+        visible: WIDGET_BY_ID.get(id)?.defaultVisible !== false,
+    }));
 }
 
 /**

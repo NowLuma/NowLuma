@@ -1,7 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type RefObject } from 'react';
+import { useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, ScrollText, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LineField } from '@/components/ui/line-field';
+import { PaperBackdrop } from '@/components/layout/paper-backdrop';
 import { SegmentedControl } from '@/components/interior/segmented-control';
 import {
     useWizardNavigation,
@@ -16,6 +19,10 @@ import {
 import { Markdown } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 import type { AgreementDoc } from '@/lib/api/types';
+import { BRAND_LOGO_URL } from '@/brand';
+import { APP_NAME } from '@/types';
+import { useTheme } from '@/contexts/ThemeContext';
+import '@/styles/workspace.css';
 
 export interface AdditionalOnboardingStep {
     id: string;
@@ -44,11 +51,12 @@ interface OnboardingWizardPageProps {
     onPasswordComplete: () => void;
     onComplete: () => void;
     additionalSteps?: AdditionalOnboardingStep[];
+    feedbackHostRef?: RefObject<HTMLDivElement | null>;
 }
 
-const TAB_FALLBACK_TITLE: Record<string, string> = {
-    eula: '用户协议 / EULA',
-    privacy: '隐私政策 / Privacy',
+const DOCUMENT_LABELS: Record<AgreementDoc['id'], string> = {
+    eula: '使用说明',
+    privacy: '隐私说明',
 };
 
 export function OnboardingWizardPage({
@@ -66,7 +74,10 @@ export function OnboardingWizardPage({
     onPasswordComplete,
     onComplete,
     additionalSteps = [],
+    feedbackHostRef,
 }: OnboardingWizardPageProps) {
+    const { appearance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const [requiredStepIds] = useState(() =>
         buildRequiredOnboardingStepIds({
             needsConsent,
@@ -93,7 +104,7 @@ export function OnboardingWizardPage({
         if (stepId === 'agreements') {
             return {
                 id: stepId,
-                label: '阅读并同意协议',
+                label: '阅读使用说明',
                 canSkip: false,
                 hideAdvance: true,
                 hideBack: true,
@@ -151,43 +162,59 @@ export function OnboardingWizardPage({
     }
 
     return (
-        <div className="relative flex h-svh min-h-svh flex-col overflow-x-hidden bg-background antialiased">
-            <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        'radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--primary) 18%, transparent) 0%, transparent 70%)',
-                }}
-            />
-            <div className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20 sm:right-6">
-                <ThemeToggle />
+        <div
+            className={cn(
+                'workspace-onboarding-shell antialiased',
+                appearance.background.type === 'none' && 'bg-background',
+            )}
+        >
+            {appearance.background.type === 'none' && <PaperBackdrop />}
+            <header className="workspace-auth-masthead">
+                <div className="workspace-auth-wordmark">
+                    <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                    <span>{APP_NAME}</span>
+                </div>
+                <div className="workspace-toolbar-scene">
+                    <ThemeToggle />
+                </div>
+            </header>
+            <div className="workspace-onboarding-layout">
+                <aside className="workspace-onboarding-identity" aria-label="首次使用设置">
+                    <div className="workspace-auth-artwork">
+                        <LineField animated={!reduced} />
+                        <div className="workspace-auth-artwork-caption">
+                            <span>{APP_NAME}</span>
+                            <span>开始连接</span>
+                        </div>
+                    </div>
+                    <p className="workspace-eyebrow mt-6">从这里开始</p>
+                    <p className="workspace-auth-statement">
+                        连接之前，
+                        <br />
+                        准备就绪。
+                    </p>
+                </aside>
+                <main className="workspace-onboarding-document">
+                    <header className="workspace-onboarding-heading">
+                        <p className="workspace-eyebrow">欢迎使用 {APP_NAME}</p>
+                        <h1>完成首次使用设置</h1>
+                    </header>
+                    <div ref={feedbackHostRef} className="workspace-onboarding-feedback" />
+                    <WizardSteps
+                        steps={steps}
+                        index={index}
+                        onIndexChange={setIndex}
+                        onComplete={onComplete}
+                        label="首次使用设置步骤"
+                        backLabel="上一步"
+                        nextLabel="下一步"
+                        finishLabel="完成"
+                        skipLabel="跳过"
+                        spacious
+                        fill
+                    />
+                </main>
             </div>
-            <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-14 sm:px-6 sm:pb-5 sm:pt-4">
-                <header className="mx-auto mb-2 w-full max-w-2xl shrink-0 text-center">
-                    <p className="text-xs font-semibold tracking-wide text-primary">
-                        Nowluma WebUI
-                    </p>
-                    <h1 className="mt-1 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-                        完成首次使用设置
-                    </h1>
-                    <p className="mx-auto mt-1 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground">
-                        按顺序完成必要步骤后即可进入控制台。
-                    </p>
-                </header>
-                <WizardSteps
-                    steps={steps}
-                    index={index}
-                    onIndexChange={setIndex}
-                    onComplete={onComplete}
-                    label="首次使用设置步骤"
-                    backLabel="上一步"
-                    nextLabel="下一步"
-                    finishLabel="完成"
-                    skipLabel="跳过"
-                    spacious
-                    fill
-                />
-            </main>
         </div>
     );
 }
@@ -239,15 +266,15 @@ function AgreementStep({
     return (
         <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-start gap-3 sm:gap-4">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20 sm:size-12 sm:rounded-2xl">
-                    <ScrollText className="size-5 text-primary" />
+                <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+                    <ScrollText className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
-                        请阅读并同意以下协议
+                        阅读使用说明
                     </h2>
                     <p className="mt-0.5 max-w-2xl text-pretty text-xs leading-relaxed text-muted-foreground sm:mt-1 sm:text-sm">
-                        同意一次后无需重复确认；仅当协议内容更新时才会再次请求确认。
+                        阅读后确认，即可继续设置。
                     </p>
                 </div>
             </div>
@@ -255,15 +282,12 @@ function AgreementStep({
             {documents.length > 1 ? (
                 <div className="mt-3 max-w-full overflow-x-auto pb-1 sm:mt-4">
                     <SegmentedControl
-                        label="协议文档"
+                        label="说明文档"
                         value={activeId}
                         onValueChange={(next) => setActiveId(next as AgreementDoc['id'])}
                         options={documents.map((document) => ({
                             value: document.id,
-                            label:
-                                document.title?.split('/')[0]?.trim() ||
-                                TAB_FALLBACK_TITLE[document.id] ||
-                                document.id,
+                            label: DOCUMENT_LABELS[document.id],
                         }))}
                     />
                 </div>
@@ -278,16 +302,16 @@ function AgreementStep({
             ) : null}
 
             <div
+                className="workspace-agreement-reading mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[4px] border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
                 tabIndex={0}
-                aria-label={active?.title ? `${active.title}正文` : '协议正文'}
-                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-border/80 bg-background/55 p-3 outline-none shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 sm:p-5"
+                aria-label={active ? `${DOCUMENT_LABELS[active.id]}正文` : '说明正文'}
             >
-                <div className="mx-auto max-w-3xl">
+                <div className="mx-auto max-w-[44.25rem]">
                     {active ? (
                         <Markdown content={active.text} />
                     ) : (
                         <p className="text-sm text-muted-foreground">
-                            未能加载协议文本，请刷新页面重试。
+                            未能加载说明文本，请刷新页面重试。
                         </p>
                     )}
                 </div>
@@ -315,7 +339,7 @@ function AgreementStep({
                     {agreed ? <Check className="size-3.5" strokeWidth={3} /> : null}
                 </span>
                 <span className="text-sm font-medium leading-relaxed">
-                    我已阅读并同意《用户协议》与《隐私政策》
+                    我已阅读《使用说明》和《隐私说明》
                 </span>
             </button>
 
@@ -327,9 +351,9 @@ function AgreementStep({
 
             <div className="mt-3 flex items-center gap-3 sm:justify-between">
                 <span className="hidden text-micro text-muted-foreground/70 sm:inline">
-                    agreements {version.slice(0, 8)}
+                    说明版本 {version.slice(0, 8)}
                 </span>
-                <div className="grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
+                <div className="workspace-onboarding-actions grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                     <Button
                         type="button"
                         variant="outline"
@@ -337,7 +361,7 @@ function AgreementStep({
                         disabled={submitting}
                         className="h-11 w-full sm:w-auto"
                     >
-                        不同意并退出
+                        退出
                     </Button>
                     <Button
                         type="button"
@@ -348,7 +372,7 @@ function AgreementStep({
                         className="h-11 w-full sm:min-w-36 sm:w-auto"
                     >
                         <ShieldCheck className="size-4" />
-                        {submitting ? '提交中…' : '同意并继续'}
+                        {submitting ? '提交中…' : '确认并继续'}
                     </Button>
                 </div>
             </div>
@@ -372,13 +396,13 @@ function PasswordStep({
     ) => Promise<{ success: boolean; message?: string }>;
     onComplete: () => void;
 }) {
-    const { back } = useWizardNavigation();
+    const { back, isLast } = useWizardNavigation();
 
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-start py-2 sm:py-5">
-            <div className="mb-8 flex items-start gap-4">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-                    <ShieldAlert className="size-5 text-primary" />
+            <div className="mb-6 flex items-start gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+                    <ShieldAlert className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
@@ -386,8 +410,8 @@ function PasswordStep({
                     </h2>
                     <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
                         {mode === 'rehearsal'
-                            ? '验证密码设置步骤的界面与规则；本次演练不会保存输入内容。'
-                            : '将首次启动生成的临时密码替换为符合要求的强密码。'}
+                            ? '演练密码设置，不保存输入内容。'
+                            : '设置用于打开控制台的密码。'}
                     </p>
                 </div>
             </div>
@@ -398,10 +422,12 @@ function PasswordStep({
                 submit={submit}
                 onSuccess={onComplete}
                 idPrefix="onboarding-cpw"
-                submitLabel={mode === 'rehearsal' ? '完成演练' : '保存并完成'}
-                className="gap-5"
+                submitLabel={
+                    mode === 'rehearsal' ? '完成演练' : isLast ? '保存并完成' : '保存并继续'
+                }
+                className="gap-4"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
-                    <div className="grid gap-3 pt-2 sm:flex sm:items-center">
+                    <div className="workspace-onboarding-actions grid grid-cols-2 gap-3 pt-2 sm:flex sm:items-center">
                         <Button
                             type="button"
                             variant="outline"

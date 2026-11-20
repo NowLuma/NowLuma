@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
 import { AlertTriangle, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SessionProvider } from '@/contexts/SessionContext';
 import { LoginPage } from '@/components/pages/login-page';
 import {
@@ -36,12 +36,15 @@ import {
     isDeveloperOnboardingLocation,
 } from '@/lib/onboarding-navigation';
 import { onboardingExecution } from '@/lib/onboarding-actions';
+import { KernelOnboardingStep } from '@/components/kernel-onboarding-step';
+import { DisplayEffectsOnboardingStep } from '@/components/display-effects';
 
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
+    client?: ApiClient;
 }
 
-export default function App({ onboardingSteps = [] }: AppProps) {
+export default function App({ onboardingSteps = [], client }: AppProps) {
     return (
         <ActionFeedbackProvider>
             <ThemeProvider>
@@ -49,7 +52,7 @@ export default function App({ onboardingSteps = [] }: AppProps) {
                 <ActionFeedbackViewport />
                 <AdaptivePointer />
                 <GlobalContextMenu />
-                <AuthBoundary onboardingSteps={onboardingSteps} />
+                <AuthBoundary onboardingSteps={onboardingSteps} client={client} />
             </ThemeProvider>
         </ActionFeedbackProvider>
     );
@@ -80,7 +83,17 @@ function consumeUrlToken(): string | null {
     }
 }
 
-function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardingStep[] }) {
+function authLocation() {
+    return import.meta.env.MODE === 'demo' ? appRouter.history.location : window.location;
+}
+
+function AuthBoundary({
+    onboardingSteps,
+    client: injectedClient,
+}: {
+    onboardingSteps: AdditionalOnboardingStep[];
+    client?: ApiClient;
+}) {
     const finePointer = useFinePointer();
     const [authChecked, setAuthChecked] = useState(false);
     const [authed, setAuthed] = useState(false);
@@ -92,8 +105,9 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     const [agreementsError, setAgreementsError] = useState<string | null>(null);
     const [needsConsent, setNeedsConsent] = useState(false);
     const [onboardingFinished, setOnboardingFinished] = useState(false);
+    const [onboardingActive, setOnboardingActive] = useState(false);
     const [replayingOnboarding, setReplayingOnboarding] = useState(
-        () => typeof window !== 'undefined' && isDeveloperOnboardingLocation(window.location),
+        () => typeof window !== 'undefined' && isDeveloperOnboardingLocation(authLocation()),
     );
     const onboardingReturnPath = useRef<string | null>(null);
     // The password from *this* session's login, carried into the forced
@@ -108,13 +122,14 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
 
     const client = useMemo<ApiClient>(
         () =>
+            injectedClient ??
             createApiClient({
                 onUnauthorized: () => {
                     setAuthed(false);
                     setStatus('未授权');
                 },
             }),
-        [],
+        [injectedClient],
     );
 
     const refreshAgreements = useCallback(async () => {
@@ -125,6 +140,10 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
             const payload = await client.agreements.get();
             setAgreements(payload);
             setNeedsConsent(payload.consentRequired);
+
+            if (payload.consentRequired) {
+                setOnboardingActive(true);
+            }
         } catch (error) {
             console.error('agreement status load failed', error);
             setAgreementsError(actionErrorMessage(error));
@@ -167,6 +186,10 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
                 ]);
                 setMustChange(nextMustChange);
 
+                if (nextMustChange) {
+                    setOnboardingActive(true);
+                }
+
                 // Carry the URL password into the forced change-password gate so it
                 // needn't re-prompt for the old password (matches the login flow).
                 if (urlPassword) {
@@ -181,7 +204,12 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     const handleLoggedOut = useCallback(() => {
         // Reset the URL so the next login lands on the overview page, matching
         // the pre-router behaviour, and clear every post-auth gate.
-        window.history.replaceState({}, '', '/');
+        if (import.meta.env.MODE === 'demo') {
+            appRouter.history.replace('/');
+        } else {
+            window.history.replaceState({}, '', '/');
+        }
+
         setAuthed(false);
         setStatus('未连接');
         setMustChange(false);
@@ -189,6 +217,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
         setAgreementsError(null);
         setNeedsConsent(false);
         setOnboardingFinished(false);
+        setOnboardingActive(false);
         setReplayingOnboarding(false);
         onboardingReturnPath.current = null;
         setLoginPassword(undefined);
@@ -202,8 +231,8 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     }, [client, handleLoggedOut]);
 
     const restartOnboarding = useCallback(() => {
-        const currentPath = browserPath(window.location);
-        const returnPath = isDeveloperOnboardingLocation(window.location)
+        const currentPath = browserPath(authLocation());
+        const returnPath = isDeveloperOnboardingLocation(authLocation())
             ? DEVELOPER_SETTINGS_URL
             : currentPath;
         onboardingReturnPath.current = returnPath;
@@ -223,7 +252,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
             onboardingReturnPath.current ?? developerOnboardingReturnPath(window.history.state);
         onboardingReturnPath.current = null;
 
-        if (returnPath && isDeveloperOnboardingLocation(window.location)) {
+        if (returnPath && isDeveloperOnboardingLocation(authLocation())) {
             // The developer page pushed the replay entry, so browser Back is the
             // authoritative way to restore both the URL and its router history.
             appRouter.history.back();
@@ -265,6 +294,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
                     setUrlLoginPassword(undefined);
                     setUrlNeedsTotp(false);
                     setOnboardingFinished(false);
+                    setOnboardingActive(needsChange);
                     void refreshAgreements();
                 }}
             />
@@ -284,10 +314,12 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
     } else if (
         agreements &&
         (replayingOnboarding ||
-            (!onboardingFinished && (needsConsent || mustChange || onboardingSteps.length > 0)))
+            (!onboardingFinished &&
+                (onboardingActive || needsConsent || mustChange || onboardingSteps.length > 0)))
     ) {
         view = (
             <OnboardingGate
+                key={replayingOnboarding ? 'replay' : 'setup'}
                 payload={agreements}
                 needsConsent={replayingOnboarding || needsConsent}
                 mustChangePassword={replayingOnboarding || mustChange}
@@ -306,6 +338,7 @@ function AuthBoundary({ onboardingSteps }: { onboardingSteps: AdditionalOnboardi
                     }
 
                     setOnboardingFinished(true);
+                    setOnboardingActive(false);
                 }}
                 onStale={refreshAgreements}
                 onDecline={replayingOnboarding ? exitOnboardingReplay : handleDecline}
@@ -468,7 +501,41 @@ function OnboardingGate({
     onDecline: () => void;
 }) {
     const api = useApi();
-    const { runAction } = useActionFeedback();
+    const { runAction, registerViewportHost } = useActionFeedback();
+    const { setAppearancePreview } = useTheme();
+    const feedbackHostRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        const host = feedbackHostRef.current;
+
+        if (host) {
+            return registerViewportHost(host);
+        }
+    }, [registerViewportHost]);
+    // Replayed theme controls and display choices share a reversible presentation;
+    // no setters in the wizard write real preferences until an explicit setup save.
+    useLayoutEffect(() => {
+        setAppearancePreview({});
+        return () => setAppearancePreview(null);
+    }, [setAppearancePreview]);
+
+    // Snapshot only when a setup/replay gate actually mounts, not on every authenticated tab.
+    const [activeAdditionalSteps] = useState<AdditionalOnboardingStep[]>(() => [
+        {
+            id: 'display-effects',
+            label: '显示效果',
+            content: <DisplayEffectsOnboardingStep replay={replay} />,
+            canSkip: false,
+            hideAdvance: true,
+        },
+        {
+            id: 'kernel-choice',
+            label: '选择接入内核',
+            content: <KernelOnboardingStep replay={replay} />,
+            canSkip: false,
+            hideAdvance: true,
+        },
+        ...additionalSteps,
+    ]);
     const execution = onboardingExecution(replay, {
         changePassword: (oldPassword, newPassword) => api.changePassword(oldPassword, newPassword),
         acceptAgreements: async () => {
@@ -510,7 +577,8 @@ function OnboardingGate({
             onConsentComplete={replay ? () => undefined : onConsentComplete}
             onPasswordComplete={replay ? () => undefined : onPasswordComplete}
             onComplete={onComplete}
-            additionalSteps={additionalSteps}
+            additionalSteps={activeAdditionalSteps}
+            feedbackHostRef={feedbackHostRef}
             checkStrength={(password) => api.checkPasswordStrength(password)}
             submitPassword={execution.actions.changePassword}
             onAccept={execution.actions.acceptAgreements}

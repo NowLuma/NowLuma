@@ -3,19 +3,23 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { CircleAlert, CircleCheck } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { CollapsibleBanner, type BannerState } from '@/components/interior/collapsible-banner';
 import {
     LiveActivity,
     useLiveActivity,
     type ActivityInput,
 } from '@/components/interior/live-activity';
+import '@/styles/action-feedback.css';
+import type { Activity } from '@/components/interior/live-activity';
 
 type ResultDetail<T> = string | ((result: T) => string | undefined);
 type ErrorDetail = string | ((error: unknown) => string);
@@ -41,13 +45,15 @@ export interface ActionFeedbackHandle {
     fail: (detail: string, patch?: Partial<ActivityInput>) => void;
 }
 
-interface ActionFeedbackValue {
+export interface ActionFeedbackValue {
     startAction: (input: ActivityInput) => ActionFeedbackHandle;
     runAction: <T>(options: ActionFeedbackOptions<T>, action: () => Promise<T> | T) => Promise<T>;
-    activity: ReturnType<typeof useLiveActivity>['activity'];
+    activity: Activity | null;
     notices: ActionNotice[];
     removeNotice: (id: number) => void;
     dismiss: () => void;
+    viewportHost: HTMLElement | null;
+    registerViewportHost: (host: HTMLElement) => () => void;
 }
 
 interface ActionNotice {
@@ -154,8 +160,11 @@ export function publishActionResult(
     publishNotice();
 }
 
-export function scheduleActionNoticeDismiss(onDismiss: () => void): () => void {
-    const timeout = setTimeout(onDismiss, RESULT_NOTICE_DURATION_MS);
+export function scheduleActionNoticeDismiss(
+    onDismiss: () => void,
+    remaining = RESULT_NOTICE_DURATION_MS,
+): () => void {
+    const timeout = setTimeout(onDismiss, remaining);
     return () => clearTimeout(timeout);
 }
 
@@ -164,6 +173,7 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
     const activeId = useRef<string | null>(null);
     const noticeId = useRef(0);
     const [notices, setNotices] = useState<ActionNotice[]>([]);
+    const [viewportHost, setViewportHost] = useState<HTMLElement | null>(null);
 
     const pushNotice = useCallback((notice: Omit<ActionNotice, 'id'>) => {
         const next = { ...notice, id: ++noticeId.current };
@@ -276,9 +286,35 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
         setNotices((current) => current.filter((notice) => notice.id !== id));
     }, []);
 
+    const registerViewportHost = useCallback((host: HTMLElement) => {
+        setViewportHost(host);
+
+        return () => {
+            setViewportHost((current) => (current === host ? null : current));
+        };
+    }, []);
+
     const value = useMemo<ActionFeedbackValue>(
-        () => ({ startAction, runAction, activity, notices, removeNotice, dismiss }),
-        [startAction, runAction, activity, notices, removeNotice, dismiss],
+        () => ({
+            startAction,
+            runAction,
+            activity,
+            notices,
+            removeNotice,
+            dismiss,
+            viewportHost,
+            registerViewportHost,
+        }),
+        [
+            startAction,
+            runAction,
+            activity,
+            notices,
+            removeNotice,
+            dismiss,
+            viewportHost,
+            registerViewportHost,
+        ],
     );
 
     return (
@@ -291,16 +327,53 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
  * motion / disable-motion preference also reaches Interior's component.
  */
 export function ActionFeedbackViewport() {
-    const { activity, notices, removeNotice, dismiss } = useActionFeedback();
+    const { activity, notices, removeNotice, dismiss, viewportHost } = useActionFeedback();
     const runningActivity = activity?.phase === 'running' ? activity : null;
+    const inline = viewportHost?.isConnected === true;
+    // Move one owned portal container, not its React children: countdowns,
+    // dismissed states and in-flight feedback survive setup entering/leaving.
+    const [container] = useState(() =>
+        typeof document === 'undefined' ? null : document.createElement('div'),
+    );
 
-    return (
+    useLayoutEffect(() => {
+        if (!container) {
+            return;
+        }
+
+        const target = viewportHost?.isConnected ? viewportHost : document.body;
+
+        if (container.parentNode === target) {
+            return;
+        }
+
+        const focused = container.contains(document.activeElement)
+            ? (document.activeElement as HTMLElement)
+            : null;
+        target.appendChild(container);
+        focused?.focus({ preventScroll: true });
+    }, [container, viewportHost]);
+    useLayoutEffect(() => () => container?.remove(), [container]);
+
+    const viewport = (
         <div
-            className="pointer-events-none fixed z-[80] flex w-[min(360px,calc(100vw-2rem))] flex-col items-end gap-2"
-            style={{
-                bottom: 'max(1rem, env(safe-area-inset-bottom))',
-                right: 'max(1rem, env(safe-area-inset-right))',
-            }}
+            role="region"
+            aria-label="操作通知"
+            tabIndex={notices.length > 0 ? 0 : undefined}
+            className="action-feedback-viewport pointer-events-none fixed z-[45] flex flex-col items-end gap-2"
+            style={
+                inline
+                    ? {
+                          position: 'static',
+                          inset: 'auto',
+                          width: '100%',
+                          maxHeight: 'none',
+                          overflow: 'visible',
+                          alignItems: 'stretch',
+                          paddingBottom: notices.length > 0 || runningActivity ? '1rem' : 0,
+                      }
+                    : undefined
+            }
         >
             {notices.map((notice) => (
                 <ActionNoticeBanner
@@ -313,11 +386,12 @@ export function ActionFeedbackViewport() {
                 activity={runningActivity}
                 onDismiss={dismiss}
                 dismissLabel="关闭操作反馈"
-                label="操作反馈"
+                label="正在执行的操作"
                 className="w-full"
             />
         </div>
     );
+    return container ? createPortal(viewport, container) : viewport;
 }
 
 function ActionNoticeBanner({
@@ -327,24 +401,39 @@ function ActionNoticeBanner({
     notice: ActionNotice;
     onRemoved: () => void;
 }) {
-    const [state, setState] = useState<BannerState>('dismissed');
+    const reduced = useReducedMotionConfig() === true;
+    const [state, setState] = useState<BannerState>('open');
+    const [deadline] = useState(() => Date.now() + RESULT_NOTICE_DURATION_MS);
+    const [seconds, setSeconds] = useState(RESULT_NOTICE_DURATION_MS / 1_000);
     const visible = state !== 'dismissed';
-
-    useEffect(() => {
-        const frame = requestAnimationFrame(() => setState('open'));
-        return () => cancelAnimationFrame(frame);
-    }, []);
 
     useEffect(() => {
         if (!visible) {
             return;
         }
 
-        return scheduleActionNoticeDismiss(() => setState('dismissed'));
-    }, [visible]);
+        const cancel = scheduleActionNoticeDismiss(
+            () => setState('dismissed'),
+            Math.max(0, deadline - Date.now()),
+        );
+        const updateSeconds = () => setSeconds(Math.max(0, (deadline - Date.now()) / 1_000));
+        updateSeconds();
+        const timer = reduced ? setInterval(updateSeconds, 1_000) : undefined;
+
+        return () => {
+            cancel();
+            clearInterval(timer);
+        };
+    }, [visible, reduced, deadline]);
 
     return (
-        <div className="pointer-events-auto relative w-full">
+        <motion.div
+            layout="position"
+            transition={reduced ? { duration: 0 } : { duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            role={notice.tone === 'error' ? 'alert' : 'status'}
+            aria-atomic="true"
+            className="pointer-events-auto relative w-full"
+        >
             <CollapsibleBanner
                 state={state}
                 onStateChange={setState}
@@ -360,30 +449,37 @@ function ActionNoticeBanner({
                 }
                 dismissLabel="关闭通知"
                 dismissedMessage="操作通知已关闭。"
-                className={
-                    notice.tone === 'success' ? 'border-success/25' : 'border-destructive/30'
-                }
+                className={`${notice.tone === 'success' ? 'border-success/25' : 'border-destructive/30'} ${reduced ? 'pb-4' : ''}`}
             />
-            {state !== 'dismissed' ? (
+            {visible && reduced ? (
+                <span
+                    aria-hidden="true"
+                    data-action-feedback-countdown=""
+                    className="absolute bottom-1 right-3 text-[10px] tabular-nums text-muted-foreground"
+                >
+                    {Math.ceil(seconds)} 秒后关闭
+                </span>
+            ) : visible ? (
                 <div
                     aria-hidden="true"
                     data-action-feedback-countdown-track=""
                     className="pointer-events-none absolute inset-x-[8px] bottom-0.5 h-[3px] overflow-hidden rounded-full bg-border/45"
                 >
                     <motion.div
+                        key={seconds}
                         data-action-feedback-countdown=""
                         className={
                             notice.tone === 'success'
                                 ? 'h-full w-full origin-left rounded-full bg-success shadow-[0_0_5px_color-mix(in_oklab,var(--success)_45%,transparent)]'
                                 : 'h-full w-full origin-left rounded-full bg-destructive shadow-[0_0_5px_color-mix(in_oklab,var(--destructive)_45%,transparent)]'
                         }
-                        initial={{ scaleX: 1 }}
+                        initial={{ scaleX: seconds / (RESULT_NOTICE_DURATION_MS / 1_000) }}
                         animate={{ scaleX: 0 }}
-                        transition={{ duration: RESULT_NOTICE_DURATION_MS / 1_000, ease: 'linear' }}
+                        transition={{ duration: seconds, ease: 'linear' }}
                     />
                 </div>
             ) : null}
-        </div>
+        </motion.div>
     );
 }
 

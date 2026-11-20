@@ -89,6 +89,8 @@ export interface HookProcessInfo {
     name: string;
     path: string;
     injected: boolean;
+    /** Absent on older servers; a deliberate stop must not prompt automatic reattachment. */
+    manualStopped?: boolean;
     connected: boolean;
     loggedIn: boolean;
     uin: string;
@@ -497,6 +499,8 @@ export interface SystemInfo {
         writable: Record<string, boolean>;
         vncPort: number;
         vncUrl: string;
+        /** True only when this server actually serves the integrated /desktop/ gateway. */
+        desktopAvailable?: boolean;
     };
     cpu: {
         model: string;
@@ -540,77 +544,24 @@ export interface LogEntry {
 
 // ─── WebUI customization config (config/ui.json) ───────────────────────────
 // Mirror of the server schema in core/src/webui/ui-config.ts. The contract is
-// the JSON shape served by `/api/ui`; this is the client-side view of it.
+// the JSON shape served by `/api/ui`; this is the client-side view of it. The
+// appearance types/defaults are shared browser-safely through
+// `@nowluma/common/webui-appearance`; layout/pages stay client-local mirrors.
 
-export type ThemeMode = 'light' | 'dark' | 'system';
-export type AccentMode = 'preset' | 'custom';
-export type AccentScope = 'sidebar' | 'global';
-export type DarkIntensity = 'soft' | 'black';
-export type SidebarStyle = 'follow' | 'panel' | 'accent';
-export type BackgroundType = 'none' | 'solid' | 'gradient' | 'image';
-export type Density = 'cozy' | 'compact';
-export type TimeFormat = '12h' | '24h';
-export type Palette =
-    | 'default'
-    | 'catppuccin-latte'
-    | 'catppuccin-frappe'
-    | 'catppuccin-macchiato'
-    | 'catppuccin-mocha'
-    | 'rose-pine'
-    | 'rose-pine-moon'
-    | 'rose-pine-dawn'
-    | 'nord'
-    | 'everforest-dark'
-    | 'everforest-light';
-
-export interface UiBackground {
-    type: BackgroundType;
-    color: string;
-    gradient: string;
-    imageOpacity: number;
-    imageBlur: number;
-    /** Server-managed: true when an image is on disk. Read-only to the client. */
-    hasImage: boolean;
-    imageMime: string;
-    /** Server-managed cache-bust counter, bumped on each upload. */
-    imageVersion: number;
-}
-
-export interface UiAppearance {
-    mode: ThemeMode;
-    accentMode: AccentMode;
-    accentPreset: string;
-    accentCustom: string;
-    accentScope: AccentScope;
-    darkIntensity: DarkIntensity;
-    palette: Palette;
-    sidebarStyle: SidebarStyle;
-    background: UiBackground;
-    fontSans: string;
-    /** Free-form sans font-family stack, used when `fontSans === 'custom'`. */
-    fontSansCustom: string;
-    fontMono: string;
-    /** Free-form mono font-family stack, used when `fontMono === 'custom'`. */
-    fontMonoCustom: string;
-    uiScale: number;
-    radius: number;
-    density: Density;
-    reduceMotion: boolean;
-    disableMotion: boolean;
-    /** Use Nowluma's adaptive cursor. */
-    customPointerSystem: boolean;
-    /** Replace the browser context menu with Nowluma's context menu. */
-    customContextMenu: boolean;
-    highContrast: boolean;
-    /** Pin the sidebar permanently expanded, opting out of the hover-expand rail. */
-    sidebarPinned: boolean;
-    timeFormat: TimeFormat;
-    pollInterval: number;
-    /** Operator custom CSS (applied post-auth only; stripped from /api/ui/public). */
-    customCss: string;
-    /** Theme-token overrides from the variable panel (whitelisted keys/values). */
-    cssVars: Record<string, string>;
-}
+export type {
+    AccentMode,
+    AccentScope,
+    BackgroundType,
+    DarkIntensity,
+    Density,
+    Palette,
+    SidebarStyle,
+    ThemeMode,
+    TimeFormat,
+    UiAppearance,
+    UiBackground,
+} from '@nowluma/common/webui-appearance';
+import type { UiAppearance } from '@nowluma/common/webui-appearance';
 
 export interface UiLayoutItem {
     id: string;

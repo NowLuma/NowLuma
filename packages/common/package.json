@@ -1,7 +1,7 @@
 {
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "name": "@nowluma/common",
-  "version": "2.4.2",
+  "version": "2.5.0-rc.1",
   "private": true,
   "type": "module",
   "description": "Nowluma shared infrastructure — leaf-package utilities with zero business dependencies. Logger / hex codec / log file transport / log line summariser / packet sender wire-protocol types / runtime config loader. Consumed by @nowluma/protocol, @nowluma/core, and @nowluma/onebot. Per-file subpath exports keep import sites unambiguous and let the bundler tree-shake aggressively (importing `@nowluma/common/hex` doesn't pull in `node:fs` from the logger transport).",
@@ -16,6 +16,10 @@
       "types": "./src/webui-target.ts",
       "default": "./src/webui-target.ts"
     },
+    "./webui-appearance": {
+      "types": "./src/webui-appearance.ts",
+      "default": "./src/webui-appearance.ts"
+    },
     "./update-source": {
       "types": "./src/update-source.ts",
       "default": "./src/update-source.ts"
@@ -23,6 +27,10 @@
     "./semver": {
       "types": "./src/semver.ts",
       "default": "./src/semver.ts"
+    },
+    "./release-assets": {
+      "types": "./src/release-assets.ts",
+      "default": "./src/release-assets.ts"
     },
     "./version": {
       "types": "./src/version.ts",
@@ -99,6 +107,10 @@
     "./uin": {
       "types": "./src/uin.ts",
       "default": "./src/uin.ts"
+    },
+    "./kernel-display": {
+      "types": "./src/kernel-display.ts",
+      "default": "./src/kernel-display.ts"
     },
     "./access-token": {
       "types": "./src/access-token.ts",

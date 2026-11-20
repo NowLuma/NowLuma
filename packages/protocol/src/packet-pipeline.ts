@@ -1,32 +1,16 @@
 import type { PacketInfo } from '@nowluma/common/protocol-types';
-import { formatEvent } from './format';
 import { createLogger, type Logger } from '@nowluma/common/logger';
+import { AccountEventDispatcher, type DispatchTrace } from './account-event-dispatcher';
+import { AccountEventEnricher } from './account-event-enricher';
 import type { BridgeEventBus } from './event-bus';
 import type { QQEventVariant } from './events';
 import type { GroupInviteTracker } from './group-invite-tracker';
 import type { IdentityService } from './identity-service';
-import { formatGroupRequestFlag, isSelfGroupInvitation, type GroupRequestInfo } from './qq-info';
+import type { GroupRequestInfo } from './qq-info';
 
 const moduleLog = createLogger('Bridge');
 const moduleEventLog = createLogger('Event');
 const modulePacketLog = createLogger('Protocol.Packet');
-
-// Notice kinds that get logged as a warning (operationally important
-// state changes that an operator probably wants to see at default
-// info level). Everything else falls through to info.
-const WARN_EVENT_KINDS = new Set([
-    'group_recall',
-    'friend_recall',
-    'group_member_leave',
-    'group_mute',
-    'friend_request',
-    'group_invite',
-]);
-
-type GroupMemberIdentityEvent = Extract<
-    QQEventVariant,
-    { kind: 'group_member_join' | 'group_member_leave' }
->;
 
 export type CmdParser = (pkt: PacketInfo, identity: IdentityService) => QQEventVariant[];
 
@@ -56,12 +40,17 @@ export interface PacketPipelineDeps {
     groupInvites: GroupInviteTracker;
 }
 
+/**
+ * Receive-chain facade: cmd-parser registry, per-packet branch tracing and
+ * dispatch accounting. Event effects live in AccountEventDispatcher; missing
+ * identity/request enrichment lives in AccountEventEnricher.
+ */
 export class IncomingPacketPipeline {
     private cmdHandlers_ = new Map<string, CmdParser[]>();
-    private memberRefreshTasks_ = new Map<number, Promise<void>>();
     private readonly log: Logger;
-    private readonly eventLog: Logger;
     private readonly packetLog: Logger;
+    private readonly dispatcher: AccountEventDispatcher;
+    private readonly enricher: AccountEventEnricher;
 
     constructor(private readonly deps: PacketPipelineDeps) {
         // Tag every line we emit with this Bridge's UIN so per-account file
@@ -70,8 +59,24 @@ export class IncomingPacketPipeline {
         const uinNum = Number.parseInt(deps.identity.uin, 10);
         const bind = Number.isFinite(uinNum) && uinNum > 0 ? { uin: uinNum } : null;
         this.log = bind ? moduleLog.child(bind) : moduleLog;
-        this.eventLog = bind ? moduleEventLog.child(bind) : moduleEventLog;
         this.packetLog = bind ? modulePacketLog.child(bind) : modulePacketLog;
+        const eventLog = bind ? moduleEventLog.child(bind) : moduleEventLog;
+        this.dispatcher = new AccountEventDispatcher({
+            identity: deps.identity,
+            events: deps.events,
+            groupInvites: deps.groupInvites,
+            fetchGroupList: () => deps.fetchGroupList(),
+            fetchGroupMemberList: (groupId) => deps.fetchGroupMemberList(groupId),
+            log: this.log,
+            eventLog,
+        });
+        this.enricher = new AccountEventEnricher({
+            identity: deps.identity,
+            groupInvites: deps.groupInvites,
+            resolveGroupJoinRequest: (groupId, uid, subType, invitedUid) =>
+                deps.resolveGroupJoinRequest(groupId, uid, subType, invitedUid),
+            log: this.log,
+        });
     }
 
     registerCmd(cmd: string, parser: CmdParser): void {
@@ -113,6 +118,7 @@ export class IncomingPacketPipeline {
             return Promise.resolve();
         }
 
+        const trace: DispatchTrace = (kind, mode) => this.traceDispatch(pkt, kind, mode);
         let eventCount = 0;
         let dispatched = 0;
         let parserErrors = 0;
@@ -146,9 +152,9 @@ export class IncomingPacketPipeline {
                 ]);
 
                 for (const event of events) {
-                    if (this.needsPreDispatchIdentityRefresh(event)) {
+                    if (this.enricher.needsIdentityRefresh(event)) {
                         this.traceEnrichmentStarted(pkt, event, 'identity_refresh');
-                        const task = this.dispatchAfterIdentityRefresh(pkt, event)
+                        const task = this.dispatchAfterIdentityRefresh(pkt, event, trace)
                             .then((count) => {
                                 dispatched += count;
                             })
@@ -176,7 +182,7 @@ export class IncomingPacketPipeline {
                         enrichmentTasks.push(task);
                     } else if (event.kind === 'group_invite') {
                         this.traceEnrichmentStarted(pkt, event, 'group_invite');
-                        const task = this.dispatchGroupInvite(pkt, event)
+                        const task = this.dispatchGroupInvite(event, trace)
                             .then((count) => {
                                 dispatched += count;
                             })
@@ -199,7 +205,7 @@ export class IncomingPacketPipeline {
                         enrichmentTasks.push(task);
                     } else {
                         try {
-                            dispatched += this.dispatchEvent(pkt, event, 'sync');
+                            dispatched += this.dispatcher.dispatch(event, 'sync', trace);
                         } catch (error) {
                             dispatchErrors += 1;
                             this.traceDispatchFailure(pkt, event, error);
@@ -348,133 +354,13 @@ export class IncomingPacketPipeline {
         ]);
     }
 
-    private dispatchEvent(
-        pkt: PacketInfo,
-        event: QQEventVariant,
-        mode: 'sync' | 'enriched',
-    ): number {
-        // Snapshot the sender's cached group card BEFORE dispatch — the side-effects
-        // inside finishDispatch self-heal it, so the old value must be read first.
-        const cardBefore = this.groupCardBefore(event);
-        this.finishDispatch(event);
-        this.traceDispatch(pkt, event.kind, mode);
-
-        let dispatched = 1;
-
-        if (this.emitGroupCardChange(event, cardBefore)) {
-            this.traceDispatch(pkt, 'group_card_change', 'derived');
-            dispatched++;
-        }
-
-        if (this.emitGroupInviteCard(event)) {
-            this.traceDispatch(pkt, 'group_invite', 'derived');
-            dispatched++;
-        }
-
-        return dispatched;
-    }
-
-    private emitGroupInviteCard(event: QQEventVariant): boolean {
-        if (event.kind !== 'friend_message' || event.senderUin === event.selfUin) {
-            return false;
-        }
-
-        const groupId = event.inviteCardGroupUin;
-        const sequence = event.inviteCardSequence;
-
-        if (
-            !groupId ||
-            !sequence ||
-            !this.deps.groupInvites.receiveCard(groupId, sequence, event.senderUid)
-        ) {
-            return false;
-        }
-
-        this.finishDispatch({
-            kind: 'group_invite',
-            time: event.time,
-            selfUin: event.selfUin,
-            groupId,
-            fromUin: event.senderUin,
-            fromUid: event.senderUid,
-            invitedUin: event.selfUin,
-            subType: 'invite',
-            message: '',
-            flag: formatGroupRequestFlag({ groupId, sequence, eventType: 2, filtered: false }),
-        });
-        return true;
-    }
-
-    private emit(event: QQEventVariant): void {
-        // Fire-and-forget: errors inside subscribers are surfaced via the bus's
-        // own onError hook so one bad listener never blocks the others.
-        void this.deps.events.emit(event);
-    }
-
-    /** The sender's cached group card just before this event is dispatched (its
-     *  side-effects will overwrite the cache). Only meaningful for group_message. */
-    private groupCardBefore(event: QQEventVariant): string | undefined {
-        if (event.kind !== 'group_message') {
-            return undefined;
-        }
-
-        return this.deps.identity.findGroupMember(event.groupId, event.senderUin)?.card;
-    }
-
-    /** Surface a `group_card_change` when a KNOWN member's card actually changed —
-     *  mirrors NapCat's `parseCardChangedEvent`. Requires a non-empty prior card
-     *  (`cardBefore`) that differs from a non-empty new one, so a cold/unknown
-     *  cache never fabricates a change on first contact. */
-    private emitGroupCardChange(event: QQEventVariant, cardBefore: string | undefined): boolean {
-        if (event.kind !== 'group_message') {
-            return false;
-        }
-
-        const cardNew = event.senderCard ?? '';
-
-        if (!cardBefore || !cardNew || cardBefore === cardNew) {
-            return false;
-        }
-
-        this.finishDispatch({
-            kind: 'group_card_change',
-            time: event.time,
-            selfUin: event.selfUin,
-            groupId: event.groupId,
-            userUin: event.senderUin,
-            cardNew,
-            cardOld: cardBefore,
-        });
-        return true;
-    }
-
-    /**
-     * Common dispatch tail shared by the sync path and the two async enrichment
-     * paths: run side effects, log the event, then emit it.
-     */
-    private finishDispatch(event: QQEventVariant): void {
-        this.handleSideEffects(event);
-        printEvent(this.eventLog, this.deps.identity, event);
-        this.emit(event);
-    }
-
-    private needsPreDispatchIdentityRefresh(
-        event: QQEventVariant,
-    ): event is Extract<QQEventVariant, { kind: 'group_member_join' }> {
-        return (
-            event.kind === 'group_member_join' &&
-            event.groupId > 0 &&
-            ((event.userUin <= 0 && Boolean(event.userUid)) ||
-                ((event.invitorUin ?? 0) <= 0 && Boolean(event.invitorUid)))
-        );
-    }
-
     private async dispatchAfterIdentityRefresh(
         pkt: PacketInfo,
         event: Extract<QQEventVariant, { kind: 'group_member_join' }>,
+        trace: DispatchTrace,
     ): Promise<number> {
         try {
-            await this.prepareGroupMemberJoinIdentity(event);
+            await this.enricher.refreshMemberJoinIdentity(event);
         } catch (e) {
             this.packetLog.trace(() => [
                 'packet_branch serviceCmd=%j seqId=%d branch=enrichment_degraded eventKind=%j enrichment="identity_refresh" error=%j',
@@ -492,415 +378,26 @@ export class IncomingPacketPipeline {
         }
 
         try {
-            return this.dispatchEvent(pkt, event, 'enriched');
+            return this.dispatcher.dispatch(event, 'enriched', trace);
         } catch (error) {
             throw new EnrichedDispatchError(error);
         }
     }
 
     private async dispatchGroupInvite(
-        pkt: PacketInfo,
         event: Extract<QQEventVariant, { kind: 'group_invite' }>,
+        trace: DispatchTrace,
     ): Promise<number> {
-        // A self-invite notice carries an inviter UID but no approval sequence.
-        if (
-            event.subType === 'invite' &&
-            this.isSelfMemberIdentity(event.invitedUin ?? 0, event.invitedUid)
-        ) {
-            if (!(event.groupId > 0) || !event.fromUid?.trim() || !event.flag) {
-                this.log.warn('self invitation missing group or inviter: group=%d', event.groupId);
-                return 0;
-            }
+        const mode = await this.enricher.resolveGroupInvite(event);
 
-            if (!this.deps.groupInvites.receiveNotice(event.groupId, event.fromUid)) {
-                this.log.debug(
-                    'self invitation already dispatched from the card: group=%d',
-                    event.groupId,
-                );
-                return 0;
-            }
-
-            if (!event.fromUin) {
-                event.fromUin =
-                    (await this.deps.identity.resolveUin(event.fromUid, event.groupId)) ?? 0;
-
-                if (!event.fromUin) {
-                    this.log.warn(
-                        'self invitation sender unavailable: group=%d uid=%s',
-                        event.groupId,
-                        event.fromUid,
-                    );
-                }
-            }
-
-            try {
-                return this.dispatchEvent(pkt, event, 'sync');
-            } catch (error) {
-                throw new EnrichedDispatchError(error);
-            }
-        }
-
-        const uid = event.fromUid;
-
-        if (!uid) {
-            throw new Error('group request omitted requester UID');
-        }
-
-        this.deps.identity.rememberRequestIdentity({
-            groupId: event.groupId,
-            uid,
-            uin: event.fromUin,
-            source: 'group_request',
-        });
-        const request = await this.deps.resolveGroupJoinRequest(
-            event.groupId,
-            uid,
-            event.subType,
-            event.invitedUid,
-        );
-
-        if (!request) {
-            this.log.warn('pending group request not found: group=%d uid=%s', event.groupId, uid);
+        if (!mode) {
             return 0;
-        }
-
-        if (isSelfGroupInvitation(request)) {
-            return 0;
-        }
-
-        event.message = request.comment;
-        event.flag = formatGroupRequestFlag(request);
-        const requesterUin = event.subType === 'invite' ? request.invitorUin : request.targetUin;
-        event.fromUin =
-            event.fromUin ||
-            requesterUin ||
-            (await this.deps.identity.resolveUin(uid, event.groupId)) ||
-            0;
-
-        if (event.fromUin === 0) {
-            this.log.warn('group request sender unavailable: group=%d uid=%s', event.groupId, uid);
-        }
-
-        if (event.subType === 'invite') {
-            event.invitedUid = request.targetUid;
-            event.invitedUin =
-                request.targetUin ||
-                (await this.deps.identity.resolveUin(request.targetUid, event.groupId)) ||
-                0;
         }
 
         try {
-            return this.dispatchEvent(pkt, event, 'enriched');
+            return this.dispatcher.dispatch(event, mode, trace);
         } catch (error) {
             throw new EnrichedDispatchError(error);
         }
-    }
-
-    private async prepareGroupMemberJoinIdentity(
-        event: Extract<QQEventVariant, { kind: 'group_member_join' }>,
-    ): Promise<void> {
-        this.resolveMemberIdentityFromCache(event);
-
-        const results = await Promise.allSettled(
-            (
-                [
-                    ['userUid', 'userUin'],
-                    ['invitorUid', 'invitorUin'],
-                ] as const
-            ).map(async ([uidKey, uinKey]) => {
-                const uid = event[uidKey];
-
-                if (!uid || (event[uinKey] ?? 0) > 0) {
-                    return;
-                }
-
-                const uin = await this.deps.identity.resolveUin(uid, event.groupId);
-
-                if (uin !== null) {
-                    event[uinKey] = uin;
-                } else {
-                    this.log.warn(
-                        'group join identity unavailable: group=%d role=%s',
-                        event.groupId,
-                        uidKey,
-                    );
-                }
-            }),
-        );
-
-        this.resolveMemberIdentityFromCache(event);
-        const failures = results.filter((result) => result.status === 'rejected');
-
-        if (failures.length) {
-            throw new AggregateError(
-                failures.map((result) => result.reason),
-                `group join identity lookup failed: ${failures
-                    .map(({ reason }) =>
-                        reason instanceof Error ? reason.message : String(reason),
-                    )
-                    .join('; ')}`,
-            );
-        }
-    }
-
-    private resolveMemberIdentityFromCache(event: GroupMemberIdentityEvent): void {
-        if (event.groupId <= 0) {
-            return;
-        }
-
-        if (event.userUin <= 0 && event.userUid) {
-            const uin = this.deps.identity.findUinByUid(event.userUid, event.groupId);
-
-            if (uin !== null) {
-                event.userUin = uin;
-            }
-        }
-
-        if (event.operatorUin <= 0 && event.operatorUid) {
-            const uin = this.deps.identity.findUinByUid(event.operatorUid, event.groupId);
-
-            if (uin !== null) {
-                event.operatorUin = uin;
-            }
-        }
-
-        if (
-            event.kind === 'group_member_join' &&
-            (event.invitorUin ?? 0) <= 0 &&
-            event.invitorUid
-        ) {
-            const uin = this.deps.identity.findUinByUid(event.invitorUid, event.groupId);
-
-            if (uin !== null) {
-                event.invitorUin = uin;
-            }
-        }
-    }
-
-    private isSelfMemberIdentity(uin: number, uid?: string): boolean {
-        const selfUin = Number(this.deps.identity.uin);
-        return (uin > 0 && uin === selfUin) || (Boolean(uid) && uid === this.deps.identity.selfUid);
-    }
-
-    private handleSideEffects(event: QQEventVariant): void {
-        this.rememberEventIdentity(event);
-
-        let groupId = 0;
-        let reason = '';
-        let refreshGroupList = false;
-
-        switch (event.kind) {
-            case 'group_member_join':
-                groupId = event.groupId;
-                reason = 'group_member_join';
-                refreshGroupList = this.isSelfMemberIdentity(event.userUin, event.userUid);
-                break;
-            case 'group_member_leave':
-                groupId = event.groupId;
-                reason = 'group_member_leave';
-                break;
-            case 'group_admin':
-                groupId = event.groupId;
-                reason = 'group_admin';
-                break;
-            default:
-                return;
-        }
-
-        if (groupId <= 0) {
-            return;
-        }
-
-        if (this.memberRefreshTasks_.has(groupId)) {
-            return;
-        }
-
-        if (event.kind === 'group_member_join' && !this.deps.identity.findGroup(groupId)) {
-            refreshGroupList = true;
-        }
-
-        const task = (async () => {
-            try {
-                if (refreshGroupList) {
-                    try {
-                        await this.deps.fetchGroupList();
-                    } catch {
-                        /* ignore */
-                    }
-                }
-
-                if (!this.deps.identity.findGroup(groupId)) {
-                    this.log.debug('member cache refreshed: group=%d reason=%s', groupId, reason);
-                    return;
-                }
-
-                await this.deps.fetchGroupMemberList(groupId);
-                this.log.debug('member cache refreshed: group=%d reason=%s', groupId, reason);
-            } catch (e) {
-                this.log.warn(
-                    'failed to refresh member cache: group=%d reason=%s err=%s',
-                    groupId,
-                    reason,
-                    e instanceof Error ? e.message : String(e),
-                );
-            } finally {
-                this.memberRefreshTasks_.delete(groupId);
-            }
-        })();
-
-        this.memberRefreshTasks_.set(groupId, task);
-    }
-
-    private rememberEventIdentity(event: QQEventVariant): void {
-        switch (event.kind) {
-            case 'friend_message':
-                // The message already carries the authoritative UID/UIN pair. Keep it
-                // at the receive boundary so later C2C operations never have to infer
-                // a peer UID from a stale message row or a fallible profile lookup.
-                this.deps.identity.rememberRequestIdentity({
-                    uid: event.senderUid,
-                    uin: event.senderUin,
-                    source: 'friend_message',
-                });
-
-                break;
-
-            case 'group_message': {
-                // [#1] Self-heal a member's cached group card from message traffic. The
-                // member cache only refreshes via a member-list refetch, which nothing
-                // triggers on a card change and a quiet, months-long bot may never fire.
-                // The decoder resolved the current card from field 4 into senderCard;
-                // when it differs from the cache, update it — gated so we write only on
-                // an actual change, not on every message.
-                const cached = this.deps.identity.findGroupMember(event.groupId, event.senderUin);
-
-                if (cached && event.senderCard !== (cached.card ?? '')) {
-                    this.deps.identity.updateGroupMember(event.groupId, {
-                        ...cached,
-                        card: event.senderCard,
-                    });
-                }
-
-                break;
-            }
-
-            case 'group_member_join':
-                if (event.invitorUid) {
-                    this.deps.identity.rememberRequestIdentity({
-                        groupId: event.groupId,
-                        uid: event.invitorUid,
-                        uin: event.invitorUin ?? 0,
-                        source: 'group_request',
-                    });
-                }
-
-                this.deps.identity.rememberGroupMemberIdentity(event.groupId, {
-                    uid: event.userUid,
-                    uin: event.userUin,
-                });
-                this.deps.identity.rememberGroupMemberIdentity(event.groupId, {
-                    uid: event.operatorUid,
-                    uin: event.operatorUin,
-                });
-                this.deps.identity.rememberGroupMemberJoined(event.groupId, {
-                    uid: event.userUid,
-                    uin: event.userUin,
-                });
-                break;
-            case 'group_member_leave':
-                this.deps.identity.markGroupMemberInactive(event.groupId, {
-                    uid: event.userUid,
-                    uin: event.userUin,
-                });
-                this.deps.identity.rememberGroupMemberIdentity(event.groupId, {
-                    uid: event.operatorUid,
-                    uin: event.operatorUin,
-                });
-                break;
-
-            case 'group_admin': {
-                this.deps.identity.rememberGroupMemberIdentity(event.groupId, {
-                    uin: event.userUin,
-                });
-                // #93: get_group_member_info serves the cache and must not refetch
-                // per message. Patch a known member's role here — never invent a
-                // phantom, never downgrade the owner.
-                const cached = this.deps.identity.findGroupMember(event.groupId, event.userUin);
-
-                if (cached && cached.role !== 'owner') {
-                    this.deps.identity.updateGroupMember(event.groupId, {
-                        ...cached,
-                        role: event.set ? 'admin' : 'member',
-                    });
-                }
-
-                break;
-            }
-
-            case 'friend_request':
-                this.deps.identity.rememberRequestIdentity({
-                    uid: event.fromUid,
-                    uin: event.fromUin,
-                    source: 'friend_request',
-                });
-                break;
-
-            case 'friend_remark_changed': {
-                const rosterUpdated = this.deps.identity.updateFriendRemark(
-                    event.userUid,
-                    event.userUin,
-                    event.remark,
-                );
-                this.log.debug(
-                    'friend remark synchronized (uid=%s uin=%d length=%d rosterUpdated=%s)',
-                    event.userUid,
-                    event.userUin,
-                    event.remark.length,
-                    rosterUpdated,
-                );
-                break;
-            }
-
-            case 'group_invite': {
-                this.deps.identity.rememberRequestIdentity({
-                    groupId: event.groupId,
-                    uid: event.fromUid,
-                    uin: event.fromUin,
-                    source: 'group_request',
-                });
-
-                if (event.invitedUid) {
-                    this.deps.identity.rememberRequestIdentity({
-                        groupId: event.groupId,
-                        uid: event.invitedUid,
-                        uin: event.invitedUin ?? 0,
-                        source: 'group_request',
-                    });
-                }
-
-                break;
-            }
-
-            default:
-                break;
-        }
-    }
-}
-
-function printEvent(log: Logger, identity: IdentityService, event: QQEventVariant): void {
-    // Message-class events (group/friend/temp message) get rendered by the
-    // OneBot layer's logReceivedMessage — its output already includes the
-    // assigned message ID, which the raw packet doesn't have. Returning
-    // null here is the formatter's signal to skip.
-    const message = formatEvent(identity, event);
-
-    if (!message) {
-        return;
-    }
-
-    if (WARN_EVENT_KINDS.has(event.kind)) {
-        log.warn('%s', message);
-    } else {
-        log.info('%s', message);
     }
 }

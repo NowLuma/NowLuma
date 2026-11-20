@@ -1,0 +1,258 @@
+name: Nowluma Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: nowluma-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  # A tag is not a release until package versions, CHANGELOG.md and the tag
+  # agree. The draft release is the staging area for every asset below.
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+      - name: Check the tag against package versions and CHANGELOG.md
+        run: node tools/check-version.mjs --tag "$GITHUB_REF_NAME" --notes release-notes.md
+      - name: Record the release version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Create or refresh the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft 2>/dev/null || echo missing)
+          if [ "$state" = "true" ]; then
+            gh release edit "$GITHUB_REF_NAME" --draft \
+              --title "Nowluma $GITHUB_REF_NAME" --notes-file release-notes.md
+          elif [ "$state" = "missing" ]; then
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+              --title "Nowluma $GITHUB_REF_NAME" --notes-file release-notes.md
+          else
+            echo "Release $GITHUB_REF_NAME is already published; refusing to rewrite it." >&2
+            exit 1
+          fi
+  # The same gates as ci.yml, including the Linux/Docker smoke container.
+  gates:
+    needs: draft
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+  linux:
+    needs: [draft, gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11.25.0
+          run_install: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build:all
+      - run: node tools/check-release-layout.mjs dist
+      - run: node tools/package-release.mjs dist "$RUNNER_TEMP/release"
+      - name: Attest the Linux package
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/release/Nowluma-v${{ needs.draft.outputs.version }}-linux-x64-lite.tar.gz
+      - name: Upload the Linux package to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/"* --clobber
+  # The Windows artifact is the one-click exe: unsigned, and only the launcher's
+  # own self-test plus the packaged-layout test are claimed here.
+  windows:
+    needs: [draft, gates]
+    runs-on: windows-latest
+    timeout-minutes: 50
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11.25.0
+          run_install: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: 10.0.x
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm run build:all
+      - run: node tools/build-windows-exe.mjs dist _re/releases/windows-exe
+      - name: Verify the packaged launcher
+        run: node --test deploy/windows/launcher.test.cjs
+        env:
+          NOWLUMA_TEST_EXE: _re/releases/windows-exe/Nowluma.exe
+      - name: Stage the versioned Windows assets
+        shell: bash
+        run: |
+          version="${{ needs.draft.outputs.version }}"
+          mkdir -p "$RUNNER_TEMP/release"
+          cp _re/releases/windows-exe/Nowluma.exe "$RUNNER_TEMP/release/Nowluma-win32-x64-$version.exe"
+          cp "_re/releases/windows-exe/Nowluma-v$version-win-x64-lite.zip" "$RUNNER_TEMP/release/Nowluma-v$version-win-x64-lite.zip"
+          cp _re/releases/windows-exe/build.json "$RUNNER_TEMP/release/nowluma-win32-x64-$version-build.json"
+      - name: Attest the Windows assets
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/release/*
+      - name: Upload the Windows assets to the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/"* --clobber
+  docker:
+    needs: [draft, gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Resolve the image name and tags
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+          printf '%s:%s\n' "$image" "${{ needs.draft.outputs.version }}" > tags.txt
+          { echo 'tags<<NOWLUMA_TAGS'; cat tags.txt; echo 'NOWLUMA_TAGS'; } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and push the Linux image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Attest the Linux image
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      - name: Upload the image digest to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset="$RUNNER_TEMP/nowluma-ghcr-linux-x64-${{ needs.draft.outputs.version }}.txt"
+          {
+            echo "image: ${{ steps.image.outputs.name }}:${{ needs.draft.outputs.version }}"
+            echo "digest: ${{ steps.build.outputs.digest }}"
+          } > "$asset"
+          gh release upload "$GITHUB_REF_NAME" "$asset" --clobber
+  # The GitHub release stays private until every asset is in the draft and its
+  # SHA256SUMS verifies against a fresh download. The versioned container tag is
+  # already visible from the docker job; the mutable :latest tag is promoted
+  # here, after those checks.
+  publish:
+    needs: [draft, linux, windows, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download every draft asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/assets"
+          gh release download "$GITHUB_REF_NAME" --dir "$RUNNER_TEMP/assets" --clobber
+      - name: Require the complete asset set and record its hashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ needs.draft.outputs.version }}"
+          cd "$RUNNER_TEMP/assets"
+          for asset in \
+            "Nowluma-v$version-linux-x64-lite.tar.gz" \
+            "Nowluma-v$version-win-x64-lite.zip" \
+            "Nowluma-win32-x64-$version.exe" \
+            "nowluma-win32-x64-$version-build.json" \
+            "nowluma-ghcr-linux-x64-$version.txt"; do
+            test -f "$asset" || { echo "draft release is missing $asset" >&2; exit 1; }
+          done
+          rm -f SHA256SUMS
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --clobber
+      - name: Re-download the draft and verify every hash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/verify"
+          gh release download "$GITHUB_REF_NAME" --dir "$RUNNER_TEMP/verify" --clobber
+          cd "$RUNNER_TEMP/verify"
+          sha256sum --check --strict SHA256SUMS
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: needs.draft.outputs.prerelease == 'false'
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: needs.draft.outputs.prerelease == 'false'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Promote the verified image to :latest
+        if: needs.draft.outputs.prerelease == 'false'
+        run: |
+          version="${{ needs.draft.outputs.version }}"
+          asset="$RUNNER_TEMP/verify/nowluma-ghcr-linux-x64-$version.txt"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          digest=$(sed -n 's/^digest: //p' "$asset")
+          test -n "$digest" || { echo "draft release is missing the image digest" >&2; exit 1; }
+          docker buildx imagetools create --tag "$image:latest" "$image@$digest"
+      - name: Publish the verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ needs.draft.outputs.prerelease }}" = "true" ]; then
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          fi

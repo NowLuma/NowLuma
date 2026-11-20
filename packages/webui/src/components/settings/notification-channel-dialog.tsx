@@ -2,7 +2,8 @@
 // mirroring NodeEditDialog. Holds a local draft until 保存 (cancel discards).
 // The channel id is the stable key per-account opt-ins reference, so it's
 // editable only on create and locked on edit.
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { useReducedMotionConfig } from 'motion/react';
 import {
     DEFAULT_WEBHOOK_BODY,
     DEFAULT_EMAIL_BODY,
@@ -11,12 +12,12 @@ import {
 import { Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/interior/modal';
 import { Button } from '@/components/ui/button';
+import { Segmented, SettingRow } from '@/components/settings/settings-controls';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
-import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
     notificationChannelType,
@@ -159,6 +160,7 @@ interface NotificationChannelDialogProps {
 
 export function NotificationChannelDialog(props: NotificationChannelDialogProps) {
     const { open, onOpenChange, isEdit, initial, otherIds, onSubmit } = props;
+    const controlId = useId();
     // Parent unmounts on close, so each open re-seeds via lazy init.
     const [draft, setDraft] = useState<NotificationChannel>(() => ({
         ...initial,
@@ -166,7 +168,7 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
     }));
     const [headerRows, setHeaderRows] = useState<HeaderRow[]>(() => headersToRows(initial.headers));
     const [showPass, setShowPass] = useState(false);
-    const reduce = useTheme().appearance.disableMotion;
+    const reduce = useReducedMotionConfig() ?? false;
     const patch = (p: Partial<NotificationChannel>) => setDraft({ ...draft, ...p });
 
     const patchHeader = (index: number, p: Partial<HeaderRow>) => {
@@ -221,47 +223,45 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
             closeLabel="关闭渠道编辑弹窗"
             maxWidth={576}
             maxHeight="min(86dvh, 780px)"
+            className="cp-dialog"
             footer={
                 <>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button type="button" variant="glass" onClick={() => onOpenChange(false)}>
                         取消
                     </Button>
                     <Button
+                        type="submit"
+                        form={`${controlId}-form`}
+                        variant="glass"
                         disabled={!canSave}
-                        onClick={() => {
-                            onSubmit(toChannel(draft, headerRows));
-                            onOpenChange(false);
-                        }}
                     >
                         {isEdit ? '保存修改' : '创建渠道'}
                     </Button>
                 </>
             }
         >
-            <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1">
-                    {(
-                        [
-                            ['webhook', 'Webhook'],
-                            ['email', '邮件'],
-                        ] as const
-                    ).map(([value, label]) => (
-                        <button
-                            key={value}
-                            type="button"
-                            aria-pressed={type === value}
-                            onClick={() => setDraft(applyType(draft, value))}
-                            className={cn(
-                                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                                type === value
-                                    ? 'bg-background text-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            )}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
+            <form
+                id={`${controlId}-form`}
+                className="flex min-w-0 flex-col gap-3"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!canSave) {
+                        return;
+                    }
+                    onSubmit(toChannel(draft, headerRows));
+                    onOpenChange(false);
+                }}
+            >
+                <SettingRow label="渠道类型">
+                    <Segmented<NotificationChannelType>
+                        value={type}
+                        options={[
+                            { value: 'webhook', label: 'Webhook' },
+                            { value: 'email', label: '邮件' },
+                        ]}
+                        onChange={(value) => setDraft(applyType(draft, value))}
+                    />
+                </SettingRow>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Field
@@ -292,9 +292,11 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                             onChange={(v) => patch({ url: v })}
                         />
 
-                        <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                                <Label>请求头</Label>
+                        <details className="text-xs">
+                            <summary className="min-h-11 cursor-pointer py-3 font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                请求头（可选）
+                            </summary>
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -304,14 +306,15 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                                     }
                                 >
                                     <Plus className="size-3.5" />
-                                    添加
+                                    添加请求头
                                 </Button>
                             </div>
                             <div className="flex flex-col gap-2">
                                 {headerRows.map((row, i) => (
-                                    <div key={i} className="flex items-center gap-2">
+                                    <div key={i} className="grid min-w-0 grid-cols-[minmax(0,1fr)_44px] gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]">
                                         <Input
                                             value={row.name}
+                                            aria-label={`请求头 ${i + 1} 名称`}
                                             placeholder="Authorization"
                                             spellCheck={false}
                                             onChange={(e) =>
@@ -321,18 +324,19 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                                         />
                                         <Input
                                             value={row.value}
+                                            aria-label={`请求头 ${i + 1} 值`}
                                             placeholder="Bearer …"
                                             spellCheck={false}
                                             onChange={(e) =>
                                                 patchHeader(i, { value: e.target.value })
                                             }
-                                            className="font-mono text-xs"
+                                            className="col-start-1 font-mono text-xs sm:col-start-2 sm:row-start-1"
                                         />
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon-sm"
-                                            aria-label="删除请求头"
+                                            aria-label={`删除请求头 ${i + 1}`}
                                             onClick={() => {
                                                 const next = headerRows.filter(
                                                     (_, idx) => idx !== i,
@@ -343,7 +347,7 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                                                         : [{ name: '', value: '' }],
                                                 );
                                             }}
-                                            className="shrink-0 text-muted-foreground hover:text-foreground"
+                                            className="col-start-2 row-start-1 row-span-2 shrink-0 self-start text-muted-foreground hover:text-foreground sm:col-start-3 sm:row-span-1"
                                         >
                                             <Trash2 className="size-3.5" />
                                         </Button>
@@ -353,7 +357,7 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                             <p className="text-xs leading-relaxed text-muted-foreground">
                                 可选，默认 Content-Type 为 application/json。
                             </p>
-                        </div>
+                        </details>
                     </>
                 ) : (
                     <>
@@ -397,46 +401,43 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                                 onChange={(v) => patch({ smtpUser: v })}
                             />
                             <div className="flex flex-col gap-1.5">
-                                <Label>SMTP 密码</Label>
+                                <Label htmlFor={`${controlId}-smtp-password`}>SMTP 密码</Label>
                                 <div className="relative">
                                     <Input
+                                        id={`${controlId}-smtp-password`}
                                         type={showPass ? 'text' : 'password'}
                                         value={draft.smtpPass ?? ''}
                                         autoComplete="new-password"
                                         spellCheck={false}
                                         placeholder="授权码 / 密码"
                                         onChange={(e) => patch({ smtpPass: e.target.value })}
-                                        className="pr-11 font-mono text-xs"
+                                        className="pr-12 font-mono text-xs"
                                     />
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="glass"
+                                        size="icon-sm"
                                         onClick={() => setShowPass((v) => !v)}
-                                        className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                                        tabIndex={-1}
+                                        className="absolute right-0 top-1/2 size-11 -translate-y-1/2"
                                         aria-label={showPass ? '隐藏密码' : '显示密码'}
+                                        aria-pressed={showPass}
                                     >
                                         <PasswordVisibilityIcon
                                             visible={showPass}
                                             reduceMotion={reduce}
                                         />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between rounded-lg border bg-card/40 p-3">
-                            <div className="min-w-0">
-                                <Label className="text-sm">隐式 TLS</Label>
-                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                                    465 开启，587 关闭（STARTTLS）。
-                                </p>
-                            </div>
+                        <SettingRow label="隐式 TLS" hint="465 开启，587 关闭（STARTTLS）。" layout="inline">
                             <ToggleSwitch
                                 value={draft.smtpSecure ?? true}
                                 onChange={(v) => patch({ smtpSecure: v })}
                                 ariaLabel="隐式 TLS"
                             />
-                        </div>
+                        </SettingRow>
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <Field
@@ -466,15 +467,20 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                    <Label>{type === 'email' ? '正文模板' : 'Body 模板'}</Label>
+                    <Label htmlFor={`${controlId}-body`}>{type === 'email' ? '正文模板' : 'Body 模板'}</Label>
                     <Textarea
+                        id={`${controlId}-body`}
                         value={draft.bodyTemplate}
                         rows={type === 'email' ? 6 : 3}
                         spellCheck={false}
                         onChange={(e) => patch({ bodyTemplate: e.target.value })}
                         className="font-mono text-xs leading-relaxed"
                     />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
+                    <details className="text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            模板变量
+                        </summary>
+                        <p className="max-w-prose leading-relaxed">
                         变量：<code className="font-mono">{'{uin}'}</code>{' '}
                         <code className="font-mono">{'{nickname}'}</code>{' '}
                         <code className="font-mono">{'{event}'}</code>（offline/online）{' '}
@@ -484,23 +490,18 @@ export function NotificationChannelDialog(props: NotificationChannelDialogProps)
                         <code className="font-mono">{'{error}'}</code>（进程错误）
                         。进程信息为空表示未知。
                         {type === 'email' ? '正文以 < 开头时按 HTML 发送。' : ''}
-                    </p>
+                        </p>
+                    </details>
                 </div>
 
-                <div className="flex items-center justify-between rounded-lg border bg-card/40 p-3">
-                    <div className="min-w-0">
-                        <Label className="text-sm">启用</Label>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            关闭后停止推送，保留配置。
-                        </p>
-                    </div>
+                <SettingRow label="启用" hint="关闭后停止推送，保留配置。" layout="inline">
                     <ToggleSwitch
                         value={draft.enabled}
                         onChange={(v) => patch({ enabled: v })}
                         ariaLabel="启用渠道"
                     />
-                </div>
-            </div>
+                </SettingRow>
+            </form>
         </Modal>
     );
 }
@@ -526,10 +527,14 @@ function Field({
     hint,
     disabled,
 }: FieldProps) {
+    const id = useId();
     return (
-        <div className="flex flex-col gap-1.5">
-            <Label>{label}</Label>
+        <div className="flex min-w-0 flex-col gap-1.5">
+            <Label htmlFor={id}>{label}</Label>
             <Input
+                id={id}
+                aria-invalid={!!error}
+                aria-describedby={error || hint ? `${id}-help` : undefined}
                 type={type}
                 value={value}
                 disabled={disabled}
@@ -541,9 +546,9 @@ function Field({
                 )}
             />
             {error ? (
-                <p className="text-xs text-destructive">{error}</p>
+                <p id={`${id}-help`} role="alert" className="text-xs text-destructive">{error}</p>
             ) : hint ? (
-                <p className="text-xs text-muted-foreground">{hint}</p>
+                <p id={`${id}-help`} className="text-xs text-muted-foreground">{hint}</p>
             ) : null}
         </div>
     );

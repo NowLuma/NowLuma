@@ -11,22 +11,17 @@ interface DropdownSelectProps<T extends string> {
     onChange: (v: T) => void;
     ariaLabel: string;
     className?: string;
+    disabled?: boolean;
 }
 
-/**
- * Custom (non-native) dropdown with an Apple-HIG flavour: a calm trigger that
- * mirrors {@link Input}'s height/border, a soft floating menu that springs in,
- * and a trailing check on the selected row. Keyboard-driven (arrows / enter /
- * escape) and closes on outside pointer-down. Use when the design wants a menu
- * that matches the surrounding chrome — the plain `Select` stays the zero-dep
- * native fallback for dense forms.
- */
+/** Shared keyboard-accessible select; disabling it also disables its open menu. */
 export function DropdownSelect<T extends string>({
     value,
     options,
     onChange,
     ariaLabel,
     className,
+    disabled,
 }: DropdownSelectProps<T>) {
     return (
         <Dropdown
@@ -35,6 +30,7 @@ export function DropdownSelect<T extends string>({
             onChange={(next) => onChange(next as T)}
             label={ariaLabel}
             className={className}
+            disabled={disabled}
         />
     );
 }

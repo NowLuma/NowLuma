@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="nowluma-mark-title">
+  <title id="nowluma-mark-title">Nowluma</title>
+  <g fill="none" stroke="#71717a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 50V14L46 50V18" />
+  </g>
+  <path d="M52 5.5 53.8 10.2 58.5 12 53.8 13.8 52 18.5 50.2 13.8 45.5 12 50.2 10.2Z" fill="#71717a" />
+</svg>

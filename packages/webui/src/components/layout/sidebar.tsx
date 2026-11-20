@@ -1,89 +1,141 @@
 import {
-    Bug,
+    ArrowDown,
+    ArrowUp,
+    ChevronRight,
+    Cable,
     Check,
     Eye,
     EyeOff,
+    FlaskConical,
     GripVertical,
-    LayoutDashboard,
     Lock,
+    MessageCircle,
+    PanelsTopLeft,
     Pin,
     PinOff,
-    PlugZap,
-    Settings,
+    ScrollText,
+    Settings2,
     Sparkles,
     SlidersHorizontal,
-    Terminal,
+    type LucideIcon,
 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'motion/react';
+import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { cn } from '@/lib/utils';
+import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { useAppState } from '@/contexts/AppStateContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { reconcileLayoutItems, useLayout } from '@/contexts/LayoutContext';
-import { useDesktopSidebar } from '@/hooks/use-media-query';
 import type { AppPath } from '@/router';
 import type { UiLayoutItem } from '@/types';
 
 export interface NavItem {
     to: AppPath;
     label: string;
-    icon: typeof LayoutDashboard;
+    icon: LucideIcon;
     description: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-    { to: '/', label: '总览', icon: LayoutDashboard, description: '主机与服务状态' },
-    { to: '/processes', label: 'QQ 连接', icon: PlugZap, description: '连接 / 断开 / 登录' },
-    { to: '/config', label: '节点配置', icon: Settings, description: 'OneBot 协议端点' },
-    { to: '/logs', label: '日志', icon: Terminal, description: '实时事件流' },
-    { to: '/debug', label: '调试', icon: Bug, description: '测试台与实时活动' },
-    { to: '/settings', label: '系统设置', icon: SlidersHorizontal, description: '主题与账号' },
+    { to: '/', label: '工作台', icon: PanelsTopLeft, description: '会话、连接与结果' },
+    { to: '/processes', label: 'QQ 会话', icon: MessageCircle, description: '选择并接入会话' },
+    { to: '/config', label: '机器人连接', icon: Cable, description: '建立机器人连接' },
+    { to: '/logs', label: '运行记录', icon: ScrollText, description: '查看连接结果' },
+    { to: '/debug', label: '调试工具', icon: FlaskConical, description: '测试动作与排查' },
+    {
+        to: '/settings',
+        label: '偏好设置',
+        icon: SlidersHorizontal,
+        description: '外观、账号与设备',
+    },
 ];
 
-// Anti-self-lock: these nav items can be reordered but never hidden.
-//   '/'        — hosts the 「编辑布局」 entry point; hiding it would strand the
-//                user with no way back to un-hide anything.
-//   '/settings'— account + appearance.
+// These routes keep the layout editor and account settings reachable.
 export const PINNED_NAV: AppPath[] = ['/', '/settings'];
+
+function useNavigationItems() {
+    const { navItems, setNavItems, editing, setEditing } = useLayout();
+    const reconciled = reconcileLayoutItems(
+        navItems,
+        NAV_ITEMS.map((item) => item.to),
+        PINNED_NAV,
+    );
+    const orderedNav = reconciled
+        .filter((item) => item.visible)
+        .map((item) => NAV_ITEMS.find((meta) => meta.to === item.id))
+        .filter((item): item is NavItem => !!item);
+
+    const reorderNav = (ids: string[]) => {
+        const byId = new Map(reconciled.map((item) => [item.id, item]));
+        setNavItems(ids.map((id) => byId.get(id)).filter((item): item is UiLayoutItem => !!item));
+    };
+
+    const toggleNav = (id: string) =>
+        setNavItems(
+            reconciled.map((item) => (item.id === id ? { ...item, visible: !item.visible } : item)),
+        );
+    return { reconciled, orderedNav, reorderNav, toggleNav, editing, setEditing };
+}
 
 function NavReorderRow({
     item,
     meta,
+    first,
+    last,
     onToggle,
+    onMove,
 }: {
     item: UiLayoutItem;
     meta: NavItem;
+    first: boolean;
+    last: boolean;
     onToggle: (id: string) => void;
+    onMove: (direction: -1 | 1) => void;
 }) {
     const controls = useDragControls();
     const Icon = meta.icon;
-    const itemPinned = (PINNED_NAV as string[]).includes(item.id);
+    const pinned = PINNED_NAV.includes(meta.to);
     return (
         <Reorder.Item
             value={item.id}
             dragListener={false}
             dragControls={controls}
-            className={cn(
-                'flex select-none items-center gap-2 rounded-lg bg-sidebar-accent/40 px-2 py-2',
-                !item.visible && 'opacity-50',
-            )}
+            className={cn('workspace-nav-edit-row', !item.visible && 'opacity-50')}
         >
             <button
                 type="button"
-                aria-label="拖动排序"
-                className="inline-flex size-8 shrink-0 touch-none items-center justify-center text-muted-foreground"
-                onPointerDown={(e) => controls.start(e)}
+                aria-label={`拖动排序：${meta.label}`}
+                className="workspace-icon-button touch-none text-muted-foreground"
+                onPointerDown={(event) => controls.start(event)}
             >
-                <GripVertical className="size-3.5" />
+                <GripVertical className="size-4" />
             </button>
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <Icon className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
             <span className="min-w-0 flex-1 truncate text-sm">{meta.label}</span>
-            {itemPinned ? (
+            <button
+                type="button"
+                aria-label={`上移${meta.label}`}
+                className="workspace-icon-button"
+                disabled={first}
+                onClick={() => onMove(-1)}
+            >
+                <ArrowUp className="size-4" />
+            </button>
+            <button
+                type="button"
+                aria-label={`下移${meta.label}`}
+                className="workspace-icon-button"
+                disabled={last}
+                onClick={() => onMove(1)}
+            >
+                <ArrowDown className="size-4" />
+            </button>
+            {pinned ? (
                 <span
                     title="必选项，不可隐藏"
-                    className="inline-flex size-8 items-center justify-center text-muted-foreground/50"
+                    className="grid size-11 shrink-0 place-items-center text-muted-foreground"
                 >
                     <Lock className="size-3.5" />
                 </span>
@@ -91,270 +143,230 @@ function NavReorderRow({
                 <button
                     type="button"
                     onClick={() => onToggle(item.id)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    title={item.visible ? '隐藏' : '显示'}
-                    aria-label={item.visible ? '隐藏' : '显示'}
-                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-foreground cursor-pointer"
+                    aria-label={`${item.visible ? '隐藏' : '显示'}${meta.label}`}
+                    className="workspace-icon-button"
                 >
-                    {item.visible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                    {item.visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                 </button>
             )}
         </Reorder.Item>
     );
 }
 
-interface SidebarProps {
-    collapsed?: boolean;
-    onItemClick?: () => void;
-}
-
-export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
-    const pathname = useRouterState({ select: (s) => s.location.pathname });
-    const { updateInfo } = useAppState();
-    const { navItems, setNavItems, editing, setEditing } = useLayout();
-    const { appearance, setAppearance } = useTheme();
-    const isDesktop = useDesktopSidebar();
-    const pinned = appearance.sidebarPinned;
-
-    // Full reconciled nav (incl. hidden) — pinned forced visible, forward-compat.
-    const reconciled = reconcileLayoutItems(
-        navItems,
-        NAV_ITEMS.map((i) => i.to),
-        PINNED_NAV,
-    );
-    // View mode: configured order, hidden removed.
-    const orderedNav = reconciled
-        .filter((i) => i.visible)
-        .map((i) => NAV_ITEMS.find((n) => n.to === i.id))
-        .filter((n): n is NavItem => !!n);
-
-    const reorderNav = (ids: string[]) => {
-        const byId = new Map(reconciled.map((i) => [i.id, i]));
-        setNavItems(ids.map((id) => byId.get(id)).filter((x): x is NonNullable<typeof x> => !!x));
-    };
-
-    const toggleNav = (id: string) =>
-        setNavItems(reconciled.map((i) => (i.id === id ? { ...i, visible: !i.visible } : i)));
+export function NavigationDock() {
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const { appearance, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
+    const { orderedNav } = useNavigationItems();
+    const activeIndex = orderedNav.findIndex((item) => item.to === pathname);
+    const dockWidth = orderedNav.length * (appearance.sidebarPinned ? 164 : 120);
 
     return (
-        <div
-            data-ui-surface="chrome"
-            className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground"
-        >
-            {/* Brand — logo sits in a fixed 48px column centred in the collapsed
-          rail; the wordmark to its right is clipped (never unmounted) when the
-          rail narrows. */}
-            <div className="flex h-16 shrink-0 items-center px-2">
-                <div className="grid w-12 shrink-0 place-items-center">
-                    <div className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                        <img src="/logo.png" alt={APP_NAME} className="size-full object-cover" />
-                    </div>
-                </div>
-                <div
-                    className={cn(
-                        'min-w-0 flex-1 overflow-hidden pr-2 transition-opacity duration-200',
-                        collapsed ? 'opacity-0' : 'opacity-100',
-                    )}
+        <div className="workspace-dock-anchor">
+            <div className="workspace-dock-scene" style={{ maxWidth: dockWidth }}>
+                <nav
+                    aria-label="主导航"
+                    data-ui-surface="chrome"
+                    data-labels-pinned={appearance.sidebarPinned}
+                    className="ui-glass workspace-dock"
                 >
-                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                        <span className="text-sm font-bold tracking-tight">{APP_NAME}</span>
-                        <span className="text-micro font-medium text-muted-foreground tabular-nums">
-                            v{APP_VERSION}
-                        </span>
-                    </div>
-                    <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                        OneBot v11 控制台
-                    </span>
-                </div>
-            </div>
-
-            {/* Nav */}
-            <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block">
-                {editing ? (
-                    <div className="flex flex-col gap-2 p-2">
-                        <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-medium text-muted-foreground">
-                                编辑导航
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setEditing(false)}
-                                className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/20 cursor-pointer"
-                            >
-                                <Check className="size-3" /> 完成
-                            </button>
-                        </div>
-                        <Reorder.Group
-                            axis="y"
-                            values={reconciled.map((i) => i.id)}
-                            onReorder={reorderNav}
-                            className="flex flex-col gap-1"
+                    <GlassMaterial />
+                    <div
+                        className="workspace-dock-track"
+                        style={{
+                            gridTemplateColumns: `repeat(${orderedNav.length}, minmax(0, 1fr))`,
+                        }}
+                    >
+                        <motion.div
+                            aria-hidden="true"
+                            initial={false}
+                            animate={{
+                                x: `${Math.max(0, activeIndex) * 100}%`,
+                                opacity: activeIndex < 0 ? 0 : 1,
+                            }}
+                            transition={
+                                reduced
+                                    ? { duration: 0 }
+                                    : performance?.low
+                                      ? { duration: 0.18, ease: 'easeOut' }
+                                      : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                            }
+                            style={{ width: `${100 / orderedNav.length}%` }}
+                            className="workspace-dock-marker"
                         >
-                            {reconciled.map((item) => {
-                                const meta = NAV_ITEMS.find((n) => n.to === item.id);
-
-                                if (!meta) {
-                                    return null;
-                                }
-
-                                return (
-                                    <NavReorderRow
-                                        key={item.id}
-                                        item={item}
-                                        meta={meta}
-                                        onToggle={toggleNav}
-                                    />
-                                );
-                            })}
-                        </Reorder.Group>
+                            <span className="ui-nav-highlight workspace-dock-active" />
+                        </motion.div>
+                        {orderedNav.map(({ to, label, icon: Icon, description }) => (
+                            <Link
+                                key={to}
+                                to={to}
+                                title={description}
+                                aria-current={pathname === to ? 'page' : undefined}
+                                className="ui-nav-item workspace-dock-link"
+                                data-press-scale=""
+                            >
+                                <Icon className="workspace-dock-icon size-4" />
+                                <span className="workspace-dock-copy">
+                                    <span className="workspace-dock-label">{label}</span>
+                                    <span className="workspace-dock-description">
+                                        {description}
+                                    </span>
+                                </span>
+                            </Link>
+                        ))}
                     </div>
-                ) : (
-                    <nav data-collapsed={collapsed} className="flex flex-col gap-1 px-2 py-2">
-                        {orderedNav.map(({ to, label, icon: Icon, description }) => {
-                            const isActive = pathname === to;
-                            return (
+                </nav>
+            </div>
+        </div>
+    );
+}
+
+export function WorkspaceManagement({ onItemClick }: { onItemClick?: () => void }) {
+    const { updateInfo } = useAppState();
+    const { appearance, setAppearance } = useTheme();
+    const { reconciled, reorderNav, toggleNav, editing, setEditing } = useNavigationItems();
+    const hiddenNav = reconciled
+        .filter((item) => !item.visible)
+        .map((item) => NAV_ITEMS.find((meta) => meta.to === item.id))
+        .filter((item): item is NavItem => !!item);
+
+    const moveNav = (index: number, direction: -1 | 1) => {
+        const ids = reconciled.map((item) => item.id);
+        const target = index + direction;
+
+        if (target < 0 || target >= ids.length) {
+            return;
+        }
+
+        [ids[index], ids[target]] = [ids[target], ids[index]];
+        reorderNav(ids);
+    };
+
+    return (
+        <div data-ui-surface="chrome" className="workspace-management-panel">
+            <div className="workspace-management-brand">
+                <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                <span>{APP_NAME}</span>
+                <span className="font-mono text-xs text-muted-foreground">v{APP_VERSION}</span>
+            </div>
+            <div className="workspace-management-scroll">
+                <section
+                    aria-labelledby="workspace-nav-settings-title"
+                    className="workspace-management-section"
+                >
+                    <div className="workspace-section-heading">
+                        <h3 id="workspace-nav-settings-title">底栏导航</h3>
+                        <button
+                            type="button"
+                            onClick={() => setEditing(!editing)}
+                            className="workspace-text-button"
+                        >
+                            {editing ? (
+                                <Check className="size-4" />
+                            ) : (
+                                <Settings2 className="size-4" />
+                            )}
+                            {editing ? '完成调整' : '调整导航'}
+                        </button>
+                    </div>
+                    {editing ? (
+                        <>
+                            <p className="workspace-management-note">
+                                拖动或使用箭头排序，眼睛图标调整显示。
+                            </p>
+                            <Reorder.Group
+                                axis="y"
+                                values={reconciled.map((item) => item.id)}
+                                onReorder={reorderNav}
+                                className="space-y-1"
+                            >
+                                {reconciled.map((item, index) => {
+                                    const meta = NAV_ITEMS.find((entry) => entry.to === item.id);
+                                    return meta ? (
+                                        <NavReorderRow
+                                            key={item.id}
+                                            item={item}
+                                            meta={meta}
+                                            first={index === 0}
+                                            last={index === reconciled.length - 1}
+                                            onToggle={toggleNav}
+                                            onMove={(direction) => moveNav(index, direction)}
+                                        />
+                                    ) : null;
+                                })}
+                            </Reorder.Group>
+                        </>
+                    ) : (
+                        <p className="workspace-management-note">
+                            保留常用页面，其余页面仍可从这里打开。
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setAppearance({ sidebarPinned: !appearance.sidebarPinned })}
+                        aria-label="显示导航说明"
+                        aria-pressed={appearance.sidebarPinned}
+                        className="workspace-text-button workspace-management-preference"
+                    >
+                        {appearance.sidebarPinned ? (
+                            <Pin className="size-4" />
+                        ) : (
+                            <PinOff className="size-4" />
+                        )}
+                        显示导航说明
+                    </button>
+                </section>
+                {hiddenNav.length > 0 && (
+                    <section
+                        aria-labelledby="workspace-hidden-pages-title"
+                        className="workspace-management-section"
+                    >
+                        <h3 id="workspace-hidden-pages-title">隐藏的页面</h3>
+                        <nav aria-label="隐藏的页面">
+                            {hiddenNav.map(({ to, label, icon: Icon }) => (
                                 <Link
                                     key={to}
                                     to={to}
-                                    title={collapsed ? label : undefined}
                                     onClick={onItemClick}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    className={cn(
-                                        'ui-nav-item group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer outline-none',
-                                        isActive
-                                            ? 'text-sidebar-accent-foreground'
-                                            : 'text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground',
-                                    )}
+                                    className="workspace-management-link"
                                 >
-                                    {isActive && (
-                                        <>
-                                            {/* Highlight geometry is the ONLY thing that switches on
-                          collapse: a full-row pill when open, a centred squircle
-                          on the rail. Both are absolutely positioned, so they
-                          morph (layout) without reflowing the row. */}
-                                            <motion.span
-                                                layoutId="sidebar-active-pill"
-                                                className={cn(
-                                                    'ui-nav-highlight absolute inset-y-0 rounded-lg bg-sidebar-accent',
-                                                    collapsed ? 'left-0.5 w-11' : 'inset-x-0',
-                                                )}
-                                                transition={{
-                                                    type: 'spring',
-                                                    stiffness: 380,
-                                                    damping: 32,
-                                                }}
-                                            />
-                                            {!collapsed && (
-                                                <motion.span
-                                                    layoutId="sidebar-active-bar"
-                                                    className="ui-nav-highlight absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
-                                                    transition={{
-                                                        type: 'spring',
-                                                        stiffness: 380,
-                                                        damping: 32,
-                                                    }}
-                                                />
-                                            )}
-                                        </>
-                                    )}
-                                    <span className="relative z-10 grid w-12 shrink-0 place-items-center">
-                                        <Icon
-                                            className={cn('size-4', isActive && 'text-primary')}
-                                        />
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            'relative z-10 flex min-w-0 flex-1 flex-col items-start overflow-hidden pr-3 transition-opacity duration-200',
-                                            collapsed ? 'opacity-0' : 'opacity-100',
-                                        )}
-                                    >
-                                        <span className="w-full truncate whitespace-nowrap leading-tight">
-                                            {label}
-                                        </span>
-                                        <span className="w-full truncate whitespace-nowrap text-xs font-normal text-muted-foreground">
-                                            {description}
-                                        </span>
-                                    </span>
+                                    <Icon className="size-4" />
+                                    <span>{label}</span>
+                                    <ChevronRight className="ml-auto size-3.5" />
                                 </Link>
-                            );
-                        })}
-                    </nav>
+                            ))}
+                        </nav>
+                    </section>
                 )}
-            </ScrollArea>
-
-            {updateInfo?.hasUpdate && (
-                <div className="shrink-0 px-2 pb-1">
+                <section
+                    aria-labelledby="workspace-layout-title"
+                    className="workspace-management-section"
+                >
+                    <h3 id="workspace-layout-title">工作台布局</h3>
+                    <Link
+                        to="/"
+                        onClick={() => {
+                            setEditing(true);
+                            onItemClick?.();
+                        }}
+                        className="workspace-management-link"
+                    >
+                        <PanelsTopLeft className="size-4" />
+                        <span>编辑卡片布局</span>
+                        <ChevronRight className="ml-auto size-3.5" />
+                    </Link>
+                </section>
+                {updateInfo?.hasUpdate && (
                     <Link
                         to="/settings"
                         search={{ tab: 'about' }}
                         onClick={onItemClick}
-                        title={
-                            collapsed
-                                ? updateInfo.latest
-                                    ? `有新版本 v${updateInfo.latest} · 点击查看`
-                                    : '有可用更新'
-                                : undefined
-                        }
                         aria-label="有可用更新"
-                        className="group relative flex items-center py-2"
+                        className="workspace-update-link"
                     >
-                        {/* Background as an absolute layer so the collapsed rail shows a
-                centred squircle, not a full-width bar cut off with a hard edge. */}
-                        <span
-                            className={cn(
-                                'absolute inset-y-0 rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/[0.15]',
-                                collapsed ? 'left-0.5 w-11' : 'inset-x-0',
-                            )}
-                        />
-                        <span className="relative z-10 grid w-12 shrink-0 place-items-center">
-                            <Sparkles className="size-4 text-primary" />
-                        </span>
-                        <span
-                            className={cn(
-                                'relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden pr-3 transition-opacity duration-200',
-                                collapsed ? 'opacity-0' : 'opacity-100',
-                            )}
-                        >
-                            <span className="truncate whitespace-nowrap text-xs font-medium leading-tight text-foreground">
-                                有新版本可用
-                            </span>
-                            <span className="truncate whitespace-nowrap text-xs text-muted-foreground">
-                                v{updateInfo.latest} · 点击查看
-                            </span>
-                        </span>
+                        <Sparkles className="size-4" />
+                        <span>有新版本{updateInfo.latest && ` · v${updateInfo.latest}`}</span>
                     </Link>
-                </div>
-            )}
-
-            {/* Footer: © + the pin toggle (desktop only). Pinning keeps the rail
-          expanded; unpinning returns it to the hover-to-peek rail. Mirrors the
-          「钉住侧栏展开」 appearance setting. */}
-            <div
-                className={cn(
-                    'flex shrink-0 items-center gap-2 py-3 pl-4 pr-2.5 transition-opacity duration-200',
-                    collapsed ? 'opacity-0' : 'opacity-100',
-                )}
-            >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap text-micro text-muted-foreground">
-                    {APP_NAME} · QQ 连接控制台
-                </span>
-                {isDesktop && (
-                    <button
-                        type="button"
-                        onClick={() => setAppearance({ sidebarPinned: !pinned })}
-                        title={pinned ? '取消钉住（恢复悬停展开）' : '钉住侧栏（保持展开）'}
-                        aria-label={pinned ? '取消钉住侧栏' : '钉住侧栏'}
-                        aria-pressed={pinned}
-                        tabIndex={collapsed ? -1 : 0}
-                        className={cn(
-                            'inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
-                            pinned
-                                ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
-                        )}
-                    >
-                        {pinned ? <Pin className="size-3.5" /> : <PinOff className="size-3.5" />}
-                    </button>
                 )}
             </div>
         </div>

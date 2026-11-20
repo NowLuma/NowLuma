@@ -17,7 +17,7 @@ async function check() {
   const pid = fs.readFileSync('/tmp/nowluma-runtime/qq.pid', 'utf8').trim();
   if (!/^\d+$/.test(pid) || Number(pid) <= 0) throw new Error('invalid QQ PID');
   process.kill(Number(pid), 0);
-  await Promise.all([checkPort(5900), checkPort(6080)]);
+  await checkPort(5900);
   const response = await fetch('http://127.0.0.1:5099/robots.txt', {
     signal: AbortSignal.timeout(3000),
   });

@@ -842,6 +842,37 @@ describe('OneBotConfig login history sync', () => {
         );
     });
 
+    it('rejects malformed restore status and notification settings', () => {
+        const base = {
+            networks: { httpServers: [], httpClients: [], wsServers: [], wsClients: [] },
+        };
+
+        expect(() =>
+            prepareOneBotConfigForRestore(
+                { ...base, statusCommand: { cooldownSeconds: -1 } },
+                'per-uin',
+            ),
+        ).toThrow(/\$\.statusCommand\.cooldownSeconds/);
+        expect(() =>
+            prepareOneBotConfigForRestore(
+                { ...base, statusCommand: { trigger: '#a\nb' } },
+                'per-uin',
+            ),
+        ).toThrow(/\$\.statusCommand\.trigger/);
+        expect(() =>
+            prepareOneBotConfigForRestore(
+                { ...base, notifications: { channelIds: ['bad id'] } },
+                'per-uin',
+            ),
+        ).toThrow(/\$\.notifications\.channelIds\[0\]/);
+        expect(() =>
+            prepareOneBotConfigForRestore(
+                { ...base, notifications: { channelIds: ['ok'], extra: true } },
+                'per-uin',
+            ),
+        ).toThrow(/\$\.notifications\.extra is not supported/);
+    });
+
     it('rejects malformed on-disk settings instead of inheriting an enabled value', () => {
         const dir = path.join(tempDir, 'config');
         fs.mkdirSync(dir, { recursive: true });

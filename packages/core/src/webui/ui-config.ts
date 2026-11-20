@@ -1,7 +1,39 @@
 import { boolOr, clampInt, clampNum, isObject } from '@nowluma/common/coerce';
 import { createLogger } from '@nowluma/common/logger';
+import {
+    DEFAULT_APPEARANCE,
+    DEFAULT_BACKGROUND,
+    type AccentMode,
+    type AccentScope,
+    type BackgroundType,
+    type DarkIntensity,
+    type Density,
+    type Palette,
+    type SidebarStyle,
+    type ThemeMode,
+    type TimeFormat,
+    type UiAppearance,
+    type UiBackground,
+} from '@nowluma/common/webui-appearance';
 import fs from 'fs';
 import path from 'path';
+
+// The appearance contract (types + defaults) is shared with the browser via
+// `@nowluma/common/webui-appearance`; this module owns its validation and
+// persistence. Re-export the type names so existing importers keep working.
+export type {
+    AccentMode,
+    AccentScope,
+    BackgroundType,
+    DarkIntensity,
+    Density,
+    Palette,
+    SidebarStyle,
+    ThemeMode,
+    TimeFormat,
+    UiAppearance,
+    UiBackground,
+} from '@nowluma/common/webui-appearance';
 
 // Server-side store for the WebUI customization config (`config/ui.json`).
 //
@@ -35,101 +67,6 @@ export const MAX_BACKGROUND_BYTES = 5 * 1024 * 1024;
 export const UI_CONFIG_VERSION = 1 as const;
 
 // ─── Schema ──────────────────────────────────────────────────────────────
-
-export type ThemeMode = 'light' | 'dark' | 'system';
-export type AccentMode = 'preset' | 'custom';
-export type AccentScope = 'sidebar' | 'global';
-export type DarkIntensity = 'soft' | 'black';
-export type SidebarStyle = 'follow' | 'panel' | 'accent';
-export type BackgroundType = 'none' | 'solid' | 'gradient' | 'image';
-export type Density = 'cozy' | 'compact';
-export type TimeFormat = '12h' | '24h';
-/** Full color scheme. 'default' keeps the lavender theme (driven by `mode`); the
- *  Catppuccin flavors are complete palettes that also fix light/dark. */
-export type Palette =
-    | 'default'
-    | 'catppuccin-latte'
-    | 'catppuccin-frappe'
-    | 'catppuccin-macchiato'
-    | 'catppuccin-mocha'
-    | 'rose-pine'
-    | 'rose-pine-moon'
-    | 'rose-pine-dawn'
-    | 'nord'
-    | 'everforest-dark'
-    | 'everforest-light';
-
-export interface UiBackground {
-    type: BackgroundType;
-    /** Solid-fill colour (hex). Used when type === 'solid'. */
-    color: string;
-    /** Gradient preset id (frontend owns the catalogue). Used when type === 'gradient'. */
-    gradient: string;
-    /** Image readability overlay: 0 (image fully visible) … 1 (fully masked). */
-    imageOpacity: number;
-    /** Image blur in px (0…40). */
-    imageBlur: number;
-    // ── server-managed (upload/delete endpoints only) ──
-    hasImage: boolean;
-    imageMime: string;
-    /** Bumped on each successful upload so the browser can cache-bust. */
-    imageVersion: number;
-}
-
-export interface UiAppearance {
-    mode: ThemeMode;
-    accentMode: AccentMode;
-    /** Preset accent id (frontend catalogue: sky/blue/violet/…). */
-    accentPreset: string;
-    /** Custom accent colour (hex). Used when accentMode === 'custom'. */
-    accentCustom: string;
-    accentScope: AccentScope;
-    darkIntensity: DarkIntensity;
-    /** Full color scheme; 'default' = the built-in lavender theme. */
-    palette: Palette;
-    sidebarStyle: SidebarStyle;
-    background: UiBackground;
-    /** Sans font preset id (frontend catalogue); 'custom' uses `fontSansCustom`. */
-    fontSans: string;
-    /** Free-form sans font-family stack, used when `fontSans === 'custom'`. */
-    fontSansCustom: string;
-    /** Mono font preset id (frontend catalogue); 'custom' uses `fontMonoCustom`. */
-    fontMono: string;
-    /** Free-form mono font-family stack, used when `fontMono === 'custom'`. */
-    fontMonoCustom: string;
-    /** Global UI scale, 0.9…1.2. */
-    uiScale: number;
-    /** Corner radius in rem, 0…2. */
-    radius: number;
-    density: Density;
-    /** Soften animations (transforms off, shorter durations). */
-    reduceMotion: boolean;
-    /** Hard-disable all UI animations (stronger than reduceMotion). */
-    disableMotion: boolean;
-    /** Use Nowluma's adaptive cursor. */
-    customPointerSystem: boolean;
-    /** Replace the browser context menu with Nowluma's context menu. */
-    customContextMenu: boolean;
-    highContrast: boolean;
-    sidebarPinned: boolean;
-    timeFormat: TimeFormat;
-    /** Dashboard poll interval (ms); 0 = paused. */
-    pollInterval: number;
-    /**
-     * Operator custom CSS, applied AFTER auth only (never on the login page —
-     * `publicAppearance` strips it). Capped at 50 KB. The client injects it as
-     * the last <style> and skips it under `?safe-mode=1` so a broken rule can't
-     * lock the operator out.
-     */
-    customCss: string;
-    /**
-     * Theme-token overrides from the variable panel. Keys are restricted to a
-     * fixed whitelist of `--token` names and values to colours / lengths, so
-     * (unlike `customCss`) this is safe to serve to the unauthenticated login
-     * page — `normalizeAppearance` drops unknown keys and invalid values.
-     */
-    cssVars: Record<string, string>;
-}
 
 export interface UiLayoutItem {
     id: string;
@@ -203,48 +140,9 @@ export interface UiConfig {
 }
 
 // ─── Defaults ────────────────────────────────────────────────────────────
-// Keep these defaults aligned with ThemeContext. Saved appearance choices
-// are normalized independently and remain the operator's preference.
-
-const DEFAULT_BACKGROUND: UiBackground = {
-    type: 'none',
-    color: '#b99ae6',
-    gradient: 'none',
-    imageOpacity: 0.15,
-    imageBlur: 0,
-    hasImage: false,
-    imageMime: '',
-    imageVersion: 0,
-};
-
-const DEFAULT_APPEARANCE: UiAppearance = {
-    mode: 'system',
-    accentMode: 'preset',
-    accentPreset: 'lavender',
-    accentCustom: '#8561bd',
-    accentScope: 'global',
-    darkIntensity: 'soft',
-    palette: 'default',
-    sidebarStyle: 'follow',
-    background: DEFAULT_BACKGROUND,
-    fontSans: 'default',
-    fontSansCustom: '',
-    fontMono: 'default',
-    fontMonoCustom: '',
-    uiScale: 1,
-    radius: 0.75,
-    density: 'cozy',
-    reduceMotion: false,
-    disableMotion: false,
-    customPointerSystem: false,
-    customContextMenu: true,
-    highContrast: false,
-    sidebarPinned: false,
-    timeFormat: '24h',
-    pollInterval: 3000,
-    customCss: '',
-    cssVars: {},
-};
+// Shared with the browser (`@nowluma/common/webui-appearance`). Saved
+// appearance choices are normalized independently and remain the operator's
+// preference.
 
 const DEFAULT_OVERVIEW_BLOCKS: UiLayoutItem[] = [
     { id: 'stats', visible: true },
@@ -254,19 +152,17 @@ const DEFAULT_OVERVIEW_BLOCKS: UiLayoutItem[] = [
     { id: 'sessions', visible: true },
 ];
 
-// Single-column mobile order = the desktop grid catalogue's widgets, flattened
-// (stat tiles, then the cards). The client reconciles against its real
-// catalogue, so this just seeds first run; unknown ids are dropped on load.
+// First-run mobile order follows the workspace catalogue; saved arrays are preserved.
 const DEFAULT_OVERVIEW_MOBILE: UiLayoutItem[] = [
     { id: 'stat:status', visible: true },
+    { id: 'connections', visible: true },
+    { id: 'alerts', visible: true },
+    { id: 'sessions', visible: true },
+    { id: 'host', visible: true },
     { id: 'stat:accounts', visible: true },
     { id: 'stat:processes', visible: true },
     { id: 'stat:host', visible: true },
     { id: 'stat:uptime', visible: true },
-    { id: 'connections', visible: true },
-    { id: 'alerts', visible: true },
-    { id: 'host', visible: true },
-    { id: 'sessions', visible: true },
 ];
 
 const DEFAULT_NAV_ITEMS: UiLayoutItem[] = [
@@ -674,6 +570,7 @@ export function normalizeAppearance(
         density: oneOf<Density>(v.density, ['cozy', 'compact'], DEFAULT_APPEARANCE.density),
         reduceMotion: boolOr(v.reduceMotion, DEFAULT_APPEARANCE.reduceMotion),
         disableMotion: boolOr(v.disableMotion, DEFAULT_APPEARANCE.disableMotion),
+        performanceMode: oneOf<'high' | 'low'>(v.performanceMode, ['high', 'low'], 'high'),
         customPointerSystem: boolOr(v.customPointerSystem, DEFAULT_APPEARANCE.customPointerSystem),
         customContextMenu: boolOr(v.customContextMenu, DEFAULT_APPEARANCE.customContextMenu),
         highContrast: boolOr(v.highContrast, DEFAULT_APPEARANCE.highContrast),

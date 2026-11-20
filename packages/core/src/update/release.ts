@@ -1,11 +1,9 @@
+import { assetName } from '@nowluma/common/release-assets';
 import { parseVersion } from '@nowluma/common/semver';
 import type { UpdateSourceConfig } from '@nowluma/common/update-source';
 import { RELEASE_ROOT, sourceUrls } from './sources';
 
-export function assetName(version: string, target: string): string {
-    const platform = target.replace('win32', 'win');
-    return `Nowluma-v${version}-${platform}-lite.${target.startsWith('win32') ? 'zip' : 'tar.gz'}`;
-}
+export { assetName } from '@nowluma/common/release-assets';
 
 async function readText(response: Response, limit: number): Promise<string> {
     if (!response.body) {

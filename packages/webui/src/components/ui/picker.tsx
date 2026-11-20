@@ -6,10 +6,11 @@
 // can still commit it as a raw value. Loading / error / empty states degrade to
 // the raw-value input so the picker never traps you.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { RefreshCw, Search } from 'lucide-react';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { cn } from '@/lib/utils';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 export interface PickerOption {
     value: string;
@@ -59,7 +60,7 @@ export function Picker({
     className,
     disabled,
 }: PickerProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [scrollTop, setScrollTop] = useState(0);
@@ -123,6 +124,12 @@ export function Picker({
         };
     }, [open]);
 
+    useEffect(() => {
+        if (disabled) {
+            setOpen(false);
+        }
+    }, [disabled]);
+
     const totalRows = filtered.length + (rawRow ? 1 : 0);
     // Keep the keyboard cursor in range when the list shrinks (refresh / typing)
     // without a keystroke that would have reset it.
@@ -134,6 +141,10 @@ export function Picker({
     const end = Math.min(totalRows, Math.ceil((scrollTop + viewH) / ROW_H) + OVERSCAN);
 
     const commit = (v: string) => {
+        if (disabled) {
+            return;
+        }
+
         onChange(v);
         setOpen(false);
         setQuery('');
@@ -152,6 +163,25 @@ export function Picker({
     };
 
     const onKeyDown = (e: React.KeyboardEvent) => {
+        if (disabled) {
+            return;
+        }
+
+        if (!open) {
+            if (
+                e.key === 'Enter' ||
+                e.key === ' ' ||
+                e.key === 'ArrowDown' ||
+                e.key === 'ArrowUp'
+            ) {
+                e.preventDefault();
+                suppressTriggerClick.current = false;
+                setOpen(true);
+            }
+
+            return;
+        }
+
         if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
@@ -205,7 +235,14 @@ export function Picker({
                 aria-label={ariaLabel}
                 aria-haspopup="listbox"
                 aria-expanded={open}
-                onClick={() => {
+                onPointerDown={() => {
+                    suppressTriggerClick.current = false;
+                }}
+                onClick={(event) => {
+                    if (event.detail === 0) {
+                        suppressTriggerClick.current = false;
+                    }
+
                     if (suppressTriggerClick.current) {
                         suppressTriggerClick.current = false;
                         return;
@@ -216,7 +253,7 @@ export function Picker({
                     }
                 }}
                 className={cn(
-                    'flex h-9 w-full items-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm outline-none transition-colors',
+                    'flex h-11 w-full items-center gap-2 rounded-[var(--radius)] border border-border bg-transparent px-3 text-sm outline-none transition-colors',
                     'focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:border-ring disabled:opacity-50',
                     !selected && !value && 'text-muted-foreground',
                 )}
@@ -270,13 +307,16 @@ export function Picker({
                             reduced ? NONE : { ...OPEN, opacity: { duration: 0.12, ease: EASE } }
                         }
                         style={{ transformOrigin: 'top left' }}
-                        className="absolute z-[200] mt-1.5 w-full overflow-hidden rounded-[11px] border border-border bg-popover shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_36px_-18px_rgb(0_0_0/0.5)]"
+                        inert={disabled}
+                        className="ui-glass ui-glass-menu absolute z-[200] mt-1.5 w-full overflow-hidden rounded-[22px]"
                     >
+                        <GlassMaterial />
                         <div className="flex items-center gap-2 border-b border-border/60 px-2.5 py-2">
                             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             <input
                                 ref={searchRef}
                                 value={query}
+                                aria-label={`${ariaLabel}：搜索`}
                                 onChange={(e) => {
                                     setQuery(e.target.value);
                                     setActive(0);
@@ -287,14 +327,15 @@ export function Picker({
                                     }
                                 }}
                                 placeholder="搜索名称 / 号码…"
-                                className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-sm"
+                                className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-sm"
                             />
                             {onRefresh && (
                                 <button
                                     type="button"
                                     title="刷新"
                                     onClick={onRefresh}
-                                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                                    disabled={disabled || loading}
+                                    className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-50"
                                 >
                                     <RefreshCw
                                         className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
@@ -365,6 +406,10 @@ export function Picker({
                                                     aria-selected={idx === active}
                                                     onMouseEnter={() => setActive(idx)}
                                                     onPointerDown={(e) => {
+                                                        if (disabled) {
+                                                            return;
+                                                        }
+
                                                         if (e.pointerType === 'mouse') {
                                                             suppressTriggerClick.current = true;
                                                             choose(idx);
@@ -393,6 +438,7 @@ export function Picker({
                                                         dragRef.current = null;
 
                                                         if (
+                                                            disabled ||
                                                             !drag ||
                                                             drag.id !== e.pointerId ||
                                                             drag.dragged

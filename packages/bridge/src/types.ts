@@ -18,6 +18,9 @@ export interface HookProcessInfo extends HookProcessBaseInfo {
     status: HookProcessStatus;
     error: string;
     method: string;
+    /** The operator unloaded this PID; watcher-driven reconnect is suppressed
+     *  until an explicit load. Distinguishes a deliberate stop from not-yet-loaded. */
+    manualStopped: boolean;
     /** Locally detected identity; null means unknown, not necessarily signed out. */
     account: HookProcessAccount | null;
 }

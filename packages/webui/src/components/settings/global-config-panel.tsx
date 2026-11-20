@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, KeyRound, Music, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { AlertTriangle, KeyRound, Music, Plus, RefreshCw, Trash2, Video } from 'lucide-react';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Button } from '@/components/ui/button';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Input } from '@/components/ui/input';
 import { DropdownSelect } from '@/components/ui/dropdown-select';
 import { Label } from '@/components/ui/label';
@@ -23,11 +24,12 @@ function isHttpUrl(value: string): boolean {
 }
 
 export function GlobalConfigPanel() {
+    const id = useId();
     const api = useApi();
     const { runAction } = useActionFeedback();
     const [config, setConfig] = useState<GlobalSettings | null>(null);
     const [loading, setLoading] = useState(true);
-    const { msg, flash } = useFlashMessage();
+    const { msg, flash, setMsg } = useFlashMessage();
     const saveTimer = useRef<number | null>(null);
     const saveGen = useRef(0);
 
@@ -38,10 +40,11 @@ export function GlobalConfigPanel() {
             setConfig(await api.globalConfig.get());
         } catch (error) {
             console.error('load global config failed', error);
+            setMsg({ kind: 'err', text: error instanceof Error ? error.message : '加载全局配置失败' });
         } finally {
             setLoading(false);
         }
-    }, [api]);
+    }, [api, setMsg]);
 
     useEffect(() => {
         void load();
@@ -102,7 +105,7 @@ export function GlobalConfigPanel() {
                     }
 
                     console.error('save global config failed', error);
-                    flash('err', '保存失败，请检查服务器日志');
+                    setMsg({ kind: 'err', text: error instanceof Error ? error.message : '保存全局配置失败' });
                 });
         }, 500);
     };
@@ -118,10 +121,10 @@ export function GlobalConfigPanel() {
                 className={!loading ? 'skeleton-swap-fluid min-h-[156px]' : ''}
             >
                 {!loading ? (
-                    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
-                        <AlertTriangle className="size-8 opacity-40" strokeWidth={1.5} />
-                        <p className="text-sm">加载全局配置失败</p>
-                        <Button variant="outline" size="sm" onClick={() => void load()}>
+                    <div role="alert" className="flex flex-wrap items-center gap-3 border-b py-5 text-muted-foreground">
+                        <AlertTriangle className="size-4 shrink-0" />
+                        <p className="text-sm text-destructive">{msg?.text ?? '加载全局配置失败'}</p>
+                        <Button variant="glass" size="sm" onClick={() => void load()}>
                             <RefreshCw className="size-3.5" /> 重试
                         </Button>
                     </div>
@@ -143,22 +146,17 @@ export function GlobalConfigPanel() {
             label="全局配置"
             className="skeleton-swap-fluid min-h-[156px]"
         >
-            <div className="flex flex-col gap-4">
-                {/* rkey fallback servers */}
-                <div className="flex flex-col gap-4 rounded-xl border bg-card/40 p-4">
-                    <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                        <KeyRound className="mt-0.5 size-3.5 shrink-0" />
-                        <p>
-                            内核无法获取 <code className="font-mono">rkey</code>{' '}
-                            时，依次请求下列服务器。留空关闭，建议使用自建服务。
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 border-t pt-3">
-                        <div className="flex items-center justify-between">
+            <div className="flex min-w-0 flex-col gap-7">
+                <Group
+                    title="rkey 回退"
+                    icon={KeyRound}
+                    description="内核无法取得 rkey 时，按顺序请求回退服务。留空关闭。"
+                >
+                    <div className="flex min-w-0 flex-col gap-3 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                             <Label>rkey 回退服务器</Label>
                             <Button
-                                variant="outline"
+                                variant="glass"
                                 size="sm"
                                 onClick={() => setServers([...servers, ''])}
                             >
@@ -167,17 +165,19 @@ export function GlobalConfigPanel() {
                         </div>
 
                         {servers.length === 0 ? (
-                            <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+                            <p className="py-3 text-xs text-muted-foreground">
                                 回退服务器未启用
                             </p>
                         ) : (
-                            <div className="flex flex-col gap-2">
+                            <ol className="flex min-w-0 flex-col divide-y divide-border/60">
                                 {servers.map((url, i) => {
                                     const invalid = url.trim().length > 0 && !isHttpUrl(url.trim());
                                     return (
-                                        <div key={i} className="flex items-center gap-2">
+                                        <li key={i} className="flex min-w-0 items-center gap-2 py-2">
+                                            <span aria-hidden="true" className="w-6 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}.</span>
                                             <Input
                                                 type="url"
+                                                aria-label={`rkey 回退服务器 ${i + 1}`}
                                                 inputMode="url"
                                                 spellCheck={false}
                                                 placeholder="https://your-rkey-server.example/rkeys"
@@ -199,7 +199,7 @@ export function GlobalConfigPanel() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-sm"
-                                                aria-label="删除"
+                                                aria-label={`移除 rkey 回退服务器 ${i + 1}`}
                                                 className="shrink-0 text-muted-foreground hover:text-destructive"
                                                 onClick={() =>
                                                     setServers(
@@ -209,53 +209,58 @@ export function GlobalConfigPanel() {
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
-                                        </div>
+                                        </li>
                                     );
                                 })}
-                                <p className="text-xs leading-relaxed text-muted-foreground">
-                                    端点需返回{' '}
-                                    <code className="font-mono">
-                                        {'{ group_rkey, private_rkey, expired_time }'}
-                                    </code>
-                                    ，仅支持 HTTP(S)。
-                                </p>
-                            </div>
+                            </ol>
                         )}
+                        <details className="text-xs text-muted-foreground">
+                            <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                服务接口要求
+                            </summary>
+                            <p className="max-w-prose leading-relaxed">
+                                建议使用自建服务，仅支持 HTTP(S)。端点需返回{' '}
+                                <code className="break-all font-mono">
+                                    {'{ group_rkey, private_rkey, expired_time }'}
+                                </code>。
+                            </p>
+                        </details>
                     </div>
-                </div>
+                </Group>
 
-                <div className="flex flex-col gap-3 rounded-xl border bg-card/40 p-4">
-                    <Label>视频上传连接数</Label>
-                    <DropdownSelect
-                        ariaLabel="视频上传连接数"
-                        value={String(config.videoUploadConcurrency ?? 1)}
-                        options={[
-                            { value: '1', label: '1 路（默认）' },
-                            { value: '2', label: '2 路' },
-                            { value: '3', label: '3 路' },
-                            { value: '4', label: '4 路' },
-                        ]}
-                        onChange={(value) =>
-                            commit({ ...config, videoUploadConcurrency: Number(value) })
-                        }
-                    />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        对所有账号的下一次视频上传生效。小视频仍使用单连接；多路上传的提速效果取决于网络和服务器，遇到拥塞时会降低并发。
-                    </p>
-                </div>
-
-                {/* music sign URL */}
-                <div className="flex flex-col gap-4 rounded-xl border bg-card/40 p-4">
-                    <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                        <Music className="mt-0.5 size-3.5 shrink-0" />
-                        <p>音乐分享卡片的签名服务，对所有账号统一生效。留空则使用内置默认服务。</p>
-                    </div>
-                    <div className="flex flex-col gap-1.5 border-t pt-3">
-                        <Label>音乐签名服务 URL</Label>
+                <Group title="视频上传" icon={Video}>
+                    <SettingRow label="上传连接数" hint="对所有账号的下一次视频上传生效。">
+                        <DropdownSelect
+                            ariaLabel="视频上传连接数"
+                            value={String(config.videoUploadConcurrency ?? 1)}
+                            options={[
+                                { value: '1', label: '1 路（默认）' },
+                                { value: '2', label: '2 路' },
+                                { value: '3', label: '3 路' },
+                                { value: '4', label: '4 路' },
+                            ]}
+                            onChange={(value) =>
+                                commit({ ...config, videoUploadConcurrency: Number(value) })
+                            }
+                        />
+                    </SettingRow>
+                    <details className="py-3 text-xs text-muted-foreground">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            并发策略
+                        </summary>
+                        <p className="max-w-prose leading-relaxed">
+                            小视频使用单连接。多路上传取决于网络和服务器，拥塞时会降低并发。
+                        </p>
+                    </details>
+                </Group>
+                <Group title="音乐分享" icon={Music} description="签名服务对所有账号生效。">
+                    <SettingRow label="签名服务地址" hint="留空使用内置服务。">
                         <Input
                             type="url"
                             inputMode="url"
                             spellCheck={false}
+                            id={`${id}-music`}
+                            aria-label="签名服务地址"
                             placeholder={MUSIC_SIGN_DEFAULT}
                             value={config.musicSignUrl}
                             aria-invalid={
@@ -270,11 +275,12 @@ export function GlobalConfigPanel() {
                             )}
                             onChange={(e) => commit({ ...config, musicSignUrl: e.target.value })}
                         />
-                    </div>
-                </div>
+                    </SettingRow>
+                </Group>
 
                 {msg && (
                     <p
+                        role={msg.kind === 'ok' ? 'status' : 'alert'}
                         className={cn(
                             'text-xs',
                             msg.kind === 'ok' ? 'text-success' : 'text-destructive',

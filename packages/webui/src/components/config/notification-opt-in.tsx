@@ -3,18 +3,16 @@
 // OneBotConfig.notifications.channelIds. Lives inside the account's 通用设置 tab,
 // so toggling marks the config dirty and rides the parent's debounced autosave.
 //
-// Scales to many channels (40+): collapsed by default to a one-line summary of
-// selected channels as removable chips; expanded into a searchable, bulk-
-// actionable, height-bounded scroll list so it never blows up the page.
+// Collapsed by default to a summary; expansion adds searchable channel rows
+// in the main document scroll flow.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { GlassSurface } from '@/components/ui/glass-material';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -30,6 +28,7 @@ const CHIP_CAP = 8;
 
 export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInProps) {
     const api = useApi();
+    const reduced = useReducedMotionConfig();
     const [channels, setChannels] = useState<NotificationChannel[] | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [expanded, setExpanded] = useState(false);
@@ -106,7 +105,7 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
     const selectedCount = selectedIds.length;
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border bg-card/40 p-4">
+        <section className="cp-settings-group">
             {/* header — toggles the editor open/closed */}
             <button
                 type="button"
@@ -114,12 +113,12 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                 onClick={() => setExpanded((v) => !v)}
                 className="flex w-full items-center justify-between gap-3 text-left"
             >
-                <div className="flex min-w-0 items-center gap-2">
-                    <Label className="cursor-pointer text-foreground">上下线通知渠道</Label>
+                <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+                    <h3 className="text-[15px] font-semibold">上下线通知渠道</h3>
                     {channels !== null && (
-                        <Badge variant={selectedCount > 0 ? 'default' : 'outline'}>
+                        <span className="text-xs text-muted-foreground tabular-nums">
                             已选 {selectedCount} / 共 {total}
-                        </Badge>
+                        </span>
                     )}
                 </div>
                 <ChevronDown
@@ -145,7 +144,7 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                             className="flex items-center justify-between gap-3 text-xs text-destructive"
                         >
                             <span>{loadError}</span>
-                            <Button variant="outline" size="sm" onClick={() => void load()}>
+                            <Button variant="glass" size="sm" onClick={() => void load()}>
                                 重试
                             </Button>
                         </div>
@@ -192,14 +191,14 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                                     </div>
                                 ))}
 
-                            {/* expanded: search + bulk + bounded scroll list */}
+                            {/* expanded: search + bulk actions + document rows */}
                             <AnimatePresence initial={false}>
                                 {expanded && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.22 }}
+                                        transition={{ duration: reduced ? 0 : 0.22 }}
                                         className="overflow-hidden"
                                     >
                                         <div className="flex flex-col gap-3 pt-1">
@@ -209,30 +208,23 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                                                 通知」中全局定义。
                                             </p>
 
-                                            <div className="flex items-center gap-2">
-                                                <div className="relative flex-1">
-                                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                <GlassSurface className="ui-glass-search cp-search min-w-0 flex-1 basis-48">
+                                                    <Search className="size-3.5 shrink-0 text-muted-foreground" />
                                                     <Input
+                                                        aria-label="搜索通知渠道"
                                                         value={query}
                                                         onChange={(e) => setQuery(e.target.value)}
                                                         placeholder="搜索渠道…"
-                                                        className="h-8 pl-8 text-xs"
+                                                        className="min-w-0 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
                                                     />
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={selectAll}
-                                                    className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                                >
+                                                </GlassSurface>
+                                                <Button variant="glass" size="sm" onClick={selectAll}>
                                                     全选
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={clearAll}
-                                                    className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                                >
-                                                    清空
-                                                </button>
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={clearAll}>
+                                                    清空选择
+                                                </Button>
                                             </div>
 
                                             {filtered.length === 0 ? (
@@ -240,16 +232,15 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                                                     无匹配渠道
                                                 </p>
                                             ) : (
-                                                <ScrollArea className="max-h-64 rounded-lg border bg-background/40">
-                                                    <div className="divide-y divide-border/60">
+                                                <div className="cp-settings-rows divide-y divide-border/60">
                                                         {filtered.map((ch) => (
                                                             <div
                                                                 key={ch.id}
-                                                                className="flex items-center justify-between gap-3 px-3 py-2"
+                                                                className="flex min-w-0 items-center justify-between gap-3 py-3"
                                                             >
                                                                 <div className="min-w-0">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="truncate text-sm">
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        <span className="break-words text-sm">
                                                                             {ch.name || ch.id}
                                                                         </span>
                                                                         {!ch.enabled && (
@@ -258,7 +249,7 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    <p className="truncate text-meta text-muted-foreground">
+                                                                    <p className="break-all text-meta text-muted-foreground">
                                                                         {ch.type === 'email'
                                                                             ? ch.to ||
                                                                               ch.smtpHost ||
@@ -281,8 +272,7 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                                                                 />
                                                             </div>
                                                         ))}
-                                                    </div>
-                                                </ScrollArea>
+                                                </div>
                                             )}
                                         </div>
                                     </motion.div>
@@ -292,6 +282,6 @@ export function NotificationOptIn({ selectedIds, onChange }: NotificationOptInPr
                     )
                 ) : null}
             </SkeletonSwap>
-        </div>
+        </section>
     );
 }

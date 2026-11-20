@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { createInterface } from 'node:readline';
 import { applyPendingUpdate } from './files';
 
 export const RESTART_EXIT_CODE = 75;
@@ -29,6 +30,23 @@ export async function runApplication(root: string): Promise<void> {
             }
         });
     }
+
+    const launcherInput =
+        process.env.NOWLUMA_LAUNCHER_CONTROL === '1'
+            ? createInterface({ input: process.stdin })
+            : undefined;
+
+    const stopFromLauncher = () => {
+        stopping = true;
+        requestShutdown();
+    };
+
+    launcherInput?.on('line', (line) => {
+        if (line === 'shutdown') {
+            stopFromLauncher();
+        }
+    });
+    launcherInput?.once('close', stopFromLauncher);
 
     try {
         do {
@@ -71,5 +89,7 @@ export async function runApplication(root: string): Promise<void> {
     } catch (error) {
         console.error('[Update] 启动失败:', error);
         process.exitCode = 1;
+    } finally {
+        launcherInput?.close();
     }
 }

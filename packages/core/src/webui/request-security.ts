@@ -35,10 +35,13 @@ export const webuiSecurityHeaders: MiddlewareHandler = async (c, next) => {
     c.res.headers.set('X-Frame-Options', 'DENY');
     c.res.headers.set('X-Content-Type-Options', 'nosniff');
     c.res.headers.set('Referrer-Policy', 'no-referrer');
-    c.res.headers.set(
-        'Content-Security-Policy',
-        "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
-    );
+
+    if (!c.res.headers.has('Content-Security-Policy')) {
+        c.res.headers.set(
+            'Content-Security-Policy',
+            "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+        );
+    }
 };
 
 export function extractWebuiSessionToken(request: Request): string {

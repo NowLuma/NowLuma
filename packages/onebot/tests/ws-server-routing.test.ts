@@ -83,10 +83,12 @@ describe('WsServerAdapter — OneBot forward WebSocket routes', () => {
     let socket: WebSocket | null = null;
 
     afterEach(async () => {
-        await adapter?.close();
-        adapter = null;
+        // Drop the test peer before awaiting the listener: a graceful close frame
+        // from the server can otherwise leave Server.close waiting on a peer.
         socket?.terminate();
         socket = null;
+        await adapter?.close();
+        adapter = null;
     });
 
     it('serves actions without event frames on /api', async () => {

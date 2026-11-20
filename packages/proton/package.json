@@ -1,7 +1,7 @@
 {
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "name": "@nowluma/proton",
-  "version": "2.4.2",
+  "version": "2.5.0-rc.1",
   "private": true,
   "type": "module",
   "description": "Compile-time protobuf encoder/decoder generator for Nowluma. TypeScript interfaces → fully-inlined, zero-runtime protobuf codec functions. Vendored from Nowluma/protobuf-dsl with edge-case fixes applied.",

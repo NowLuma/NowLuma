@@ -13,7 +13,7 @@ import {
     type KeyboardEvent,
     type Ref,
 } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const;
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -365,7 +365,7 @@ export function OtpInput({
     className = '',
     ref,
 }: OtpInputProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const statusId = useId();
 
     const { chars, focusedIndex, getCellProps, focusAt, clear } = useOtpInput({

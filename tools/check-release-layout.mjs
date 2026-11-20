@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { RELEASE_DOCUMENTS } from '../packages/common/src/release-assets.ts';
 
 const root = path.resolve(process.argv[2] ?? 'dist');
 const entryPoint = path.join(root, 'index.mjs');
@@ -16,7 +17,16 @@ const runtimePackage = JSON.parse(fs.readFileSync(path.join(root, 'package.json'
 if (release.version !== runtimePackage.version) {
   throw new Error('release version does not match its runtime package');
 }
-const actualEntries = fs.readdirSync(root).filter(name => !['node', 'node.exe'].includes(name));
+for (const file of RELEASE_DOCUMENTS) {
+  if (
+    !release.entries.includes(file) ||
+    !fs.statSync(path.join(root, file), { throwIfNoEntry: false })?.isFile()
+  ) {
+    throw new Error(`release is missing its licensing or usage document: ${file}`);
+  }
+}
+
+const actualEntries = fs.readdirSync(root).filter((name) => !['node', 'node.exe'].includes(name));
 if (JSON.stringify([...release.entries].sort()) !== JSON.stringify(actualEntries.sort())) {
   throw new Error('release file manifest does not match the packaged files');
 }
@@ -26,13 +36,19 @@ const sqlite = JSON.parse(fs.readFileSync(path.join(sqliteRoot, 'manifest.json')
 if (release.target !== sqlite.target) {
   throw new Error('release target does not match its native artifacts');
 }
-if (sqlite.package !== '@appthreat/sqlite3' || sqlite.version !== '9.1.0' || sqlite.nativeInterface !== 1
-  || !/^(win32|linux|darwin)-(x64|arm64)$/.test(sqlite.target)) {
+if (
+  sqlite.package !== '@appthreat/sqlite3' ||
+  sqlite.version !== '9.1.0' ||
+  sqlite.nativeInterface !== 1 ||
+  !/^(win32|linux|darwin)-(x64|arm64)$/.test(sqlite.target)
+) {
   throw new Error('release has an invalid SQLite native manifest');
 }
-const expectedSqliteFiles = (sqlite.target.startsWith('linux-')
-  ? ['@appthreat+sqlite3.glibc.node', '@appthreat+sqlite3.musl.node']
-  : ['@appthreat+sqlite3.node']).map(file => `prebuilds/${sqlite.target}/${file}`);
+const expectedSqliteFiles = (
+  sqlite.target.startsWith('linux-')
+    ? ['@appthreat+sqlite3.glibc.node', '@appthreat+sqlite3.musl.node']
+    : ['@appthreat+sqlite3.node']
+).map((file) => `prebuilds/${sqlite.target}/${file}`);
 if (JSON.stringify(sqlite.files) !== JSON.stringify(expectedSqliteFiles)) {
   throw new Error('release SQLite manifest does not contain the required platform/libc variants');
 }

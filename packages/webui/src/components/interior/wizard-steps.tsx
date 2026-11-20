@@ -10,7 +10,7 @@ import {
     useState,
 } from 'react';
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const EXIT_EASE = [0.4, 0, 1, 1] as const;
@@ -190,7 +190,7 @@ export function WizardSteps({
         onIndexChange,
         onComplete,
     });
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
 
     const listRef = useRef<HTMLOListElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);

@@ -1,10 +1,9 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { motion, Reorder, useDragControls } from 'motion/react';
+import { motion, Reorder, useDragControls, useReducedMotionConfig } from 'motion/react';
 import { Link } from '@tanstack/react-router';
 import {
     Activity,
     ArrowRight,
-    Bell,
     Cable,
     Check,
     Cpu,
@@ -16,9 +15,11 @@ import {
     LayoutGrid,
     MemoryStick,
     MonitorCog,
-    Pencil,
     Plus,
-    PlugZap,
+    Clock3,
+    MessageCircle,
+    PanelsTopLeft,
+    Radio,
     RefreshCw,
     RotateCcw,
     Server,
@@ -29,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { GettingStartedPanel } from '@/components/overview/getting-started-panel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonSwap } from '@/components/interior/skeleton-swap';
@@ -128,6 +129,8 @@ export function OverviewPage() {
         setEditing,
     } = useLayout();
     const isWide = useMediaQuery('(min-width: 768px)');
+    const { appearance, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     // Free-grid 2D editing is desktop-only; on a phone, editing surfaces a
     // single-column drag-sort panel (overviewMobile) instead.
     const [configId, setConfigId] = useState<string | null>(null);
@@ -202,92 +205,126 @@ export function OverviewPage() {
     const configBlock = configId ? overviewBlocks.find((b) => b.id === configId) : null;
 
     return (
-        <div className="flex flex-col gap-5">
-            {/* Toolbar: edit toggle on both desktop (2D grid overlays) and mobile
-          (single-column drag-sort panel). The sidebar nav is drag-sortable in
-          edit mode on both — no separate editor panel. Hidden in kiosk mode
-          (data-kiosk-hide → CSS) so a wall display has no edit entry. */}
-            <div data-kiosk-hide className="flex items-center justify-end gap-2">
-                {editing && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetLayout}
-                        className="text-muted-foreground"
-                    >
-                        <RotateCcw className="size-3.5" /> 恢复默认
-                    </Button>
-                )}
-                <Button
-                    variant={editing ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setEditing(!editing)}
-                >
-                    {editing ? (
-                        <>
-                            <Check className="size-3.5" /> 完成
-                        </>
-                    ) : (
-                        <>
-                            <Pencil className="size-3.5" /> 编辑布局
-                        </>
+        <div className="workspace-overview">
+            <motion.header
+                className="workspace-overview-heading"
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={
+                    reduced
+                        ? { duration: 0 }
+                        : performance?.low
+                          ? { duration: 0.18 }
+                          : { duration: 0.32 }
+                }
+            >
+                <div>
+                    <h2 className="workspace-display-title">从会话，到结果</h2>
+                </div>
+                <div data-kiosk-hide className="workspace-overview-tools">
+                    {editing && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetLayout}
+                            className="text-muted-foreground"
+                        >
+                            <RotateCcw className="size-3.5" /> 恢复默认
+                        </Button>
                     )}
-                </Button>
-            </div>
+                    <Button
+                        variant={editing ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEditing(!editing)}
+                    >
+                        {editing ? (
+                            <>
+                                <Check className="size-3.5" /> 完成编辑
+                            </>
+                        ) : (
+                            <>
+                                <PanelsTopLeft className="size-3.5" /> 编辑布局
+                            </>
+                        )}
+                    </Button>
+                </div>
+            </motion.header>
 
-            {editing && (
-                <p className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
-                    {isWide
-                        ? '拖动卡片移动位置、拖右下角缩放，右上齿轮改设置；把卡片拖回右侧「部件库」即可移除，从部件库点加号或拖到画布即可添加。左侧导航也可在编辑态拖动手柄排序。'
-                        : '拖动手柄调整卡片顺序，眼睛图标显隐，齿轮改设置。手机为单列布局，与桌面网格各自独立。'}
-                </p>
-            )}
-
-            {/* 首次使用引导：固定位置（不是网格部件），隐藏所有卡片后仍然可见。 */}
             <GettingStartedPanel />
 
-            {isWide ? (
-                <div className="flex items-start gap-4">
-                    <div className="min-w-0 flex-1">
-                        {visibleBlocks.length === 0 ? (
-                            editing ? (
-                                <DropPlaceholder onAdd={addWidget} />
-                            ) : (
-                                <EmptyLayout onReset={resetLayout} />
-                            )
-                        ) : (
-                            <DashboardGrid
-                                blocks={visibleBlocks}
-                                editing={editing}
-                                cols={GRID_COLS}
-                                onChange={onGridChange}
-                                renderWidget={renderWidget}
-                                configurableIds={CONFIGURABLE_WIDGETS}
-                                onConfigOpen={setConfigId}
-                                removableSelector=".widget-gallery"
-                                onAdd={addWidget}
-                            />
-                        )}
-                    </div>
-                    {editing && <WidgetGallery hidden={hiddenBlocks} onAdd={addWidget} />}
+            <motion.section
+                className="workspace-live-section"
+                aria-labelledby="overview-widgets-title"
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={
+                    reduced
+                        ? { duration: 0 }
+                        : performance?.low
+                          ? { duration: 0.18 }
+                          : { duration: 0.32 }
+                }
+            >
+                <div className="workspace-section-heading">
+                    <h3 id="overview-widgets-title">运行与记录</h3>
+                    <Link to="/logs" className="workspace-inline-link">
+                        全部运行记录
+                        <ArrowRight className="size-3.5" />
+                    </Link>
                 </div>
-            ) : (
-                <MobileOverview
-                    items={mobileItems}
-                    editing={editing}
-                    configById={configById}
-                    onReorder={reorderMobile}
-                    onToggle={toggleMobile}
-                    onConfigOpen={setConfigId}
-                    onReset={resetLayout}
-                />
-            )}
+
+                {editing && (
+                    <p className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                        {isWide
+                            ? '拖动或方向键移动；Shift+方向键缩放，Delete隐藏。卡片库可重新添加，导航在「工作区管理」。'
+                            : '拖动或方向键排序；眼睛显隐、齿轮设置。手机顺序单独保存。'}
+                    </p>
+                )}
+
+                {isWide ? (
+                    <div className="workspace-widget-layout">
+                        <div className="min-w-0 flex-1">
+                            {visibleBlocks.length === 0 ? (
+                                editing ? (
+                                    <DropPlaceholder onAdd={addWidget} />
+                                ) : (
+                                    <EmptyLayout onReset={resetLayout} />
+                                )
+                            ) : (
+                                <DashboardGrid
+                                    blocks={visibleBlocks}
+                                    editing={editing}
+                                    cols={GRID_COLS}
+                                    onChange={onGridChange}
+                                    renderWidget={renderWidget}
+                                    configurableIds={CONFIGURABLE_WIDGETS}
+                                    onConfigOpen={setConfigId}
+                                    removableSelector=".widget-gallery"
+                                    onAdd={addWidget}
+                                />
+                            )}
+                        </div>
+                        {editing && <WidgetGallery hidden={hiddenBlocks} onAdd={addWidget} />}
+                    </div>
+                ) : (
+                    <MobileOverview
+                        items={mobileItems}
+                        editing={editing}
+                        configById={configById}
+                        onReorder={reorderMobile}
+                        onToggle={toggleMobile}
+                        onConfigOpen={setConfigId}
+                        onReset={resetLayout}
+                    />
+                )}
+            </motion.section>
 
             <Modal
                 open={!!configId}
                 onClose={() => setConfigId(null)}
                 title={configBlock ? `${widgetLabel(configBlock.id)} · 设置` : '设置'}
                 closeLabel="关闭卡片设置弹窗"
+                className="workspace-modal"
                 maxWidth={384}
             >
                 <div className="flex flex-col gap-4">
@@ -343,7 +380,7 @@ function EmptyLayout({ onReset }: { onReset: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
             <MonitorCog className="size-8 opacity-40" strokeWidth={1.5} />
-            <p className="text-sm">所有总览卡片都已隐藏</p>
+            <p className="text-sm">所有工作台卡片都已隐藏</p>
             <Button variant="outline" size="sm" onClick={onReset}>
                 恢复默认布局
             </Button>
@@ -355,17 +392,28 @@ function MobileLayoutRow({
     item,
     onToggle,
     onConfigOpen,
+    onMove,
 }: {
     item: UiLayoutItem;
     onToggle: (id: string) => void;
     onConfigOpen: (id: string) => void;
+    onMove: (direction: -1 | 1) => void;
 }) {
     const controls = useDragControls();
+    const { appearance, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     return (
         <Reorder.Item
             value={item.id}
             dragListener={false}
             dragControls={controls}
+            transition={
+                reduced
+                    ? { duration: 0 }
+                    : performance?.low
+                      ? { duration: 0.18 }
+                      : { type: 'spring', duration: 0.42, bounce: 0.1 }
+            }
             className={cn(
                 'flex select-none items-center gap-2 rounded-xl border bg-card/60 px-3 py-2.5',
                 !item.visible && 'opacity-50',
@@ -373,9 +421,28 @@ function MobileLayoutRow({
         >
             <button
                 type="button"
-                aria-label="拖动排序"
+                aria-label={`调整${widgetLabel(item.id)}卡片顺序`}
+                aria-description="方向键排序。"
+                title="拖动或方向键排序"
                 className="inline-flex size-11 shrink-0 touch-none items-center justify-center text-muted-foreground"
                 onPointerDown={(e) => controls.start(e)}
+                onKeyDown={(event) => {
+                    if (
+                        event.target !== event.currentTarget ||
+                        event.altKey ||
+                        event.ctrlKey ||
+                        event.metaKey ||
+                        event.shiftKey
+                    ) {
+                        return;
+                    }
+
+                    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onMove(event.key === 'ArrowUp' ? -1 : 1);
+                    }
+                }}
             >
                 <GripVertical className="size-4" />
             </button>
@@ -387,8 +454,8 @@ function MobileLayoutRow({
                     type="button"
                     onClick={() => onConfigOpen(item.id)}
                     onPointerDown={(e) => e.stopPropagation()}
-                    title="设置"
-                    aria-label="设置"
+                    title={`${widgetLabel(item.id)} · 卡片设置`}
+                    aria-label={`设置${widgetLabel(item.id)}卡片`}
                     className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground cursor-pointer"
                 >
                     <Settings2 className="size-3.5" />
@@ -398,8 +465,8 @@ function MobileLayoutRow({
                 type="button"
                 onClick={() => onToggle(item.id)}
                 onPointerDown={(e) => e.stopPropagation()}
-                title={item.visible ? '隐藏' : '显示'}
-                aria-label={item.visible ? '隐藏' : '显示'}
+                title={`${item.visible ? '隐藏' : '显示'}${widgetLabel(item.id)}卡片`}
+                aria-label={`${item.visible ? '隐藏' : '显示'}${widgetLabel(item.id)}卡片`}
                 className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground cursor-pointer"
             >
                 {item.visible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
@@ -430,6 +497,18 @@ function MobileOverview({
     onReset: () => void;
 }) {
     if (editing) {
+        const move = (index: number, direction: -1 | 1) => {
+            const target = index + direction;
+
+            if (target < 0 || target >= items.length) {
+                return;
+            }
+
+            const ids = items.map((item) => item.id);
+            [ids[index], ids[target]] = [ids[target], ids[index]];
+            onReorder(ids);
+        };
+
         return (
             <Reorder.Group
                 axis="y"
@@ -437,12 +516,13 @@ function MobileOverview({
                 onReorder={onReorder}
                 className="flex flex-col gap-2"
             >
-                {items.map((item) => (
+                {items.map((item, index) => (
                     <MobileLayoutRow
                         key={item.id}
                         item={item}
                         onToggle={onToggle}
                         onConfigOpen={onConfigOpen}
+                        onMove={(direction) => move(index, direction)}
                     />
                 ))}
             </Reorder.Group>
@@ -496,17 +576,22 @@ function WidgetGallery({
     onAdd: (id: string, x: number, y: number) => void;
 }) {
     return (
-        <div className="widget-gallery w-56 shrink-0 self-stretch rounded-xl border border-dashed bg-muted/20 p-3">
+        <div
+            tabIndex={-1}
+            role="region"
+            aria-label="卡片库"
+            className="widget-gallery w-52 shrink-0 self-stretch rounded-lg border border-dashed bg-muted/20 p-3"
+        >
             <div className="mb-1.5 flex items-center gap-1.5 px-1">
                 <LayoutGrid className="size-3.5 text-primary" />
-                <span className="text-xs font-semibold">部件库</span>
+                <span className="text-xs font-semibold">卡片库</span>
             </div>
             <p className="mb-3 px-1 text-xs leading-snug text-muted-foreground">
                 点加号或拖到左侧画布添加；把卡片拖回此处即可移除。
             </p>
             {hidden.length === 0 ? (
                 <div className="rounded-lg border border-dashed px-2 py-8 text-center text-xs text-muted-foreground">
-                    全部部件已添加
+                    全部卡片已添加
                 </div>
             ) : (
                 <div className="flex flex-col gap-1.5">
@@ -527,7 +612,7 @@ function WidgetGallery({
                                 aria-label={`添加 ${widgetLabel(b.id)}`}
                                 onClick={() => onAdd(b.id, 0, 0)}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent/50 hover:text-foreground"
+                                className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                             >
                                 <Plus className="size-3.5" />
                             </button>
@@ -556,7 +641,7 @@ function DropPlaceholder({ onAdd }: { onAdd: (id: string, x: number, y: number) 
             className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-16 text-center text-muted-foreground"
         >
             <LayoutGrid className="size-8 opacity-40" strokeWidth={1.5} />
-            <p className="text-sm">从右侧「部件库」点加号或拖动部件到这里</p>
+            <p className="text-sm">从右侧「卡片库」点加号或拖动卡片到这里</p>
         </div>
     );
 }
@@ -676,38 +761,25 @@ function StatTile({
     ready?: boolean;
 }) {
     const copy = (
-        <>
-            <p className="truncate text-xs font-medium uppercase leading-tight tracking-wider text-muted-foreground">
-                {label}
-            </p>
-            <div className="mt-1 truncate text-lg font-semibold leading-tight tabular-nums">
-                {value}
-            </div>
-            {subtext && (
-                <p className="mt-1 truncate text-xs leading-tight text-muted-foreground">
-                    {subtext}
-                </p>
-            )}
-        </>
+        <dl>
+            <dt className="workspace-instrument-label">
+                {icon}
+                <span>{label}</span>
+            </dt>
+            <dd className="workspace-instrument-value">{value}</dd>
+            {subtext && <dd className="workspace-instrument-note">{subtext}</dd>}
+        </dl>
     );
     const body = (
-        <CardContent className="flex h-full items-center gap-3 overflow-hidden px-4 py-3.5">
-            <div
-                className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                    accent ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary',
-                )}
-            >
-                {icon}
-            </div>
+        <div className="workspace-instrument" data-widget-type="instrument" data-online={accent}>
             {details && ready ? (
                 <StatTileDetails label={label} details={details}>
                     <SkeletonSwap
-                        ready={ready}
-                        reserve={52}
+                        ready
+                        reserve={56}
                         lines={3}
-                        lineHeight={17}
-                        barHeight={8}
+                        lineHeight={18}
+                        barHeight={7}
                         label={label}
                         className="skeleton-swap-fluid"
                     >
@@ -717,33 +789,26 @@ function StatTile({
             ) : (
                 <SkeletonSwap
                     ready={ready}
-                    reserve={52}
+                    reserve={56}
                     lines={3}
-                    lineHeight={17}
-                    barHeight={8}
+                    lineHeight={18}
+                    barHeight={7}
                     label={label}
                     className={ready ? 'skeleton-swap-fluid min-w-0 flex-1' : 'min-w-0 flex-1'}
                 >
                     {ready ? copy : null}
                 </SkeletonSwap>
             )}
-            {to && (
-                <ArrowRight className="optical-forward size-4 shrink-0 text-muted-foreground/60" />
-            )}
-        </CardContent>
+            {to && <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />}
+        </div>
     );
-
-    if (to) {
-        return (
-            <Link to={to} className="block h-full rounded-xl outline-none">
-                <Card className="h-full overflow-hidden transition-colors hover:border-primary/40 hover:bg-accent/30">
-                    {body}
-                </Card>
-            </Link>
-        );
-    }
-
-    return <Card className="h-full overflow-hidden">{body}</Card>;
+    return to ? (
+        <Link to={to} className="workspace-instrument-link">
+            {body}
+        </Link>
+    ) : (
+        body
+    );
 }
 
 function StatTileWidget({ id }: { id: string }) {
@@ -755,18 +820,18 @@ function StatTileWidget({ id }: { id: string }) {
         case 'stat:status':
             return (
                 <StatTile
-                    icon={<Activity className="size-5" />}
-                    label="服务状态"
-                    value={online ? '运行中' : status}
-                    subtext={online ? '已连接到后端' : '请检查后端进程'}
+                    icon={<Radio className="size-3.5" />}
+                    label="控制台连接"
+                    value={online ? '服务在线' : status}
+                    subtext={online ? '连接正常' : '请检查服务进程'}
                     accent={online}
                 />
             );
         case 'stat:accounts':
             return (
                 <StatTile
-                    icon={<Users className="size-5" />}
-                    label="在线账号"
+                    icon={<MessageCircle className="size-3.5" />}
+                    label="已登录会话"
                     ready={resources.qqList.ready}
                     value={resources.qqList.error && qqList.length === 0 ? '—' : qqList.length}
                     subtext={
@@ -781,23 +846,23 @@ function StatTileWidget({ id }: { id: string }) {
 
         case 'stat:processes': {
             const onlineProcs = processList.filter((p) => p.status === 'online').length;
-            const loadableProcs = processList.filter((p) => !p.injected).length;
+            const unattachedProcs = processList.filter((p) => !p.injected).length;
             return (
                 <StatTile
-                    icon={<PlugZap className="size-5" />}
-                    label="进程注入"
+                    icon={<PanelsTopLeft className="size-3.5" />}
+                    label="QQ 程序"
                     ready={resources.processList.ready}
                     value={
                         resources.processList.error && processList.length === 0
                             ? '—'
-                            : `${onlineProcs} 在线`
+                            : processList.length
                     }
                     subtext={
                         resources.processList.error
                             ? processList.length > 0
                                 ? '更新失败，显示上次数据'
                                 : '加载失败'
-                            : `${processList.length} 进程 · ${loadableProcs} 可注入`
+                            : `${onlineProcs} 已接入 · ${unattachedProcs} 未接入`
                     }
                     to="/processes"
                 />
@@ -813,8 +878,8 @@ function StatTileWidget({ id }: { id: string }) {
                   : '加载中';
             return (
                 <StatTile
-                    icon={<Server className="size-5" />}
-                    label="主机名"
+                    icon={<Server className="size-3.5" />}
+                    label="运行设备"
                     ready={resources.systemInfo.ready}
                     value={value}
                     subtext={subtext}
@@ -832,11 +897,11 @@ function StatTileWidget({ id }: { id: string }) {
             const processUptime = systemInfo ? formatUptime(systemInfo.processUptime) : undefined;
             return (
                 <StatTile
-                    icon={<MonitorCog className="size-5" />}
-                    label="系统运行"
+                    icon={<Clock3 className="size-3.5" />}
+                    label="连续运行"
                     ready={resources.systemInfo.ready}
                     value={systemUptime}
-                    subtext={processUptime ? `进程 ${processUptime}` : undefined}
+                    subtext={processUptime ? `服务 ${processUptime}` : undefined}
                     details={
                         processUptime
                             ? `系统运行：${systemUptime}\nNowluma 进程：${processUptime}`
@@ -853,21 +918,16 @@ function StatTileWidget({ id }: { id: string }) {
 
 // ─────────────── host resources ───────────────
 
-const HOST_GRID_COLS: Record<number, string> = {
-    1: 'lg:grid-cols-1',
-    2: 'lg:grid-cols-2',
-    3: 'lg:grid-cols-3',
-};
-
 function HostBlock({ config }: { config: HostConfig }) {
     const { systemInfo, refreshSystem, resources } = useAppState();
-    const panelCount = [config.cpu, config.memory, config.runtime].filter(Boolean).length;
     return (
-        <Card className="flex h-full flex-col">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <Card className="workspace-panel workspace-resource-panel">
+            <CardHeader className="workspace-panel-heading">
                 <div>
-                    <CardTitle>主机资源</CardTitle>
-                    <CardDescription>
+                    <CardTitle>
+                        <h4>资源用量</h4>
+                    </CardTitle>
+                    <CardDescription className="workspace-panel-description">
                         {systemInfo
                             ? `${systemInfo.cpu.model.trim()} · ${systemInfo.cpu.cores} 核 · Node ${systemInfo.nodeVersion}${
                                   resources.systemInfo.error ? ' · 更新失败，显示上次数据' : ''
@@ -879,15 +939,10 @@ function HostBlock({ config }: { config: HostConfig }) {
                     <RefreshCw className="size-3.5" /> 刷新
                 </Button>
             </CardHeader>
-            <CardContent
-                className={cn(
-                    'grid flex-1 grid-cols-1 gap-4',
-                    HOST_GRID_COLS[panelCount] ?? 'lg:grid-cols-3',
-                )}
-            >
+            <CardContent className="workspace-host-panels min-h-0 flex-1 overflow-auto">
                 {/* CPU */}
                 {config.cpu && (
-                    <div className="rounded-xl border bg-card/40 p-4">
+                    <div className="workspace-resource-block">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Cpu className="size-4 text-primary" />
@@ -961,7 +1016,7 @@ function HostBlock({ config }: { config: HostConfig }) {
                 )}
                 {/* Memory */}
                 {config.memory && (
-                    <div className="rounded-xl border bg-card/40 p-4">
+                    <div className="workspace-resource-block">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <MemoryStick className="size-4 text-primary" />
@@ -1054,7 +1109,7 @@ function HostBlock({ config }: { config: HostConfig }) {
                 )}
                 {/* Runtime */}
                 {config.runtime && (
-                    <div className="rounded-xl border bg-card/40 p-4">
+                    <div className="workspace-resource-block">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Server className="size-4 text-primary" />
@@ -1113,8 +1168,7 @@ function HostBlock({ config }: { config: HostConfig }) {
 // ─────────────── online sessions ───────────────
 
 function SessionsBlock({ config }: { config: SessionsConfig }) {
-    const { qqList, resources } = useAppState();
-    const off = useTheme().appearance.disableMotion;
+    const { qqList, resources, setSelectedUin } = useAppState();
     const list = useMemo(() => {
         const f = config.filter.trim().toLowerCase();
         let arr = f
@@ -1134,22 +1188,29 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
     }, [qqList, config.sort, config.filter]);
 
     return (
-        <Card className="flex h-full flex-col">
-            <CardHeader>
-                <CardTitle>在线会话</CardTitle>
-                <CardDescription>
-                    当前已接入并完成登录的 QQ 账号
-                    {config.filter.trim() ? `（筛选：${config.filter.trim()}）` : ''}
-                </CardDescription>
+        <Card className="workspace-panel workspace-sessions-panel">
+            <CardHeader className="workspace-panel-heading">
+                <div>
+                    <CardTitle>
+                        <h4>QQ 会话</h4>
+                    </CardTitle>
+                    <CardDescription className="workspace-panel-description">
+                        已完成登录{config.filter.trim() ? ` · ${config.filter.trim()}` : ''}
+                    </CardDescription>
+                </div>
+                <Link to="/processes" className="workspace-inline-link">
+                    管理
+                    <ArrowRight className="size-3.5" />
+                </Link>
             </CardHeader>
-            <CardContent className="min-h-0 flex-1">
+            <CardContent className="min-h-0 flex-1 overflow-auto">
                 <SkeletonSwap
                     ready={resources.qqList.ready}
                     reserve={120}
                     lines={5}
                     lineHeight={24}
                     barHeight={9}
-                    label="在线会话"
+                    label="QQ 会话"
                     className={resources.qqList.ready ? 'skeleton-swap-fluid min-h-[120px]' : ''}
                 >
                     {resources.qqList.ready ? (
@@ -1164,7 +1225,9 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
                                 <Users className="size-8 opacity-40" strokeWidth={1.5} />
                                 <p className="text-sm">
-                                    {qqList.length === 0 ? '暂无在线会话' : '无匹配的会话'}
+                                    {qqList.length === 0
+                                        ? '还没有已登录的 QQ 会话'
+                                        : '无匹配的会话'}
                                 </p>
                             </div>
                         ) : (
@@ -1174,49 +1237,42 @@ function SessionsBlock({ config }: { config: SessionsConfig }) {
                                         role="alert"
                                         className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
                                     >
-                                        {resources.qqList.error}；当前显示上次成功读取的在线会话。
+                                        {resources.qqList.error}；当前显示上次成功读取的 QQ 会话。
                                     </p>
                                 )}
-                                <ScrollArea className="h-full" viewportClassName="[&>div]:!block">
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                                        {list.map((q, idx) => (
-                                            <motion.div
-                                                key={q.uin}
-                                                initial={off ? false : { opacity: 0, y: 6 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={
-                                                    off
-                                                        ? { duration: 0 }
-                                                        : {
-                                                              delay: 0.03 + idx * 0.04,
-                                                              duration: 0.22,
-                                                          }
-                                                }
-                                                whileHover={off ? undefined : { y: -2 }}
-                                                className="flex items-center gap-3 rounded-xl border bg-card/40 p-3"
-                                            >
-                                                <Avatar size={40}>
-                                                    <AvatarImage
-                                                        src={qqAvatarUrl(q.uin)}
-                                                        alt={q.nickname || q.uin}
-                                                    />
-                                                    <AvatarFallback>
-                                                        {(q.nickname || q.uin).slice(0, 2)}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="truncate text-sm font-semibold">
-                                                        {q.nickname}
-                                                    </div>
-                                                    <div className="truncate font-mono text-meta text-muted-foreground tabular-nums">
-                                                        {q.uin}
-                                                    </div>
-                                                </div>
-                                                <span className="size-2 shrink-0 animate-pulse rounded-full bg-success shadow-[0_0_8px_color-mix(in_oklab,var(--success)_60%,transparent)]" />
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
+                                <div className="workspace-session-list">
+                                    {list.map((q) => (
+                                        <Link
+                                            key={q.uin}
+                                            to="/config"
+                                            onClick={() => setSelectedUin(q.uin)}
+                                            aria-label={`${q.nickname || q.uin}，管理机器人连接`}
+                                            className="workspace-session-row"
+                                        >
+                                            <Avatar size={32}>
+                                                <AvatarImage
+                                                    src={qqAvatarUrl(q.uin)}
+                                                    alt={q.nickname || q.uin}
+                                                />
+                                                <AvatarFallback>
+                                                    {(q.nickname || q.uin).slice(0, 2)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-medium">
+                                                    {q.nickname || q.uin}
+                                                </p>
+                                                <p className="font-mono text-xs text-muted-foreground tabular-nums">
+                                                    {q.uin}
+                                                </p>
+                                            </div>
+                                            <span className="workspace-session-status">
+                                                <span aria-hidden="true" />
+                                                {resources.qqList.error ? '上次已登录' : '已登录'}
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
                             </div>
                         )
                     ) : null}
@@ -1236,7 +1292,7 @@ const CONN_STATUS_STYLE: Record<AdapterStatusLevel, string> = {
     disabled: 'bg-muted text-muted-foreground',
 };
 const CONN_STATUS_LABEL: Record<AdapterStatusLevel, string> = {
-    ok: '正常',
+    ok: '已就绪',
     warn: '注意',
     down: '异常',
     degraded: '应用失败',
@@ -1259,7 +1315,7 @@ const CONN_STATUS_RANK: Record<AdapterStatusLevel, number> = {
 };
 
 function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
-    const { connections, resources } = useAppState();
+    const { connections, resources, setSelectedUin } = useAppState();
     const list = useMemo(() => {
         const f = config.filter.trim().toLowerCase();
         // Optionally drop healthy adapters, then accounts left with none.
@@ -1293,15 +1349,21 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
 
     const filtered = config.filter.trim() !== '' || config.onlyIssues;
     return (
-        <Card className="flex h-full flex-col">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Cable className="size-4 text-primary" /> OneBot 连接
-                </CardTitle>
-                <CardDescription>
-                    各账号协议端点的实时连接状态{config.onlyIssues ? ' · 仅异常' : ''}
-                    {config.filter.trim() ? ` · 筛选：${config.filter.trim()}` : ''}
-                </CardDescription>
+        <Card className="workspace-panel workspace-connections-panel">
+            <CardHeader className="workspace-panel-heading">
+                <div>
+                    <CardTitle>
+                        <h4>机器人连接</h4>
+                    </CardTitle>
+                    <CardDescription className="workspace-panel-description">
+                        端点状态{config.onlyIssues ? ' · 仅异常' : ''}
+                        {config.filter.trim() ? ` · ${config.filter.trim()}` : ''}
+                    </CardDescription>
+                </div>
+                <Link to="/config" className="workspace-inline-link">
+                    管理连接
+                    <ArrowRight className="size-3.5" />
+                </Link>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-auto">
                 <SkeletonSwap
@@ -1310,7 +1372,7 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
                     lines={5}
                     lineHeight={24}
                     barHeight={9}
-                    label="OneBot 连接"
+                    label="机器人连接"
                     className={
                         resources.connections.ready ? 'skeleton-swap-fluid min-h-[120px]' : ''
                     }
@@ -1327,7 +1389,7 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
                             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
                                 <Cable className="size-8 opacity-40" strokeWidth={1.5} />
                                 <p className="text-sm">
-                                    {filtered ? '无匹配的连接' : '暂无已接入的账号实例'}
+                                    {filtered ? '无匹配的连接' : '先接入一个 QQ 会话'}
                                 </p>
                             </div>
                         ) : (
@@ -1342,11 +1404,16 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
                                     </p>
                                 )}
                                 {list.map((acc) => (
-                                    <div key={acc.uin} className="flex flex-col gap-2">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-sm font-semibold">
+                                    <div key={acc.uin} className="workspace-account-connections">
+                                        <div className="workspace-account-heading">
+                                            <Link
+                                                to="/config"
+                                                onClick={() => setSelectedUin(acc.uin)}
+                                                className="workspace-account-heading-link text-sm font-medium"
+                                                aria-label={`${acc.nickname || acc.uin}，管理机器人连接`}
+                                            >
                                                 {acc.nickname || acc.uin}
-                                            </span>
+                                            </Link>
                                             <span className="font-mono text-meta text-muted-foreground tabular-nums">
                                                 {acc.uin}
                                             </span>
@@ -1358,47 +1425,51 @@ function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
                                                 />
                                             )}
                                         {acc.adapters.length > 0 ? (
-                                            <div className="flex flex-col gap-1.5">
+                                            <div className="workspace-endpoint-list">
                                                 {acc.adapters.map((adp) => (
                                                     <div
                                                         key={adp.name}
-                                                        className="flex items-center gap-2 rounded-xl border bg-card/40 px-3 py-2"
+                                                        className="workspace-endpoint-row"
                                                     >
+                                                        <Cable className="size-4 shrink-0 text-muted-foreground" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="workspace-endpoint-heading">
+                                                                <span className="truncate text-sm font-medium">
+                                                                    {adp.name}
+                                                                </span>
+                                                                <span className="workspace-endpoint-kind">
+                                                                    {ADAPTER_KIND_LABEL[adp.kind]}
+                                                                </span>
+                                                            </div>
+                                                            <p className="workspace-endpoint-detail">
+                                                                {adp.detail}
+                                                            </p>
+                                                            {adp.lastError && adp.lastErrorAt && (
+                                                                <p
+                                                                    role="alert"
+                                                                    className="workspace-endpoint-error"
+                                                                >
+                                                                    {new Date(
+                                                                        adp.lastErrorAt,
+                                                                    ).toLocaleString()}{' '}
+                                                                    · {adp.lastError}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                         <span
                                                             className={cn(
-                                                                'shrink-0 rounded px-1.5 py-0.5 text-micro font-medium',
+                                                                'workspace-endpoint-status',
                                                                 CONN_STATUS_STYLE[adp.status],
                                                             )}
                                                         >
                                                             {CONN_STATUS_LABEL[adp.status]}
                                                         </span>
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="truncate text-sm font-medium">
-                                                                    {adp.name}
-                                                                </span>
-                                                                <span className="shrink-0 text-micro text-muted-foreground">
-                                                                    {ADAPTER_KIND_LABEL[adp.kind]}
-                                                                </span>
-                                                            </div>
-                                                            <div className="truncate text-meta text-muted-foreground">
-                                                                {adp.detail}
-                                                            </div>
-                                                            {adp.lastError && adp.lastErrorAt && (
-                                                                <div className="truncate text-xs text-destructive/80">
-                                                                    {new Date(
-                                                                        adp.lastErrorAt,
-                                                                    ).toLocaleString()}{' '}
-                                                                    · {adp.lastError}
-                                                                </div>
-                                                            )}
-                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : acc.databaseMigration?.usable !== false ? (
-                                            <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                                                未配置任何协议端点
+                                            <p className="workspace-widget-empty-note">
+                                                还没有机器人连接
                                             </p>
                                         ) : null}
                                     </div>
@@ -1480,16 +1551,14 @@ function formatMigrationEta(seconds: number | null): string {
 
 function NoteWidget({ config }: { config: NoteConfig }) {
     return (
-        <Card className="h-full overflow-hidden">
+        <Card className="workspace-panel h-full overflow-hidden">
             <CardContent className="h-full overflow-auto p-4">
                 {config.text.trim() ? (
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
                         {config.text}
                     </p>
                 ) : (
-                    <p className="text-sm text-muted-foreground">
-                        空便签 · 在编辑模式点齿轮填写内容
-                    </p>
+                    <p className="text-sm text-muted-foreground">空便签 · 编辑时填写内容</p>
                 )}
             </CardContent>
         </Card>
@@ -1501,10 +1570,10 @@ function LinkWidget({ config }: { config: LinkConfig }) {
 
     if (!config.url) {
         return (
-            <Card className="h-full overflow-hidden">
+            <Card className="workspace-panel h-full overflow-hidden">
                 <CardContent className="flex h-full items-center gap-3 p-4 text-muted-foreground">
                     <Icon className="size-5 shrink-0" />
-                    <span className="text-sm">未配置链接 · 点齿轮设置</span>
+                    <span className="text-sm">未配置链接 · 编辑时设置</span>
                 </CardContent>
             </Card>
         );
@@ -1515,9 +1584,9 @@ function LinkWidget({ config }: { config: LinkConfig }) {
             href={config.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="block h-full rounded-xl outline-none"
+            className="block h-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-            <Card className="h-full overflow-hidden transition-colors hover:border-primary/40 hover:bg-accent/30">
+            <Card className="h-full overflow-hidden transition-colors hover:bg-muted/40">
                 <CardContent className="flex h-full items-center gap-3 p-4">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="size-5" />
@@ -1541,17 +1610,17 @@ function AccountWidget({ config }: { config: AccountConfig }) {
 
     if (!config.uin) {
         return (
-            <Card className="h-full overflow-hidden">
+            <Card className="workspace-panel h-full overflow-hidden">
                 <CardContent className="flex h-full items-center gap-3 p-4 text-muted-foreground">
                     <Users className="size-5 shrink-0" />
-                    <span className="text-sm">未指定账号 · 点齿轮设置</span>
+                    <span className="text-sm">未指定账号 · 编辑时选择</span>
                 </CardContent>
             </Card>
         );
     }
 
     return (
-        <Card className="h-full overflow-hidden">
+        <Card className="workspace-panel h-full overflow-hidden">
             <SkeletonSwap
                 ready={resources.qqList.ready}
                 reserve={72}
@@ -1638,7 +1707,7 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
                 }
 
                 console.error('load recent alerts failed', error);
-                setLoadError(error instanceof Error ? error.message : '加载最近告警失败');
+                setLoadError(error instanceof Error ? error.message : '读取运行动态失败');
                 setAlerts((previous) => previous ?? []);
             });
         const stop = api.logs.stream({
@@ -1660,21 +1729,20 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
     }, [api, count, levelsKey]);
 
     return (
-        <Card className="flex h-full flex-col">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <Card className="workspace-panel workspace-activity-panel">
+            <CardHeader className="workspace-panel-heading">
                 <div>
-                    <CardTitle className="flex items-center gap-2">
-                        <Bell className="size-4 text-primary" /> 最近告警
+                    <CardTitle>
+                        <h4>运行动态</h4>
                     </CardTitle>
-                    <CardDescription>
-                        最近 {count} 条 · {config.levels.map((l) => l.toUpperCase()).join(' / ')}
+                    <CardDescription className="workspace-panel-description">
+                        最近 {count} 条 ·{' '}
+                        {config.levels.map((level) => level.toUpperCase()).join(' / ')}
                     </CardDescription>
                 </div>
-                <Link
-                    to="/logs"
-                    className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                    查看日志 <ArrowRight className="optical-forward size-3" />
+                <Link to="/logs" className="workspace-inline-link">
+                    查看记录
+                    <ArrowRight className="size-3.5" />
                 </Link>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-auto">
@@ -1684,7 +1752,7 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
                     lines={5}
                     lineHeight={24}
                     barHeight={9}
-                    label="最近告警"
+                    label="运行动态"
                     className={alerts !== null ? 'skeleton-swap-fluid min-h-[120px]' : ''}
                 >
                     {alerts !== null ? (
@@ -1697,8 +1765,8 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
                             </p>
                         ) : alerts.length === 0 ? (
                             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
-                                <Bell className="size-8 opacity-40" strokeWidth={1.5} />
-                                <p className="text-sm">暂无告警</p>
+                                <Activity className="size-8 opacity-40" strokeWidth={1.5} />
+                                <p className="text-sm">暂无匹配的运行记录</p>
                             </div>
                         ) : (
                             <div className="flex flex-col gap-1 font-mono text-meta">
@@ -1707,14 +1775,11 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
                                         role="alert"
                                         className="mb-1 rounded-lg border border-destructive/30 bg-destructive/10 px-2 py-1.5 font-sans text-xs text-destructive"
                                     >
-                                        {loadError}；当前显示已收到的实时告警。
+                                        {loadError}；当前显示已收到的运行动态。
                                     </p>
                                 )}
                                 {alerts.map((a) => (
-                                    <div
-                                        key={a.id}
-                                        className="flex gap-2 rounded px-2 py-1 hover:bg-accent/30"
-                                    >
+                                    <div key={a.id} className="workspace-activity-row">
                                         <span className="shrink-0 text-muted-foreground tabular-nums">
                                             {formatClock(a.time)}
                                         </span>
@@ -1726,7 +1791,10 @@ function RecentAlertsCard({ config }: { config: AlertsConfig }) {
                                         >
                                             {a.level.toUpperCase()}
                                         </span>
-                                        <span className="min-w-0 flex-1 truncate" title={a.message}>
+                                        <span
+                                            className="min-w-0 flex-1 break-words"
+                                            title={a.message}
+                                        >
                                             [{a.scope}] {a.message}
                                         </span>
                                     </div>

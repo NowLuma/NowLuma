@@ -64,6 +64,13 @@ beforeAll(async () => {
                             await runApplication(root);
                         } else {
                         const version = '${version}';
+                        if (process.env.UPDATE_TEST_MODE.startsWith('managed')) {
+                            process.on('message', (message) => { if (message === 'shutdown') { console.log('IPC shutdown'); process.exit(0); } });
+                            setInterval(() => {}, 1000);
+                            process.send('ready');
+                            console.log('managed ready');
+                            await new Promise(() => {});
+                        }
                         if (process.env.UPDATE_TEST_MODE === 'restart' && version === '1.0.0') {
                             const staging = await updateDirectory(root);
                             fs.cpSync(path.join(root, 'candidate'), path.join(staging, 'pending'), {recursive:true});
@@ -131,11 +138,23 @@ function run(mode = '', args: string[] = []) {
             cwd: os.tmpdir(),
             stdio: 'pipe',
             windowsHide: true,
-            env: { ...process.env, UPDATE_TEST_MODE: mode },
+            env: {
+                ...process.env,
+                UPDATE_TEST_MODE: mode,
+                NOWLUMA_LAUNCHER_CONTROL: mode.startsWith('managed') ? '1' : '',
+            },
         });
         let output = '';
         child.stdout.on('data', (data: Buffer) => {
             output += data.toString();
+
+            if (data.toString().includes('managed ready')) {
+                if (mode === 'managed-eof') {
+                    child.stdin.end();
+                } else {
+                    child.stdin.write('ignored command\nshutdown\n');
+                }
+            }
         });
         child.stderr.on('data', (data: Buffer) => {
             output += data.toString();
@@ -153,6 +172,16 @@ async function candidate(directory: string) {
 }
 
 describe('packaged startup', () => {
+    it.each(['managed-input', 'managed-eof'])(
+        'gracefully stops the application from %s without killing it',
+        async (mode) => {
+            const result = await run(mode);
+            expect(result.code, result.output).toBe(0);
+            expect(result.output).toContain('managed ready');
+            expect(result.output).toContain('IPC shutdown');
+        },
+    );
+
     it('preserves the exact Node executable, arguments and working directory', async () => {
         const result = await run('', ['value with spaces']);
         expect(result.code, result.output).toBe(0);

@@ -62,7 +62,7 @@ beforeAll(() => {
     symlinkSync(
         path.dirname(require.resolve('@types/node/package.json')),
         path.join(consumerRoot, 'node_modules', '@types', 'node'),
-        'dir',
+        process.platform === 'win32' ? 'junction' : 'dir',
     );
 
     copyFileSync(

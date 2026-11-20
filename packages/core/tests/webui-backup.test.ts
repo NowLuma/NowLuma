@@ -1,3 +1,4 @@
+import { KernelPolicyStore, COMPAT_RISK_VERSION } from '../src/kernel-policy';
 import { describe, it, expect } from 'vitest';
 import {
     BACKUP_FILES,
@@ -68,6 +69,27 @@ describe('buildBackup', () => {
         expect(b.files).toEqual({});
     });
 
+    it('exports account kernel acknowledgments only with sensitive configuration enabled', () => {
+        const policy = Buffer.from(
+            JSON.stringify({
+                version: 1,
+                accounts: {
+                    '10001': {
+                        kernel: 'compat',
+                        riskAccepted: true,
+                        riskVersion: COMPAT_RISK_VERSION,
+                        acceptedAt: TS,
+                    },
+                },
+            }),
+        );
+        const read = reader({ 'kernel-selections.json': policy });
+        expect(buildBackup(read, [], { includeCredentials: false }, TS).files).toEqual({});
+        expect(buildBackup(read, [], { includeCredentials: true }, TS).files).toEqual({
+            'kernel-selections.json': { encoding: 'utf8', data: policy.toString('utf8') },
+        });
+    });
+
     it('base64-encodes binary files (background image)', () => {
         const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
         const b = buildBackup(
@@ -105,7 +127,13 @@ it('BACKUP_FILES marks notification endpoints and authentication material as cre
     const creds = BACKUP_FILES.filter((f) => f.credential)
         .map((f) => f.name)
         .sort();
-    expect(creds).toEqual(['key.pem', 'notifications.json', 'onebot.json', 'webui.json']);
+    expect(creds).toEqual([
+        'kernel-selections.json',
+        'key.pem',
+        'notifications.json',
+        'onebot.json',
+        'webui.json',
+    ]);
     expect(specFor('cert.pem')?.credential).toBe(false);
 });
 
@@ -136,6 +164,70 @@ describe('prepareRestorePlan — strict semantic preflight', () => {
                 readCurrent: () => null,
             }),
         ).toThrow(expected);
+    });
+
+    it('strictly validates account kernel acknowledgments before planning restoration', () => {
+        const selection = {
+            kernel: 'compat',
+            riskAccepted: true,
+            riskVersion: COMPAT_RISK_VERSION,
+            acceptedAt: TS,
+        };
+        const policy = { version: 1, accounts: { '10001': selection } };
+        const input = backupWith({
+            'kernel-selections.json': { encoding: 'utf8', data: JSON.stringify(policy) },
+        });
+        expect(
+            prepareRestorePlan(input, { restoreCredentials: false, readCurrent: () => null }),
+        ).toMatchObject({ restore: [], skipped: ['kernel-selections.json'] });
+        const prepared = prepareRestorePlan(input, {
+            restoreCredentials: true,
+            readCurrent: () => null,
+        });
+        expect(prepared.restore).toHaveLength(1);
+        expect(prepared.restore[0]).toMatchObject({ name: 'kernel-selections.json', mode: 0o600 });
+        expect(JSON.parse(prepared.restore[0].data.toString('utf8'))).toEqual(policy);
+        const store = new KernelPolicyStore();
+        expect(
+            store.canLoad(JSON.parse(prepared.restore[0].data.toString('utf8')).accounts['10001']),
+        ).toBe(true);
+
+        for (const stored of [
+            { ...selection, kernel: 'rewrite' },
+            { ...selection, riskVersion: 'older-version' },
+        ]) {
+            const restored = prepareRestorePlan(
+                backupWith({
+                    'kernel-selections.json': {
+                        encoding: 'utf8',
+                        data: JSON.stringify({ version: 1, accounts: { '10001': stored } }),
+                    },
+                }),
+                { restoreCredentials: true, readCurrent: () => null },
+            );
+            const account = JSON.parse(restored.restore[0].data.toString('utf8')).accounts['10001'];
+            expect(account).toEqual(stored);
+            expect(store.canLoad(account)).toBe(false);
+        }
+
+        for (const accounts of [
+            { '../10001': selection },
+            { '10001': { ...selection, riskAccepted: false } },
+            { '10001': { ...selection, riskAccepted: 'true' } },
+            { '10001': { ...selection, acceptedAt: 'invalid' } },
+        ]) {
+            expect(() =>
+                prepareRestorePlan(
+                    backupWith({
+                        'kernel-selections.json': {
+                            encoding: 'utf8',
+                            data: JSON.stringify({ version: 1, accounts }),
+                        },
+                    }),
+                    { restoreCredentials: true, readCurrent: () => null },
+                ),
+            ).toThrow(RestorePreflightError);
+        }
     });
 
     it('canonicalizes a recognized older runtime config and reports added fields', () => {

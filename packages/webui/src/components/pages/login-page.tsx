@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { motion } from 'motion/react';
-import { ArrowRight, KeyRound, Sparkles } from 'lucide-react';
-import { Modal } from '@/components/interior/modal';
+import { motion, useReducedMotionConfig } from 'motion/react';
+import { ArrowRight, KeyRound } from 'lucide-react';
 import { OtpInput, type OtpInputHandle } from '@/components/interior/otp-input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { LoginWaves } from '@/components/login-waves';
+import { LineField } from '@/components/ui/line-field';
+import { PaperBackdrop } from '@/components/layout/paper-backdrop';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME, APP_VERSION } from '@/types';
 import { parseSecondFactor } from '@/lib/totp-second-factor';
+import '@/styles/workspace.css';
 
 interface LoginPageProps {
     onLogin: (
@@ -25,45 +25,15 @@ interface LoginPageProps {
     initialUseRecovery?: boolean;
 }
 
-// Device-local preference for the (heavy) animated login background. Kept out
-// of the server-synced appearance on purpose: it's a "this device feels laggy"
-// choice, and it must work pre-auth (where settings can't persist to the
-// server). Independent of the system 减弱动效 / 关闭全部动效 settings.
-const LOGIN_FX_KEY = 'nowluma_login_fx';
-
-function readLoginFx(): boolean {
-    try {
-        const v = localStorage.getItem(LOGIN_FX_KEY);
-
-        if (v === '0') {
-            return false;
-        }
-
-        if (v === '1') {
-            return true;
-        }
-    } catch {
-        /* ignore */
-    }
-
-    // No explicit choice yet → on by default, unless the OS asks for reduced
-    // motion (an accessibility default; still fully overridable via the toggle).
-    try {
-        return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch {
-        return true;
-    }
-}
-
 export function LoginPage({
     onLogin,
     initialPassword = '',
     initialNeedsTotp = false,
     initialUseRecovery = false,
 }: LoginPageProps) {
-    const { appearance } = useTheme();
+    const { appearance, performance } = useTheme();
     const customBg = appearance.background.type !== 'none';
-    const reduce = appearance.reduceMotion || appearance.disableMotion;
+    const reduce = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
 
     // The login page must never carry operator custom CSS. applyAppearance gates
     // it on a token, but an in-session logout / 401 expiry won't re-run it, so
@@ -81,19 +51,6 @@ export function LoginPage({
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [shake, setShake] = useState(0);
-    const [fxOn, setFxOn] = useState(readLoginFx);
-    const [helpOpen, setHelpOpen] = useState(false);
-
-    const toggleFx = (v: boolean) => {
-        setFxOn(v);
-
-        try {
-            localStorage.setItem(LOGIN_FX_KEY, v ? '1' : '0');
-        } catch {
-            /* ignore */
-        }
-    };
-
     useEffect(() => {
         if (otpStatus !== 'rejected') {
             return;
@@ -162,18 +119,11 @@ export function LoginPage({
     };
 
     return (
-        <LoginShell
-            customBg={customBg}
-            reduce={reduce}
-            fxOn={fxOn}
-            helpOpen={helpOpen}
-            onHelpOpen={setHelpOpen}
-            onToggleFx={toggleFx}
-            wide={useRecovery}
-        >
+        <LoginShell customBg={customBg} reduce={reduce} wide={useRecovery}>
             {needsTotp ? (
                 <>
                     <LoginBrand
+                        title={useRecovery ? '使用恢复码' : '验证身份'}
                         subtitle={
                             useRecovery
                                 ? '输入保存的一次性恢复码'
@@ -185,7 +135,7 @@ export function LoginPage({
                             key={useRecovery ? 'recovery' : 'totp'}
                             ref={otpRef}
                             autoFocus
-                            className="w-full"
+                            className={cn('w-full', useRecovery && 'workspace-recovery-code')}
                             length={useRecovery ? 8 : 6}
                             mode={useRecovery ? 'alphanumeric' : 'numeric'}
                             groupEvery={useRecovery ? 4 : 3}
@@ -254,12 +204,15 @@ export function LoginPage({
                 </>
             ) : (
                 <>
-                    <LoginBrand subtitle="OneBot v11 协议网关 · 安全登录" />
+                    <LoginBrand title="进入工作台" subtitle="管理 QQ 会话与机器人连接。" />
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
+                        <label htmlFor="login-password" className="text-sm font-medium">
+                            访问密码
+                        </label>
                         <motion.div
                             key={shake}
-                            animate={shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
-                            transition={{ duration: 0.4 }}
+                            animate={!reduce && shake > 0 ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : {}}
+                            transition={{ duration: reduce ? 0 : performance?.low ? 0.18 : 0.4 }}
                             className="relative"
                         >
                             <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -267,18 +220,20 @@ export function LoginPage({
                                 id="login-password"
                                 name="password"
                                 type={showPwd ? 'text' : 'password'}
-                                placeholder="输入访问令牌"
+                                placeholder="输入访问密码"
+                                aria-label="访问密码"
+                                aria-invalid={!!error}
+                                aria-describedby={error ? 'login-error' : undefined}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoFocus
                                 autoComplete="current-password"
-                                className="h-12 rounded-xl bg-background/40 pl-10 pr-11 text-base"
+                                className="h-12 bg-background pl-10 pr-12 text-base"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPwd((v) => !v)}
-                                className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-                                tabIndex={-1}
+                                className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label={showPwd ? '隐藏密码' : '显示密码'}
                             >
                                 <PasswordVisibilityIcon visible={showPwd} reduceMotion={reduce} />
@@ -287,8 +242,10 @@ export function LoginPage({
 
                         {error && (
                             <motion.p
-                                initial={reduce ? false : { opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                id="login-error"
+                                role="alert"
+                                initial={reduce ? false : { opacity: 0 }}
+                                animate={{ opacity: 1 }}
                                 className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive"
                             >
                                 {error}
@@ -298,13 +255,14 @@ export function LoginPage({
                         <Button
                             type="submit"
                             disabled={loading || !password}
-                            className="h-12 rounded-xl text-[15px]"
+                            variant="glass"
+                            className="h-12 text-[15px]"
                         >
                             {loading ? (
                                 '验证中…'
                             ) : (
                                 <>
-                                    进入控制台 <ArrowRight className="optical-forward size-4" />
+                                    打开工作台 <ArrowRight className="optical-forward size-4" />
                                 </>
                             )}
                         </Button>
@@ -315,21 +273,12 @@ export function LoginPage({
     );
 }
 
-function LoginBrand({ subtitle }: { subtitle: string }) {
+function LoginBrand({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 shadow-sm ring-1 ring-primary/20">
-                <img src="/logo.png" alt={APP_NAME} className="size-10 rounded-xl object-cover" />
-            </div>
-            <div>
-                <div className="flex items-center justify-center gap-2">
-                    <span className="text-2xl font-semibold tracking-tight">{APP_NAME}</span>
-                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-mono text-micro text-primary tabular-nums">
-                        v{APP_VERSION}
-                    </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-            </div>
+        <div className="workspace-auth-heading">
+            <p className="workspace-eyebrow">安全访问</p>
+            <h1>{title}</h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
         </div>
     );
 }
@@ -337,106 +286,70 @@ function LoginBrand({ subtitle }: { subtitle: string }) {
 function LoginShell({
     customBg,
     reduce,
-    fxOn,
-    helpOpen,
-    onHelpOpen,
-    onToggleFx,
     wide = false,
     children,
 }: {
     customBg: boolean;
     reduce: boolean;
-    fxOn: boolean;
-    helpOpen: boolean;
-    onHelpOpen: (open: boolean) => void;
-    onToggleFx: (value: boolean) => void;
     wide?: boolean;
     children: ReactNode;
 }) {
-    const { managedBy } = useTheme();
+    const { managedBy, performance } = useTheme();
+    const lowCost = performance?.low ?? false;
     return (
-        <div
-            className={cn(
-                'relative flex min-h-dvh items-center justify-center overflow-x-hidden px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]',
-                customBg ? 'bg-transparent' : 'bg-background',
-            )}
-        >
-            {fxOn && !managedBy && <LoginWaves />}
-
-            <div
-                data-ui-decoration=""
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        'radial-gradient(75% 55% at 50% 0%, color-mix(in oklab, var(--primary) 20%, transparent) 0%, transparent 68%)',
-                }}
-            />
-
-            <div className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-20">
-                <ThemeToggle />
-            </div>
-
-            <motion.div
-                initial={reduce ? false : { opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                className={cn(
-                    'relative z-10 flex w-full flex-col items-center',
-                    wide ? 'max-w-2xl' : 'max-w-md',
-                )}
-            >
-                <Card className="w-full overflow-hidden border-border/50 bg-card/75 shadow-2xl shadow-primary/5 backdrop-blur-2xl supports-[backdrop-filter]:bg-card/65">
-                    <CardContent className="px-7 py-9 sm:px-10">
-                        {children}
-                        <p className="mt-7 text-center text-meta text-muted-foreground">
-                            {APP_NAME} · QQ 连接控制台
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <motion.button
-                    style={{ display: managedBy ? 'none' : undefined }}
-                    type="button"
-                    onClick={() => onHelpOpen(true)}
-                    whileHover={reduce ? undefined : { scale: 1.04 }}
-                    whileTap={reduce ? undefined : { scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                    className="mt-5 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/45 px-4 py-2 text-[12px] font-medium text-muted-foreground shadow-lg shadow-black/5 backdrop-blur-xl transition-colors hover:text-foreground supports-[backdrop-filter]:bg-background/35 cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
-                >
-                    <Sparkles className="size-3.5 text-primary" />
-                    我觉得这个界面很卡怎么办？
-                </motion.button>
-            </motion.div>
-
-            <Modal
-                open={helpOpen}
-                onClose={() => onHelpOpen(false)}
-                title="界面有点卡顿？"
-                description="登录页背景是一个跟随鼠标的动态线条效果，在部分设备上可能比较吃性能。可以在这里关掉它——该开关仅作用于本设备的登录页，与系统的动效设置相互独立。"
-                closeLabel="关闭性能设置弹窗"
-                maxWidth={384}
-            >
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3">
-                        <div className="min-w-0">
-                            <p className="text-sm font-medium">登录页动态背景</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                {fxOn ? '已开启 · 关闭后背景为静态' : '已关闭 · 背景为静态'}
-                            </p>
-                        </div>
-                        <ToggleSwitch
-                            value={fxOn}
-                            onChange={onToggleFx}
-                            ariaLabel="登录页动态背景"
-                        />
-                    </div>
-
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                        登录后，你还可以在「系统设置 →
-                        无障碍」里进一步「减弱动效」或「关闭全部动效」。
-                    </p>
+        <div className={cn('workspace-auth-shell', customBg ? 'bg-transparent' : 'bg-background')}>
+            {!customBg && <PaperBackdrop />}
+            <header className="workspace-auth-masthead">
+                <div className="workspace-auth-wordmark">
+                    <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                    <span>{APP_NAME}</span>
+                    <span className="workspace-auth-version">v{APP_VERSION}</span>
                 </div>
-            </Modal>
+                <div className="workspace-toolbar-scene">
+                    <ThemeToggle />
+                </div>
+            </header>
+            <div className={cn('workspace-auth-content', wide && 'workspace-auth-content-wide')}>
+                <aside className="workspace-auth-identity" aria-label="Nowluma QQ 连接控制台">
+                    <div className="workspace-auth-artwork">
+                        <LineField animated={!reduce && !lowCost && !managedBy} />
+                        <div className="workspace-auth-artwork-caption">
+                            <span>01 — 连接，从这里开始</span>
+                            <span aria-hidden="true" className="workspace-line-key">
+                                <i />
+                                <i />
+                                <i />
+                                <i />
+                            </span>
+                        </div>
+                    </div>
+                    <div className="workspace-auth-introduction">
+                        <p className="workspace-eyebrow">QQ 连接控制台</p>
+                        <p className="workspace-auth-statement">
+                            连接有序，
+                            <br />
+                            结果清晰。
+                        </p>
+                    </div>
+                </aside>
+                <motion.div
+                    initial={reduce ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={
+                        reduce
+                            ? { duration: 0 }
+                            : lowCost
+                              ? { duration: 0.18 }
+                              : { type: 'spring', duration: 0.42, bounce: 0.1 }
+                    }
+                    className={cn('workspace-auth-document', wide ? 'max-w-2xl' : 'max-w-md')}
+                >
+                    <section className="workspace-auth-form" aria-label="登录">
+                        {children}
+                    </section>
+                </motion.div>
+            </div>
+            <footer className="workspace-auth-footer">{APP_NAME} · QQ 连接控制台</footer>
         </div>
     );
 }

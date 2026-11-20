@@ -4,6 +4,8 @@
 // marker emitted just before the next delivered frame. Extracted from the route
 // handler so this (easy-to-get-wrong) logic is unit-tested.
 
+import type { SseChannel } from './sse-response';
+
 export interface FramePusherOptions {
     /** The stream controller's current desiredSize (null = no backpressure info). */
     desiredSize: () => number | null;
@@ -33,5 +35,20 @@ export function createFramePusher(opts: FramePusherOptions): (payload: unknown) 
         }
 
         opts.enqueue(encode(`data: ${JSON.stringify(payload)}\n\n`));
+    };
+}
+
+/** The debug + state SSE routes share this bounded-drop sender. */
+export function createDroppingSender(channel: SseChannel): (payload: unknown) => void {
+    const push = createFramePusher({
+        desiredSize: () => channel.desiredSize(),
+        enqueue: channel.raw,
+        encode: channel.encode,
+    });
+
+    return (payload) => {
+        if (!channel.isClosed()) {
+            push(payload);
+        }
     };
 }

@@ -58,6 +58,17 @@ describe('restoreBackup transaction', () => {
     const transactionDirs = () =>
         fs.readdirSync(root).filter((name) => name.startsWith('.restore-transaction-'));
 
+    // Windows exposes only the read-only attribute, not POSIX private modes, so the
+    // file type and restored contents carry the check there.
+    const expectPrivate = (target: string, mode: number, kind: 'file' | 'directory') => {
+        const stat = fs.statSync(target);
+        expect(kind === 'file' ? stat.isFile() : stat.isDirectory()).toBe(true);
+
+        if (process.platform !== 'win32') {
+            expect(stat.mode & 0o777).toBe(mode);
+        }
+    };
+
     function run(
         files: Record<string, { encoding: 'utf8' | 'base64'; data: string }>,
         beforeOperation?: (operation: RestoreOperation) => void,
@@ -81,7 +92,7 @@ describe('restoreBackup transaction', () => {
 
         expect(JSON.parse(readLive('runtime.json')).webuiPort).toBe(5100);
         expect(JSON.parse(readLive('webui.json')).passwordHash).toBe(validAuth().passwordHash);
-        expect(fs.statSync(livePath('webui.json')).mode & 0o777).toBe(0o600);
+        expectPrivate(livePath('webui.json'), 0o600, 'file');
         expect(result).toEqual(
             expect.objectContaining({
                 transactionId: 'test-transaction',
@@ -256,7 +267,7 @@ describe('restoreBackup transaction', () => {
         );
         const snapshotDir = (thrown as RestoreTransactionError).snapshotDir!;
         expect(fs.existsSync(snapshotDir)).toBe(true);
-        expect(fs.statSync(snapshotDir).mode & 0o777).toBe(0o700);
+        expectPrivate(snapshotDir, 0o700, 'directory');
         expect(fs.existsSync(path.join(snapshotDir, 'snapshot', 'runtime.json'))).toBe(true);
         const causes = ((thrown as RestoreTransactionError).cause as AggregateError).errors;
         expect(
@@ -307,7 +318,7 @@ describe('restoreBackup transaction', () => {
     });
 
     it('fails preflight when a required current OneBot file cannot be read', () => {
-        fs.symlinkSync('onebot.json', livePath('onebot.json'));
+        fs.mkdirSync(livePath('onebot.json'));
 
         let thrown: unknown;
 

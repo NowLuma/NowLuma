@@ -1,7 +1,7 @@
 {
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "name": "@nowluma/runtime",
-  "version": "2.4.2",
+  "version": "2.5.0-rc.1",
   "private": true,
   "type": "module",
   "main": "index.mjs",

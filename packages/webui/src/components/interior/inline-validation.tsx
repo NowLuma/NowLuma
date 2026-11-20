@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { FloatingLabelInput } from '@/components/interior/floating-label';
 
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const;
@@ -164,7 +164,7 @@ export function InlineValidation({
     onBlur,
     className = '',
 }: InlineValidationProps) {
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
     const fade = reduced ? INSTANT : CROSSFADE;
 
     const auto = useId();

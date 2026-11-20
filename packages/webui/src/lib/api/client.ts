@@ -49,6 +49,13 @@ import {
 import { localStorageTokenStore } from './token-store';
 import { readSseJson } from './sse';
 import { WEBUI_SESSION_HEADER, webuiSessionHeaders } from './session-headers';
+import {
+    assertKernelChoiceInput,
+    kernelAccountPath,
+    readAccountKernelPolicy,
+    readKernelCatalog,
+    readSaveKernelChoiceResult,
+} from './kernel';
 
 const DEFAULT_TOKEN_KEY = 'nowluma_token';
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -103,6 +110,7 @@ class HttpApiClient implements ApiClient {
 
     // namespaced surfaces are bound up-front so callers can destructure
     readonly processes: ApiClient['processes'];
+    readonly kernel: ApiClient['kernel'];
     readonly config: ApiClient['config'];
     readonly logs: ApiClient['logs'];
     readonly update: ApiClient['update'];
@@ -121,13 +129,53 @@ class HttpApiClient implements ApiClient {
         this.onUnauthorized = opts.onUnauthorized;
 
         this.processes = {
-            list: () =>
-                this.getJson<{ list: HookProcessInfo[] }>('/api/processes').then(
+            list: (signal) =>
+                this.getJson<{ list: HookProcessInfo[] }>('/api/processes', signal).then(
                     (d) => d.list ?? [],
                 ),
-            load: (pid) => this.postJson<ProcessActionResult>(`/api/processes/${pid}/load`),
-            unload: (pid) => this.postJson<ProcessActionResult>(`/api/processes/${pid}/unload`),
-            refresh: (pid) => this.postJson<ProcessActionResult>(`/api/processes/${pid}/refresh`),
+            load: (pid, signal) =>
+                this.postJson<ProcessActionResult>(`/api/processes/${pid}/load`, undefined, signal),
+            unload: (pid, signal) =>
+                this.postJson<ProcessActionResult>(
+                    `/api/processes/${pid}/unload`,
+                    undefined,
+                    signal,
+                ),
+            refresh: (pid, signal) =>
+                this.postJson<ProcessActionResult>(
+                    `/api/processes/${pid}/refresh`,
+                    undefined,
+                    signal,
+                ),
+        };
+
+        this.kernel = {
+            catalog: async (signal) => {
+                const res = await this.fetchWithDeadline('/api/kernel/catalog', { signal });
+
+                if (!res.ok) {
+                    const payload = await readJson<ErrorPayload>(res);
+                    throw new ApiError(
+                        res.status,
+                        extractErrorMessage(payload, res.statusText || '内核目录读取失败'),
+                        payload.code,
+                    );
+                }
+
+                return readKernelCatalog(await readJson<unknown>(res));
+            },
+            get: async (uin, signal) =>
+                readAccountKernelPolicy(
+                    await this.getJson<unknown>(kernelAccountPath(uin), signal),
+                ),
+            save: async (uin, choice, signal) => {
+                const url = kernelAccountPath(uin);
+                assertKernelChoiceInput(choice);
+                return readSaveKernelChoiceResult(
+                    await this.postJson<unknown>(url, choice, signal),
+                    choice,
+                );
+            },
         };
 
         this.config = {
@@ -539,14 +587,15 @@ class HttpApiClient implements ApiClient {
         return readJson<T>(res);
     }
 
-    private getJson<T>(url: string): Promise<T> {
-        return this.fetchJson<T>(url);
+    private getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
+        return this.fetchJson<T>(url, { signal });
     }
 
-    private postJson<T>(url: string, body?: unknown): Promise<T> {
+    private postJson<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
         return this.fetchJson<T>(url, {
             method: 'POST',
             body: body == null ? undefined : JSON.stringify(body),
+            signal,
         });
     }
 

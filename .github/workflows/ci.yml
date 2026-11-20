@@ -1,8 +1,15 @@
 name: Nowluma CI
 on:
   push:
+    # A tag is validated by release.yml, which calls this workflow; don't run
+    # the same gates twice for one tag. `branches` must stay explicit: a push
+    # filter with only tags-ignore would stop running for branch pushes.
+    branches: ['**']
+    tags-ignore: ['**']
   pull_request:
   workflow_dispatch:
+  # release.yml reuses these gates before it publishes anything.
+  workflow_call:
 permissions:
   contents: read
 concurrency:
@@ -11,14 +18,14 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11.25.0
           run_install: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -28,26 +35,61 @@ jobs:
       - run: node tools/check-identity.mjs
       - run: pnpm test
       - run: node tools/check-action-catalog.mjs
-      - run: node --test deploy/docker/healthcheck.test.cjs
+      - run: node --test deploy/docker/healthcheck.test.cjs deploy/docker/kernel-gate.test.mjs deploy/install.test.cjs
       - run: bash -n deploy/install.sh && bash -n deploy/manage.sh && bash -n deploy/docker/entrypoint.sh
       - run: docker compose -f deploy/docker-compose.yml config --quiet
       - run: pnpm run build:all
       - run: node tools/check-release-layout.mjs dist
-      - uses: actions/upload-artifact@v6
+      - run: node tools/build-docs.mjs
+      - run: pnpm --filter webui exec vite build --config vite.demo.config.ts
+      - run: node tools/check-docs.mjs --with-demo
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: nowluma-linux-x64-lite
           path: dist/
+          if-no-files-found: error
+  # The full `pnpm test` suite is the ubuntu gate. This job covers the
+  # Windows-only paths (type checking, the one-click exe, the packaged
+  # launcher); the suite's known Windows failures are tracked, not skipped.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11.25.0
+          run_install: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: 10.0.x
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm run build:all
+      - run: node tools/build-windows-exe.mjs dist _re/releases/windows-exe
+      - name: Verify the packaged launcher and release tooling
+        run: node --test deploy/windows/launcher.test.cjs tools/check-version.test.mjs tools/package-release.test.mjs
+        env:
+          NOWLUMA_TEST_EXE: _re/releases/windows-exe/Nowluma.exe
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: nowluma-windows-x64-exe
+          path: _re/releases/windows-exe/
           if-no-files-found: error
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version-file: .node-version
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: deploy/docker/Dockerfile
@@ -57,5 +99,5 @@ jobs:
           tags: nowluma:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Verify startup, native hook, desktop and restart/recreation persistence
+      - name: Verify startup, native discovery, account kernel gate, desktop and persistence
         run: node deploy/docker/smoke.mjs nowluma:ci

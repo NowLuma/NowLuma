@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group, SettingRow } from '@/components/settings/settings-controls';
 import { Modal } from '@/components/interior/modal';
+import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApi } from '@/lib/api';
@@ -11,105 +12,86 @@ import { TotpQr } from '@/components/settings/totp-qr';
 import { TotpRecoveryCodes } from '@/components/settings/totp-recovery-codes';
 import { copyText } from '@/lib/utils';
 
-function SettingRow({
-    label,
-    hint,
-    children,
-}: {
-    label: string;
-    hint?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-            <div className="min-w-0">
-                <p className="text-sm font-medium">{label}</p>
-                {hint && (
-                    <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{hint}</p>
-                )}
-            </div>
-            <div className="sm:shrink-0">{children}</div>
-        </div>
-    );
-}
-
 export function TotpPanel() {
     const api = useApi();
-    const [status, setStatus] = useState<TotpStatus | 'hidden' | 'loading'>('loading');
+    const [status, setStatus] = useState<TotpStatus | 'loading' | { error: string }>('loading');
     const [setupOpen, setSetupOpen] = useState(false);
     const [disableOpen, setDisableOpen] = useState(false);
     const [regenOpen, setRegenOpen] = useState(false);
 
-    const refresh = useCallback(async () => {
+    const refresh = useCallback(async (isCurrent: () => boolean = () => true) => {
         try {
-            setStatus(await api.totp.status());
-        } catch {
-            setStatus('hidden');
+            const next = await api.totp.status();
+            if (isCurrent()) {
+                setStatus(next);
+            }
+        } catch (error) {
+            if (isCurrent()) {
+                setStatus({ error: error instanceof Error ? error.message : '读取双重验证状态失败' });
+            }
         }
     }, [api]);
 
     useEffect(() => {
-        void refresh();
+        let disposed = false;
+        void refresh(() => !disposed);
+        return () => {
+            disposed = true;
+        };
     }, [refresh]);
 
-    if (status === 'hidden') {
-        return null;
-    }
-
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="gap-1 pb-4">
-                <CardTitle className="flex items-center gap-2 text-[15px]">
-                    <ShieldCheck className="size-4 text-primary" />
-                    双重验证
-                </CardTitle>
-                <CardDescription className="text-[12px] leading-relaxed">
-                    登录时在访问密码之外再验证 Authenticator 一次性密码。默认关闭。
-                </CardDescription>
-            </CardHeader>
-            <div className="divide-y divide-border/60 border-t border-border/60">
-                {status === 'loading' ? (
-                    <SettingRow label="2FA" hint="正在读取…">
-                        <span className="text-sm text-muted-foreground">…</span>
-                    </SettingRow>
-                ) : status.enabled ? (
-                    <>
-                        <SettingRow
-                            label="状态"
-                            hint={`已绑定 ${status.label} · 剩余 ${status.remainingRecoveryCodes} 个恢复码`}
-                        >
-                            <span className="text-sm text-success">已开启</span>
-                        </SettingRow>
-                        <SettingRow label="恢复码" hint="重新生成后旧码立即作废。">
-                            <Button variant="outline" size="sm" onClick={() => setRegenOpen(true)}>
-                                重新生成
-                            </Button>
-                        </SettingRow>
-                        <SettingRow
-                            label="关闭 2FA"
-                            hint="需要当前密码，以及验证码或恢复码。其他设备的会话将失效。"
-                        >
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setDisableOpen(true)}
-                            >
-                                关闭
-                            </Button>
-                        </SettingRow>
-                    </>
-                ) : (
+        <Group
+            title="双重验证"
+            icon={ShieldCheck}
+        >
+            {status === 'loading' ? (
+                <SettingRow label="2FA">
+                    <SkeletonSwap ready={false} reserve={24} lines={1} label="双重验证状态" children={null} />
+                </SettingRow>
+            ) : 'error' in status ? (
+                <div role="alert" className="flex min-w-0 flex-col gap-1.5 py-3 text-xs text-destructive">
+                    <p className="font-medium">无法读取双重验证状态</p>
+                    <p className="break-words">{status.error}</p>
+                    <p className="text-muted-foreground">当前状态未知；请重新载入页面后确认，不能据此判断是否已开启。</p>
+                </div>
+            ) : status.enabled ? (
+                <>
                     <SettingRow
-                        label="Authenticator"
-                        hint="扫描二维码或手动输入密钥，再用 6 位验证码确认。"
+                        label="状态"
+                        hint={`已绑定 ${status.label} · 剩余 ${status.remainingRecoveryCodes} 个恢复码`}
                     >
-                        <Button variant="outline" size="sm" onClick={() => setSetupOpen(true)}>
-                            <KeyRound className="size-4" /> 开启 2FA
+                        <span className="text-sm text-success">已开启</span>
+                    </SettingRow>
+                    <SettingRow label="恢复码" hint="重新生成后旧码立即作废。">
+                        <Button variant="glass" size="sm" onClick={() => setRegenOpen(true)}>
+                            重新生成
                         </Button>
                     </SettingRow>
-                )}
-            </div>
+                    <SettingRow
+                        label="关闭 2FA"
+                        hint="需要当前密码，以及验证码或恢复码。其他设备的会话将失效。"
+                    >
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDisableOpen(true)}
+                        >
+                            关闭
+                        </Button>
+                    </SettingRow>
+                </>
+            ) : (
+                <SettingRow
+                    label="Authenticator"
+                    hint="未开启；绑定验证器后用 6 位验证码确认。"
+                >
+                    <Button variant="glass" size="sm" onClick={() => setSetupOpen(true)}>
+                        <KeyRound className="size-4" /> 开启 2FA
+                    </Button>
+                </SettingRow>
+            )}
 
             <TotpSetupDialog
                 open={setupOpen}
@@ -129,7 +111,7 @@ export function TotpPanel() {
                 onDone={refresh}
             />
             <TotpRegenDialog open={regenOpen} onOpenChange={setRegenOpen} onDone={refresh} />
-        </Card>
+        </Group>
     );
 }
 
@@ -143,6 +125,7 @@ function TotpSetupDialog({
     onEnabled: () => void | Promise<void>;
 }) {
     const api = useApi();
+    const formId = useId();
     const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
     const [issuer, setIssuer] = useState('');
     const [accountName, setAccountName] = useState('');
@@ -153,21 +136,29 @@ function TotpSetupDialog({
     const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
     const loadEnrollment = useCallback(
-        async (nextIssuer?: string, nextAccount?: string) => {
+        async (
+            nextIssuer?: string,
+            nextAccount?: string,
+            isCurrent: () => boolean = () => true,
+        ): Promise<boolean> => {
             const result = await api.totp.begin({
                 ...(nextIssuer ? { issuer: nextIssuer } : {}),
                 ...(nextAccount ? { accountName: nextAccount } : {}),
             });
+            if (!isCurrent()) {
+                return false;
+            }
 
             if (!result.success) {
                 setError(result.message);
-                return;
+                return false;
             }
 
             setEnrollment(result);
             setIssuer(result.issuer);
             setAccountName(result.accountName);
             setError('');
+            return true;
         },
         [api],
     );
@@ -179,41 +170,76 @@ function TotpSetupDialog({
             setCode('');
             setError('');
             setRecoveryCodes(null);
+            setBusy(false);
             return;
         }
 
-        void loadEnrollment();
+        let disposed = false;
+        setBusy(true);
+        void loadEnrollment(undefined, undefined, () => !disposed)
+            .catch((caught) => {
+                if (!disposed) {
+                    setError(caught instanceof Error ? caught.message : '无法读取 2FA 绑定信息');
+                }
+            })
+            .finally(() => {
+                if (!disposed) {
+                    setBusy(false);
+                }
+            });
+        return () => {
+            disposed = true;
+        };
     }, [open, loadEnrollment]);
 
     const refreshLabels = async () => {
-        if (!enrollment) {
+        if (!enrollment || busy) {
             return;
         }
 
-        await loadEnrollment(issuer, accountName);
+        setBusy(true);
+        try {
+            await loadEnrollment(issuer, accountName);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '更新验证器显示名称失败');
+        } finally {
+            setBusy(false);
+        }
     };
 
     const confirm = async () => {
-        setBusy(true);
-        setError('');
-        await loadEnrollment(issuer, accountName);
-        const result = await api.totp.confirm(password, code);
-        setBusy(false);
-
-        if (!result.success) {
-            setError(result.message);
+        if (busy || !enrollment || !password || !/^\d{6}$/.test(code)) {
             return;
         }
 
-        setRecoveryCodes(result.recoveryCodes);
-        await onEnabled();
+        setBusy(true);
+        setError('');
+        try {
+            if (!(await loadEnrollment(issuer, accountName))) {
+                return;
+            }
+            const result = await api.totp.confirm(password, code);
+            if (!result.success) {
+                setError(result.message);
+                return;
+            }
+
+            setPassword('');
+            setCode('');
+            setRecoveryCodes(result.recoveryCodes);
+            await onEnabled();
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '开启双重验证失败');
+        } finally {
+            setBusy(false);
+        }
     };
 
     return (
         <Modal
             open={open}
             onClose={() => {
-                if (!recoveryCodes) {
+                if (!busy && !recoveryCodes) {
                     onOpenChange(false);
                 }
             }}
@@ -224,12 +250,35 @@ function TotpSetupDialog({
                     : '用 Authenticator 扫描二维码，或手动输入密钥，然后输入当前访问密码和 6 位验证码。'
             }
             closeLabel="关闭 2FA 绑定"
+            className="cp-dialog"
             maxWidth={440}
+            showClose={!busy && !recoveryCodes}
+            closeOnEscape={!busy && !recoveryCodes}
+            closeOnBackdrop={!busy && !recoveryCodes}
+            footer={!recoveryCodes && (
+                <Button
+                    type="submit"
+                    form={formId}
+                    variant="glass"
+                    disabled={busy || !enrollment || !password || !/^\d{6}$/.test(code)}
+                >
+                    {busy ? '处理中…' : '确认开启'}
+                </Button>
+            )}
         >
             {recoveryCodes ? (
                 <TotpRecoveryCodes codes={recoveryCodes} onConfirm={() => onOpenChange(false)} />
             ) : (
-                <div className="flex flex-col gap-4">
+                <form
+                    id={formId}
+                    className="flex min-w-0 flex-col gap-4"
+                    aria-busy={busy}
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void confirm();
+                    }}
+                >
+                    {busy && !enrollment && <p role="status" className="text-xs text-muted-foreground">正在读取绑定信息…</p>}
                     {enrollment && (
                         <div className="flex flex-col items-center gap-3">
                             <TotpQr value={enrollment.otpauthUrl} label="2FA 绑定二维码" />
@@ -239,28 +288,33 @@ function TotpSetupDialog({
                             <div className="flex flex-wrap justify-center gap-2">
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="glass"
+                                    disabled={busy}
                                     size="sm"
-                                    onClick={() => {
-                                        void copyText(enrollment.secret);
+                                    onClick={async () => {
+                                        if (!(await copyText(enrollment.secret))) {
+                                            setError('复制密钥失败，请选择上方密钥手动复制。');
+                                        }
                                     }}
                                 >
                                     复制密钥
                                 </Button>
-                                <a
-                                    href={enrollment.otpauthUrl}
-                                    className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground"
-                                >
-                                    在验证器中打开
-                                </a>
+                                <Button asChild variant="glass" size="sm" disabled={busy}>
+                                    <a href={enrollment.otpauthUrl}>在验证器中打开</a>
+                                </Button>
                             </div>
                         </div>
                     )}
-                    <div className="grid grid-cols-2 gap-3">
+                    <details className="text-xs">
+                        <summary className="min-h-11 cursor-pointer py-3 font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            验证器显示名称
+                        </summary>
+                        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                         <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
                             服务名
                             <Input
                                 value={issuer}
+                                disabled={busy || !enrollment}
                                 onChange={(e) => setIssuer(e.target.value)}
                                 onBlur={() => {
                                     void refreshLabels();
@@ -271,40 +325,49 @@ function TotpSetupDialog({
                             账号名
                             <Input
                                 value={accountName}
+                                disabled={busy || !enrollment}
                                 onChange={(e) => setAccountName(e.target.value)}
                                 onBlur={() => {
                                     void refreshLabels();
                                 }}
                             />
                         </label>
-                    </div>
+                        </div>
+                    </details>
+                    <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs font-medium">当前访问密码</span>
                     <Input
                         type="password"
+                        aria-label="当前访问密码"
                         placeholder="当前访问密码"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
+                        required
+                        disabled={busy || !enrollment}
                     />
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs font-medium">6 位验证码</span>
                     <Input
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={6}
-                        pattern="[0-9]*"
+                        pattern="[0-9]{6}"
+                        aria-label="6 位验证码"
                         placeholder="6 位验证码"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
+                        required
+                        disabled={busy || !enrollment}
                     />
-                    {error && <p className="text-xs text-destructive">{error}</p>}
-                    <Button
-                        type="button"
-                        disabled={busy || !password || !code}
-                        onClick={() => {
-                            void confirm();
-                        }}
-                    >
-                        {busy ? '正在开启…' : '确认开启'}
-                    </Button>
-                </div>
+                    </label>
+                    {error && (
+                        <p role="alert" className="text-xs text-destructive">
+                            {error}
+                        </p>
+                    )}
+                </form>
             )}
         </Modal>
     );
@@ -332,6 +395,7 @@ function TotpChallengeDialog({
     ) => Promise<{ success: boolean; message?: string }>;
     onDone: () => void | Promise<void>;
 }) {
+    const formId = useId();
     const [password, setPassword] = useState('');
     const [second, setSecond] = useState('');
     const [error, setError] = useState('');
@@ -346,55 +410,95 @@ function TotpChallengeDialog({
     }, [open]);
 
     const submit = async () => {
-        setBusy(true);
-        setError('');
-        const result = await onSubmit(password, parseSecondFactor(second));
-        setBusy(false);
-
-        if (!result.success) {
-            setError(result.message ?? '操作失败');
+        if (busy || !password || !second.trim()) {
             return;
         }
 
-        await onDone();
-        onOpenChange(false);
+        setBusy(true);
+        setError('');
+        try {
+            const result = await onSubmit(password, parseSecondFactor(second));
+            if (!result.success) {
+                setError(result.message ?? '操作失败');
+                return;
+            }
+
+            await onDone();
+            onOpenChange(false);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '双重验证操作失败');
+        } finally {
+            setBusy(false);
+        }
     };
 
     return (
         <Modal
             open={open}
-            onClose={() => onOpenChange(false)}
+            onClose={() => {
+                if (!busy) {
+                    onOpenChange(false);
+                }
+            }}
             title={title}
             description={description}
             closeLabel={`关闭${title}`}
+            className="cp-dialog"
             maxWidth={400}
+            showClose={!busy}
+            closeOnEscape={!busy}
+            closeOnBackdrop={!busy}
+            footer={
+                <Button
+                    type="submit"
+                    form={formId}
+                    variant={destructive ? 'destructive' : 'glass'}
+                    disabled={busy || !password || !second.trim()}
+                >
+                    {busy ? '处理中…' : confirmText}
+                </Button>
+            }
         >
-            <div className="flex flex-col gap-3">
+            <form
+                id={formId}
+                className="flex min-w-0 flex-col gap-3"
+                aria-busy={busy}
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    void submit();
+                }}
+            >
+                <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-xs font-medium">当前访问密码</span>
                 <Input
                     type="password"
+                    aria-label="当前访问密码"
                     placeholder="当前访问密码"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
+                    required
+                    disabled={busy}
                 />
+                </label>
+                <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-xs font-medium">6 位验证码或恢复码</span>
                 <Input
+                    aria-label="6 位验证码或恢复码"
                     placeholder="6 位验证码或恢复码"
                     value={second}
                     onChange={(e) => setSecond(e.target.value)}
                     autoComplete="one-time-code"
+                    required
+                    disabled={busy}
                 />
-                {error && <p className="text-xs text-destructive">{error}</p>}
-                <Button
-                    type="button"
-                    variant={destructive ? 'destructive' : 'default'}
-                    disabled={busy || !password || !second.trim()}
-                    onClick={() => {
-                        void submit();
-                    }}
-                >
-                    {busy ? '处理中…' : confirmText}
-                </Button>
-            </div>
+                </label>
+                {error && (
+                    <p role="alert" className="text-xs text-destructive">
+                        {error}
+                    </p>
+                )}
+            </form>
         </Modal>
     );
 }
@@ -409,6 +513,7 @@ function TotpRegenDialog({
     onDone: () => void | Promise<void>;
 }) {
     const api = useApi();
+    const formId = useId();
     const [password, setPassword] = useState('');
     const [totp, setTotp] = useState('');
     const [error, setError] = useState('');
@@ -425,25 +530,35 @@ function TotpRegenDialog({
     }, [open]);
 
     const submit = async () => {
-        setBusy(true);
-        setError('');
-        const result = await api.totp.regenerateRecoveryCodes(password, totp.trim());
-        setBusy(false);
-
-        if (!result.success) {
-            setError(result.message);
+        if (busy || !password || !/^\d{6}$/.test(totp)) {
             return;
         }
 
-        setCodes(result.recoveryCodes);
-        await onDone();
+        setBusy(true);
+        setError('');
+        try {
+            const result = await api.totp.regenerateRecoveryCodes(password, totp);
+            if (!result.success) {
+                setError(result.message);
+                return;
+            }
+
+            setPassword('');
+            setTotp('');
+            setCodes(result.recoveryCodes);
+            await onDone();
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '重新生成恢复码失败');
+        } finally {
+            setBusy(false);
+        }
     };
 
     return (
         <Modal
             open={open}
             onClose={() => {
-                if (!codes) {
+                if (!busy && !codes) {
                     onOpenChange(false);
                 }
             }}
@@ -454,37 +569,68 @@ function TotpRegenDialog({
                     : '需要当前密码和 Authenticator 验证码。旧恢复码会立即作废。'
             }
             closeLabel="关闭恢复码"
+            className="cp-dialog"
             maxWidth={440}
+            showClose={!busy && !codes}
+            closeOnEscape={!busy && !codes}
+            closeOnBackdrop={!busy && !codes}
+            footer={!codes && (
+                <Button
+                    type="submit"
+                    form={formId}
+                    variant="glass"
+                    disabled={busy || !password || !/^\d{6}$/.test(totp)}
+                >
+                    {busy ? '正在生成…' : '生成新恢复码'}
+                </Button>
+            )}
         >
             {codes ? (
                 <TotpRecoveryCodes codes={codes} onConfirm={() => onOpenChange(false)} />
             ) : (
-                <div className="flex flex-col gap-3">
+                <form
+                    id={formId}
+                    className="flex min-w-0 flex-col gap-3"
+                    aria-busy={busy}
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void submit();
+                    }}
+                >
+                    <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs font-medium">当前访问密码</span>
                     <Input
                         type="password"
+                        aria-label="当前访问密码"
                         placeholder="当前访问密码"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
+                        required
+                        disabled={busy}
                     />
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs font-medium">6 位验证码</span>
                     <Input
                         inputMode="numeric"
+                        aria-label="6 位验证码"
                         placeholder="6 位验证码"
                         value={totp}
                         onChange={(e) => setTotp(e.target.value)}
                         autoComplete="one-time-code"
+                        maxLength={6}
+                        pattern="[0-9]{6}"
+                        required
+                        disabled={busy}
                     />
-                    {error && <p className="text-xs text-destructive">{error}</p>}
-                    <Button
-                        type="button"
-                        disabled={busy || !password || !totp.trim()}
-                        onClick={() => {
-                            void submit();
-                        }}
-                    >
-                        {busy ? '正在生成…' : '生成新恢复码'}
-                    </Button>
-                </div>
+                    </label>
+                    {error && (
+                        <p role="alert" className="text-xs text-destructive">
+                            {error}
+                        </p>
+                    )}
+                </form>
             )}
         </Modal>
     );

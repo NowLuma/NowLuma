@@ -17,6 +17,7 @@ import {
 import { workerData } from 'node:worker_threads';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { KernelPolicyStore } from './kernel-policy';
 import { BridgeManager } from './bridge/manager';
 import { createNotificationManager } from './notifications/manager';
 import { createStateWiring } from './webui/state-wiring';
@@ -77,14 +78,18 @@ async function main() {
     // `processes` / `qq-list` / `connections` invalidations into a bus the
     // /api/state/stream SSE handler subscribes to (no REST polling required).
     const stateWiring = createStateWiring(bridgeManager);
+    const kernelPolicy = new KernelPolicyStore();
     const hookManager = new HookManager({
+        authorizeAccount: async (uin) => kernelPolicy.authorize(uin),
         bridgeManager,
         autoLoadOnDiscovery,
         onSessionsChanged: stateWiring.onSessionsChanged,
     });
 
     if (autoLoadOnDiscovery) {
-        log.info('hook auto-load enabled: every discovered QQ process will be injected');
+        log.info(
+            'hook auto-load enabled: discovered QQ accounts require explicit kernel selection',
+        );
     }
 
     // Global notification subsystem (account up/down → webhook). Bound AFTER
@@ -117,6 +122,7 @@ async function main() {
                     trustProxy: runtimeConfig.trustProxy,
                     stateBus: stateWiring.bus,
                     updateRoot,
+                    kernelPolicy,
                     restart: () => {
                         void shutdown('update', RESTART_EXIT_CODE);
                     },

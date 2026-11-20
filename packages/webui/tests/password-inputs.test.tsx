@@ -44,7 +44,12 @@ describe('password input guidance', () => {
         );
 
         expect(markup).toContain('role="meter"');
-        expect(markup).toContain('aria-valuenow="2"');
+        expect(markup).toContain('aria-valuemax="4"');
+        expect(markup).toContain('aria-valuenow="4"');
+        expect(markup).toContain('aria-valuetext="强"');
+        expect(markup.match(/origin-left/g)).toHaveLength(4);
+        expect(markup).not.toContain('scaleX(0)');
+        expect(markup).toContain('bg-success');
         expect(markup).toContain('长度不少于 10 位');
         expect(markup).toContain('包含大写字母');
     });

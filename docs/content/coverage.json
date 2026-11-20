@@ -1,0 +1,1882 @@
+{
+    "version": 1,
+    "generatedFor": "Nowluma workspace documentation",
+    "locales": {
+        "zh": "docs/content/zh",
+        "en": "docs/content/en"
+    },
+    "notes": [
+        "labels 是界面中的真实中文文案；英文文档解释同一控件，不另造界面语言。",
+        "status 取值 implemented / pending-integration / unverified；未验证不等于可用。",
+        "账号内核按真实 UIN 保存到 config/kernel-selections.json；重写内核当前不可选，也不会静默回退。",
+        "Docker smoke 使用全新 HOME，不证明真实 QQ 登录、消息投递或重写内核；Windows 与 arm64 未验证。",
+        "静态文档站点为 18 章 × 2 语言并可使用相对 /demo/；发布由维护者执行。"
+    ],
+    "features": [
+        {
+            "id": "auth-splash",
+            "group": "首次启动",
+            "labels": [
+                "初始化中…"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "auth-login-password",
+            "group": "首次启动",
+            "labels": [
+                "访问密码",
+                "输入访问密码",
+                "打开工作台",
+                "显示密码",
+                "隐藏密码"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "auth-login-token-url",
+            "group": "首次启动",
+            "labels": [
+                "?token="
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "auth-totp",
+            "group": "首次启动",
+            "labels": [
+                "验证码",
+                "恢复码",
+                "使用恢复码",
+                "改用验证码"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "auth-login-performance-toggle",
+            "group": "首次启动",
+            "labels": [
+                "显示效果",
+                "细腻",
+                "简洁"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "auth-agreement-load-failure",
+            "group": "首次启动",
+            "labels": [
+                "协议状态加载失败",
+                "重新加载",
+                "退出登录"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "onboarding-agreements",
+            "group": "首次启动",
+            "labels": [
+                "阅读使用说明",
+                "我已阅读《使用说明》和《隐私说明》",
+                "说明文档",
+                "确认并继续",
+                "退出"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "onboarding-password",
+            "group": "首次启动",
+            "labels": [
+                "设置访问密码",
+                "设置新的访问密码",
+                "保存并完成",
+                "完成演练"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "onboarding-navigation",
+            "group": "首次启动",
+            "labels": [
+                "完成首次使用设置",
+                "上一步",
+                "下一步",
+                "完成",
+                "跳过"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "banner-insecure-access",
+            "group": "全局横幅",
+            "labels": [
+                "不安全访问"
+            ],
+            "status": "implemented",
+            "pages": [
+                "first-run.md",
+                "access-network.md",
+                "overview.md"
+            ]
+        },
+        {
+            "id": "shell-sidebar",
+            "group": "全局外壳",
+            "labels": [
+                "页面导航",
+                "工作台",
+                "QQ 会话",
+                "机器人连接",
+                "运行记录",
+                "调试工具",
+                "偏好设置",
+                "显示导航说明",
+                "必选项，不可隐藏"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "shell-nav-edit",
+            "group": "全局外壳",
+            "labels": [
+                "编辑导航",
+                "上移",
+                "下移",
+                "隐藏",
+                "显示",
+                "完成"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "shell-sidebar-update-banner",
+            "group": "全局外壳",
+            "labels": [
+                "有新版本"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "shell-topbar",
+            "group": "全局外壳",
+            "labels": [
+                "连接状态徽章",
+                "主题切换按钮",
+                "展示模式按钮",
+                "会话操作",
+                "退出登录",
+                "确认登出？"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "shell-kiosk",
+            "group": "全局外壳",
+            "labels": [
+                "展示模式",
+                "?kiosk=1",
+                "Esc"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "shell-low-integrity",
+            "group": "全局外壳",
+            "labels": [
+                "低完整性警告",
+                "临时关闭",
+                "永久关闭"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "install-native.md"
+            ]
+        },
+        {
+            "id": "shell-db-migration-banner",
+            "group": "全局外壳",
+            "labels": [
+                "账号数据库状态",
+                "正在准备数据库",
+                "正在后台迁移历史数据",
+                "迁移失败"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "shell-status-screens",
+            "group": "全局外壳",
+            "labels": [
+                "页面不存在",
+                "页面出错了",
+                "返回首页",
+                "重试"
+            ],
+            "status": "implemented",
+            "pages": [
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "overview-toolbar",
+            "group": "工作台",
+            "labels": [
+                "编辑布局",
+                "完成编辑",
+                "恢复默认"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-guidance-panel",
+            "group": "工作台",
+            "labels": [
+                "连接工作流",
+                "连接路径",
+                "当前 QQ",
+                "更换会话",
+                "选择 QQ 会话",
+                "重新检查",
+                "我已打开 QQ",
+                "选择 QQ",
+                "重试接入",
+                "重新连接",
+                "选择内核并接入",
+                "已登录，检查状态",
+                "配置机器人连接",
+                "连接说明",
+                "查看原因",
+                "查看结果"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "qq-connection.md"
+            ]
+        },
+        {
+            "id": "overview-stat-widgets",
+            "group": "工作台",
+            "labels": [
+                "控制台连接",
+                "已登录会话",
+                "QQ 程序",
+                "运行设备",
+                "连续运行",
+                "服务在线"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-connections",
+            "group": "工作台",
+            "labels": [
+                "机器人连接",
+                "仅显示异常端点",
+                "正常",
+                "注意",
+                "异常",
+                "应用失败",
+                "未启用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "overview-widget-alerts",
+            "group": "工作台",
+            "labels": [
+                "运行动态"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "logs.md"
+            ]
+        },
+        {
+            "id": "overview-widget-host",
+            "group": "工作台",
+            "labels": [
+                "资源用量",
+                "CPU 使用率",
+                "内存使用",
+                "运行进程",
+                "堆内存",
+                "外部内存"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-sessions",
+            "group": "工作台",
+            "labels": [
+                "QQ 会话"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-note",
+            "group": "工作台",
+            "labels": [
+                "便签"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-link",
+            "group": "工作台",
+            "labels": [
+                "链接卡"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-account",
+            "group": "工作台",
+            "labels": [
+                "账号快捷卡"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-widget-deliveries",
+            "group": "工作台",
+            "labels": [
+                "通知投递",
+                "上线",
+                "下线"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md",
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "overview-widget-config",
+            "group": "工作台",
+            "labels": [
+                "设置",
+                "卡片库",
+                "所有工作台卡片都已隐藏"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "overview-mobile-layout",
+            "group": "工作台",
+            "labels": [
+                "拖动排序",
+                "隐藏",
+                "显示"
+            ],
+            "status": "implemented",
+            "pages": [
+                "overview.md"
+            ]
+        },
+        {
+            "id": "process-list",
+            "group": "QQ 会话",
+            "labels": [
+                "QQ 会话",
+                "可加载",
+                "加载中",
+                "等待连接",
+                "等待登录",
+                "已在线",
+                "错误",
+                "已断开"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "process-sort-refresh",
+            "group": "QQ 会话",
+            "labels": [
+                "PID",
+                "名称",
+                "状态",
+                "刷新"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md"
+            ]
+        },
+        {
+            "id": "process-load",
+            "group": "QQ 会话",
+            "labels": [
+                "加载",
+                "选择接入内核",
+                "确认并接入"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md"
+            ]
+        },
+        {
+            "id": "process-unload",
+            "group": "QQ 会话",
+            "labels": [
+                "卸载",
+                "确认卸载 Nowluma？",
+                "卸载失败",
+                "加载"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "process-refresh-pipe",
+            "group": "QQ 会话",
+            "labels": [
+                "刷新管道",
+                "刷新管道状态 / 重连"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md"
+            ]
+        },
+        {
+            "id": "process-desktop-entry",
+            "group": "QQ 会话",
+            "labels": [
+                "打开 QQ 桌面"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "access-network.md",
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "process-empty-and-errors",
+            "group": "QQ 会话",
+            "labels": [
+                "未检测到可加载 QQ 主进程",
+                "启动 QQ 后刷新",
+                "重试"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "kernel-choice-dialog",
+            "group": "QQ 会话",
+            "labels": [
+                "选择接入内核",
+                "兼容内核",
+                "重写内核",
+                "暂不可用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "first-run.md",
+                "planned.md"
+            ]
+        },
+        {
+            "id": "kernel-risk-ack",
+            "group": "QQ 会话",
+            "labels": [
+                "我已阅读并主动确认此账号的兼容内核使用与法律风险",
+                "确认并接入",
+                "风险说明版本"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "introduction.md",
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "kernel-per-account-persistence",
+            "group": "QQ 会话",
+            "labels": [
+                "config/kernel-selections.json",
+                "仅对 QQ"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "introduction.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "kernel-save-not-attach",
+            "group": "QQ 会话",
+            "labels": [
+                "加载",
+                "刷新管道",
+                "保存选择不等于接入"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "kernel-account-change",
+            "group": "QQ 会话",
+            "labels": [
+                "尚未识别当前 QQ 账号",
+                "QQ 账号或进程已变化"
+            ],
+            "status": "implemented",
+            "pages": [
+                "qq-connection.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "config-account-sidebar",
+            "group": "机器人连接",
+            "labels": [
+                "账号",
+                "选择账号"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-tabs",
+            "group": "机器人连接",
+            "labels": [
+                "消息行为",
+                "HTTP 接口",
+                "HTTP 推送",
+                "WebSocket 监听",
+                "反向 WebSocket"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-general-history-sync",
+            "group": "机器人连接",
+            "labels": [
+                "登录时同步云端历史"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-general-nl",
+            "group": "机器人连接",
+            "labels": [
+                "状态回复",
+                "触发词",
+                "拦截已命中的消息",
+                "回复冷却（秒）"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-general-notification-optin",
+            "group": "机器人连接",
+            "labels": [
+                "上下线通知渠道",
+                "全选",
+                "已选 {n} / 共 {m}"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md",
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "config-endpoint-http-api",
+            "group": "机器人连接",
+            "labels": [
+                "HTTP 接口",
+                "启用 WebSocket",
+                "启用 SSE"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "config-endpoint-http-client",
+            "group": "机器人连接",
+            "labels": [
+                "HTTP 推送"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-endpoint-ws-server",
+            "group": "机器人连接",
+            "labels": [
+                "WebSocket 监听",
+                "Universal",
+                "Event",
+                "Api"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-endpoint-ws-client",
+            "group": "机器人连接",
+            "labels": [
+                "反向 WebSocket",
+                "重连间隔 (ms)",
+                "单帧上限 (bytes)"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-node-fields",
+            "group": "机器人连接",
+            "labels": [
+                "名称",
+                "授权 Token",
+                "主机",
+                "端口",
+                "路径",
+                "超时 (ms)",
+                "上报自身消息"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-node-message-format",
+            "group": "机器人连接",
+            "labels": [
+                "消息格式",
+                "数组",
+                "CQ 码"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md",
+                "debug.md"
+            ]
+        },
+        {
+            "id": "config-node-copy-endpoint",
+            "group": "机器人连接",
+            "labels": [
+                "复制端点地址（不含凭据）",
+                "复制连接地址，不包含访问令牌或查询参数"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-node-enable-delete",
+            "group": "机器人连接",
+            "labels": [
+                "已停用",
+                "名称重复",
+                "删除连接"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "config-save-chips",
+            "group": "机器人连接",
+            "labels": [
+                "已保存并应用",
+                "已保存，下次连接时应用",
+                "已保存，但热重载失败",
+                "保存失败",
+                "立即保存"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "config-discard-unsaved",
+            "group": "机器人连接",
+            "labels": [
+                "放弃未保存的修改？",
+                "放弃并切换"
+            ],
+            "status": "implemented",
+            "pages": [
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "logs-live-stream",
+            "group": "运行记录",
+            "labels": [
+                "运行日志",
+                "实时",
+                "连接中",
+                "重连中",
+                "未连接"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "logs-search",
+            "group": "运行记录",
+            "labels": [
+                "搜索消息 / 模块 / 级别",
+                "清除搜索"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-view-controls",
+            "group": "运行记录",
+            "labels": [
+                "自动滚动已开启",
+                "自动滚动已暂停",
+                "自动换行",
+                "显示选项",
+                "刷新"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-presets",
+            "group": "运行记录",
+            "labels": [
+                "开发",
+                "运维",
+                "精简",
+                "自定义"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-levels",
+            "group": "运行记录",
+            "labels": [
+                "TRACE",
+                "DEBUG",
+                "INFO",
+                "SUCCESS",
+                "WARN",
+                "ERROR"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-server-level",
+            "group": "运行记录",
+            "labels": [
+                "服务端日志级别"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-highlight-rules",
+            "group": "运行记录",
+            "labels": [
+                "高亮规则",
+                "高亮关键词",
+                "琥珀",
+                "玫瑰",
+                "翡翠",
+                "天蓝",
+                "紫"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-trace",
+            "group": "运行记录",
+            "labels": [
+                "开启 TRACE 日志？",
+                "TRACE 已开启",
+                "恢复 INFO"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "logs-export",
+            "group": "运行记录",
+            "labels": [
+                "导出当前视图",
+                "导出完整 TRACE"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "logs-clear-view",
+            "group": "运行记录",
+            "labels": [
+                "清空视图",
+                "清空当前日志视图？"
+            ],
+            "status": "implemented",
+            "pages": [
+                "logs.md"
+            ]
+        },
+        {
+            "id": "debug-tester",
+            "group": "调试工具",
+            "labels": [
+                "接口调用",
+                "接口",
+                "请求参数",
+                "运行调用",
+                "运行流式调用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "debug-tester-side-effects",
+            "group": "调试工具",
+            "labels": [
+                "确认执行破坏性操作"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "debug-message-composer",
+            "group": "调试工具",
+            "labels": [
+                "发送消息",
+                "消息内容",
+                "内容预览",
+                "发送",
+                "合并转发"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md",
+                "onebot-config.md"
+            ]
+        },
+        {
+            "id": "debug-uploads",
+            "group": "调试工具",
+            "labels": [
+                "接口库",
+                "接口调用",
+                "有副作用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "debug-live-activity",
+            "group": "调试工具",
+            "labels": [
+                "活动记录",
+                "导出 JSON",
+                "清空",
+                "暂停",
+                "继续"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "debug-api-browser",
+            "group": "调试工具",
+            "labels": [
+                "接口库",
+                "只读",
+                "有副作用",
+                "流式",
+                "试一下"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "debug-streamed-invoke",
+            "group": "调试工具",
+            "labels": [
+                "流式",
+                "实时帧",
+                "运行流式调用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "debug.md"
+            ]
+        },
+        {
+            "id": "appearance-theme",
+            "group": "偏好设置",
+            "labels": [
+                "外观",
+                "主题",
+                "配色方案",
+                "显示模式",
+                "深色强度",
+                "Catppuccin",
+                "纯黑"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-accent",
+            "group": "偏好设置",
+            "labels": [
+                "强调色",
+                "应用范围",
+                "仅导航",
+                "导航样式",
+                "强调色对比度较低",
+                "仍然使用"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-background",
+            "group": "偏好设置",
+            "labels": [
+                "背景",
+                "背景类型",
+                "遮罩强度",
+                "背景模糊"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-typography",
+            "group": "偏好设置",
+            "labels": [
+                "界面字体",
+                "等宽字体",
+                "圆角",
+                "界面缩放",
+                "显示密度"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-theme-vars",
+            "group": "偏好设置",
+            "labels": [
+                "主题微调",
+                "全部恢复默认"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-topbar",
+            "group": "偏好设置",
+            "labels": [
+                "顶栏",
+                "连接状态",
+                "主题菜单",
+                "展示模式"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md",
+                "overview.md"
+            ]
+        },
+        {
+            "id": "appearance-context-menu",
+            "group": "偏好设置",
+            "labels": [
+                "自定义右键菜单"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-accessibility",
+            "group": "偏好设置",
+            "labels": [
+                "自定义光标",
+                "减弱动效",
+                "动效",
+                "高对比模式",
+                "显示导航说明"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "appearance-performance-mode",
+            "group": "偏好设置",
+            "labels": [
+                "显示效果",
+                "动效",
+                "开启",
+                "关闭",
+                "完整玻璃",
+                "磨砂玻璃"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md",
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "appearance-host-managed",
+            "group": "偏好设置",
+            "labels": [
+                "外观跟随"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md",
+                "planned.md"
+            ]
+        },
+        {
+            "id": "settings-data-and-format",
+            "group": "偏好设置",
+            "labels": [
+                "数据与格式",
+                "轮询间隔",
+                "登录后落地页",
+                "时间格式"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "settings-account-password",
+            "group": "偏好设置",
+            "labels": [
+                "访问密码",
+                "修改密码",
+                "当前密码",
+                "新密码"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md",
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "settings-account-logout",
+            "group": "偏好设置",
+            "labels": [
+                "退出登录",
+                "确认退出登录？"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "settings-account-totp",
+            "group": "偏好设置",
+            "labels": [
+                "双重验证",
+                "开启 2FA",
+                "恢复码",
+                "重新生成",
+                "关闭 2FA"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-console.md",
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "settings-global-config",
+            "group": "偏好设置",
+            "labels": [
+                "全局配置",
+                "rkey 回退服务器",
+                "视频上传连接数",
+                "签名服务地址"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-storage-overview",
+            "group": "偏好设置",
+            "labels": [
+                "存储管理",
+                "受管数据总量",
+                "传输临时数据",
+                "日志保留",
+                "日志总量上限（MB）",
+                "保留天数"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-storage-cleanup",
+            "group": "偏好设置",
+            "labels": [
+                "清理临时数据",
+                "确认清理",
+                "清理全部账号"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "settings-storage-account-data",
+            "group": "偏好设置",
+            "labels": [
+                "消息历史",
+                "媒体索引",
+                "表情回应"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-env-locked-fields",
+            "group": "偏好设置",
+            "labels": [
+                "环境变量锁定",
+                "被环境变量覆盖"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "settings-notifications",
+            "group": "偏好设置",
+            "labels": [
+                "通知",
+                "去抖窗口（秒）",
+                "新增渠道",
+                "测试发送",
+                "删除"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-notification-channels",
+            "group": "偏好设置",
+            "labels": [
+                "Webhook",
+                "邮件",
+                "请求头",
+                "主题模板"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-service-listener",
+            "group": "偏好设置",
+            "labels": [
+                "服务监听",
+                "绑定地址",
+                "仅本机",
+                "所有网卡",
+                "信任代理 (trust-proxy)",
+                "自动连接已打开的 QQ"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "settings-service-desktop",
+            "group": "偏好设置",
+            "labels": [
+                "QQ 桌面",
+                "noVNC 端口",
+                "桌面地址（可选）",
+                "保存入口设置",
+                "打开 QQ 桌面"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "settings-service-tls",
+            "group": "偏好设置",
+            "labels": [
+                "HTTPS / TLS",
+                "启用 HTTPS",
+                "保存证书",
+                "更改证书",
+                "删除证书"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "settings-service-backup",
+            "group": "偏好设置",
+            "labels": [
+                "服务配置备份",
+                "导出时包含敏感配置",
+                "恢复时一并恢复敏感配置",
+                "选择备份文件并恢复"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "settings-service-diagnostics",
+            "group": "偏好设置",
+            "labels": [
+                "运行环境与保存位置",
+                "程序工作目录",
+                "当前服务 HOME",
+                "复制诊断",
+                "可写"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "data-backup.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "settings-advanced-custom-css",
+            "group": "偏好设置",
+            "labels": [
+                "自定义 CSS",
+                "清空",
+                "?safe-mode=1"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "troubleshooting.md"
+            ]
+        },
+        {
+            "id": "settings-advanced-ui-backup",
+            "group": "偏好设置",
+            "labels": [
+                "备份与重置",
+                "导出",
+                "导入",
+                "重置全部"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-developer",
+            "group": "偏好设置",
+            "labels": [
+                "开发者",
+                "重新进入",
+                "触发崩溃"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "first-run.md"
+            ]
+        },
+        {
+            "id": "settings-about-version",
+            "group": "偏好设置",
+            "labels": [
+                "关于",
+                "当前版本",
+                "检查更新"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-about-update-check",
+            "group": "偏好设置",
+            "labels": [
+                "已是最新",
+                "发现新版本",
+                "检查已关闭",
+                "无法检查",
+                "重新检查"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "settings-about-update-sources",
+            "group": "偏好设置",
+            "labels": [
+                "下载来源模式",
+                "自动切换",
+                "GitHub 直连",
+                "指定镜像",
+                "检测可用性",
+                "保存来源"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "settings-about-update-installer",
+            "group": "偏好设置",
+            "labels": [
+                "下载更新",
+                "重启并更新",
+                "重启并更新？"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "settings-about-links",
+            "group": "偏好设置",
+            "labels": [
+                "源代码",
+                "发行版",
+                "反馈问题",
+                "查看许可",
+                "侵权投诉"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md"
+            ]
+        },
+        {
+            "id": "deploy-docker-installer-language",
+            "group": "部署",
+            "labels": [
+                "1. 简体中文  2. English",
+                "--lang"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "deploy-docker-source-choice",
+            "group": "部署",
+            "labels": [
+                "get.docker.com",
+                "linuxmirrors.cn/docker.sh",
+                "是否继续执行？"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "deploy-docker-first-settings",
+            "group": "部署",
+            "labels": [
+                "仅本机/SSH",
+                "局域网",
+                "时区"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-docker.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "deploy-docker-volumes",
+            "group": "部署",
+            "labels": [
+                "nowluma_config",
+                "nowluma_data",
+                "nowluma_logs",
+                "nowluma_qq-home"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-docker.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-manage-script",
+            "group": "部署",
+            "labels": [
+                "manage.sh start",
+                "manage.sh stop",
+                "manage.sh restart",
+                "manage.sh logs",
+                "manage.sh doctor"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-docker.md",
+                "troubleshooting.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-native-linux",
+            "group": "部署",
+            "labels": [
+                "launcher.sh",
+                "--native --directory",
+                "24.22.1",
+                "26.12.1"
+            ],
+            "status": "implemented",
+            "pages": [
+                "install-native.md"
+            ]
+        },
+        {
+            "id": "deploy-windows-release",
+            "group": "部署",
+            "labels": [
+                "Nowluma.exe",
+                "LOCALAPPDATA",
+                "未签名"
+            ],
+            "status": "unverified",
+            "pages": [
+                "install-native.md",
+                "planned.md"
+            ]
+        },
+        {
+            "id": "deploy-desktop-authentication",
+            "group": "网络",
+            "labels": [
+                "/desktop/"
+            ],
+            "status": "implemented",
+            "pages": [
+                "access-network.md",
+                "install-docker.md",
+                "qq-connection.md"
+            ]
+        },
+        {
+            "id": "deploy-ssh-tunnel",
+            "group": "网络",
+            "labels": [],
+            "status": "implemented",
+            "pages": [
+                "access-network.md",
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "deploy-lan-access",
+            "group": "网络",
+            "labels": [
+                "所有网卡",
+                "0.0.0.0"
+            ],
+            "status": "implemented",
+            "pages": [
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "deploy-reverse-proxy",
+            "group": "网络",
+            "labels": [
+                "proxy_buffering",
+                "trustProxy",
+                "/desktop/"
+            ],
+            "status": "implemented",
+            "pages": [
+                "access-network.md",
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "deploy-safe-mode",
+            "group": "网络",
+            "labels": [
+                "?safe-mode=1"
+            ],
+            "status": "implemented",
+            "pages": [
+                "settings-runtime.md",
+                "troubleshooting.md",
+                "overview.md"
+            ]
+        },
+        {
+            "id": "deploy-qq-persistence",
+            "group": "数据",
+            "labels": [
+                "nowluma_qq-home",
+                "QQ 自动登录"
+            ],
+            "status": "implemented",
+            "pages": [
+                "data-backup.md",
+                "qq-connection.md",
+                "install-docker.md"
+            ]
+        },
+        {
+            "id": "deploy-persistence-verification",
+            "group": "数据",
+            "labels": [
+                "manage.sh restart",
+                "完整 HOME"
+            ],
+            "status": "implemented",
+            "pages": [
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-update-apply",
+            "group": "数据",
+            "labels": [
+                "manage.sh start",
+                "更新来源",
+                "重启并更新"
+            ],
+            "status": "implemented",
+            "pages": [
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-arm64",
+            "group": "平台",
+            "labels": [],
+            "status": "unverified",
+            "pages": [
+                "planned.md",
+                "install-docker.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "ui-practice-mode",
+            "group": "模拟",
+            "labels": [
+                "/demo/"
+            ],
+            "status": "pending-integration",
+            "pages": [
+                "demo.md",
+                "planned.md",
+                "index.md"
+            ]
+        },
+        {
+            "id": "ui-manual-effects",
+            "group": "外观",
+            "labels": ["手动显示效果"],
+            "status": "implemented",
+            "pages": [
+                "planned.md",
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "ui-fused-styles",
+            "group": "计划",
+            "labels": [],
+            "status": "pending-integration",
+            "pages": [
+                "planned.md",
+                "settings-console.md"
+            ]
+        },
+        {
+            "id": "dev-licence",
+            "group": "协作",
+            "labels": [
+                "LICENSE",
+                "LICENSING.md",
+                "EULA.md",
+                "PRIVACY.md"
+            ],
+            "status": "implemented",
+            "pages": [
+                "developing.md",
+                "introduction.md"
+            ]
+        },
+        {
+            "id": "dev-change-boundaries",
+            "group": "协作",
+            "labels": [],
+            "status": "implemented",
+            "pages": [
+                "developing.md"
+            ]
+        },
+        {
+            "id": "dev-validation",
+            "group": "协作",
+            "labels": [
+                "pnpm typecheck",
+                "pnpm lint",
+                "pnpm test",
+                "pnpm run build:all"
+            ],
+            "status": "implemented",
+            "pages": [
+                "developing.md"
+            ]
+        },
+        {
+            "id": "dev-generated-catalog",
+            "group": "协作",
+            "labels": [
+                "pnpm --filter @nowluma/mcp gen"
+            ],
+            "status": "implemented",
+            "pages": [
+                "developing.md"
+            ]
+        },
+        {
+            "id": "dev-commits-and-pr",
+            "group": "协作",
+            "labels": [],
+            "status": "implemented",
+            "pages": [
+                "developing.md"
+            ]
+        },
+        {
+            "id": "dev-ci-and-release",
+            "group": "协作",
+            "labels": [],
+            "status": "unverified",
+            "pages": [
+                "developing.md",
+                "planned.md"
+            ]
+        }
+    ]
+}

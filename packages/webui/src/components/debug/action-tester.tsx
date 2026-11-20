@@ -6,10 +6,10 @@
 // in the app-level task registry). Every call lands in localStorage history
 // with one-click replay. Responses render in a collapsible JsonTree.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     AlertTriangle,
-    FlaskConical,
+    Braces,
     History,
     Loader2,
     Play,
@@ -19,6 +19,7 @@ import {
     Zap,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { Picker } from '@/components/ui/picker';
 import { JsonTree } from '@/components/ui/json-tree';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -31,10 +32,7 @@ import { clearHistory, loadHistory, pushHistory, type InvokeRecord } from '@/lib
 import { cn } from '@/lib/utils';
 import type { DebugActionDoc, DebugStreamFrame, QQInfo } from '@/types';
 
-const cardCls =
-    'rounded-2xl border border-border/60 bg-card/80 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.10)] backdrop-blur-sm';
-
-// Name patterns for genuinely destructive actions → require a confirm. False
+// Name patterns for destructive actions → require a confirm. False
 // positives just add one extra click; false negatives skip a confirm — both low
 // stakes (the amber banner already warns that any write is real).
 const DESTRUCTIVE_RE =
@@ -49,7 +47,7 @@ function qqAvatarUrl(uin: string) {
 
 function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
     return (
-        <label className="flex flex-col gap-1.5">
+        <label className="flex min-w-0 flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">{label}</span>
             {children}
         </label>
@@ -60,11 +58,14 @@ export function ActionTester({
     accounts,
     docs,
     presetAction,
+    onInvokingChange,
 }: {
     accounts: QQInfo[];
     docs: DebugActionDoc[];
     presetAction?: { name: string; nonce: number };
+    onInvokingChange?: (invoking: boolean) => void;
 }) {
+    const reduced = useReducedMotionConfig();
     const api = useApi();
     const tasks = useDebugTasks();
 
@@ -77,9 +78,15 @@ export function ActionTester({
     const [result, setResult] = useState<DebugStreamFrame | { error: string } | null>(null);
     const [frames, setFrames] = useState<DebugStreamFrame[]>([]);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmClearHistory, setConfirmClearHistory] = useState(false);
     const [history, setHistory] = useState<InvokeRecord[]>([]);
     const [showHistory, setShowHistory] = useState(false);
     const streamAbort = useRef<AbortController | null>(null);
+    const invokingRef = useRef(false);
+
+    useEffect(() => {
+        onInvokingChange?.(invoking);
+    }, [invoking, onInvokingChange]);
 
     useEffect(() => {
         setHistory(loadHistory());
@@ -91,7 +98,7 @@ export function ActionTester({
     }, [accounts, uin]);
     // Prefill from the API browser's 试一下 (nonce lets the same action re-trigger).
     useEffect(() => {
-        if (presetAction) {
+        if (presetAction && !invokingRef.current) {
             setActionName(presetAction.name);
             setFields({});
             setParamMode('form');
@@ -131,11 +138,11 @@ export function ActionTester({
             try {
                 parsed = JSON.parse(rawJson || '{}');
             } catch {
-                return { __error: 'params JSON 无效' };
+                return { __error: '参数 JSON 格式无效' };
             }
 
             if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-                return { __error: 'params 必须是对象' };
+                return { __error: '参数必须是 JSON 对象' };
             }
 
             return parsed as Record<string, unknown>;
@@ -149,13 +156,17 @@ export function ActionTester({
     };
 
     const runInvoke = async () => {
+        if (invokingRef.current) {
+            return;
+        }
+
         if (!uin) {
             setResult({ error: '请选择账号' });
             return;
         }
 
         if (!actionName.trim()) {
-            setResult({ error: '请填写 action' });
+            setResult({ error: '请选择或输入接口名称' });
             return;
         }
 
@@ -166,6 +177,7 @@ export function ActionTester({
             return;
         }
 
+        invokingRef.current = true;
         setInvoking(true);
         setResult(null);
         setFrames([]);
@@ -216,15 +228,18 @@ export function ActionTester({
                     },
                     ac.signal,
                 );
-                // A clean success requires the terminal frame (status ok AND the
-                // NapCat terminal marker data.type==='response') — a stream that closed
-                // without emitting its terminator must not read as success.
+                // Success requires the terminal response marker, not just a
+                // progress frame followed by a closed connection.
                 const term = last as DebugStreamFrame | null;
                 const ok =
                     !!term &&
                     term.status === 'ok' &&
                     (term.data as { type?: string } | undefined)?.type === 'response';
-                setResult(last);
+                setResult(
+                    ok || term?.status === 'failed'
+                        ? term
+                        : { error: '流已结束，但未收到完成响应' },
+                );
                 tasks.finish(taskId, ok ? 'done' : 'failed');
                 setHistory(
                     pushHistory({
@@ -259,6 +274,7 @@ export function ActionTester({
                 );
             } finally {
                 streamAbort.current = null;
+                invokingRef.current = false;
                 setInvoking(false);
             }
 
@@ -291,11 +307,16 @@ export function ActionTester({
                 }),
             );
         } finally {
+            invokingRef.current = false;
             setInvoking(false);
         }
     };
 
     const onExecute = () => {
+        if (invokingRef.current) {
+            return;
+        }
+
         if (isDestructive) {
             setConfirmOpen(true);
             return;
@@ -305,6 +326,10 @@ export function ActionTester({
     };
 
     const replay = (rec: InvokeRecord) => {
+        if (invokingRef.current) {
+            return;
+        }
+
         setUin(rec.uin);
         setActionName(rec.action);
         setParamMode('json');
@@ -317,64 +342,46 @@ export function ActionTester({
     const resultFailed = !!result && ('error' in result || result.status === 'failed');
 
     return (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-            {/* tester */}
-            <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                className={cn(cardCls, 'relative z-20 flex flex-col gap-5 p-6 xl:col-span-7')}
-            >
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                        <FlaskConical className="h-[18px] w-[18px] text-primary" />
-                        <h2 className="text-[15px] font-semibold tracking-tight">Action 测试台</h2>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowHistory((v) => !v)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                        <History className="h-3.5 w-3.5" /> 历史{' '}
-                        {history.length > 0 && (
-                            <span className="tabular-nums">{history.length}</span>
-                        )}
-                    </button>
-                </div>
-
-                <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>
-                        调用会<strong className="font-semibold">真实生效</strong>(真发消息 /
-                        真踢人等),请谨慎。
-                    </span>
-                </div>
-
+        <div className="cp-debug-workbench">
+            <div className="cp-debug-context relative z-30 flex min-w-0 flex-col gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="账号">
                         <Picker
                             ariaLabel="选择账号"
                             value={uin}
-                            onChange={setUin}
+                            onChange={(nextUin) => {
+                                if (invokingRef.current || nextUin === uin) {
+                                    return;
+                                }
+
+                                setUin(nextUin);
+                                setResult(null);
+                                setFrames([]);
+                            }}
                             options={accountOptions}
                             placeholder="选择账号…"
                             validateRaw={() => false}
-                            disabled={accounts.length === 0}
+                            disabled={accounts.length === 0 || invoking}
                         />
                     </Field>
-                    <Field label="Action">
+                    <Field label="接口">
                         <Picker
-                            ariaLabel="选择 action"
+                            ariaLabel="选择接口"
                             value={actionName}
                             onChange={(v) => {
+                                if (invokingRef.current) {
+                                    return;
+                                }
+
                                 setActionName(v);
                                 setFields({});
                                 setResult(null);
                                 setFrames([]);
                             }}
                             options={actionOptions}
-                            placeholder="search action…"
+                            placeholder="搜索接口…"
                             validateRaw={(s) => s.trim().length > 0}
+                            disabled={invoking}
                         />
                     </Field>
                 </div>
@@ -382,16 +389,16 @@ export function ActionTester({
                 {doc && (
                     <div className="-mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                         {doc.readOnly ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                <ShieldCheck className="h-3 w-3" /> 只读·安全
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
+                                <ShieldCheck className="h-3 w-3" /> 只读
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/12 px-2 py-0.5 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
                                 <AlertTriangle className="h-3.5 w-3.5" /> 有副作用
                             </span>
                         )}
                         {isStream && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-primary/12 px-1.5 py-0.5 text-xs font-medium text-primary">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
                                 <Zap className="h-3 w-3" /> 流式
                             </span>
                         )}
@@ -407,232 +414,280 @@ export function ActionTester({
                         </span>
                     </div>
                 )}
+            </div>
 
-                <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">参数</span>
-                    <Segmented
-                        value={effectiveMode}
-                        onChange={setParamMode}
-                        options={[
-                            { value: 'form', label: '表单' },
-                            { value: 'json', label: 'JSON' },
-                        ]}
-                    />
+            {/* tester */}
+            <motion.section
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className="cp-panel cp-debug-section relative z-20 flex min-w-0 flex-col gap-5"
+            >
+                <div className="flex items-center gap-2.5">
+                    <Braces className="size-4 text-muted-foreground" />
+                    <h2 className="text-base font-semibold">请求参数</h2>
                 </div>
-
-                {effectiveMode === 'json' ? (
-                    <Textarea
-                        className="min-h-28 rounded-xl font-mono text-xs"
-                        value={rawJson}
-                        onChange={(e) => setRawJson(e.target.value)}
-                        placeholder='{ "group_id": 12345, "message": "hi" }'
-                    />
-                ) : (
-                    <div className="flex flex-col gap-3.5">
-                        {doc!.params.length === 0 && (
-                            <p className="text-[12px] text-muted-foreground">该接口无参数。</p>
-                        )}
-                        {doc!.params.map((p) => (
-                            <Field
-                                key={`${actionName}:${p.name}`}
-                                label={
-                                    <>
-                                        {p.name}
-                                        <span className="ml-1 font-normal text-muted-foreground/70">
-                                            {p.type}
-                                            {p.required ? ' · 必填' : ''}
-                                        </span>
-                                    </>
-                                }
-                            >
-                                <ParamField
-                                    param={p}
-                                    value={fields[p.name] ?? ''}
-                                    uin={uin}
-                                    groupContext={fields['group_id'] ?? ''}
-                                    actionName={actionName}
-                                    onChange={(v) =>
-                                        setFields((f) => {
-                                            const next = { ...f, [p.name]: v };
-
-                                            // Changing the group resets any sibling member picker — its
-                                            // old uin belongs to the previous group.
-                                            if (p.role === 'group_id' && doc) {
-                                                for (const mp of doc.params) {
-                                                    if (mp.role === 'member_id') {
-                                                        next[mp.name] = '';
-                                                    }
-                                                }
-                                            }
-
-                                            return next;
-                                        })
-                                    }
-                                />
-                                {p.desc && (
-                                    <span className="text-xs text-muted-foreground/70">
-                                        {p.desc}
-                                    </span>
-                                )}
-                            </Field>
-                        ))}
-                        {doc!.invariants && doc!.invariants.length > 0 && (
-                            <p className="text-xs text-muted-foreground/70">
-                                约束:{doc!.invariants.join('；')}
-                            </p>
-                        )}
-                    </div>
-                )}
-
-                <div className="flex gap-2">
-                    <button
-                        type="button"
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        variant="glass"
+                        size="sm"
                         onClick={onExecute}
                         disabled={invoking}
-                        data-press-scale=""
-                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-medium text-primary-foreground shadow-sm transition-[background-color,opacity,scale] duration-150 ease-out hover:bg-primary/90 active:not-disabled:scale-[0.96] motion-reduce:active:scale-100 disabled:opacity-50"
+                        aria-label={isStream ? '运行流式调用' : '运行调用'}
                     >
                         {invoking ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="size-4 animate-spin" />
                         ) : isStream ? (
-                            <Zap className="h-4 w-4" />
+                            <Zap className="size-4" />
                         ) : (
-                            <Play className="optical-forward h-4 w-4" />
+                            <Play className="optical-forward size-4" />
                         )}
-                        {invoking ? '执行中…' : isStream ? '流式执行' : '执行'}
-                    </button>
+                        {invoking ? '运行中…' : isStream ? '运行流式调用' : '运行调用'}
+                    </Button>
                     {invoking && isStream && streamAbort.current && (
-                        <button
-                            type="button"
+                        <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => streamAbort.current?.abort()}
-                            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
                         >
                             取消
-                        </button>
+                        </Button>
                     )}
                 </div>
+
+                <fieldset
+                    disabled={invoking}
+                    inert={invoking}
+                    className="flex min-w-0 flex-col gap-5"
+                >
+                    <div className="cp-inline-notice text-warning">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>写入类调用会直接影响当前账号。</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">参数</span>
+                        <Segmented
+                            label="参数编辑方式"
+                            value={effectiveMode}
+                            onChange={setParamMode}
+                            options={[
+                                { value: 'form', label: '表单' },
+                                { value: 'json', label: 'JSON' },
+                            ]}
+                        />
+                    </div>
+
+                    {effectiveMode === 'json' ? (
+                        <Textarea
+                            aria-label="参数 JSON"
+                            className="min-h-40 rounded-[4px] font-mono text-sm"
+                            value={rawJson}
+                            onChange={(e) => setRawJson(e.target.value)}
+                            placeholder='{ "group_id": 12345, "message": "hi" }'
+                        />
+                    ) : (
+                        <div className="flex flex-col gap-3.5">
+                            {doc!.params.length === 0 && (
+                                <p className="text-[12px] text-muted-foreground">该接口无参数。</p>
+                            )}
+                            {doc!.params.map((p) => (
+                                <Field
+                                    key={`${actionName}:${p.name}`}
+                                    label={
+                                        <>
+                                            {p.name}
+                                            <span className="ml-1 font-normal text-muted-foreground/70">
+                                                {p.type}
+                                                {p.required ? ' · 必填' : ''}
+                                            </span>
+                                        </>
+                                    }
+                                >
+                                    <ParamField
+                                        param={p}
+                                        value={fields[p.name] ?? ''}
+                                        uin={uin}
+                                        groupContext={fields['group_id'] ?? ''}
+                                        actionName={actionName}
+                                        onChange={(v) =>
+                                            setFields((f) => {
+                                                const next = { ...f, [p.name]: v };
+
+                                                // Changing the group resets any sibling member picker — its
+                                                // old uin belongs to the previous group.
+                                                if (p.role === 'group_id' && doc) {
+                                                    for (const mp of doc.params) {
+                                                        if (mp.role === 'member_id') {
+                                                            next[mp.name] = '';
+                                                        }
+                                                    }
+                                                }
+
+                                                return next;
+                                            })
+                                        }
+                                    />
+                                    {p.desc && (
+                                        <span className="text-xs text-muted-foreground/70">
+                                            {p.desc}
+                                        </span>
+                                    )}
+                                </Field>
+                            ))}
+                            {doc!.invariants && doc!.invariants.length > 0 && (
+                                <p className="text-xs text-muted-foreground/70">
+                                    约束:{doc!.invariants.join('；')}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </fieldset>
             </motion.section>
 
             {/* response / frames / history */}
             <motion.section
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.05 }}
-                className={cn(cardCls, 'flex min-h-[20rem] flex-col gap-3 p-6 xl:col-span-5')}
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.28 }}
+                className="cp-panel cp-debug-section flex min-w-0 flex-col gap-4"
             >
-                {showHistory ? (
-                    <>
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-[15px] font-semibold tracking-tight">调用历史</h3>
-                            {history.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        clearHistory();
-                                        setHistory([]);
-                                    }}
-                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" /> 清空
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex flex-col gap-1 overflow-auto">
-                            {history.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
-                                    暂无历史
-                                </p>
-                            ) : (
-                                history.map((rec) => (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                    <span className="text-xs font-medium text-muted-foreground">运行结果</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowHistory((v) => !v)}
+                        aria-pressed={showHistory}
+                        className="cp-control inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        <History className="h-3.5 w-3.5" /> 历史{' '}
+                        {history.length > 0 && (
+                            <span className="tabular-nums">{history.length}</span>
+                        )}
+                    </button>
+                </div>
+                <div
+                    key={showHistory ? 'history' : 'result'}
+                    className="cp-fade flex min-w-0 flex-col gap-4"
+                >
+                    {showHistory ? (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[15px] font-semibold tracking-tight">
+                                    调用历史
+                                </h3>
+                                {history.length > 0 && (
                                     <button
-                                        key={rec.id}
                                         type="button"
-                                        onClick={() => replay(rec)}
-                                        className="group flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-muted/50"
+                                        onClick={() => setConfirmClearHistory(true)}
+                                        className="cp-control inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
                                     >
-                                        <span
-                                            className={cn(
-                                                'h-1.5 w-1.5 shrink-0 rounded-full',
-                                                rec.ok ? 'bg-emerald-500' : 'bg-destructive',
-                                            )}
-                                        />
-                                        <span className="min-w-0 flex-1 truncate font-mono">
-                                            {rec.action}
-                                        </span>
-                                        <span className="shrink-0 font-mono text-meta text-muted-foreground tabular-nums">
-                                            {rec.uin}
-                                        </span>
-                                        <span className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-                                            <RotateCcw className="h-3.5 w-3.5" />
-                                        </span>
+                                        <Trash2 className="h-3.5 w-3.5" /> 清空
                                     </button>
-                                ))
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-[15px] font-semibold tracking-tight">
-                                {isStream ? '帧流' : '响应'}
-                            </h3>
-                            {result && (
-                                <span
-                                    className={cn(
-                                        'text-xs font-medium',
-                                        resultFailed ? 'text-destructive' : 'text-success',
-                                    )}
-                                >
-                                    {resultFailed ? '失败' : '成功'}
-                                    {!('error' in result) &&
-                                    resultFailed &&
-                                    (result.message || result.wording)
-                                        ? ` · ${result.message || result.wording}`
-                                        : ''}
-                                </span>
-                            )}
-                        </div>
-                        {frames.length > 0 && (
-                            <div className="flex flex-col gap-1.5 overflow-auto">
-                                <span className="text-xs text-muted-foreground tabular-nums">
-                                    {frames.length} 帧
-                                </span>
-                                {frames.map((f, i) => {
-                                    // On a failed frame the action's `data` is replaced with an
-                                    // {type:'error'} marker and the reason moves to message/wording
-                                    // — render the whole frame so the reason stays visible.
-                                    const failed =
-                                        f.status === 'failed' ||
-                                        (f.data as { type?: string } | undefined)?.type === 'error';
-                                    return (
-                                        <div
-                                            key={i}
-                                            className="rounded-lg border border-border/50 bg-muted/20 p-2"
+                                )}
+                            </div>
+                            <div className="flex min-w-0 flex-col">
+                                {history.length === 0 ? (
+                                    <p className="py-8 text-sm text-muted-foreground">暂无历史</p>
+                                ) : (
+                                    history.map((rec) => (
+                                        <button
+                                            key={rec.id}
+                                            type="button"
+                                            onClick={() => replay(rec)}
+                                            disabled={invoking}
+                                            className="cp-action-row group flex min-h-14 min-w-0 flex-wrap items-center gap-2 py-3 text-left text-[13px] hover:bg-muted/30 disabled:opacity-50"
                                         >
-                                            <JsonTree
-                                                data={failed ? f : (f.data ?? f)}
-                                                maxHeight="12rem"
+                                            <span
+                                                className={cn(
+                                                    'h-1.5 w-1.5 shrink-0 rounded-full',
+                                                    rec.ok ? 'bg-emerald-500' : 'bg-destructive',
+                                                )}
                                             />
-                                        </div>
-                                    );
-                                })}
+                                            <span className="min-w-0 flex-1 truncate font-mono">
+                                                {rec.action}
+                                            </span>
+                                            <span className="shrink-0 font-mono text-meta text-muted-foreground tabular-nums">
+                                                {rec.uin}
+                                            </span>
+                                            <span className="shrink-0 text-muted-foreground">
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                            </span>
+                                        </button>
+                                    ))
+                                )}
                             </div>
-                        )}
-                        {result && !('error' in result) && frames.length === 0 && (
-                            <JsonTree data={result} maxHeight="28rem" />
-                        )}
-                        {result && 'error' in result && (
-                            <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-                                {result.error}
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-[15px] font-semibold tracking-tight">
+                                    {isStream ? '实时帧' : '响应内容'}
+                                </h3>
+                                {result && (
+                                    <span
+                                        className={cn(
+                                            'text-xs font-medium',
+                                            resultFailed ? 'text-destructive' : 'text-success',
+                                        )}
+                                    >
+                                        {resultFailed ? '调用失败' : '调用完成'}
+                                        {!('error' in result) &&
+                                        resultFailed &&
+                                        (result.message || result.wording)
+                                            ? ` · ${result.message || result.wording}`
+                                            : ''}
+                                    </span>
+                                )}
                             </div>
-                        )}
-                        {!result && frames.length === 0 && (
-                            <p className="flex flex-1 items-center justify-center py-12 text-center text-sm text-muted-foreground">
-                                执行后在此查看结果
-                            </p>
-                        )}
-                    </>
-                )}
+                            {frames.length > 0 && (
+                                <div className="flex min-w-0 flex-col gap-1.5">
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {frames.length} 帧
+                                    </span>
+                                    {frames.map((f, i) => {
+                                        // On a failed frame the action's `data` is replaced with an
+                                        // {type:'error'} marker and the reason moves to message/wording
+                                        // — render the whole frame so the reason stays visible.
+                                        const failed =
+                                            f.status === 'failed' ||
+                                            (f.data as { type?: string } | undefined)?.type ===
+                                                'error';
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="min-w-0 border-t border-border py-2"
+                                            >
+                                                <JsonTree
+                                                    data={failed ? f : (f.data ?? f)}
+                                                    maxHeight="none"
+                                                    className="cp-json-document"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {result && !('error' in result) && frames.length === 0 && (
+                                <JsonTree
+                                    data={result}
+                                    maxHeight="none"
+                                    className="cp-json-document"
+                                />
+                            )}
+                            {result && 'error' in result && (
+                                <div role="alert" className="cp-inline-notice text-destructive">
+                                    {result.error}
+                                </div>
+                            )}
+                            {!result && frames.length === 0 && (
+                                <p className="py-8 text-sm text-muted-foreground">
+                                    执行后在此查看结果
+                                </p>
+                            )}
+                        </>
+                    )}
+                </div>
             </motion.section>
 
             <ConfirmDialog
@@ -650,6 +705,18 @@ export function ActionTester({
                 confirmText="确认执行"
                 destructive
                 onConfirm={runInvoke}
+            />
+            <ConfirmDialog
+                open={confirmClearHistory}
+                onOpenChange={setConfirmClearHistory}
+                title="清空调用历史？"
+                description="仅移除此浏览器保存的调用历史，不会撤销已经执行的接口。"
+                confirmText="清空历史"
+                destructive
+                onConfirm={() => {
+                    clearHistory();
+                    setHistory([]);
+                }}
             />
         </div>
     );

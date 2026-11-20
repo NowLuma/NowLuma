@@ -8,6 +8,7 @@ import {
     streamUploadToDisk,
     uploadDestPath,
 } from '../src/webui/debug-tools';
+import { sseResponse } from '../src/webui/sse-response';
 
 const written: string[] = [];
 afterAll(async () => {
@@ -126,7 +127,7 @@ describe('buildStreamInvokeResponse', () => {
                 await pending;
             },
             '{}',
-            new AbortController().signal,
+            (start) => sseResponse(new AbortController().signal, start),
         );
         const canceled = response.body!.cancel();
 
@@ -147,7 +148,7 @@ describe('buildStreamInvokeResponse', () => {
                 invoked = true;
             },
             '{}',
-            controller.signal,
+            (start) => sseResponse(controller.signal, start),
         );
         await readSse(response);
         expect(invoked).toBe(false);
@@ -162,7 +163,12 @@ describe('buildStreamInvokeResponse', () => {
             await emit(JSON.stringify({ status: 'ok', data: { type: 'response' } }));
         };
 
-        const res = buildStreamInvokeResponse(driver, '{"action":"x"}', ac.signal, noDelay);
+        const res = buildStreamInvokeResponse(
+            driver,
+            '{"action":"x"}',
+            (start) => sseResponse(ac.signal, start),
+            noDelay,
+        );
         const frames = (await readSse(res)).map((s) => JSON.parse(s));
         expect(frames).toHaveLength(3);
         expect(frames[0].data.i).toBe(1);
@@ -177,7 +183,12 @@ describe('buildStreamInvokeResponse', () => {
             throw new Error('disk exploded');
         };
 
-        const res = buildStreamInvokeResponse(driver, '{}', ac.signal, noDelay);
+        const res = buildStreamInvokeResponse(
+            driver,
+            '{}',
+            (start) => sseResponse(ac.signal, start),
+            noDelay,
+        );
         const frames = (await readSse(res)).map((s) => JSON.parse(s));
         expect(frames).toHaveLength(2);
         expect(frames[1].status).toBe('failed');
@@ -196,7 +207,7 @@ describe('buildStreamInvokeResponse', () => {
         const res = buildStreamInvokeResponse(
             driver,
             '{"action":"test_download_stream"}',
-            ac.signal,
+            (start) => sseResponse(ac.signal, start),
             noDelay,
         );
         await readSse(res);
@@ -205,7 +216,12 @@ describe('buildStreamInvokeResponse', () => {
 
     it('exposes an SSE content-type', () => {
         const ac = new AbortController();
-        const res = buildStreamInvokeResponse(async () => {}, '{}', ac.signal, noDelay);
+        const res = buildStreamInvokeResponse(
+            async () => {},
+            '{}',
+            (start) => sseResponse(ac.signal, start),
+            noDelay,
+        );
         expect(res.headers.get('Content-Type')).toBe('text/event-stream');
     });
 });

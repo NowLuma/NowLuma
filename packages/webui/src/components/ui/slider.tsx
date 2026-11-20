@@ -12,6 +12,7 @@ import {
 } from 'motion/react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 type RootProps = React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>;
 type ObscuredRanges = [[number, number], [number, number]];
@@ -360,7 +361,7 @@ export function Slider({
     return (
         <motion.div
             ref={rootRef}
-            className={cn('slider-root group/slider', className)}
+            className={cn('ui-glass slider-root group/slider', className)}
             data-disabled={disabled ? '' : undefined}
             style={{
                 ...style,
@@ -390,6 +391,7 @@ export function Slider({
                 onPointerCancel?.(event);
             }}
         >
+            <GlassMaterial />
             <SliderPrimitive.Root
                 {...props}
                 className="slider-radix-root"

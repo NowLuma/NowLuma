@@ -95,22 +95,27 @@ export function UpdateSources() {
     };
 
     return (
-        <div className="flex flex-col gap-3 px-5 py-4">
-            <p className="text-sm font-medium">更新来源</p>
+        <div className="flex min-w-0 flex-col gap-3 py-3">
             {error && (
                 <p role="alert" className="break-words text-xs text-destructive">
                     {error}
                 </p>
             )}
+            <details>
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    更新来源
+                </summary>
             <SkeletonSwap ready={ready} reserve={100} lines={3} label="更新来源">
                 {config ? (
                     <fieldset
                         disabled={busy}
                         className="flex min-w-0 flex-col gap-3 disabled:opacity-60"
                     >
+                        <label className="text-xs font-medium">下载来源模式</label>
                         <DropdownSelect
                             value={config.mode}
                             ariaLabel="下载来源模式"
+                            disabled={busy}
                             options={[
                                 { value: 'auto', label: '自动切换' },
                                 { value: 'direct', label: 'GitHub 直连' },
@@ -121,10 +126,8 @@ export function UpdateSources() {
                                 setResults([]);
                             }}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            自动模式先尝试
-                            GitHub，失败后按列表顺序切换。镜像用于文件下载，版本查询也会尝试 GitHub
-                            发布页面。
+                        <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
+                            自动模式先用 GitHub，失败后按列表切换。镜像用于下载，版本查询也会尝试 GitHub 发布页面。
                         </p>
                         {config.mode === 'mirror' && (
                             <div className="flex flex-col gap-1.5">
@@ -143,7 +146,7 @@ export function UpdateSources() {
                             </div>
                         )}
                         <details>
-                            <summary className="cursor-pointer text-xs">
+                            <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                 编辑候选镜像（每行一个地址）
                             </summary>
                             <Textarea
@@ -162,7 +165,7 @@ export function UpdateSources() {
                         <div className="flex flex-wrap gap-2">
                             <Button
                                 size="sm"
-                                variant="outline"
+                                variant="glass"
                                 onClick={() => {
                                     void act(true);
                                 }}
@@ -183,11 +186,11 @@ export function UpdateSources() {
                                 <p className="text-xs text-muted-foreground">
                                     按可用性和响应延迟排序；检测结果不代表下载速度。
                                 </p>
-                                <ul className="flex max-h-64 flex-col gap-2 overflow-auto">
+                                <ul className="flex min-w-0 flex-col divide-y divide-border/60">
                                     {results.map((result) => (
                                         <li
                                             key={result.mirror}
-                                            className="flex items-center gap-2 text-xs"
+                                            className="flex min-w-0 flex-wrap items-center gap-2 py-3 text-xs"
                                         >
                                             <div className="min-w-0 flex-1">
                                                 <p className="break-all">
@@ -208,7 +211,7 @@ export function UpdateSources() {
                                             {result.available && (
                                                 <Button
                                                     size="sm"
-                                                    variant="outline"
+                                                    variant="glass"
                                                     onClick={() => {
                                                         setConfig({
                                                             ...config,
@@ -227,7 +230,7 @@ export function UpdateSources() {
                                 </ul>
                                 <Button
                                     size="sm"
-                                    variant="outline"
+                                    variant="glass"
                                     className="self-start"
                                     onClick={() => {
                                         setMirrors(
@@ -254,7 +257,7 @@ export function UpdateSources() {
                     ready && (
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="glass"
                             onClick={() => setReload((value) => value + 1)}
                         >
                             重试
@@ -262,6 +265,7 @@ export function UpdateSources() {
                     )
                 )}
             </SkeletonSwap>
+            </details>
         </div>
     );
 }

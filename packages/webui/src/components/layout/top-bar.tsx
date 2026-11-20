@@ -1,148 +1,192 @@
 import { useState } from 'react';
-import { LogOut, Monitor } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Ellipsis, Expand, LogOut, Settings2 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 import { useRouterState } from '@tanstack/react-router';
-import { IconMorph } from '@/components/interior/icon-morph';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useDropdown } from '@/components/interior/dropdown';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { NAV_ITEMS } from '@/components/layout/sidebar';
 import { reconcileLayoutItems, useLayout } from '@/contexts/LayoutContext';
 import { useKiosk } from '@/contexts/KioskContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { BRAND_LOGO_URL } from '@/brand';
+import { APP_NAME } from '@/types';
 
-// Toggleable top-bar elements (the menu/title/logout are essential and always
-// render). Labels drive the settings toggles; ids match `topbarItems`.
 export const TOPBAR_CATALOGUE: { id: string; label: string }[] = [
-    { id: 'status', label: '连接状态徽章' },
-    { id: 'theme', label: '主题切换按钮' },
-    { id: 'kiosk', label: '展示模式按钮' },
+    { id: 'status', label: '控制台连接' },
+    { id: 'theme', label: '主题菜单' },
+    { id: 'kiosk', label: '展示模式' },
 ];
 
 interface TopBarProps {
     status: string;
-    mobileOpen: boolean;
-    onMobileOpenChange: (open: boolean) => void;
+    onManageWorkspace: () => void;
     onLogout: () => void;
-    isMobile: boolean;
 }
 
-export function TopBar({
-    status,
-    mobileOpen,
-    onMobileOpenChange,
-    onLogout,
-    isMobile,
-}: TopBarProps) {
+export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
     const [confirmLogout, setConfirmLogout] = useState(false);
-    const pathname = useRouterState({ select: (s) => s.location.pathname });
-    const meta = NAV_ITEMS.find((n) => n.to === pathname);
-    const PageIcon = meta?.icon;
-    const online = status === '已连接';
-
-    // Which optional top-bar elements the operator has kept (reconciled against
-    // the live catalogue, so a new element defaults to shown).
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const meta = NAV_ITEMS.find((item) => item.to === pathname);
     const { topbarItems } = useLayout();
     const { enter: enterKiosk } = useKiosk();
+    const { appearance, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const shown = new Set(
         reconcileLayoutItems(
             topbarItems,
-            TOPBAR_CATALOGUE.map((t) => t.id),
+            TOPBAR_CATALOGUE.map((item) => item.id),
         )
-            .filter((i) => i.visible)
-            .map((i) => i.id),
+            .filter((item) => item.visible)
+            .map((item) => item.id),
     );
+    const actions = [
+        ...(shown.has('kiosk') ? [{ value: 'kiosk', label: '展示模式', icon: Expand }] : []),
+        { value: 'logout', label: '退出登录', icon: LogOut },
+    ];
+    const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
+        items: actions,
+        onChange: (action) => {
+            if (action === 'kiosk') {
+                enterKiosk();
+            } else if (action === 'logout') {
+                setConfirmLogout(true);
+            }
+        },
+    });
 
     return (
-        <header
-            data-ui-surface="chrome"
-            className="z-30 flex min-h-16 shrink-0 items-center gap-[4px] bg-background px-[max(10px,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:gap-2 md:px-4"
-        >
-            {/* Mobile-only menu trigger. On desktop there's no collapse button — the
-          sidebar auto-expands on hover/focus, and its boundary with the content
-          is a soft surface-tone shift, not a hard border. */}
-            {isMobile && (
-                <IconMorph
-                    preset="menu-close"
-                    labels={['打开菜单', '关闭菜单']}
-                    semantics="expanded"
-                    active={mobileOpen}
-                    onActiveChange={(index) => onMobileOpenChange(index === 1)}
-                    className="ui-button ui-button-icon topbar-control cursor-pointer border-0 bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 dark:border-0 dark:bg-transparent dark:text-foreground dark:focus-visible:ring-ring/40"
-                />
-            )}
-
-            {/* Page title */}
-            <AnimatePresence initial={false} mode="wait">
-                <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 8 }}
-                    transition={{ duration: 0.18 }}
-                    className="flex min-w-0 flex-1 items-center gap-2"
+        <header data-ui-surface="chrome" className="workspace-masthead">
+            <div className="workspace-masthead-inner">
+                <button
+                    type="button"
+                    onClick={() => document.getElementById('workspace-content')?.focus()}
+                    className="workspace-skip-link"
                 >
-                    {PageIcon && (
-                        <PageIcon className="hidden size-4 shrink-0 text-primary min-[400px]:block" />
-                    )}
-                    <h1
-                        className="truncate text-sm font-semibold tracking-tight"
-                        title={meta?.label}
-                    >
-                        {meta?.label}
-                    </h1>
-                    <span className="hidden md:inline truncate text-xs text-muted-foreground">
-                        {meta?.description}
-                    </span>
-                </motion.div>
-            </AnimatePresence>
-
-            <div className="ml-auto flex shrink-0 items-center gap-[2px] md:gap-2">
-                {shown.has('status') && (
-                    <Badge
-                        variant={online ? 'success' : 'destructive'}
-                        className="hidden md:inline-flex gap-1.5"
-                    >
-                        <span
-                            className={`size-1.5 rounded-full ${online ? 'bg-success' : 'bg-destructive'} ${online ? 'animate-pulse' : ''}`}
-                        />
-                        {status}
-                    </Badge>
-                )}
-
-                {shown.has('theme') && <ThemeToggle />}
-
-                {shown.has('kiosk') && (
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={enterKiosk}
-                        aria-label="展示模式"
-                        title="展示模式（隐藏侧栏与顶栏，Esc 退出）"
-                        className="topbar-control max-[379px]:hidden text-muted-foreground hover:text-foreground"
-                    >
-                        <Monitor className="size-4" />
-                    </Button>
-                )}
-
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setConfirmLogout(true)}
-                    aria-label="登出"
-                    title="登出"
-                    className="topbar-control text-muted-foreground hover:text-destructive"
-                >
-                    <LogOut className="size-4" />
-                </Button>
+                    跳到页面内容
+                </button>
+                <div className="workspace-masthead-brand" aria-label={APP_NAME}>
+                    <img src={BRAND_LOGO_URL} alt="" className="size-7 rounded-md" />
+                    <span>{APP_NAME}</span>
+                </div>
+                <div className="workspace-page-context">
+                    <div className="workspace-context-heading">
+                        <h1>{meta?.label ?? '控制台'}</h1>
+                        {shown.has('status') && (
+                            <span
+                                className="workspace-connection-state"
+                                data-online={status === '已连接'}
+                                title={`控制台连接：${status}`}
+                                aria-label={`控制台连接：${status}`}
+                                role="status"
+                            >
+                                <span aria-hidden="true" className="workspace-status-dot" />
+                                <span className="workspace-status-label">
+                                    {status === '已连接' ? '服务在线' : status}
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="workspace-session-actions">
+                    <div className="workspace-toolbar-scene">
+                        {shown.has('theme') && <ThemeToggle />}
+                        <button
+                            id="workspace-session-trigger"
+                            type="button"
+                            onClick={onManageWorkspace}
+                            aria-label="工作区管理"
+                            title="工作区管理"
+                            className="workspace-text-button"
+                        >
+                            <Settings2 className="size-4" />
+                            <span className="hidden sm:inline">工作区</span>
+                        </button>
+                        <div ref={rootRef} className="workspace-more">
+                            <button
+                                {...triggerProps}
+                                aria-label="更多操作"
+                                aria-haspopup="menu"
+                                title="更多操作"
+                                className="ui-glass workspace-icon-button workspace-more-trigger"
+                                data-press-scale=""
+                            >
+                                <GlassMaterial />
+                                <Ellipsis className="size-4" />
+                            </button>
+                            <AnimatePresence>
+                                {open && (
+                                    <motion.div
+                                        initial={
+                                            reduced ? false : { opacity: 0, y: -6, scale: 0.96 }
+                                        }
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.98 }}
+                                        transition={
+                                            reduced
+                                                ? { duration: 0 }
+                                                : performance?.low
+                                                  ? { duration: 0.18, ease: 'easeOut' }
+                                                  : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                        }
+                                        className="ui-glass ui-glass-menu workspace-session-menu"
+                                    >
+                                        <GlassMaterial />
+                                        <ul
+                                            {...listProps}
+                                            role="menu"
+                                            aria-label="会话操作"
+                                            className="workspace-theme-options"
+                                        >
+                                            <motion.li
+                                                aria-hidden="true"
+                                                role="presentation"
+                                                initial={false}
+                                                animate={{
+                                                    y: Math.max(0, activeIndex) * 44,
+                                                    opacity: activeIndex < 0 ? 0 : 1,
+                                                }}
+                                                transition={
+                                                    reduced
+                                                        ? { duration: 0 }
+                                                        : performance?.low
+                                                          ? { duration: 0.18, ease: 'easeOut' }
+                                                          : {
+                                                                type: 'spring',
+                                                                duration: 0.42,
+                                                                bounce: 0.12,
+                                                            }
+                                                }
+                                                className="workspace-theme-active"
+                                            />
+                                            {actions.map(({ value, label, icon: Icon }, index) => (
+                                                <li
+                                                    key={value}
+                                                    {...getItemProps(index)}
+                                                    role="menuitem"
+                                                    aria-selected={undefined}
+                                                    className="workspace-theme-option"
+                                                    data-active={index === activeIndex}
+                                                >
+                                                    <Icon className="size-4" />
+                                                    <span>{label}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                </div>
             </div>
-
             <ConfirmDialog
                 open={confirmLogout}
                 onOpenChange={setConfirmLogout}
-                title="确认登出？"
-                description="登出后将清除当前会话令牌，您需要重新输入访问密码才能进入控制台。"
-                confirmText="登出"
+                title="退出登录？"
+                description="当前会话将结束。下次进入时，需要再次输入访问密码。"
+                confirmText="退出登录"
                 destructive
                 activity={{
                     title: '正在退出登录',

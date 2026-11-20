@@ -25,16 +25,16 @@ pnpm --filter @nowluma/mcp gen
 
 ## 主要目录
 
-| 目录 | 职责 |
-| --- | --- |
-| `packages/bridge` | QQ 进程发现、原生通信、接入生命周期 |
-| `packages/core` | 账号编排、WebUI 后端、运行/更新入口 |
-| `packages/onebot` | 动作、事件转换、连接与存储 |
-| `packages/protocol` | 协议解析、身份、媒体传输 |
-| `packages/common` | 浏览器安全工具与基础设施 |
-| `packages/webui` | 管理界面 |
-| `deploy` | Docker、首次安装、日常管理、重建测试 |
-| `packages/sdk`、`packages/mcp` | 客户端与工具接入 |
+| 目录                           | 职责                                 |
+| ------------------------------ | ------------------------------------ |
+| `packages/bridge`              | QQ 进程发现、原生通信、接入生命周期  |
+| `packages/core`                | 账号编排、WebUI 后端、运行/更新入口  |
+| `packages/onebot`              | 动作、事件转换、连接与存储           |
+| `packages/protocol`            | 协议解析、身份、媒体传输             |
+| `packages/common`              | 浏览器安全工具与基础设施             |
+| `packages/webui`               | 管理界面                             |
+| `deploy`                       | Docker、首次安装、日常管理、重建测试 |
+| `packages/sdk`、`packages/mcp` | 客户端与工具接入                     |
 
 workspace 包名使用 `@nowluma/*`。重命名已同步 SDK 标识符、环境变量、构建和测试；新代码不要再引入旧产品标识。
 原生二进制内容和旧套接字 ABI 暂时保持不变，外部文件名由发行构建管理。
@@ -52,14 +52,13 @@ docker build -f deploy/docker/Dockerfile -t nowluma:ci .
 node deploy/docker/smoke.mjs nowluma:ci
 ```
 
-smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。
-它验证启动、原生连接、桌面、配置、完整 HOME 和机器 ID 的重启/重建保留；不会替用户扫码，也不证明 QQ 服务端长期接受某个账号。
+smoke 使用临时容器和自建测试卷，测试结束仅删除自己的测试资源。它验证真实 QQ 进程发现、同源桌面、未确认账号的接入门禁和重建持久化；空白 HOME 不伪造账号确认，真实 hook 接入与真实 QQ 登录是 NOT RUN。历史 CI 通过记录不能替代当前账号验收。
 
 ## 格式与变更
 
 保留账号隔离、输入校验、错误上下文和数据保护。不要用静默回退掩盖配置/存储失败。
 不要为排障关闭全部容器隔离；只声明运行时实际需要的能力。
-改动 UI 遵循 `packages/webui/README.md` 的交互约定；本轮不大改 QQ 接入内核。
+改动 UI 遵循 `packages/webui/README.md` 的交互约定。账号内核的选择与风险确认必须绑定真实 UIN：未确认不能接入，换账号要重新确认，保存选择不等于接入，`重写内核` 未验证时不可选且不得静默回退。
 
 ```bash
 pnpm exec eslint --config eslint.format.config.ts --fix <修改的文件>
@@ -76,6 +75,10 @@ PR 标题必须符合 Conventional Commits，正文必须包含 `## 关联 Issue
 ## CI 与发行
 
 `.github/workflows/ci.yml` 执行类型/静态/测试/发行布局检查，并实际构建、启动和重建 Linux/amd64 Docker 测试容器。
-成功的构建会产生对应平台的 Lite 发行产物。
+成功的构建会产生对应平台的 Lite 发行产物和 Windows x64 单文件 exe（当前未签名）。
+Docker smoke 使用全新 HOME，验证进程发现、未确认账号的接入门禁、桌面认证和重建持久化；真实 hook 接入与真实 QQ 登录是 NOT RUN，不能据此声称消息投递或重启免扫码已验证。
 尚未配置 npm、Docker Hub 或跨仓库自动发布；源码中的 SDK/UI/MCP 包可在工作区构建，不能把 npm 示例理解为已经发布的版本。
-公开分发仍按 LICENSE、EULA.md、PRIVACY.md 的条款和取得的授权进行。
+公开分发遵循 LICENSE（GNU GPLv3，GPL-3.0-only）与 LICENSING.md；GPL 源码可自由使用、修改和分发（含商业用途），无需另行授权。EULA.md 是使用说明，PRIVACY.md 说明数据处理，二者都不构成 GPL 之外的许可条件。
+贡献代码按仓库的 GPL-3.0-only 许可发布；请只提交你有权授权的代码，并在分发时保留许可与版权声明、标注修改。
+根 README 末尾保留唯一的上游项目归属行，`tools/check-identity.mjs` 会从该行推导旧名称并检查全仓库；唯一例外是 `packages/common/src/kernel-display.ts` 中兼容内核的显示名（该内核运行上游提供的原生组件，产品名仍为 Nowluma），检查器只放行这一条由归属行推导出的确切声明；不要在其他文件、文件名、说明文字或拆分字符串中重新引入旧品牌名。
+第三方组件继续受其各自许可证约束，随包原生组件适用 LICENSING.md 记录的条款；不要移除或追溯改写任何第三方、上游或贡献者的版权、归属与历史记录。

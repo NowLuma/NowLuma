@@ -38,9 +38,9 @@ export function generateAccessToken(): string {
 
 const httpServersTab: NetworkTabDescriptor<'httpServers'> = {
     key: 'httpServers',
-    title: 'HTTP API',
-    description: '本地监听 HTTP 端口，OneBot 客户端发起请求',
-    noun: 'HTTP API 服务',
+    title: 'HTTP 接口',
+    description: '在本机提供 HTTP 接口，供 Bot 程序调用。',
+    noun: 'HTTP 接口',
     summarize: (it: HttpServerNetwork) => {
         const host = it.host?.trim() || '0.0.0.0';
         const path = (it.path?.trim() || '/').replace(/^\/?/, '/');
@@ -61,9 +61,9 @@ const httpServersTab: NetworkTabDescriptor<'httpServers'> = {
 
 const httpClientsTab: NetworkTabDescriptor<'httpClients'> = {
     key: 'httpClients',
-    title: 'HTTP 客户端',
-    description: '主动向远端 URL POST 推送事件',
-    noun: 'HTTP 推送客户端',
+    title: 'HTTP 推送',
+    description: '向指定 HTTP 地址推送事件。',
+    noun: 'HTTP 推送',
     summarize: (it: HttpClientNetwork) => it.url || '(未设置 URL)',
     defaultEntry: (suffix): HttpClientNetwork => ({
         name: `httppost-${suffix}`,
@@ -75,9 +75,9 @@ const httpClientsTab: NetworkTabDescriptor<'httpClients'> = {
 
 const wsServersTab: NetworkTabDescriptor<'wsServers'> = {
     key: 'wsServers',
-    title: 'WS 服务端',
-    description: '本地监听 WebSocket 端口，客户端建立持久连接',
-    noun: 'WebSocket 服务',
+    title: 'WebSocket 监听',
+    description: '在本机监听 WebSocket，等待 Bot 程序连接。',
+    noun: 'WebSocket 监听',
     summarize: (it: WsServerNetwork) => {
         const host = it.host?.trim() || '0.0.0.0';
         const path = (it.path?.trim() || '/').replace(/^\/?/, '/');
@@ -98,9 +98,9 @@ const wsServersTab: NetworkTabDescriptor<'wsServers'> = {
 
 const wsClientsTab: NetworkTabDescriptor<'wsClients'> = {
     key: 'wsClients',
-    title: 'WS 客户端',
-    description: '主动连接到外部 WebSocket 服务器（reverse-ws）',
-    noun: 'WebSocket 反向客户端',
+    title: '反向 WebSocket',
+    description: '主动连接 Bot 程序的 WebSocket 地址。',
+    noun: '反向 WebSocket',
     summarize: (it: WsClientNetwork) => {
         const role = it.role ?? 'Universal';
         return `${it.url || '(未设置 URL)'} · ${role}`;

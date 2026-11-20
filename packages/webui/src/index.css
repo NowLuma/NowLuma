@@ -1,98 +1,89 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ──────────────────────────────────────────────
-   Theme tokens (mascot lavender accent)
+   Theme tokens (neutral base; ThemeContext owns the accent)
    ────────────────────────────────────────────── */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.25rem;
 
-  /* Neutral surfaces carry a small amount of the active accent. Keep text
-     neutral and use sidebar-primary separately to respect sidebar-only scope.
-     Named palettes and host overlays still replace these semantic tokens. */
-  --background: color-mix(in oklab, var(--primary) 3%, oklch(100% 0 0));
-  --foreground: oklch(20% 0 0);
+  /* Neutral paper and ink are the stable base; palettes and personal tokens
+     remain the owners of their surfaces. The accent is only a light gray tint. */
+  --background: color-mix(in oklab, var(--primary) 1%, #f7f6f3);
+  --foreground: #37352f;
 
-  --card: color-mix(in oklab, var(--primary) 1%, oklch(100% 0 0));
-  --card-foreground: oklch(20% 0 0);
+  --card: color-mix(in oklab, var(--primary) 1%, #fcfcfa);
+  --card-foreground: #37352f;
 
-  --popover: color-mix(in oklab, var(--primary) 1%, oklch(100% 0 0));
-  --popover-foreground: oklch(20% 0 0);
+  --popover: color-mix(in oklab, var(--primary) 1%, #fcfcfa);
+  --popover-foreground: #37352f;
 
-  /* A deeper lavender keeps light-mode button labels readable. */
-  --primary: oklch(57% 0.14 300);
+  /* A near-black primary keeps white button labels readable. */
+  --primary: oklch(21% 0 0);
   --primary-foreground: oklch(99% 0 0);
 
-  --secondary: color-mix(in oklab, var(--primary) 4%, oklch(97% 0 0));
-  --secondary-foreground: oklch(25% 0 0);
+  --secondary: color-mix(in oklab, var(--primary) 3%, #efedea);
+  --secondary-foreground: #37352f;
 
-  --muted: color-mix(in oklab, var(--primary) 4%, oklch(97% 0 0));
-  --muted-foreground: oklch(50% 0 0);
+  --muted: color-mix(in oklab, var(--primary) 3%, #efedea);
+  --muted-foreground: #6b6860;
 
-  --accent: oklch(94% 0.03 300);
-  --accent-foreground: oklch(35% 0.07 300);
+  --accent: oklch(95% 0 0);
+  --accent-foreground: oklch(20% 0 0);
 
-  --destructive: oklch(60% 0.22 27);
+  --destructive: oklch(55% 0.22 27);
   --destructive-foreground: oklch(99% 0.005 240);
 
-  --success: oklch(70% 0.15 160);
-  --warning: oklch(78% 0.16 80);
+  --success: oklch(50% 0.15 160);
+  --warning: oklch(52% 0.16 80);
 
-  /* Log-level TEXT colors. The accent tokens above are tuned as fills (white
-     text on them passes AA); as small text on the light canvas they fail WCAG
-     AA (info 2.6:1, success 2.4:1, warn 2.0:1, error 4.3:1). These darker
-     variants restore >=4.5:1 for the log viewer without darkening the app-wide
-     accent. Dark theme keeps the bright values (they already pass on dark). */
+  /* Text-bearing states share the darker log colours on the light paper. */
   --log-info: oklch(50% 0.155 230);
   --log-success: oklch(50% 0.15 160);
   --log-warn: oklch(52% 0.16 80);
   --log-error: oklch(55% 0.22 27);
 
-  --border: color-mix(in oklab, var(--primary) 5%, oklch(94% 0 0));
-  --input: color-mix(in oklab, var(--primary) 4%, oklch(96% 0 0));
-  --ring: oklch(57% 0.14 300);
+  --border: color-mix(in oklab, var(--primary) 2%, #e9e7e4);
+  --input: color-mix(in oklab, var(--primary) 2%, #e9e7e4);
+  --ring: oklch(21% 0 0);
 
-  --sidebar: color-mix(in oklab, var(--sidebar-primary) 5%, oklch(96% 0 0));
-  --sidebar-foreground: oklch(25% 0 0);
-  --sidebar-primary: oklch(57% 0.14 300);
+  --sidebar: color-mix(in oklab, var(--sidebar-primary) 4%, #fafafa);
+  --sidebar-foreground: #272723;
+  --sidebar-primary: oklch(21% 0 0);
   --sidebar-primary-foreground: oklch(99% 0 0);
-  --sidebar-accent: oklch(90% 0.025 300);
-  --sidebar-accent-foreground: oklch(35% 0.08 300);
-  --sidebar-border: color-mix(in oklab, var(--sidebar-primary) 5%, oklch(94% 0 0));
-  --sidebar-ring: oklch(57% 0.14 300);
+  --sidebar-accent: oklch(94% 0 0);
+  --sidebar-accent-foreground: oklch(20% 0 0);
+  --sidebar-border: color-mix(in oklab, var(--sidebar-primary) 3%, #e5e5e5);
+  --sidebar-ring: oklch(21% 0 0);
   --media-outline: oklch(0% 0 0 / 0.1);
 
-  /* Cards need depth without turning every surface into a hard outlined box.
-     The short shadow separates the edge; the long, faint shadow establishes
-     elevation without looking like a floating modal. */
-  --shadow-card:
-    0 1px 2px oklch(20% 0 0 / 0.05),
-    0 12px 32px -22px oklch(20% 0 0 / 0.28);
+  --shadow-card: none;
 }
 
 .dark {
-  --background: color-mix(in oklab, var(--primary) 7%, oklch(16% 0 0));
-  --foreground: oklch(96% 0 0);
+  --background: color-mix(in oklab, var(--primary) 2%, #111212);
+  --foreground: #f5f5f5;
 
-  --card: color-mix(in oklab, var(--primary) 8%, oklch(20% 0 0));
-  --card-foreground: oklch(96% 0 0);
+  --card: color-mix(in oklab, var(--primary) 3%, #171818);
+  --card-foreground: #f5f5f5;
 
-  --popover: color-mix(in oklab, var(--primary) 8%, oklch(20% 0 0));
-  --popover-foreground: oklch(96% 0 0);
+  --popover: color-mix(in oklab, var(--primary) 4%, #171717);
+  --popover-foreground: #f5f5f5;
 
-  --primary: oklch(78% 0.115 300);
-  --primary-foreground: oklch(15% 0 0);
+  /* White primary on the dark canvas; labels switch to near-black. */
+  --primary: oklch(98% 0 0);
+  --primary-foreground: oklch(12% 0 0);
 
-  --secondary: color-mix(in oklab, var(--primary) 7%, oklch(25% 0 0));
-  --secondary-foreground: oklch(96% 0 0);
+  --secondary: color-mix(in oklab, var(--primary) 4%, #262626);
+  --secondary-foreground: #f5f5f5;
 
-  --muted: color-mix(in oklab, var(--primary) 7%, oklch(24% 0 0));
-  --muted-foreground: oklch(68% 0 0);
+  --muted: color-mix(in oklab, var(--primary) 4%, #262626);
+  --muted-foreground: #a3a3a3;
 
-  --accent: oklch(28% 0.05 300);
-  --accent-foreground: oklch(85% 0.1 300);
+  --accent: oklch(27% 0 0);
+  --accent-foreground: oklch(98% 0 0);
 
   --destructive: oklch(62% 0.2 27);
   --destructive-foreground: oklch(98% 0.005 240);
@@ -107,24 +98,21 @@
   --log-warn: oklch(80% 0.16 80);
   --log-error: oklch(62% 0.2 27);
 
-  --border: color-mix(in oklab, var(--primary) 8%, oklch(28% 0 0));
-  --input: color-mix(in oklab, var(--primary) 7%, oklch(26% 0 0));
-  --ring: oklch(78% 0.115 300);
+  --border: color-mix(in oklab, var(--primary) 4%, #2e2e2e);
+  --input: color-mix(in oklab, var(--primary) 4%, #2e2e2e);
+  --ring: oklch(98% 0 0);
 
-  --sidebar: color-mix(in oklab, var(--sidebar-primary) 6%, oklch(12% 0 0));
-  --sidebar-foreground: oklch(92% 0 0);
-  --sidebar-primary: oklch(78% 0.115 300);
-  --sidebar-primary-foreground: oklch(15% 0 0);
-  --sidebar-accent: oklch(28% 0.05 300);
-  --sidebar-accent-foreground: oklch(85% 0.1 300);
-  --sidebar-border: color-mix(in oklab, var(--sidebar-primary) 7%, oklch(26% 0 0));
-  --sidebar-ring: oklch(78% 0.115 300);
+  --sidebar: color-mix(in oklab, var(--sidebar-primary) 3%, #0a0a0a);
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: oklch(98% 0 0);
+  --sidebar-primary-foreground: oklch(12% 0 0);
+  --sidebar-accent: oklch(27% 0 0);
+  --sidebar-accent-foreground: oklch(98% 0 0);
+  --sidebar-border: color-mix(in oklab, var(--sidebar-primary) 4%, #2e2e2e);
+  --sidebar-ring: oklch(98% 0 0);
   --media-outline: oklch(100% 0 0 / 0.12);
 
-  --shadow-card:
-    0 1px 2px oklch(0% 0 0 / 0.36),
-    0 16px 38px -24px oklch(0% 0 0 / 0.72),
-    inset 0 1px oklch(100% 0 0 / 0.025);
+  --shadow-card: none;
 }
 
 @theme inline {
@@ -167,8 +155,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
-  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans CJK SC', sans-serif;
+  --font-mono:
+    ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
   /* Dense metadata is the only content allowed below Tailwind's 12px text-xs
      floor. Named tokens make that exception explicit at each call site. */
@@ -186,7 +177,9 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     height: 100dvh;
     min-height: -webkit-fill-available;
@@ -199,7 +192,7 @@
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    line-height: 1.5;
+    line-height: 1.6;
   }
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 28%, transparent);
@@ -207,11 +200,11 @@
   }
   /* Density: compact tightens the global rhythm a touch. Use rem (not px) so
      it still tracks the UI-scale root font-size. */
-  html[data-density="compact"] body {
+  html[data-density='compact'] body {
     font-size: 0.84rem;
     line-height: 1.45;
   }
-  html[data-density="compact"] {
+  html[data-density='compact'] {
     --tw-leading: 1.4;
   }
 }
@@ -226,6 +219,178 @@
 
   .ui-card {
     box-shadow: var(--shadow-card);
+  }
+
+  .ui-page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .ui-chrome-scene {
+    position: relative;
+  }
+
+  .ui-chrome-scene > .ui-line-field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--primary);
+    opacity: 0.32;
+  }
+
+  .ui-line-field {
+    overflow: visible;
+  }
+
+  .ui-line-field[data-line-motion='true'] .ui-line-field-lines {
+    animation: line-field-drift 24s ease-in-out infinite;
+  }
+
+  .ui-glass {
+    position: relative;
+    isolation: isolate;
+  }
+
+  html:not([data-webui-target]) .ui-glass {
+    border: 1px solid color-mix(in oklab, var(--border) 78%, var(--foreground) 22%);
+    background: transparent;
+    box-shadow:
+      0 8px 24px -12px color-mix(in oklab, var(--foreground) 24%, transparent),
+      inset 0 1px 0 color-mix(in oklab, #fff 68%, transparent);
+  }
+
+  .ui-glass-material {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: inherit;
+    background: color-mix(in oklab, var(--popover) 90%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--popover-foreground) 4%, #fff 55%),
+      inset 0 -1px 0 color-mix(in oklab, var(--popover-foreground) 8%, transparent);
+  }
+
+  .ui-glass-material::after {
+    position: absolute;
+    top: 0;
+    left: var(--glass-light-x, 42%);
+    width: 34%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, #fff 75%, transparent),
+      transparent
+    );
+    content: '';
+    opacity: 0.65;
+    pointer-events: none;
+    translate: -50% 0;
+  }
+
+  .ui-glass-material::before {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      ellipse at var(--glass-light-x, 42%) var(--glass-light-y, 0%),
+      color-mix(in oklab, #fff 12%, transparent),
+      transparent 66%
+    );
+    content: '';
+    opacity: var(--glass-light-opacity, 0);
+    pointer-events: none;
+  }
+
+  .ui-glass-material[data-glass-renderer='refracted'] {
+    background: color-mix(in oklab, var(--popover) 28%, transparent);
+  }
+
+  .ui-glass-menu .ui-glass-material[data-glass-renderer='refracted'] {
+    background: color-mix(in oklab, var(--popover) 82%, transparent);
+  }
+
+  .ui-glass-material[data-glass-renderer='solid'] {
+    background: var(--popover);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .ui-glass-search:focus-within {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Press physics override generic transition utilities without affecting document actions. */
+  html:not([data-webui-target]) :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    transition:
+      color 150ms,
+      background-color 150ms,
+      scale 420ms linear(0, 0.42 13%, 0.82 29%, 1.025 48%, 0.99 76%, 1) !important;
+  }
+
+  html:not([data-webui-target])
+    :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]):active:not(:disabled) {
+    scale: 0.96;
+    transition-duration: 110ms !important;
+  }
+
+  html[data-contrast='high'] .ui-glass-material {
+    background: var(--popover);
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  html[data-low-performance='1'] .ui-line-field-lines {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  html[data-low-performance='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    transition:
+      color 150ms,
+      background-color 150ms,
+      scale 180ms ease-out !important;
+  }
+
+  html[data-webui-target] .ui-glass-material {
+    display: none;
+  }
+
+  html[data-reduce-motion='1'] .ui-line-field-lines,
+  html[data-no-motion='1'] .ui-line-field-lines {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  html[data-low-performance='1'] .ui-line-field-impulse,
+  html[data-reduce-motion='1'] .ui-line-field-impulse,
+  html[data-no-motion='1'] .ui-line-field-impulse,
+  html[data-webui-target] .ui-line-field-impulse {
+    transform: none !important;
+  }
+
+  .ui-glass-action {
+    min-height: 44px;
+    padding-inline: 18px;
+  }
+
+  html[data-reduce-motion='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]),
+  html[data-no-motion='1'] :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    scale: 1 !important;
+    transition: none !important;
+  }
+
+  html[data-reduce-motion='1'] .ui-glass-material::after,
+  html[data-no-motion='1'] .ui-glass-material::after {
+    transition: none !important;
   }
 
   /* Skeleton Swap reserves a fixed box by default. Data panels that can grow
@@ -254,6 +419,41 @@
   }
 }
 
+@keyframes line-field-drift {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-line-field-lines,
+  .ui-line-field-impulse {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  :is(.ui-glass[data-press-scale], .ui-glass [data-press-scale]) {
+    scale: 1 !important;
+    transition: none !important;
+  }
+
+  .ui-glass-material::after {
+    transition: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .ui-glass-material {
+    background: var(--popover);
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
 /* ──────────────────────────────────────────────
    Adaptive cursor system
 
@@ -269,10 +469,18 @@
 
   /* Native textarea resize handles are pseudo-elements, so the tracker reads
      this CSS-owned regional mode only inside the bottom-right 18px hot zone. */
-  .resize-y { --nowluma-cursor-resize-mode: ns-resize; }
-  .resize-x { --nowluma-cursor-resize-mode: ew-resize; }
-  .resize { --nowluma-cursor-resize-mode: nwse-resize; }
-  .resize-none { --nowluma-cursor-resize-mode: initial; }
+  .resize-y {
+    --nowluma-cursor-resize-mode: ns-resize;
+  }
+  .resize-x {
+    --nowluma-cursor-resize-mode: ew-resize;
+  }
+  .resize {
+    --nowluma-cursor-resize-mode: nwse-resize;
+  }
+  .resize-none {
+    --nowluma-cursor-resize-mode: initial;
+  }
 
   /* Clickable targets morph the dot into the complete hit surface. */
   :where(
@@ -281,21 +489,21 @@
     summary,
     select,
     label[for],
-    input[type="button"],
-    input[type="submit"],
-    input[type="reset"],
-    input[type="checkbox"],
-    input[type="radio"],
-    input[type="file"],
-    input[type="image"],
-    [role="button"],
-    [role="link"],
-    [role="tab"],
-    [role="checkbox"],
-    [role="radio"],
-    [role="switch"],
-    [role="menuitem"],
-    [role="option"],
+    input[type='button'],
+    input[type='submit'],
+    input[type='reset'],
+    input[type='checkbox'],
+    input[type='radio'],
+    input[type='file'],
+    input[type='image'],
+    [role='button'],
+    [role='link'],
+    [role='tab'],
+    [role='checkbox'],
+    [role='radio'],
+    [role='switch'],
+    [role='menuitem'],
+    [role='option'],
     [data-cursor-target],
     .cursor-pointer
   ) {
@@ -304,9 +512,13 @@
 
   /* Text entry and selectable/editor surfaces use a narrow I-beam capsule. */
   :where(
-    input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="image"]):not([type="hidden"]),
+    input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not(
+        [type='radio']
+      ):not([type='range']):not([type='color']):not([type='file']):not([type='image']):not(
+        [type='hidden']
+      ),
     textarea,
-    [contenteditable]:not([contenteditable="false"]),
+    [contenteditable]:not([contenteditable='false']),
     pre,
     code,
     .font-mono,
@@ -316,15 +528,15 @@
     --nowluma-cursor-mode: text;
   }
 
-  :where(input[type="color"], .cursor-crosshair, .cursor-cell) {
+  :where(input[type='color'], .cursor-crosshair, .cursor-cell) {
     --nowluma-cursor-mode: crosshair;
   }
 
-  :where(input[type="range"], [draggable="true"], .slider-root, .cursor-grab) {
+  :where(input[type='range'], [draggable='true'], .slider-root, .cursor-grab) {
     --nowluma-cursor-mode: grab;
   }
-  :where(input[type="range"], [draggable="true"], .slider-root, .cursor-grab):active,
-  :where([aria-grabbed="true"], .cursor-grabbing, .ui-draggable-dragging) {
+  :where(input[type='range'], [draggable='true'], .slider-root, .cursor-grab):active,
+  :where([aria-grabbed='true'], .cursor-grabbing, .ui-draggable-dragging) {
     --nowluma-cursor-mode: grabbing;
   }
 
@@ -337,51 +549,107 @@
   :where(.cursor-ns-resize, .cursor-row-resize, .ui-resizable-n, .ui-resizable-s) {
     --nowluma-cursor-mode: ns-resize;
   }
-  :where(.cursor-nwse-resize, .cursor-nw-resize, .cursor-se-resize, .ui-resizable-nw, .ui-resizable-se) {
+  :where(
+    .cursor-nwse-resize,
+    .cursor-nw-resize,
+    .cursor-se-resize,
+    .ui-resizable-nw,
+    .ui-resizable-se
+  ) {
     --nowluma-cursor-mode: nwse-resize;
   }
-  :where(.cursor-nesw-resize, .cursor-ne-resize, .cursor-sw-resize, .ui-resizable-ne, .ui-resizable-sw) {
+  :where(
+    .cursor-nesw-resize,
+    .cursor-ne-resize,
+    .cursor-sw-resize,
+    .ui-resizable-ne,
+    .ui-resizable-sw
+  ) {
     --nowluma-cursor-mode: nesw-resize;
   }
 
-  :where([aria-busy="true"], .cursor-wait, .cursor-progress) {
+  :where([aria-busy='true'], .cursor-wait, .cursor-progress) {
     --nowluma-cursor-mode: wait;
   }
-  :where(.cursor-copy) { --nowluma-cursor-mode: copy; }
-  :where(.cursor-zoom-in) { --nowluma-cursor-mode: zoom-in; }
-  :where(.cursor-zoom-out) { --nowluma-cursor-mode: zoom-out; }
-  :where(.cursor-help) { --nowluma-cursor-mode: help; }
-  :where(:disabled, [aria-disabled="true"], .cursor-not-allowed, .cursor-no-drop) {
+  :where(.cursor-copy) {
+    --nowluma-cursor-mode: copy;
+  }
+  :where(.cursor-zoom-in) {
+    --nowluma-cursor-mode: zoom-in;
+  }
+  :where(.cursor-zoom-out) {
+    --nowluma-cursor-mode: zoom-out;
+  }
+  :where(.cursor-help) {
+    --nowluma-cursor-mode: help;
+  }
+  :where(:disabled, [aria-disabled='true'], .cursor-not-allowed, .cursor-no-drop) {
     --nowluma-cursor-mode: not-allowed;
   }
 
   /* Explicit data attributes are the escape hatch for third-party widgets. */
-  [data-cursor="default"] { --nowluma-cursor-mode: default; }
-  [data-cursor="target"] { --nowluma-cursor-mode: target; }
-  [data-cursor="text"] { --nowluma-cursor-mode: text; }
-  [data-cursor="grab"] { --nowluma-cursor-mode: grab; }
-  [data-cursor="grabbing"] { --nowluma-cursor-mode: grabbing; }
-  [data-cursor="move"] { --nowluma-cursor-mode: move; }
-  [data-cursor="ew-resize"] { --nowluma-cursor-mode: ew-resize; }
-  [data-cursor="ns-resize"] { --nowluma-cursor-mode: ns-resize; }
-  [data-cursor="nwse-resize"] { --nowluma-cursor-mode: nwse-resize; }
-  [data-cursor="nesw-resize"] { --nowluma-cursor-mode: nesw-resize; }
-  [data-cursor="not-allowed"] { --nowluma-cursor-mode: not-allowed; }
-  [data-cursor="wait"] { --nowluma-cursor-mode: wait; }
-  [data-cursor="crosshair"] { --nowluma-cursor-mode: crosshair; }
-  [data-cursor="copy"] { --nowluma-cursor-mode: copy; }
-  [data-cursor="zoom-in"] { --nowluma-cursor-mode: zoom-in; }
-  [data-cursor="zoom-out"] { --nowluma-cursor-mode: zoom-out; }
-  [data-cursor="help"] { --nowluma-cursor-mode: help; }
-  [data-cursor="hidden"] { --nowluma-cursor-mode: hidden; }
+  [data-cursor='default'] {
+    --nowluma-cursor-mode: default;
+  }
+  [data-cursor='target'] {
+    --nowluma-cursor-mode: target;
+  }
+  [data-cursor='text'] {
+    --nowluma-cursor-mode: text;
+  }
+  [data-cursor='grab'] {
+    --nowluma-cursor-mode: grab;
+  }
+  [data-cursor='grabbing'] {
+    --nowluma-cursor-mode: grabbing;
+  }
+  [data-cursor='move'] {
+    --nowluma-cursor-mode: move;
+  }
+  [data-cursor='ew-resize'] {
+    --nowluma-cursor-mode: ew-resize;
+  }
+  [data-cursor='ns-resize'] {
+    --nowluma-cursor-mode: ns-resize;
+  }
+  [data-cursor='nwse-resize'] {
+    --nowluma-cursor-mode: nwse-resize;
+  }
+  [data-cursor='nesw-resize'] {
+    --nowluma-cursor-mode: nesw-resize;
+  }
+  [data-cursor='not-allowed'] {
+    --nowluma-cursor-mode: not-allowed;
+  }
+  [data-cursor='wait'] {
+    --nowluma-cursor-mode: wait;
+  }
+  [data-cursor='crosshair'] {
+    --nowluma-cursor-mode: crosshair;
+  }
+  [data-cursor='copy'] {
+    --nowluma-cursor-mode: copy;
+  }
+  [data-cursor='zoom-in'] {
+    --nowluma-cursor-mode: zoom-in;
+  }
+  [data-cursor='zoom-out'] {
+    --nowluma-cursor-mode: zoom-out;
+  }
+  [data-cursor='help'] {
+    --nowluma-cursor-mode: help;
+  }
+  [data-cursor='hidden'] {
+    --nowluma-cursor-mode: hidden;
+  }
 
   /* Applied only after the tracker mounts, so a JavaScript failure can never
      strand the application without a usable native pointer. */
-  html[data-cursor-system="custom"][data-cursor-armed="1"],
-  html[data-cursor-system="custom"][data-cursor-armed="1"] body,
-  html[data-cursor-system="custom"][data-cursor-armed="1"] *,
-  html[data-cursor-system="custom"][data-cursor-armed="1"] *::before,
-  html[data-cursor-system="custom"][data-cursor-armed="1"] *::after {
+  html[data-cursor-system='custom'][data-cursor-armed='1'],
+  html[data-cursor-system='custom'][data-cursor-armed='1'] body,
+  html[data-cursor-system='custom'][data-cursor-armed='1'] *,
+  html[data-cursor-system='custom'][data-cursor-armed='1'] *::before,
+  html[data-cursor-system='custom'][data-cursor-armed='1'] *::after {
     cursor: none !important;
   }
 }
@@ -401,7 +669,7 @@
   transition-timing-function: ease-out;
 }
 
-html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
+html[data-cursor-system='custom'] .adaptive-cursor[data-visible='true'] {
   opacity: 1;
 }
 
@@ -428,7 +696,8 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   opacity: 1;
   translate: -50% -50%;
   scale: var(--cursor-scale);
-  transition-property: width, height, border-radius, background-color, border-color, box-shadow, opacity, scale;
+  transition-property:
+    width, height, border-radius, background-color, border-color, box-shadow, opacity, scale;
   transition-duration: 180ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -446,12 +715,12 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   transition-timing-function: ease-out;
 }
 
-.adaptive-cursor[data-pressed="true"] .adaptive-cursor-shape {
+.adaptive-cursor[data-pressed='true'] .adaptive-cursor-shape {
   --cursor-scale: 0.8;
 }
 
 /* Mikk-style target morph: bounds and radius come from the hovered element. */
-.adaptive-cursor[data-mode="target"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='target'] .adaptive-cursor-shape {
   --cursor-width: var(--cursor-target-width, 1.125rem);
   --cursor-height: var(--cursor-target-height, 1.125rem);
   --cursor-radius: var(--cursor-target-radius, var(--radius));
@@ -461,13 +730,13 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
     0 4px 18px -10px color-mix(in oklab, var(--primary) 56%, transparent),
     inset 0 1px color-mix(in oklab, var(--primary-foreground) 16%, transparent);
 }
-.adaptive-cursor[data-mode="target"][data-pressed="true"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='target'][data-pressed='true'] .adaptive-cursor-shape {
   --cursor-scale: 0.96;
   --cursor-fill: color-mix(in oklab, var(--primary) 23%, transparent);
 }
 
 /* Narrow but visibly substantial text caret capsule. */
-.adaptive-cursor[data-mode="text"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='text'] .adaptive-cursor-shape {
   --cursor-width: 0.25rem;
   --cursor-height: 1.75rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 84%, var(--foreground));
@@ -478,67 +747,83 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
 }
 
 /* Grab / grabbing: a compact four-dot grip compresses under load. */
-.adaptive-cursor[data-mode="grab"] .adaptive-cursor-shape,
-.adaptive-cursor[data-mode="grabbing"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='grab'] .adaptive-cursor-shape,
+.adaptive-cursor[data-mode='grabbing'] .adaptive-cursor-shape {
   --cursor-width: 1.5rem;
   --cursor-height: 1.5rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 16%, var(--background));
   --cursor-stroke: color-mix(in oklab, var(--primary) 52%, transparent);
 }
-.adaptive-cursor[data-mode="grabbing"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='grabbing'] .adaptive-cursor-shape {
   --cursor-width: 1.2rem;
   --cursor-height: 1.2rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 28%, var(--background));
 }
-.adaptive-cursor[data-mode="grab"] .adaptive-cursor-shape::before,
-.adaptive-cursor[data-mode="grabbing"] .adaptive-cursor-shape::before {
+.adaptive-cursor[data-mode='grab'] .adaptive-cursor-shape::before,
+.adaptive-cursor[data-mode='grabbing'] .adaptive-cursor-shape::before {
   width: 0.1875rem;
   height: 0.1875rem;
   border-radius: 9999px;
   background: var(--primary);
-  box-shadow: 0.375rem 0 var(--primary), 0 0.375rem var(--primary), 0.375rem 0.375rem var(--primary);
+  box-shadow:
+    0.375rem 0 var(--primary),
+    0 0.375rem var(--primary),
+    0.375rem 0.375rem var(--primary);
   opacity: 0.88;
   transform: translate(-0.28125rem, -0.28125rem);
 }
-.adaptive-cursor[data-mode="grabbing"] .adaptive-cursor-shape::before {
-  box-shadow: 0.3rem 0 var(--primary), 0 0.3rem var(--primary), 0.3rem 0.3rem var(--primary);
+.adaptive-cursor[data-mode='grabbing'] .adaptive-cursor-shape::before {
+  box-shadow:
+    0.3rem 0 var(--primary),
+    0 0.3rem var(--primary),
+    0.3rem 0.3rem var(--primary);
   transform: translate(-0.24375rem, -0.24375rem);
 }
 
 /* Move and all resize directions share one CSS arrow glyph. */
-.adaptive-cursor[data-mode="move"] .adaptive-cursor-shape,
-.adaptive-cursor[data-mode$="resize"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='move'] .adaptive-cursor-shape,
+.adaptive-cursor[data-mode$='resize'] .adaptive-cursor-shape {
   --cursor-width: 1.625rem;
   --cursor-height: 0.875rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 15%, var(--background));
   --cursor-stroke: color-mix(in oklab, var(--primary) 48%, transparent);
 }
-.adaptive-cursor[data-mode="move"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='move'] .adaptive-cursor-shape {
   --cursor-width: 1.625rem;
   --cursor-height: 1.625rem;
 }
-.adaptive-cursor[data-mode="move"] .adaptive-cursor-shape::before,
-.adaptive-cursor[data-mode$="resize"] .adaptive-cursor-shape::before {
+.adaptive-cursor[data-mode='move'] .adaptive-cursor-shape::before,
+.adaptive-cursor[data-mode$='resize'] .adaptive-cursor-shape::before {
   width: 1rem;
   height: 1rem;
   background: var(--primary);
   opacity: 0.9;
   transform: translate(-50%, -50%);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h12M5 5 2 8l3 3m6-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h12M5 5 2 8l3 3m6-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h12M5 5 2 8l3 3m6-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M2 8h12M5 5 2 8l3 3m6-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
   -webkit-mask-source-type: alpha;
   mask-mode: alpha;
 }
-.adaptive-cursor[data-mode="move"] .adaptive-cursor-shape::before {
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v14M1 8h14M5 4 8 1l3 3m-6 8 3 3 3-3M4 5 1 8l3 3m8-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v14M1 8h14M5 4 8 1l3 3m-6 8 3 3 3-3M4 5 1 8l3 3m8-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+.adaptive-cursor[data-mode='move'] .adaptive-cursor-shape::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v14M1 8h14M5 4 8 1l3 3m-6 8 3 3 3-3M4 5 1 8l3 3m8-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v14M1 8h14M5 4 8 1l3 3m-6 8 3 3 3-3M4 5 1 8l3 3m8-6 3 3-3 3' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
-.adaptive-cursor[data-mode="ns-resize"] .adaptive-cursor-shape::before { transform: translate(-50%, -50%) rotate(90deg); }
-.adaptive-cursor[data-mode="nwse-resize"] .adaptive-cursor-shape::before { transform: translate(-50%, -50%) rotate(45deg); }
-.adaptive-cursor[data-mode="nesw-resize"] .adaptive-cursor-shape::before { transform: translate(-50%, -50%) rotate(-45deg); }
+.adaptive-cursor[data-mode='ns-resize'] .adaptive-cursor-shape::before {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.adaptive-cursor[data-mode='nwse-resize'] .adaptive-cursor-shape::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.adaptive-cursor[data-mode='nesw-resize'] .adaptive-cursor-shape::before {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
 
 /* Disabled / forbidden action. */
-.adaptive-cursor[data-mode="not-allowed"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='not-allowed'] .adaptive-cursor-shape {
   --cursor-width: 1.45rem;
   --cursor-height: 1.45rem;
   --cursor-fill: color-mix(in oklab, var(--destructive) 8%, var(--background));
@@ -546,7 +831,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   border-width: 2px;
   box-shadow: 0 2px 8px color-mix(in oklab, var(--destructive) 22%, transparent);
 }
-.adaptive-cursor[data-mode="not-allowed"] .adaptive-cursor-shape::after {
+.adaptive-cursor[data-mode='not-allowed'] .adaptive-cursor-shape::after {
   width: 1rem;
   height: 2px;
   border-radius: 9999px;
@@ -556,14 +841,14 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
 }
 
 /* Busy state: a CSS-only spinner, used only while motion is allowed. */
-.adaptive-cursor[data-mode="wait"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='wait'] .adaptive-cursor-shape {
   --cursor-width: 1.4rem;
   --cursor-height: 1.4rem;
   --cursor-fill: color-mix(in oklab, var(--background) 84%, transparent);
   --cursor-stroke: color-mix(in oklab, var(--primary) 22%, transparent);
   border-width: 2px;
 }
-.adaptive-cursor[data-mode="wait"] .adaptive-cursor-shape::before {
+.adaptive-cursor[data-mode='wait'] .adaptive-cursor-shape::before {
   inset: -2px;
   border: 2px solid transparent;
   border-top-color: var(--primary);
@@ -573,35 +858,45 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   transform: none;
   animation: adaptive-cursor-spin 700ms linear infinite;
 }
-@keyframes adaptive-cursor-spin { to { rotate: 1turn; } }
+@keyframes adaptive-cursor-spin {
+  to {
+    rotate: 1turn;
+  }
+}
 
 /* Precision selection. */
-.adaptive-cursor[data-mode="crosshair"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='crosshair'] .adaptive-cursor-shape {
   --cursor-width: 1.25rem;
   --cursor-height: 1.25rem;
   --cursor-fill: transparent;
   --cursor-stroke: color-mix(in oklab, var(--primary) 45%, transparent);
   box-shadow: none;
 }
-.adaptive-cursor[data-mode="crosshair"] .adaptive-cursor-shape::before,
-.adaptive-cursor[data-mode="crosshair"] .adaptive-cursor-shape::after {
+.adaptive-cursor[data-mode='crosshair'] .adaptive-cursor-shape::before,
+.adaptive-cursor[data-mode='crosshair'] .adaptive-cursor-shape::after {
   border-radius: 9999px;
   background: var(--primary);
   opacity: 0.9;
   transform: translate(-50%, -50%);
 }
-.adaptive-cursor[data-mode="crosshair"] .adaptive-cursor-shape::before { width: 1.6rem; height: 2px; }
-.adaptive-cursor[data-mode="crosshair"] .adaptive-cursor-shape::after { width: 2px; height: 1.6rem; }
+.adaptive-cursor[data-mode='crosshair'] .adaptive-cursor-shape::before {
+  width: 1.6rem;
+  height: 2px;
+}
+.adaptive-cursor[data-mode='crosshair'] .adaptive-cursor-shape::after {
+  width: 2px;
+  height: 1.6rem;
+}
 
 /* Copy uses two offset sheets. */
-.adaptive-cursor[data-mode="copy"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='copy'] .adaptive-cursor-shape {
   --cursor-width: 1.45rem;
   --cursor-height: 1.45rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 13%, var(--background));
   --cursor-stroke: color-mix(in oklab, var(--primary) 45%, transparent);
 }
-.adaptive-cursor[data-mode="copy"] .adaptive-cursor-shape::before,
-.adaptive-cursor[data-mode="copy"] .adaptive-cursor-shape::after {
+.adaptive-cursor[data-mode='copy'] .adaptive-cursor-shape::before,
+.adaptive-cursor[data-mode='copy'] .adaptive-cursor-shape::after {
   width: 0.55rem;
   height: 0.65rem;
   border: 1.5px solid var(--primary);
@@ -609,12 +904,16 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   background: var(--background);
   opacity: 0.95;
 }
-.adaptive-cursor[data-mode="copy"] .adaptive-cursor-shape::before { transform: translate(-65%, -65%); }
-.adaptive-cursor[data-mode="copy"] .adaptive-cursor-shape::after { transform: translate(-30%, -30%); }
+.adaptive-cursor[data-mode='copy'] .adaptive-cursor-shape::before {
+  transform: translate(-65%, -65%);
+}
+.adaptive-cursor[data-mode='copy'] .adaptive-cursor-shape::after {
+  transform: translate(-30%, -30%);
+}
 
 /* Zoom modes share a lens; the second line appears only for zoom-in. */
-.adaptive-cursor[data-mode="zoom-in"] .adaptive-cursor-shape,
-.adaptive-cursor[data-mode="zoom-out"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='zoom-in'] .adaptive-cursor-shape,
+.adaptive-cursor[data-mode='zoom-out'] .adaptive-cursor-shape {
   --cursor-width: 1.3rem;
   --cursor-height: 1.3rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 10%, var(--background));
@@ -622,8 +921,8 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   border-width: 2px;
   box-shadow: 0 2px 8px color-mix(in oklab, var(--primary) 18%, transparent);
 }
-.adaptive-cursor[data-mode="zoom-in"] .adaptive-cursor-shape::before,
-.adaptive-cursor[data-mode="zoom-out"] .adaptive-cursor-shape::before {
+.adaptive-cursor[data-mode='zoom-in'] .adaptive-cursor-shape::before,
+.adaptive-cursor[data-mode='zoom-out'] .adaptive-cursor-shape::before {
   width: 0.55rem;
   height: 2px;
   border-radius: 9999px;
@@ -631,7 +930,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   opacity: 0.9;
   transform: translate(-50%, -50%);
 }
-.adaptive-cursor[data-mode="zoom-in"] .adaptive-cursor-shape::after {
+.adaptive-cursor[data-mode='zoom-in'] .adaptive-cursor-shape::after {
   width: 2px;
   height: 0.55rem;
   border-radius: 9999px;
@@ -640,13 +939,13 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   transform: translate(-50%, -50%);
 }
 
-.adaptive-cursor[data-mode="help"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='help'] .adaptive-cursor-shape {
   --cursor-width: 1.35rem;
   --cursor-height: 1.35rem;
   --cursor-fill: color-mix(in oklab, var(--primary) 14%, var(--background));
   --cursor-stroke: color-mix(in oklab, var(--primary) 55%, transparent);
 }
-.adaptive-cursor[data-mode="help"] .adaptive-cursor-shape::before {
+.adaptive-cursor[data-mode='help'] .adaptive-cursor-shape::before {
   content: '?';
   color: var(--primary);
   font-size: 0.75rem;
@@ -656,7 +955,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   transform: translate(-50%, -52%);
 }
 
-.adaptive-cursor[data-mode="hidden"] .adaptive-cursor-shape {
+.adaptive-cursor[data-mode='hidden'] .adaptive-cursor-shape {
   opacity: 0;
 }
 
@@ -664,10 +963,10 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
    Global context menu
    ────────────────────────────────────────────── */
 .global-context-menu {
-  padding: 5px;
+  padding: 8px;
   border: 1px solid color-mix(in oklab, var(--border) 74%, transparent);
-  border-radius: 14px;
-  background: var(--popover);
+  border-radius: 22px;
+  background: transparent;
   color: var(--popover-foreground);
   box-shadow:
     0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent),
@@ -693,10 +992,10 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  height: 32px;
+  height: 36px;
   padding: 0 0.625rem;
   border: 0;
-  border-radius: 7px;
+  border-radius: 14px;
   background: transparent;
   color: var(--popover-foreground);
   font: inherit;
@@ -743,7 +1042,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
 }
 
 .global-context-menu-shortcut {
-  color: var(--muted-foreground);
+  color: var(--popover-foreground);
   font-family: var(--font-sans);
   font-size: 0.6875rem;
   font-weight: 500;
@@ -755,7 +1054,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
   margin: 0.375rem 0.25rem 0.125rem;
   padding: 0.5rem 0.625rem;
   border-radius: calc(var(--radius) - 0.25rem);
-  background: color-mix(in oklab, var(--destructive) 10%, transparent);
+  background: color-mix(in oklab, var(--destructive) 10%, var(--popover));
   color: var(--destructive);
   font-size: 0.75rem;
   line-height: 1.125rem;
@@ -769,7 +1068,7 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
 
 /* Dark intensity: "black" pushes the dark palette toward true black for
    OLED screens. Only meaningful in dark mode. */
-.dark[data-dark-intensity="black"] {
+.dark[data-dark-intensity='black'] {
   --background: oklch(0% 0 0);
   --foreground: oklch(97% 0 0);
   --card: color-mix(in oklab, var(--primary) 4%, oklch(13% 0 0));
@@ -785,80 +1084,40 @@ html[data-cursor-system="custom"] .adaptive-cursor[data-visible="true"] {
 /* OLED's near-black sidebar applies only when the sidebar follows the canvas;
    scoping it to "follow" lets the panel/accent styles below win in OLED too
    (otherwise this higher-specificity block would override them). */
-.dark[data-dark-intensity="black"][data-sidebar-style="follow"] {
+.dark[data-dark-intensity='black'][data-sidebar-style='follow'] {
   --sidebar: color-mix(in oklab, var(--sidebar-primary) 3%, oklch(5% 0 0));
   --sidebar-border: color-mix(in oklab, var(--sidebar-primary) 6%, oklch(20% 0 0));
 }
 
 /* Sidebar style: how distinct the sidebar surface is from the main canvas. */
-html[data-sidebar-style="panel"] {
+html[data-sidebar-style='panel'] {
   --sidebar: color-mix(in oklab, var(--card) 96%, var(--sidebar-primary) 4%);
 }
-html[data-sidebar-style="accent"] {
+html[data-sidebar-style='accent'] {
   --sidebar: color-mix(in oklab, var(--background) 76%, var(--sidebar-primary) 24%);
   --sidebar-foreground: color-mix(in oklab, var(--foreground) 85%, var(--sidebar-primary));
   --sidebar-border: color-mix(in oklab, var(--border) 60%, var(--sidebar-primary) 40%);
 }
 
 /* High contrast: strengthen borders + dim-text contrast for legibility. */
-html[data-contrast="high"] {
-  --border: color-mix(in oklab, var(--foreground) 55%, var(--border));
-  --input: color-mix(in oklab, var(--foreground) 45%, var(--input));
-  --muted-foreground: color-mix(in oklab, var(--foreground) 78%, var(--muted-foreground));
-  --sidebar-border: color-mix(in oklab, var(--foreground) 55%, var(--sidebar-border));
+html[data-contrast='high'] {
+  --border: color-mix(in oklab, var(--foreground) 55%, var(--background));
+  --input: color-mix(in oklab, var(--foreground) 45%, var(--background));
+  --muted-foreground: color-mix(in oklab, var(--foreground) 78%, var(--background));
+  --sidebar-border: color-mix(in oklab, var(--foreground) 55%, var(--sidebar));
 }
 
 /* Kiosk ("展示模式"): hide any in-content edit/config entry points marked with
    data-kiosk-hide (the chrome itself is removed in MainLayout). */
-html[data-kiosk="1"] [data-kiosk-hide] {
+html[data-kiosk='1'] [data-kiosk-hide] {
   display: none !important;
-}
-
-/* Log stream row entrance — a subtle fade + rise for a genuinely new tail line.
-   transform+opacity only (composited, cheap at high rate); the virtual row's own
-   translateY positioning lives on the OUTER wrapper, so this INNER animation
-   never fights it or perturbs measureElement. Applied only to real arrivals and
-   auto-suppressed in bursts; gated in JS on reduce/disable-motion, and the rules
-   below also neutralise it. */
-@keyframes log-row-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.log-row-in {
-  animation: log-row-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Soft edge fade for the log scroll viewport — rows dissolve at a boundary as
-   they scroll past it (Apple-style). Scroll-position-aware: each edge only fades
-   when there is actually hidden content in that direction, so a fully-scrolled
-   top/bottom row is never dimmed (readability). A static mask, not motion: kept
-   under reduce-motion, dropped only on the hard 关闭全部动效 switch. */
-.log-fade-top,
-.log-fade-bottom,
-.log-fade-both {
-  -webkit-mask-image: none;
-  mask-image: none;
-  -webkit-mask-source-type: alpha;
-  mask-mode: alpha;
-}
-.log-fade-top {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff 100%);
-}
-.log-fade-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, #fff 0, #fff calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(to bottom, #fff 0, #fff calc(100% - 18px), transparent 100%);
-}
-.log-fade-both {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #fff 14px, #fff calc(100% - 18px), transparent 100%);
 }
 
 /* Reduce motion: a CSS fallback for non-Framer transitions/animations.
    Framer Motion itself is handled by <MotionConfig reducedMotion>. */
-html[data-reduce-motion="1"] *,
-html[data-reduce-motion="1"] *::before,
-html[data-reduce-motion="1"] *::after {
+html[data-reduce-motion='1'] *,
+html[data-reduce-motion='1'] *::before,
+html[data-reduce-motion='1'] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
@@ -867,11 +1126,13 @@ html[data-reduce-motion="1"] *::after {
 
 /* Press feedback is useful motion, but never essential. The app-level reduce
    switch and the OS preference both disable it without changing hit areas. */
-html[data-reduce-motion="1"] :is(.ui-button, [data-press-scale]) {
+html[data-reduce-motion='1'] :is(.ui-button, [data-press-scale]) {
   scale: 1 !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.ui-button, [data-press-scale]) { scale: 1 !important; }
+  :is(.ui-button, [data-press-scale]) {
+    scale: 1 !important;
+  }
 }
 
 /* Keep shared form controls at 16px on coarse pointers even when a page
@@ -882,18 +1143,23 @@ html[data-reduce-motion="1"] :is(.ui-button, [data-press-scale]) {
     min-width: max(2.75rem, 44px);
     min-height: max(2.75rem, 44px);
   }
-  .ui-button-icon { min-width: max(2.75rem, 44px); }
+  .ui-button-icon {
+    min-width: max(2.75rem, 44px);
+  }
   .topbar-control {
     width: 44px;
     min-width: 44px;
     height: 44px;
     min-height: 44px;
   }
+  .global-context-menu-item {
+    min-height: 44px;
+  }
   input,
   select,
   textarea,
   [data-ui-control],
-  [contenteditable]:not([contenteditable="false"]) {
+  [contenteditable]:not([contenteditable='false']) {
     min-height: max(2.75rem, 44px);
     font-size: max(1rem, 16px);
   }
@@ -902,9 +1168,9 @@ html[data-reduce-motion="1"] :is(.ui-button, [data-press-scale]) {
 /* 关闭全部动效: harder than reduce — remove CSS animations outright (e.g. the
    pulsing status dots) rather than just collapsing their duration. Framer
    entrance fades are gated in components on `disableMotion`. */
-html[data-no-motion="1"] *:not(.animate-spin),
-html[data-no-motion="1"] *::before,
-html[data-no-motion="1"] *::after {
+html[data-no-motion='1'] *:not(.animate-spin),
+html[data-no-motion='1'] *::before,
+html[data-no-motion='1'] *::after {
   /* Exclude .animate-spin: loading spinners encode "busy", not decoration —
      freezing them reads as a hang. Everything else (e.g. pulse dots) stops. */
   animation: none !important;
@@ -940,7 +1206,9 @@ input::-webkit-search-cancel-button {
   animation: none;
   mix-blend-mode: normal;
 }
-::view-transition-old(root) { z-index: 0; }
+::view-transition-old(root) {
+  z-index: 0;
+}
 ::view-transition-new(root) {
   z-index: 1;
   animation: nowluma-theme-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -955,8 +1223,8 @@ input::-webkit-search-cancel-button {
     clip-path: circle(var(--vt-r, 150%) at var(--vt-x, 50%) var(--vt-y, 50%));
   }
 }
-html[data-reduce-motion="1"]::view-transition-old(root),
-html[data-reduce-motion="1"]::view-transition-new(root) {
+html[data-reduce-motion='1']::view-transition-old(root),
+html[data-reduce-motion='1']::view-transition-new(root) {
   animation: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -975,8 +1243,13 @@ html {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--foreground) 22%, transparent) transparent;
 }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background-color: color-mix(in oklab, var(--foreground) 22%, transparent);
   border-radius: 9999px;
@@ -986,19 +1259,8 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklab, var(--foreground) 38%, transparent);
 }
-::-webkit-scrollbar-corner { background: transparent; }
-
-/* ──────────────────────────────────────────────
-   Login background — wavy SVG line field (see <LoginWaves>). Themed to the
-   accent so it reads as a subtle decorative backdrop behind the login card.
-   ────────────────────────────────────────────── */
-.login-waves {
-  color: color-mix(in oklab, var(--primary) 26%, transparent);
-}
-.login-waves path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1px;
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ──────────────────────────────────────────────
@@ -1013,23 +1275,28 @@ html {
   height: 3rem;
   align-items: center;
   overflow: hidden;
-  border: 0.5px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
   cursor: grab;
   touch-action: pan-y;
   user-select: none;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
   transition-property: background-color, border-color, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
-.slider-root:hover {
-  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
-  background: color-mix(in oklab, var(--primary) 6%, var(--muted));
+
+.slider-root > .slider-radix-root,
+.slider-root > .slider-ticks,
+.slider-root > .slider-labels {
+  position: absolute;
 }
-.slider-root:active { cursor: grabbing; }
+.slider-root:hover {
+  border-color: color-mix(in oklab, var(--foreground) 30%, var(--border));
+}
+.slider-root:active {
+  cursor: grabbing;
+}
 .slider-root:has(.slider-native-thumb:focus-visible) {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
@@ -1073,7 +1340,9 @@ html {
   justify-content: center;
   cursor: grab;
 }
-.slider-root:active .slider-handle-slot { cursor: grabbing; }
+.slider-root:active .slider-handle-slot {
+  cursor: grabbing;
+}
 .slider-handle-line {
   display: block;
   width: 0.125rem;
@@ -1133,10 +1402,10 @@ html {
   text-transform: capitalize;
 }
 
-html[data-reduce-motion="1"] .slider-root,
-html[data-reduce-motion="1"] .slider-active-range,
-html[data-reduce-motion="1"] .slider-handle-line,
-html[data-reduce-motion="1"] .slider-labels {
+html[data-reduce-motion='1'] .slider-root,
+html[data-reduce-motion='1'] .slider-active-range,
+html[data-reduce-motion='1'] .slider-handle-line,
+html[data-reduce-motion='1'] .slider-labels {
   transition-duration: 0s !important;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { motion, useReducedMotionConfig } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 interface ToggleSwitchProps {
@@ -11,6 +11,7 @@ interface ToggleSwitchProps {
 /** Small animated on/off switch (`role="switch"`). Shared across the config
  *  surfaces — node enable toggle, built-in command toggles, etc. */
 export function ToggleSwitch({ value, onChange, ariaLabel, disabled }: ToggleSwitchProps) {
+    const reduced = useReducedMotionConfig();
     return (
         <button
             type="button"
@@ -20,19 +21,25 @@ export function ToggleSwitch({ value, onChange, ariaLabel, disabled }: ToggleSwi
             disabled={disabled}
             onClick={() => onChange(!value)}
             className={cn(
-                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40',
+                'relative inline-flex h-11 w-11 shrink-0 items-center bg-transparent',
+                'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-                // Off-track is a neutral foreground tint so it stays visible on any
-                // surface — including OLED pure-black (where bg-muted vanished).
-                value ? 'bg-primary' : 'bg-foreground/20',
             )}
         >
-            <motion.span
-                className="inline-block size-4 rounded-full bg-white shadow-sm ring-1 ring-black/10"
-                animate={{ x: value ? 22 : 4 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            />
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'relative flex h-6 w-11 items-center rounded-full transition-colors',
+                    value ? 'bg-primary' : 'bg-foreground/20',
+                )}
+            >
+                <motion.span
+                    className="inline-block size-4 rounded-full bg-primary-foreground shadow-sm"
+                    initial={false}
+                    animate={{ x: value ? 24 : 4 }}
+                    transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 30 }}
+                />
+            </span>
         </button>
     );
 }

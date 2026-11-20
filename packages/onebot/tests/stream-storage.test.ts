@@ -103,7 +103,7 @@ describe('StreamStorage', () => {
         const externalDir = path.join(container, 'external');
         const externalFile = path.join(externalDir, 'keep.bin');
         writeSized(externalFile, 12);
-        fs.symlinkSync(externalDir, root);
+        fs.symlinkSync(externalDir, root, process.platform === 'win32' ? 'junction' : 'dir');
 
         expect(() => new StreamStorage(root)).toThrow(/symbolic link/i);
         expect(fs.readFileSync(externalFile)).toHaveLength(12);
@@ -112,7 +112,7 @@ describe('StreamStorage', () => {
     it('rejects a symbolic-link replacement before creating managed children', () => {
         const externalDir = path.join(container, 'late-external');
         fs.mkdirSync(externalDir);
-        fs.symlinkSync(externalDir, root);
+        fs.symlinkSync(externalDir, root, process.platform === 'win32' ? 'junction' : 'dir');
 
         expect(() => storage.ensureDirectory(storage.uploadDir)).toThrow(/symbolic link/i);
         expect(fs.readdirSync(externalDir)).toEqual([]);
@@ -149,7 +149,11 @@ describe('StreamStorage', () => {
         const externalFile = path.join(externalDir, 'keep.bin');
         writeSized(externalFile, 12);
         fs.mkdirSync(storage.uploadDir, { recursive: true });
-        fs.symlinkSync(externalDir, path.join(storage.uploadDir, 'linked'));
+        fs.symlinkSync(
+            externalDir,
+            path.join(storage.uploadDir, 'linked'),
+            process.platform === 'win32' ? 'junction' : 'dir',
+        );
 
         const result = storage.clearInactive();
 

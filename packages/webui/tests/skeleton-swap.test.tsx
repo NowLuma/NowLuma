@@ -16,6 +16,20 @@ describe('SkeletonSwap', () => {
         expect(html).not.toContain('aria-hidden="true"');
     });
 
+    it('allows loaded content to grow beyond the reserved placeholder height', () => {
+        const html = renderToStaticMarkup(
+            <SkeletonSwap ready reserve={20}>
+                <h3>完整的连接提示</h3>
+                <p>窄屏下正文可以换行，不能被占位高度裁切。</p>
+            </SkeletonSwap>,
+        );
+        const shellStyle = /style="([^"]*)"/.exec(html)?.[1] ?? '';
+
+        expect(shellStyle).toContain('min-height:20px');
+        expect(shellStyle).not.toMatch(/(?:^|;)height:20px(?:;|$)/);
+        expect(html).toContain('完整的连接提示');
+    });
+
     it('exposes ready content without a loading announcement', () => {
         const html = renderToStaticMarkup(
             <SkeletonSwap ready label="测试内容">

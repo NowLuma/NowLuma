@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { constants, existsSync } from 'node:fs';
 import os from 'node:os';
+import { RELEASE_DOCUMENTS } from '@nowluma/common/release-assets';
 import { parseVersion } from '@nowluma/common/semver';
 
 export const MANIFEST_FILE = 'release.json';
@@ -50,8 +51,8 @@ const runtimeEntries = new Set([
     'launcher.bat',
     'launcher.sh',
     'check-node-version.cjs',
-    'EULA.md',
-    'PRIVACY.md',
+    'licenses',
+    ...RELEASE_DOCUMENTS,
 ]);
 
 export function isRuntimeEntry(name: string): boolean {
@@ -121,7 +122,7 @@ export async function readManifest(root: string): Promise<ReleaseManifest> {
 async function checkEntryTypes(root: string, entries: string[]): Promise<void> {
     for (const entry of entries) {
         const stat = await lstat(path.join(root, entry));
-        const directory = entry === 'native' || entry === 'client';
+        const directory = entry === 'native' || entry === 'client' || entry === 'licenses';
 
         if (directory ? !stat.isDirectory() : !stat.isFile()) {
             throw new Error(`更新包文件类型无效: ${entry}`);

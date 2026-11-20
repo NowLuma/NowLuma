@@ -18,7 +18,8 @@ Use `git status` to preserve unrelated work. Issues should be submitted manually
 - `deploy`: Docker, installation, process supervision, persistence and smoke checks.
 
 QQ connectivity is intentionally not redesigned in the current phase. New product naming is `Nowluma`, workspace imports are `@nowluma/*`, and environment variables use `NOWLUMA_*`.
-Only the root README introduction contains the original project name. Original native bytes and their fallback socket ABI are explicit temporary exceptions; never patch arbitrary prebuild bytes to make a test pass.
+The project's own source is GPL-3.0-only: `LICENSE` is the verbatim GNU GPLv3 text, and `LICENSING.md` records the GPLv3 section 7 linking permission plus the supplied-native and third-party boundaries. Never add non-commercial terms or extra restrictions to GPL-covered source, and never claim the supplied native prebuilds or third-party components are GPL.
+Only the root README footer contains the original project name; `tools/check-identity.mjs` derives that name from the footer rather than hardcoding it. The one other allowed mention is the compat kernel's display label in `packages/common/src/kernel-display.ts`: the kernel runs the supplied native components of that source project, so the console names it after them, while the product stays `Nowluma`. The checker allows only that exact footer-derived declaration, once; no other file, filename or prose may repeat the name. Original native bytes and their fallback socket ABI are explicit temporary exceptions; never patch arbitrary prebuild bytes to make a test pass. The six original native prebuilds remain the shipped native components; the separate external rewrite attempt is unfinished and not shipped. The per-account kernel selector is implemented, but the rewrite option remains unavailable. Loading the original kernel requires active, versioned, informed risk acceptance for that real account, with no pre-checked consent, global acceptance or silent fallback.
 
 ## Safety and contracts
 
@@ -40,7 +41,7 @@ Only the root README introduction contains the original project name. Original n
 
 The container uses a fixed UID/GID and complete persistent QQ HOME. Startup does not mint fresh QQ credentials. Required desktop/runtime processes must be supervised and fail visibly.
 Normal stop/restart/recreation preserves every data volume. Destructive cleanup requires explicit user action.
-Desktop access is independently authenticated and locally published by default. Do not place WebUI tokens or QQ credentials in a noVNC URL, disable VNC authentication, or grant privileged/host-process access as a shortcut.
+Desktop access uses the WebUI session through a same-origin gateway; its loopback VNC backend retains independent password authentication. Do not return its private password to browsers, put session/QQ credentials in URLs, disable VNC authentication, or grant privileged/host-process access as a shortcut. Desktop HTTP and WebSocket routes enforce session revocation, consent/password gates and origin checks.
 
 ## Validation
 

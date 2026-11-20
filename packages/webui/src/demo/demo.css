@@ -1,0 +1,234 @@
+.demo-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--foreground);
+  background: var(--background);
+}
+.demo-banner {
+  height: 3.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--primary) 12%, var(--background));
+  position: relative;
+  z-index: 70;
+}
+.demo-banner-label,
+.demo-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.demo-banner-label strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.demo-banner-label span {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.demo-console {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  --workspace-viewport-height: calc(100dvh - 3.5rem);
+}
+.demo-guide {
+  position: fixed;
+  z-index: 65;
+  top: 4.25rem;
+  right: 0.75rem;
+  width: 340px;
+  max-height: calc(100dvh - 5rem);
+  overflow-y: auto;
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--background) 95%, transparent);
+  box-shadow: 0 16px 48px #0002;
+  backdrop-filter: blur(16px);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.demo-guide-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.demo-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: var(--primary);
+}
+.demo-guide h2 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.demo-guide h3 {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.demo-guide p {
+  margin: 0.65rem 0;
+  color: var(--muted-foreground);
+}
+.demo-credentials {
+  border: 1px solid color-mix(in oklab, var(--primary) 30%, var(--border));
+  padding: 0.75rem;
+  border-radius: 0.65rem;
+  background: color-mix(in oklab, var(--primary) 7%, var(--background));
+}
+.demo-credentials strong {
+  display: block;
+  font-size: 0.72rem;
+  margin-bottom: 0.4rem;
+}
+.demo-credentials dt {
+  font-size: 0.65rem;
+  color: var(--muted-foreground);
+}
+.demo-credentials dd {
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  user-select: all;
+}
+.demo-steps {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.8rem;
+}
+.demo-steps button {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.demo-steps button:hover {
+  background: var(--muted);
+}
+.demo-steps button[aria-current='step'] {
+  background: color-mix(in oklab, var(--primary) 12%, var(--background));
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
+  color: var(--primary);
+}
+.demo-steps button:focus-visible,
+.demo-scenarios select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.demo-step-detail {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+.demo-step-detail button {
+  margin: 0.2rem 0.3rem 0.2rem 0;
+}
+.demo-control-label {
+  font-size: 0.7rem;
+}
+.demo-scenarios {
+  border-top: 1px solid var(--border);
+  padding-top: 0.7rem;
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+.demo-scenarios label {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.demo-scenarios select {
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--background);
+  padding: 0.5rem;
+  color: var(--foreground);
+}
+.demo-guide .demo-progress {
+  font-size: 0.68rem;
+}
+.demo-guide .demo-notice {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 0.7rem;
+}
+.demo-guide .demo-limits {
+  font-size: 0.65rem;
+}
+.demo-desktop {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0.8rem;
+  background: color-mix(in oklab, var(--primary) 8%, var(--background));
+  border: 1px dashed var(--border);
+  padding: 1rem;
+  text-align: center;
+}
+.demo-desktop strong {
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+.demo-desktop span {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.demo-link-alert {
+  position: fixed;
+  z-index: 90;
+  bottom: 1rem;
+  left: 1rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--background);
+  font-size: 0.8rem;
+  box-shadow: 0 8px 24px #0002;
+}
+@media (max-width: 640px) {
+  .demo-banner {
+    padding: 0.5rem;
+    gap: 0.3rem;
+  }
+  .demo-banner-label span {
+    display: none;
+  }
+  .demo-banner-label {
+    gap: 0.25rem;
+  }
+  .demo-banner-actions {
+    gap: 0.25rem;
+  }
+  .demo-banner-actions button {
+    font-size: 0.7rem;
+    padding-inline: 0.45rem;
+  }
+  .demo-guide {
+    width: calc(100vw - 1rem);
+    right: 0.5rem;
+    top: 4rem;
+    max-height: calc(100dvh - 4.5rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-guide {
+    backdrop-filter: none;
+  }
+}

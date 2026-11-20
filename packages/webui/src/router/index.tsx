@@ -2,6 +2,7 @@ import {
     createRootRoute,
     createRoute,
     createRouter,
+    createHashHistory,
     lazyRouteComponent,
     Outlet,
 } from '@tanstack/react-router';
@@ -103,6 +104,7 @@ const routeTree = rootRoute.addChildren([
 
 export const appRouter = createRouter({
     routeTree,
+    ...(import.meta.env.MODE === 'demo' ? { history: createHashHistory() } : {}),
     defaultPreload: 'intent',
     defaultNotFoundComponent: () => <NotFoundPage />,
     defaultErrorComponent: ({ error, reset }) => <ErrorPage error={error} reset={reset} />,

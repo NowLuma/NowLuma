@@ -1009,6 +1009,56 @@ function resolveContactArk(
     return null;
 }
 
+interface OutgoingReplyMeta {
+    senderUin: number;
+    time: number;
+    random: number;
+    elements?: MessageElement[];
+    sequenceAuthoritative?: boolean;
+}
+
+/**
+ * Shared reply-preview lookup for outgoing messages. Group callers pre-read
+ * meta to enforce conversation scope; private keeps its historical lack of a
+ * scope check and passes no meta.
+ */
+async function resolveOutgoingReplyMeta(
+    ref: OneBotInstanceContext,
+    replyMessageId: number,
+    scopedMeta?: MessageMeta | null,
+): Promise<OutgoingReplyMeta | null> {
+    const event = await ref.messageStore.findEvent(replyMessageId);
+    const meta =
+        scopedMeta === undefined ? await ref.messageStore.findMeta(replyMessageId) : scopedMeta;
+
+    if (event) {
+        return {
+            senderUin:
+                typeof event.user_id === 'number'
+                    ? event.user_id
+                    : parseInt(String(event.user_id || '0'), 10),
+            time:
+                typeof event.time === 'number'
+                    ? event.time
+                    : parseInt(String(event.time || '0'), 10),
+            random: meta?.random ?? 0,
+            elements: replyPreviewElements(event.message),
+            sequenceAuthoritative: meta?.sequenceAuthoritative,
+        };
+    }
+
+    if (meta) {
+        return {
+            senderUin: ref.selfId,
+            time: meta.timestamp,
+            random: meta.random,
+            sequenceAuthoritative: meta.sequenceAuthoritative,
+        };
+    }
+
+    return null;
+}
+
 export async function sendPrivateMessage(
     ref: OneBotInstanceContext,
     userId: number,
@@ -1051,48 +1101,7 @@ export async function sendPrivateMessage(
         resolveReplySequence: async (replyMessageId) => {
             return await ref.messageStore.resolveReplySequence(false, userId, replyMessageId);
         },
-        resolveReplyMeta: async (replyMessageId) => {
-            // Prefer the cached event (it carries the REAL sender). When only
-            // meta exists — typically because the message we're replying to was
-            // sent by the bot itself and never round-tripped through dispatch
-            // (reportSelfMessage off / no message_sent event) — fall back to
-            // selfId. The previous code used `meta.targetId` here, which is the
-            // conversation PEER and shows the wrong "回复 @某人" in QQ for any
-            // self-reply.
-            const event = await ref.messageStore.findEvent(replyMessageId);
-
-            if (event) {
-                const senderUin =
-                    typeof event.user_id === 'number'
-                        ? event.user_id
-                        : parseInt(String(event.user_id || '0'), 10);
-                const time =
-                    typeof event.time === 'number'
-                        ? event.time
-                        : parseInt(String(event.time || '0'), 10);
-                const meta = await ref.messageStore.findMeta(replyMessageId);
-                return {
-                    senderUin,
-                    time,
-                    random: meta?.random ?? 0,
-                    elements: replyPreviewElements(event.message),
-                    sequenceAuthoritative: meta?.sequenceAuthoritative,
-                };
-            }
-
-            const meta = await ref.messageStore.findMeta(replyMessageId);
-
-            if (meta) {
-                return {
-                    senderUin: ref.selfId,
-                    time: meta.timestamp,
-                    random: meta.random,
-                    sequenceAuthoritative: meta.sequenceAuthoritative,
-                };
-            }
-
-            return null;
-        },
+        resolveReplyMeta: (replyMessageId) => resolveOutgoingReplyMeta(ref, replyMessageId),
         resolveMentionUid: (targetUin) => ref.bridge.resolveUserUid(targetUin),
         resolveContactArk: (contactType, contactId) =>
             resolveContactArk(ref, contactType, contactId),
@@ -1374,30 +1383,7 @@ export async function sendGroupMessage(
                 return null;
             }
 
-            const event = await ref.messageStore.findEvent(replyMessageId);
-
-            if (event) {
-                return {
-                    senderUin:
-                        typeof event.user_id === 'number'
-                            ? event.user_id
-                            : parseInt(String(event.user_id || '0'), 10),
-                    time:
-                        typeof event.time === 'number'
-                            ? event.time
-                            : parseInt(String(event.time || '0'), 10),
-                    random: meta?.random ?? 0,
-                    elements: replyPreviewElements(event.message),
-                    sequenceAuthoritative: meta?.sequenceAuthoritative,
-                };
-            }
-
-            return {
-                senderUin: ref.selfId,
-                time: meta.timestamp,
-                random: meta.random,
-                sequenceAuthoritative: meta.sequenceAuthoritative,
-            };
+            return await resolveOutgoingReplyMeta(ref, replyMessageId, meta);
         },
         resolveMentionUid: (targetUin) => ref.bridge.resolveUserUid(targetUin, groupId),
         resolveContactArk: (contactType, contactId) =>

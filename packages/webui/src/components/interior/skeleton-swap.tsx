@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
 
 const CROSSFADE = {
     type: 'spring',
@@ -83,7 +83,7 @@ export function SkeletonSwap({
     className = '',
 }: SkeletonSwapProps) {
     const { showSkeleton } = useSkeletonSwap({ ready, delay, minVisible });
-    const reduced = useReducedMotion();
+    const reduced = useReducedMotionConfig();
 
     const shell = useRef<HTMLDivElement>(null);
     const body = useRef<HTMLDivElement>(null);
@@ -118,7 +118,7 @@ export function SkeletonSwap({
             aria-busy={!ready}
             aria-label={label}
             tabIndex={scrollable ? 0 : undefined}
-            style={{ height: box }}
+            style={{ height: !ready || showSkeleton ? box : undefined, minHeight: box }}
             className={`relative grid overflow-y-auto overscroll-contain text-foreground ${className}`}
         >
             <motion.div

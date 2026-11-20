@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     coerceSettingsPatch,
     evaluateSettingsSave,
+    settingsView,
     tlsCertDeletionBlocked,
 } from '../src/webui/system-settings';
 import type { RuntimeConfig } from '@nowluma/common/runtime';
@@ -59,9 +60,18 @@ describe('coerceSettingsPatch', () => {
     });
 
     it('validates desktop URLs and automatic-attach switches at the API boundary', () => {
-        expect(coerceSettingsPatch({ vncUrl: '/desktop/vnc.html', hookAutoLoad: true })).toEqual({ ok: true, patch: { vncUrl: '/desktop/vnc.html', hookAutoLoad: true } });
+        expect(coerceSettingsPatch({ vncUrl: '/desktop/vnc.html', hookAutoLoad: true })).toEqual({
+            ok: true,
+            patch: { vncUrl: '/desktop/vnc.html', hookAutoLoad: true },
+        });
         expect(coerceSettingsPatch({ hookAutoLoad: 'yes' }).ok).toBe(false);
-        for (const url of ['javascript:alert(1)', '//elsewhere.test', 'https://user:pass@example.test', '/vnc.html?token=secret']) {
+
+        for (const url of [
+            'javascript:alert(1)',
+            '//elsewhere.test',
+            'https://user:pass@example.test',
+            '/vnc.html?token=secret',
+        ]) {
             expect(coerceSettingsPatch({ vncUrl: url }).ok).toBe(false);
         }
     });
@@ -132,5 +142,41 @@ describe('tlsCertDeletionBlocked', () => {
     it('blocks deletion while TLS is enabled and allows it when TLS is off', () => {
         expect(tlsCertDeletionBlocked(true)).toBe(true);
         expect(tlsCertDeletionBlocked(false)).toBe(false);
+    });
+});
+
+describe('settingsView', () => {
+    it('projects exactly the seven shared fields with the persisted defaults', () => {
+        const view = settingsView({
+            webuiPort: 8080,
+            webuiHost: '0.0.0.0',
+            webuiTls: { enabled: true },
+            trustProxy: '1',
+            vncPort: 6080,
+            vncUrl: '/desktop/vnc.html',
+            hookAutoLoad: true,
+        });
+        expect(view).toEqual({
+            webuiPort: 8080,
+            webuiHost: '0.0.0.0',
+            tlsEnabled: true,
+            trustProxy: '1',
+            vncPort: 6080,
+            vncUrl: '/desktop/vnc.html',
+            hookAutoLoad: true,
+        });
+        expect(Object.keys(view)).toHaveLength(7);
+    });
+
+    it('uses the same empty defaults for unset runtime fields', () => {
+        expect(settingsView({ webuiPort: undefined, webuiHost: undefined })).toEqual({
+            webuiPort: undefined,
+            webuiHost: undefined,
+            tlsEnabled: false,
+            trustProxy: '',
+            vncPort: 0,
+            vncUrl: '',
+            hookAutoLoad: false,
+        });
     });
 });

@@ -1,0 +1,33 @@
+name: nowluma
+services:
+  nowluma:
+    image: ${NOWLUMA_IMAGE}
+    hostname: nowluma
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5099:5099"
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3001"
+    environment:
+      TZ: Asia/Shanghai
+      NOWLUMA_WEBUI_HOST: 0.0.0.0
+      NOWLUMA_WEBUI_PORT: 5099
+      NOWLUMA_VNC_PORT: 0
+      NOWLUMA_VNC_URL: /desktop/
+      NOWLUMA_DESKTOP_PROXY: "1"
+      NOWLUMA_HOOK_AUTOLOAD: "1"
+      NOWLUMA_ONEBOT_HOST: 0.0.0.0
+    volumes:
+      - config:/app/config
+      - data:/app/data
+      - logs:/app/logs
+      - qq-home:/home/nowluma
+    cap_add:
+      - SYS_PTRACE
+    shm_size: 1gb
+    stop_grace_period: 35s
+volumes:
+  config:
+  data:
+  logs:
+  qq-home:

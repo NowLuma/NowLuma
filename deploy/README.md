@@ -1,9 +1,15 @@
-# Docker 与 Linux 部署指南
+# Docker、Linux 与 Windows 部署指南
 
 ## 1. 安装与首次登录
 
-需要 Docker Engine 和 Compose v2。官方安装指南：
-https://docs.docker.com/engine/install/
+安装向导第一步选择简体中文或 English，然后检查 Docker Engine 和 Compose v2。
+缺少 Docker 时可选择：
+
+- 不需要镜像源：显示 `curl -fsSL https://get.docker.com | bash -s docker`，确认后运行官方安装脚本。
+- 需要镜像源：显示 `bash <(curl -sSL https://linuxmirrors.cn/docker.sh)`，确认后运行第三方安装脚本；镜像与防火墙等选项由你自行选择，本项目不要求关闭防火墙或 SELinux。
+
+执行前的确认回车默认 `y`。已有 Docker 不重新安装、不改镜像设置；缺少 Compose v2 时另外询问插件安装。
+官方手动安装指南：https://docs.docker.com/engine/install/
 
 在源码目录执行：
 
@@ -11,18 +17,20 @@ https://docs.docker.com/engine/install/
 bash deploy/install.sh --docker
 ```
 
-首次安装会生成私有的 `deploy/.env`，已有文件不会被覆盖。之后只运行 `manage.sh`，不用编辑 JSON。
+首次可选访问方式、控制台/机器人端口、时区，回车使用默认值。配置保存在私有 `deploy/.env`；已有配置逐字保留。
+安装成功后直接显示本次生成的控制台初始密码与实际地址；已有部署不会重新设置密码。
+需要 sudo 访问 Docker 时，输出的日常命令也会包含 sudo。后续只运行 `manage.sh`，不用编辑 JSON。
 默认 QQ 包固定版本并检查 SHA-256。官方地址不可用时会明确提示使用固定发行镜像，而非静默切换不同版本。
 镜像来源是 `a1515333102/QQ-Releases` 的同名发行资产；校验保证匹配已固定的发行快照，不应把它说成腾讯提供的签名保证。
 高级构建如指定 `QQ_DEB_URL`，必须同时指定该包的 `QQ_DEB_SHA256`，不会把自定义下载失败偷偷回退到默认包。
 
 ```bash
 bash deploy/manage.sh logs
-bash deploy/manage.sh vnc-password
 ```
 
 打开控制台 `http://127.0.0.1:5099`，设置自己的控制台密码，然后点 **打开 QQ 桌面**。
-桌面密码只保护远程桌面，进入后仍需要在 QQ 窗口扫码。勾选的是 **QQ 自己的自动登录设置**。
+桌面复用控制台认证，不需要额外 VNC 密码。进入后仍在 QQ 窗口扫码，勾选 **QQ 自己的自动登录设置**。
+回到 **QQ 会话** 刷新并加载进程；第一次为该真实 QQ 号接入时，必须主动勾选风险确认并选择 `兼容内核`。`重写内核` 当前显示为 `暂不可用`，不会静默回退。保存内核选择不等于接入，仍需加载或重连。
 不要把“程序启动”“接入成功”“QQ 登录成功”“机器人会自动回复”当成同一件事；首页会分别提示。
 
 ### 远程服务器
@@ -30,7 +38,7 @@ bash deploy/manage.sh vnc-password
 默认只把服务发布到宿主机回环地址。推荐在自己电脑执行：
 
 ```bash
-ssh -L 5099:127.0.0.1:5099 -L 6080:127.0.0.1:6080 -L 3001:127.0.0.1:3001 用户名@服务器地址
+ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
 ```
 
 保持隧道窗口打开，再访问本机控制台。安装向导也能显式选择局域网访问；不要直接把管理界面和明文 VNC 暴露到公网。
@@ -43,7 +51,6 @@ bash deploy/manage.sh stop
 bash deploy/manage.sh restart
 bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
-bash deploy/manage.sh vnc-password
 ```
 
 `start` 构建并等待健康检查，`restart` 正常结束进程再等待恢复，`stop` 不删除任何数据卷。
@@ -85,46 +92,56 @@ XDG 运行目录是临时的 `/tmp/nowluma-runtime`，不要持久化陈旧进�
 原生组件仅改外部文件名；内部二进制、接口和必要的旧套接字 ABI 保留。
 这些兼容标识不是新的产品名称，也不能据此声称已移除腾讯的风控识别特征。
 
-## 5. 桌面地址和反向代理
+## 5. 桌面认证和反向代理
 
-控制台首页和 QQ 连接页可一键打开已运行的 noVNC；系统设置提供可选地址。
+Docker 的桌面通过控制台同源路径 `/desktop/` 访问，只有一个管理端口 5099，不再单独发布 6080。
 
-- `vncPort=6080`：按浏览器当前主机名生成端口入口。
-- `vncPort=0` 且地址留空：隐藏入口。
-- 通过 HTTPS 同源代理时，地址可填写 `/desktop/vnc.html?path=desktop/websockify`。
-- 地址不允许 `javascript:`、协议相对地址或密码/令牌参数；打开桌面不会转发控制台令牌。
-- 改入口不等于更改 websockify 监听端口。
-- 环境变量覆盖会在设置中标出，界面显示实际入口，不把覆盖值偷偷写回配置文件。
+QQ、Xvfb、openbox 与 x11vnc 运行在同一个容器、同一个完整 HOME 中，不是每个账号一台 VM；多账号共用这个桌面环境。
 
-Nginx 示例（TLS 和代理鉴权请按你的服务器设置）：
+- 浏览器使用 HttpOnly、SameSite=Strict 的路径限定会话 Cookie；不把控制台令牌或 VNC 密码放进 URL。
+- 桌面 HTTP、脚本和 WebSocket 都检查有效控制台会话；说明阅读确认与首次改密不能绕过。
+- WebSocket 必须携带与当前主机匹配的 Origin。退出、改密、会话到期后不能再发送桌面操作，空闲连接也会关闭。
+- 后台 VNC 仍仅监听环回 5900，并保留独立认证；同源网关在服务器侧完成认证，不返回后台密码。
+- 自动的「打开 QQ 桌面」始终使用同源 `/desktop/`，不会使用浏览器 UA 或配置的外部地址；只有实际应用同源网关的 Linux 服务器会显示入口。
+
+Nginx 示例（先配置 TLS；`Host` 必须保留真实访问端口）：
 
 ```nginx
 location / {
     proxy_pass http://127.0.0.1:5099;
-    proxy_set_header Host $host;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
     # 保留 X-Nowluma-Token；Authorization 可以由代理用于 Basic Auth。
 }
 location /desktop/ {
-    proxy_pass http://127.0.0.1:6080/;
+    proxy_pass http://127.0.0.1:5099;
     proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;
 }
 ```
 
+不要移除桌面路径中的 `/desktop/`，也不要把它代理到旧的 6080 端口。
 只在已配置受信任代理时设置 `trustProxy`；不要无条件信任公网请求的转发头。
 
 ## 6. 机器人连接
 
-默认 HTTP/WS 端口为 3000/3001，客户端分别连接 `http://地址:3000/`、`ws://地址:3001/`。
+默认 HTTP/WS 端口为 3000/3001；安装时选择其他端口后，工厂监听与宿主发布端口一致，控制台复制的端点地址使用实际监听端口。
+客户端分别连接 `http://地址:HTTP端口/`、`ws://地址:WS端口/`。
 Docker 的工厂监听会绑定容器网卡，宿主侧是否开放由 Compose 的发布地址决定。
 默认只在宿主回环发布。每个接入端点仍需要独立访问令牌；控制台密码不能代替 OneBot 令牌。
 
-在控制台「配置」选择账号后，可新建/编辑/启停四种连接。复制按钮只复制端点地址，不带凭据或查询参数。
+在控制台「机器人连接」选择账号后，可新建/编辑/启停四种连接。复制按钮只复制端点地址，不带凭据或查询参数。
 反向 WebSocket 要填写机器人程序提供的地址，不是控制台或 VNC 地址。
 多账号使用监听服务时要为各账号分配不同端口，并发布对应端口；不能用一个正常账号来判断所有账号都就绪。
+
+机器人端点不会绕过账号内核：QQ 会话必须先用该账号确认的内核接入，端点才可能进入 `运行中`。
 
 ## 7. 排障
 
@@ -135,19 +152,19 @@ bash deploy/manage.sh doctor
 bash deploy/manage.sh logs
 ```
 
-控制台「系统」显示工作目录、HOME、配置/消息/日志/默认 QQ 目录与是否可写，并能复制不含凭据的诊断。
+控制台「偏好设置 → 服务」显示工作目录、HOME、配置/消息/日志/默认 QQ 目录与是否可写，并能复制不含凭据的诊断。
 
 | 现象 | 检查 |
 | --- | --- |
 | 控制台打不开 | 容器健康状态、端口冲突、SSH 隧道或局域网发布地址 |
-| 桌面打不开 | 6080 映射、桌面密码、反向代理 WebSocket 升级路径 |
+| 桌面打不开 | 控制台会话是否有效、说明阅读与首次改密是否完成、反代是否保留 Host 与 WebSocket 升级路径 |
 | 没有 QQ 进程 | QQ 是否启动；Xvfb/QQ 错误日志，不要把空列表当成安装成功 |
 | QQ 无法接入 | 原生组件与架构是否匹配、SYS_PTRACE、QQ 与程序用户是否一致 |
 | 重启后 QQ 自动登录设置消失 | `nowluma_qq-home` 是否复用、HOME/XDG 是否被自定义启动方式覆盖、是否用了 `down -v` |
 | 目录或凭据无法写入 | 数据卷属主、只读挂载、磁盘空间；不要使用 chmod 777 来掩盖问题 |
 | 文件保留但 QQ 仍要求扫码 | QQ 服务端会话是否失效；需要在 QQ 窗口完成验证 |
 | 配置损坏 | 程序会报错并保留原文件，不会静默覆盖成新配置 |
-| #nl 仍有回复 | 检查当前账号的通用设置开关；下游机器人可能有自己的回复逻辑 |
+| #nl 仍有回复 | 检查当前账号「机器人连接 → 消息行为」的状态回复开关；下游机器人可能有自己的回复逻辑 |
 
 ### 验证自己的真实自动登录
 
@@ -158,7 +175,7 @@ bash deploy/manage.sh restart
 ```
 
 在桌面确认 QQ 是否自动恢复，不要只看控制台的健康状态。再执行 `stop`、`start` 验证容器重建。
-CI 可以验证目录/设置标记、机器 ID 和原生连接，但没有你的账号扫码，不会假报“真实 QQ 账号免扫码已验证”。
+CI 可以验证目录/设置标记、机器 ID、进程发现与未确认账号的接入门禁，但没有你的账号扫码，不会假报“真实 QQ 账号免扫码已验证”。最新 smoke 使用全新 HOME，真实 hook 接入与真实 QQ 登录是 NOT RUN。
 
 ## 8. 升级、备份、卸载
 
@@ -166,9 +183,11 @@ CI 可以验证目录/设置标记、机器 ID 和原生连接，但没有你的
 - 升级源代码后运行 `start`，Docker 复用原卷。
 - 原生升级保留 `config/`、`data/`、`logs/`；QQ 的目录不搬动。
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。
-- 桌面访问密码保存在 QQ HOME 卷的私有 `.vnc/password` 中；需要时用 `vnc-password` 查看，勿公开导出。
+- 后台 VNC 凭据保存在 QQ HOME 卷的私有 `.vnc/password`；浏览器和安装向导不需要读取它，勿公开导出。
 
-## 9. 原生 Linux
+## 9. 原生 Linux 与 Windows
+
+### Linux Lite
 
 使用 Linux 发行包，并安装支持的 Node；启动器也可使用同目录的可执行 `node`。
 
@@ -178,8 +197,18 @@ bash launcher.sh
 bash deploy/install.sh --native --directory /发行包目录
 ```
 
-原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
+`deploy/install.sh` 只在源码仓库里，不随 Lite 发行包分发。原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
 完整发行包的 Node 基线以 `check-node-version.cjs` 为准；不要用低版本 Node 绕过安全检查。
+
+### Windows 单文件 exe
+
+Windows x64 使用自包含的 `Nowluma.exe`：
+
+- 内置 Node 与运行环境，不需要 Docker、Node 或 .NET。
+- 双击后解压到 `%LOCALAPPDATA%\Nowluma` 并在浏览器打开控制台；可选本机 QQ，或在已有 Linux Docker 时选择隔离桌面。
+- 当前构建**未签名**，可能触发 SmartScreen；发行说明应给出 SHA-256，没有校验值的二进制不要直接运行。
+- 关闭窗口可能提前结束进程；建议按 Ctrl+C 正常停止。QQ 用户数据和设置不会被删除。
+- 真实 QQ 登录、注入与长期会话仍需你自己验证；这不是签名或真实账号验收声明。
 
 ## 10. 构建与验证
 
@@ -196,7 +225,7 @@ node --test deploy/docker/healthcheck.test.cjs
 docker compose -f deploy/docker-compose.yml config --quiet
 ```
 
-CI 另外实际构建 Linux/amd64 Docker 镜像、启动官方 QQ/桌面/程序，检查原生连接，并验证停止/重启/重建时完整 HOME 和程序配置保留。
+CI 另外实际构建 Linux/amd64 Docker 镜像、启动官方 QQ/桌面/程序，并验证全新 HOME 下的进程发现、未确认账号不会自动接入、桌面认证、停止/重启/重建时完整 HOME 和程序配置保留。真实 hook 接入与真实 QQ 登录在该 smoke 中是 NOT RUN；历史 CI 通过记录不构成本次账号验收。
 arm64 下载和原生产物有相应构建输入，未实际验证前不得把它标为已测试的平台。
 
-许可和使用条款见根目录 LICENSE、EULA.md、PRIVACY.md；更名不改变这些条款。
+许可和使用条款见根目录 LICENSE（GNU GPLv3，GPL-3.0-only）、LICENSING.md、EULA.md 与 PRIVACY.md。GPL 源码可自由使用、修改和分发（含商业用途）；随包的预编译原生组件与第三方组件适用各自条款，不属于 GPL 源码范围。

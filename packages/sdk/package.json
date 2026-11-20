@@ -1,10 +1,9 @@
 {
   "name": "@nowluma/sdk",
   "author": {
-    "name": "MotricSeven",
-    "email": "motricseven@gmail.com"
+    "name": "Nowluma contributors"
   },
-  "version": "2.4.2",
+  "version": "2.5.0-rc.1",
   "description": "TypeScript SDK for Nowluma OneBot HTTP and WebSocket transports",
   "keywords": [
     "nowluma",
@@ -23,7 +22,7 @@
     "url": "git+https://github.com/WSXYT/Nowluma.git",
     "directory": "packages/sdk"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",

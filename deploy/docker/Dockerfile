@@ -15,7 +15,7 @@ ARG QQ_DEB_URL=
 ARG QQ_DEB_SHA256=
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl xvfb x11-utils x11vnc novnc websockify \
+        ca-certificates curl xvfb x11-utils x11vnc novnc \
         openbox dbus-x11 ffmpeg tini procps util-linux \
     && rm -rf /var/lib/apt/lists/*
 RUN set -eu; \
@@ -62,9 +62,11 @@ ENV HOME=/home/nowluma \
     DISPLAY=:99 \
     NOWLUMA_WEBUI_HOST=0.0.0.0 \
     NOWLUMA_WEBUI_PORT=5099 \
-    NOWLUMA_VNC_PORT=6080 \
+    NOWLUMA_VNC_PORT=0 \
+    NOWLUMA_VNC_URL=/desktop/ \
+    NOWLUMA_DESKTOP_PROXY=1 \
     NOWLUMA_HOOK_AUTOLOAD=1
-EXPOSE 5099 6080 3000 3001
+EXPOSE 5099 3000 3001
 HEALTHCHECK --interval=30s --timeout=6s --start-period=90s --retries=3 \
     CMD ["node", "/usr/local/lib/nowluma-healthcheck.cjs"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/nowluma-entrypoint"]

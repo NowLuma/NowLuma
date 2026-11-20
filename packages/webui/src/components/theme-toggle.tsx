@@ -1,59 +1,96 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { motion } from 'motion/react';
+import { useDropdown } from '@/components/interior/dropdown';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
 import { paletteResolved, useTheme, type ThemeMode } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import '@/styles/workspace.css';
 
-const OPTIONS: { mode: ThemeMode; icon: typeof Sun; label: string }[] = [
-    { mode: 'system', icon: Monitor, label: '跟随系统' },
-    { mode: 'light', icon: Sun, label: '浅色' },
-    { mode: 'dark', icon: Moon, label: '深色' },
+const OPTIONS: { value: ThemeMode; icon: typeof Sun; label: string }[] = [
+    { value: 'system', icon: Monitor, label: '跟随系统' },
+    { value: 'light', icon: Sun, label: '浅色' },
+    { value: 'dark', icon: Moon, label: '深色' },
 ];
 
 export function ThemeToggle({ className }: { className?: string }) {
-    const { appearance, mode, setMode, managedBy } = useTheme();
+    const { appearance, mode, setMode, managedBy, performance } = useTheme();
+    const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
+    const { open, activeIndex, rootRef, triggerProps, listProps, getItemProps } = useDropdown({
+        items: OPTIONS,
+        value: mode,
+        onChange: (value) => setMode(value as ThemeMode),
+    });
+    const selected = OPTIONS.find((option) => option.value === mode) ?? OPTIONS[0];
+    const SelectedIcon = selected.icon;
 
-    // A Catppuccin flavor fixes light/dark, so this quick toggle would be inert
-    // (and its pill would desync from the forced scheme) — hide it. Light/dark is
-    // then changed by switching the palette back to “默认” in settings.
     if (managedBy || paletteResolved(appearance.palette)) {
         return null;
     }
 
     return (
-        <div
-            className={cn(
-                'relative inline-flex shrink-0 items-center rounded-full border bg-card/60 p-0 shadow-xs md:p-0.5',
-                className,
-            )}
-        >
-            {OPTIONS.map(({ mode: m, icon: Icon, label }) => {
-                const active = mode === m;
-                return (
-                    <button
-                        key={m}
-                        type="button"
-                        title={label}
-                        aria-label={label}
-                        onClick={() => setMode(m)}
-                        data-press-scale=""
-                        className={cn(
-                            'relative flex size-[44px] items-center justify-center rounded-full transition-[color,scale] duration-150 ease-out active:scale-[0.96] motion-reduce:active:scale-100 md:size-10 cursor-pointer',
-                            active
-                                ? 'text-primary-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                        )}
+        <div ref={rootRef} className={cn('workspace-theme', className)}>
+            <button
+                {...triggerProps}
+                aria-label={`切换主题：${selected.label}`}
+                title={`主题：${selected.label}`}
+                className="ui-glass workspace-icon-button workspace-theme-trigger"
+                data-press-scale=""
+            >
+                <GlassMaterial />
+                <SelectedIcon className="size-4" aria-hidden="true" />
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={reduced ? false : { opacity: 0, y: -4, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={
+                            reduced
+                                ? { duration: 0 }
+                                : performance?.low
+                                  ? { duration: 0.18, ease: 'easeOut' }
+                                  : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                        }
+                        className="ui-glass ui-glass-menu workspace-theme-menu"
                     >
-                        {active && (
-                            <motion.span
-                                layoutId="theme-toggle-pill"
-                                className="absolute inset-[8px] rounded-full bg-primary md:inset-1.5"
-                                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        <GlassMaterial />
+                        <ul {...listProps} aria-label="主题" className="workspace-theme-options">
+                            <motion.li
+                                aria-hidden="true"
+                                role="presentation"
+                                initial={false}
+                                animate={{
+                                    y: Math.max(0, activeIndex) * 44,
+                                    opacity: activeIndex < 0 ? 0 : 1,
+                                }}
+                                transition={
+                                    reduced
+                                        ? { duration: 0 }
+                                        : performance?.low
+                                          ? { duration: 0.18, ease: 'easeOut' }
+                                          : { type: 'spring', duration: 0.42, bounce: 0.12 }
+                                }
+                                className="workspace-theme-active"
                             />
-                        )}
-                        <Icon className="relative z-10 size-3.5" />
-                    </button>
-                );
-            })}
+                            {OPTIONS.map(({ value, label, icon: OptionIcon }, index) => (
+                                <li
+                                    key={value}
+                                    {...getItemProps(index)}
+                                    data-active={index === activeIndex}
+                                    className="workspace-theme-option"
+                                >
+                                    <OptionIcon className="size-4" aria-hidden="true" />
+                                    <span className="flex-1">{label}</span>
+                                    {value === mode && (
+                                        <Check className="size-4" aria-hidden="true" />
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

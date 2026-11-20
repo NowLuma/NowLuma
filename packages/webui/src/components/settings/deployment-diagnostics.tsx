@@ -1,7 +1,7 @@
 import { Copy, Folder } from 'lucide-react';
 import { useAppState } from '@/contexts/AppStateContext';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Group } from '@/components/settings/settings-controls';
 import { Button } from '@/components/ui/button';
 import { copyText } from '@/lib/utils';
 
@@ -55,49 +55,50 @@ export function DeploymentDiagnostics() {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                    <Folder className="size-4" /> 运行环境与保存位置
-                </CardTitle>
-                <CardDescription>
-                    {info.mode === 'docker' ? 'Docker' : '原生运行'} · UID {info.uid ?? '不适用'}
-                    。这里不导出令牌、密码或 QQ 登录库。
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
+        <Group
+            title="运行目录"
+            icon={Folder}
+            description={<>{info.mode === 'docker' ? 'Docker' : '原生运行'} · UID {info.uid ?? '不适用'}</>}
+        >
+            <div className="flex min-w-0 flex-col gap-3 py-3">
                 {resources.systemInfo.error && (
                     <p role="alert" className="text-xs text-destructive">
                         {resources.systemInfo.error}；以下是上次读取结果。
                     </p>
                 )}
-                {rows.map(([name, directory, writable]) => (
-                    <div
-                        key={name}
-                        className="flex flex-wrap items-center justify-between gap-2 text-xs"
-                    >
-                        <span className="text-muted-foreground">{name}</span>
-                        <code className="break-all">{directory}</code>
-                        {writable !== undefined && (
-                            <span className={writable ? 'text-success' : 'text-destructive'}>
-                                {writable ? '可写' : '未创建或不可写'}
-                            </span>
-                        )}
-                    </div>
-                ))}
-                <p className="text-xs text-muted-foreground">
-                    QQ 自动登录由客户端保存到用户目录。Docker 必须保留整个 HOME 卷；不要使用 down -v
-                    来重启。非 Docker 的实际 QQ 目录还取决于 QQ 进程自己的用户环境。
-                </p>
-                <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => void copy()}>
+                <dl className="divide-y divide-border/60">
+                    {rows.map(([name, directory, writable]) => (
+                        <div key={name} className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6">
+                            <dt className="text-xs text-muted-foreground">{name}</dt>
+                            <dd className="min-w-0">
+                                <code className="break-all text-xs">{directory}</code>
+                                {writable !== undefined && (
+                                    <p className={`mt-1 text-xs ${writable ? 'text-success' : 'text-destructive'}`}>
+                                        {writable ? '可写' : '未创建或不可写'}
+                                    </p>
+                                )}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+                <details className="text-xs text-muted-foreground">
+                    <summary className="min-h-11 cursor-pointer py-3 font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        QQ 数据与诊断范围
+                    </summary>
+                    <p className="max-w-prose leading-relaxed">
+                        QQ 自动登录由客户端保存到用户目录。Docker 需保留整个 HOME 卷，不要用 down -v 重启；
+                        原生 QQ 目录取决于 QQ 进程的用户环境。复制诊断不包含令牌、密码或 QQ 登录库。
+                    </p>
+                </details>
+                <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="glass" onClick={() => void copy()}>
                         <Copy className="size-3.5" /> 复制诊断
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={refreshSystem}>
+                    <Button size="sm" variant="glass" onClick={refreshSystem}>
                         刷新状态
                     </Button>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </Group>
     );
 }

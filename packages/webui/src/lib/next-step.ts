@@ -21,6 +21,7 @@ export type StepId =
     | 'load-failed'
     | 'disconnected'
     | 'need-load'
+    | 'manual-stopped'
     | 'waiting-online'
     | 'need-login'
     | 'account-preparing'
@@ -62,124 +63,130 @@ export interface StepInput {
 
 const T = {
     reading: {
-        title: '正在检查 QQ，请稍等。',
+        title: '正在读取连接状态',
         hint: '',
         action: null,
         actionLabel: '检查中…',
     },
     readError: {
-        title: '当前状态没有读到，重新检查一下。',
+        title: '连接状态读取失败',
         hint: '',
         action: 'refresh-all' as const,
         actionLabel: '重新检查',
     },
     noQq: {
-        title: '在运行程序的设备上打开 QQ，或者点击“打开 QQ 桌面”。',
-        hint: '如果 QQ 已经开着，可能是它还没登录完成。',
+        title: '先打开并登录 QQ',
+        hint: '在运行 Nowluma 的设备上打开 QQ 并登录。',
         action: 'refresh-all' as const,
         actionLabel: '我已打开 QQ',
     },
     chooseQq: {
-        title: '找到了多个 QQ，请选择你想使用的那个。',
-        hint: '一次只接一个，避免接错账号。',
+        title: '选择 QQ 会话',
+        hint: '多个 QQ 正在运行，请选一个。',
         action: 'choose-qq' as const,
-        actionLabel: '选一个 QQ',
+        actionLabel: '选择 QQ',
     },
     selectionLost: {
-        title: '刚才选的 QQ 找不到了，请重新选择。',
-        hint: '可能是 QQ 被关掉或重启了。',
+        title: '所选 QQ 已不在列表中',
+        hint: '重新检查后选择，可能是 QQ 已退出或重启。',
         action: 'refresh-all' as const,
         actionLabel: '重新检查',
     },
     mismatch: {
-        title: '找到了账号记录，但还没确认它对应哪个 QQ。',
-        hint: '重新检查一次；如果一直这样，请确认 QQ 是否完全登录。',
+        title: 'QQ 会话身份待确认',
+        hint: '请确认 QQ 已完成登录，再重新检查。',
         action: 'refresh-all' as const,
         actionLabel: '重新检查',
     },
     busy: {
-        title: '正在处理这个 QQ，请不要重复点击。',
+        title: '正在处理 QQ 会话',
         hint: '',
         action: null,
         actionLabel: '处理中…',
     },
     connecting: {
-        title: '正在把 QQ 接上，请稍等。',
+        title: '正在接入 QQ 会话',
         hint: '',
         action: null,
         actionLabel: '连接中…',
     },
     loadFailed: {
-        title: '这个 QQ 暂时没接好，请再试一次。',
-        hint: '如果反复失败，请查看日志里的原因。',
+        title: 'QQ 会话接入失败',
+        hint: '可以重试；持续失败时请查看运行记录。',
         action: 'load' as const,
-        actionLabel: '再试一次',
+        actionLabel: '重试接入',
     },
     disconnected: {
-        title: 'QQ 和它的连接断了，重新检查一下。',
+        title: 'QQ 会话连接已断开',
         hint: '',
         action: 'refresh' as const,
         actionLabel: '重新连接',
     },
     needLoad: {
-        title: '找到 QQ 了，点一下把它接上。',
+        title: 'QQ 会话待接入',
         hint: '',
         action: 'load' as const,
-        actionLabel: '连接这个 QQ',
+        actionLabel: '选择内核并接入',
+    },
+    manualStopped: {
+        title: 'QQ 会话已停止',
+        hint: '不会自动重新接入。',
+        action: null,
+        actionLabel: '',
     },
     waitingOnline: {
-        title: '正在等 QQ 接好；一直没变化可以再检查一次。',
-        hint: '',
+        title: '等待 QQ 会话连接',
+        hint: '如果状态没有变化，可以重新检查。',
         action: 'refresh' as const,
         actionLabel: '检查一下',
     },
     needLogin: {
-        title: '请在 QQ 窗口里完成登录，然后点下面这个按钮。',
-        hint: '扫码或密码登录都行，在 QQ 自己里完成。',
+        title: '请在 QQ 中完成登录',
+        hint: '扫码或密码登录完成后，再回来检查。',
         action: 'refresh' as const,
-        actionLabel: '我已登录，检查一下',
+        actionLabel: '已登录，检查状态',
     },
     accountPreparing: {
-        title: '正在准备账号数据，现在先不用操作。',
+        title: '正在准备会话数据',
         hint: '',
         action: null,
         actionLabel: '准备中…',
     },
     accountFailed: {
-        title: '账号准备失败了，先看原因再继续。',
+        title: '会话数据准备失败',
         hint: '',
         action: 'details' as const,
         actionLabel: '查看原因',
     },
     noNetwork: {
-        title: 'QQ 已接好，接下来还要设置你用的机器人程序。',
-        hint: '在「配置」里加一个连接，让机器人程序能连上来。',
+        title: '连接你的机器人',
+        hint: '添加连接，按连接方式配置机器人程序。',
         action: 'open-config' as const,
-        actionLabel: '去设置',
+        actionLabel: '配置机器人连接',
     },
     networkOff: {
-        title: 'QQ 已接好，但连接设置还没有启用。',
-        hint: '把要用的那个连接打开。',
+        title: '启用一个机器人连接',
+        hint: 'QQ 已接入，连接设置尚未启用。',
         action: 'open-config' as const,
-        actionLabel: '去设置',
+        actionLabel: '配置机器人连接',
     },
     networkBroken: {
-        title: '有一项连接设置没有正常工作，先看原因。',
+        title: '机器人连接出现异常',
         hint: '',
         action: 'details' as const,
         actionLabel: '查看原因',
     },
     networkWarn: {
-        title: 'QQ 已接好，但机器人程序那边还需要检查。',
-        hint: '常见原因是它还没连上来，或者访问令牌不一致。',
+        title: '机器人连接需要检查',
+        hint: '检查程序是否已连接，以及访问令牌是否一致。',
         action: 'details' as const,
         actionLabel: '查看原因',
     },
     ready: {
-        title: 'QQ 已经接好了。',
-        hint: '是否会自动回复，取决于你在机器人程序里怎么写的。',
+        title: '连接已就绪',
+        hint: '请在运行记录核对消息；回复由机器人程序负责。',
         action: 'details' as const,
-        actionLabel: '看看说明',
+        actionLabel: '连接说明',
     },
 };
 
@@ -300,6 +307,17 @@ export function nextStep(input: StepInput, selectedUin: string | null = null): S
         return view('busy', 'busy');
     }
 
+    if (
+        target.manualStopped === true &&
+        (target.status === 'available' || target.status === 'disconnected')
+    ) {
+        return view('manualStopped', 'manual-stopped', {
+            error: target.error || '',
+            action: target.error ? 'details' : null,
+            actionLabel: target.error ? '查看原因' : '',
+        });
+    }
+
     switch (target.status) {
         case 'loading':
             return view('connecting', 'connecting');
@@ -307,7 +325,7 @@ export function nextStep(input: StepInput, selectedUin: string | null = null): S
         case 'error':
             return view('loadFailed', 'load-failed', {
                 action: target.injected ? 'refresh' : 'load',
-                actionLabel: target.injected ? '重新连接' : '再试一次',
+                actionLabel: target.injected ? '重新连接' : '重试接入',
                 error: target.error || '',
             });
 
