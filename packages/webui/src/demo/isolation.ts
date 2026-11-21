@@ -1,5 +1,6 @@
 import { DEMO_AVATAR } from './constants';
 import type { DemoApi } from './api';
+import { parseTutorialOptions, tutorialSearch, type TutorialOptions } from './tutorial-options';
 
 // Storage is isolated to this page's memory; reset and reload discard every
 // simulated preference rather than reading credentials from real site storage.
@@ -69,7 +70,7 @@ export function demoLinkTarget(
 }
 
 // Install before importing App: production contexts also access storage/fetch directly.
-export function installDemoIsolation() {
+export function installDemoIsolation(options: TutorialOptions = parseTutorialOptions(new URL(window.location.href).search)) {
     const local = memoryStorage();
     const session = memoryStorage();
     session.setItem('nowluma_safe_mode', '1');
@@ -172,11 +173,20 @@ export function installDemoIsolation() {
         attributes: true,
         attributeFilter: ['src', 'style'],
     });
-    // A real password in a URL must never be forwarded, even to the fake login exercise.
+    // Never forward secrets, selectors or arbitrary URLs into production boot.
+    // Canonical safe chapter options survive refresh; unknown hash/search data does not.
     const url = new URL(window.location.href);
-
-    if (url.search) {
-        window.history.replaceState({}, '', `${url.pathname}${url.hash}`);
+    const route = url.hash.startsWith('#/') ? url.hash.slice(1).split('?')[0] : '';
+    let hash = DEMO_ROUTES.includes(route) ? `#${route}` : '';
+    if (route === '/settings') {
+        const tab = new URLSearchParams(url.hash.split('?')[1] ?? '').get('tab');
+        if (tab && ['appearance', 'data', 'account', 'globalConfig', 'storage', 'notifications', 'system', 'advanced', 'developer', 'about'].includes(tab)) {
+            hash += `?tab=${tab}`;
+        }
+    }
+    const canonical = `${url.pathname}${tutorialSearch(options)}${hash}`;
+    if (`${url.pathname}${url.search}${url.hash}` !== canonical) {
+        window.history.replaceState({}, '', canonical);
     }
 
     return {

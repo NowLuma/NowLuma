@@ -15,6 +15,10 @@
     "dev": "pnpm --filter @nowluma/core dev",
     "dev:mode": "cd dist && cross-env NOWLUMA_DEV_MODE=1 NOWLUMA_DEV_WEBUI=1 node index.mjs",
     "dev:web": "pnpm --filter webui dev",
+    "docs:dev": "node tools/dev-docs.mjs",
+    "docs:build": "node tools/build-docs.mjs",
+    "docs:build:all": "pnpm docs:build && pnpm --filter webui exec vite build --config vite.demo.config.ts && node tools/check-docs.mjs --with-demo",
+    "docs:preview": "vitepress preview docs",
     "test": "pnpm test:workflows && pnpm test:tools && pnpm --filter=\"./packages/**\" -r --no-bail --if-present test",
     "test:workflows": "node --test .github/scripts/*.test.cjs",
     "test:tools": "node --test \"tools/*.test.mjs\"",
@@ -48,7 +52,9 @@
     "jiti": "^2.6.1",
     "prettier": "3.9.10",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.58.2"
+    "typescript-eslint": "^8.58.2",
+    "vitepress": "1.6.4",
+    "vue": "3.5.45"
   },
   "packageManager": "pnpm@11.25.0",
   "engines": {

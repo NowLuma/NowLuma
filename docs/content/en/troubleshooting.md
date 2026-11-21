@@ -1,22 +1,29 @@
 ---
 title: Troubleshooting
 description: Locate login, QQ attach, account-kernel, desktop, bot, data and UI problems, and recover without deleting data or faking success.
+tutorial: troubleshooting
 ---
 
 # Troubleshooting
+
+The lesson above locates diagnostics and error surfaces. Preserve the original error and change one variable at a time; repeated clicks, deleted data and disabled checks do not establish a fix.
+
+![Runtime directories and deployment diagnostics](/images/tutorials/deployment-diagnostics.png)
+
+_Figure: sample diagnostics, not evidence that a real account recovered._
 
 Identify the layer first, then open the matching page. Do not “fix” a symptom by deleting data, disabling isolation or fabricating success.
 
 ## Where to look
 
-| Symptom | Start |
-| --- | --- |
-| Console unreachable or login fails | “Login and console”; [Access and network](access-network.md) |
+| Symptom                                         | Start                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| Console unreachable or login fails              | “Login and console”; [Access and network](access-network.md)      |
 | No QQ, attach fails, new kernel acknowledgement | “QQ sessions and account kernel”; [QQ sessions](qq-connection.md) |
-| Desktop blank or disconnected | “Desktop” |
-| Bot receives nothing | “Bot connections”; [Bot connections](onebot-config.md) |
-| Messages, logs or databases | “Data and storage”; [Run log](logs.md) |
-| Layout or animation problems | “Pages and appearance” |
+| Desktop blank or disconnected                   | “Desktop”                                                         |
+| Bot receives nothing                            | “Bot connections”; [Bot connections](onebot-config.md)            |
+| Messages, logs or databases                     | “Data and storage”; [Run log](logs.md)                            |
+| Layout or animation problems                    | “Pages and appearance”                                            |
 
 Run first:
 
@@ -37,19 +44,19 @@ For native installs use the startup terminal and `logs/`. An error in the log is
 
 ## QQ sessions and account kernel
 
-| Symptom | Cause and action |
-| --- | --- |
-| `未检测到可加载 QQ 主进程` | Open and log in to QQ, then refresh; Docker needs `/proc`, `SYS_PTRACE` and matching users |
-| Stuck at `加载中` | Native component architecture or permission problem; wait for an error, do not spam clicks |
-| Stuck at `等待连接` | Use `刷新管道`; then check ports, permissions and the log |
-| Stuck at `等待登录` | Complete login inside QQ, then `已登录，检查状态` |
-| Online but no bot messages | Check endpoints and tokens in [Bot connections](onebot-config.md) |
-| Kernel dialog does not open | No real UIN recognized; log in to QQ first and choose the account. A PID is never used as an account |
-| Asked to confirm again | Different UIN, changed identity or new risk version; expected per-account isolation |
-| `重写内核` unavailable | Unverified; there is no hidden fallback or fake selection |
-| Saved kernel choice but not attached | Saving is not attaching; press `加载`. With auto-connect enabled, an UIN with a current acknowledgement can attach after QQ login |
-| Local account differs from channel account | Re-check login; the app does not guess the correct one |
-| Unload failed | Restart QQ as prompted; configuration and QQ data remain |
+| Symptom                                    | Cause and action                                                                                                                  |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `未检测到可加载 QQ 主进程`                 | Open and log in to QQ, then refresh; Docker needs `/proc`, `SYS_PTRACE` and matching users                                        |
+| Stuck at `加载中`                          | Native component architecture or permission problem; wait for an error, do not spam clicks                                        |
+| Stuck at `等待连接`                        | Use `刷新管道`; then check ports, permissions and the log                                                                         |
+| Stuck at `等待登录`                        | Complete login inside QQ, then `已登录，检查状态`                                                                                 |
+| Online but no bot messages                 | Check endpoints and tokens in [Bot connections](onebot-config.md)                                                                 |
+| Kernel dialog does not open                | No real UIN recognized; log in to QQ first and choose the account. A PID is never used as an account                              |
+| Asked to confirm again                     | Different UIN, changed identity or new risk version; expected per-account isolation                                               |
+| `重写内核` unavailable                     | Unverified; there is no hidden fallback or fake selection                                                                         |
+| Saved kernel choice but not attached       | Saving is not attaching; press `加载`. With auto-connect enabled, an UIN with a current acknowledgement can attach after QQ login |
+| Local account differs from channel account | Re-check login; the app does not guess the correct one                                                                            |
+| Unload failed                              | Restart QQ as prompted; configuration and QQ data remain                                                                          |
 
 Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confirmation. A new account cannot reuse the previous PID’s acknowledgement. A PID explicitly unloaded stays manually stopped; refresh and auto-connect do not attach it again; press `加载` to resume.
 
@@ -95,13 +102,13 @@ Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confi
 
 ## Recovery matrix
 
-| Action | Scope | Reversible? |
-| --- | --- | --- |
-| `恢复默认` layout | Widget layout and settings | Re-editable; old layout not restored |
-| `重置全部` UI config | Appearance, layout, navigation, custom CSS | Not reversible; accounts/messages unaffected |
-| Remove `config/webui.json` | Password, 2FA, sessions | Restorable from backup; account data remains |
-| Clean account database category | Selected messages/media/reactions | Irreversible; back up first |
-| `down -v` / delete volumes | All program data and QQ HOME | Irreversible; never for upgrades |
-| Unload QQ injection | Current session disconnects | Re-attachable; config/data remain |
+| Action                          | Scope                                      | Reversible?                                  |
+| ------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| `恢复默认` layout               | Widget layout and settings                 | Re-editable; old layout not restored         |
+| `重置全部` UI config            | Appearance, layout, navigation, custom CSS | Not reversible; accounts/messages unaffected |
+| Remove `config/webui.json`      | Password, 2FA, sessions                    | Restorable from backup; account data remains |
+| Clean account database category | Selected messages/media/reactions          | Irreversible; back up first                  |
+| `down -v` / delete volumes      | All program data and QQ HOME               | Irreversible; never for upgrades             |
+| Unload QQ injection             | Current session disconnects                | Re-attachable; config/data remain            |
 
 When unsure: stop, back up, change one thing. Record the actual command, exit status and original error instead of repeating attempts.

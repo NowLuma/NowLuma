@@ -38,6 +38,18 @@ import {
 } from './fixtures';
 
 export type DemoScenario = 'setup' | 'ready' | 'offline' | 'failure';
+export type TutorialBaseline = 'clean' | 'detected' | 'ready' | 'offline';
+type TutorialEvidence = {
+    configSaved: boolean;
+    appearanceSaved: boolean;
+    serviceSaved: boolean;
+    storageSaved: boolean;
+    backupExported: boolean;
+    traceExported: boolean;
+    sentMessageId: number | null;
+    inspectedMessageId: number | null;
+    failedWrite: boolean;
+};
 type Body = Record<string, unknown>;
 type Feed = { path: string; send: (data: unknown) => void; close: () => void };
 
@@ -82,6 +94,7 @@ type DemoState = {
     failNextMutation: boolean;
     backgroundUrl: string | null;
     notice: string;
+    tutorial: TutorialEvidence;
 };
 
 class DemoRequestError extends Error {
@@ -397,12 +410,78 @@ function createDemoState(): DemoState {
         failNextMutation: false,
         backgroundUrl: null,
         notice: 'DEMO ready. Use only the example credentials.',
+        tutorial: {
+            configSaved: false,
+            appearanceSaved: false,
+            serviceSaved: false,
+            storageSaved: false,
+            backupExported: false,
+            traceExported: false,
+            sentMessageId: null,
+            inspectedMessageId: null,
+            failedWrite: false,
+        },
     };
 }
 
 // All effects stay in this instance. There is deliberately no real fetch fallback.
 export class DemoApi {
     private state = createDemoState();
+    private revision = 0;
+
+    get tutorialRevision() {
+        return this.revision;
+    }
+
+    get tutorialSnapshot() {
+        return {
+            ...this.summary,
+            ...this.state.tutorial,
+            kernelAccepted: this.canLoadKernel(DEMO_UIN),
+            logLevel: this.state.logLevel,
+            logRetainDays: this.state.storage.settings.saved.logRetainDays,
+            logsBytes: this.state.storage.snapshot.logs.totalBytes,
+            cleanupScope: this.state.storage.lastCleanup?.scope ?? null,
+            motionDisabled: this.state.ui.appearance.disableMotion,
+            webuiPort: this.state.settings.webuiPort,
+        };
+    }
+
+    // A disclosed teaching fixture, not an auth bypass in the production client.
+    // Even ready fixtures never create or pre-check an account risk selection.
+    resetTutorial(baseline: TutorialBaseline): string | null {
+        this.reset();
+
+        if (baseline === 'clean') {
+            return null;
+        }
+
+        this.state.token = `demo-tutorial-${++this.state.generation}`;
+        this.state.consent = true;
+        this.state.mustChange = false;
+        this.state.process.account = { uin: DEMO_UIN, nickname: 'DEMO 小光' };
+
+        if (baseline === 'ready' || baseline === 'offline') {
+            const online = baseline === 'ready';
+            this.state.process = {
+                ...this.state.process,
+                injected: true,
+                connected: online,
+                loggedIn: online,
+                uin: DEMO_UIN,
+                status: online ? 'online' : 'disconnected',
+                error: online
+                    ? ''
+                    : 'DEMO: simulated account offline; inspect logs and diagnostics',
+            };
+        }
+
+        this.emitState();
+        this.announce(
+            `DEMO tutorial fixture: ${baseline}. Memory only; no real login or risk acceptance.`,
+        );
+        return this.state.token;
+    }
 
     subscribe = (listener: () => void) => {
         this.state.listeners.add(listener);
@@ -537,7 +616,20 @@ export class DemoApi {
             }
 
             request.signal?.throwIfAborted();
-            return this.handle(request);
+            const response = this.handle(request);
+
+            // Successful mutations and deliberate exports can change lesson evidence.
+            // Reads/polls do not continuously rerender the guide.
+            if (
+                request.method !== 'GET' ||
+                request.path === '/api/system/backup/export' ||
+                request.path === '/api/logs/export/trace'
+            ) {
+                this.revision++;
+                this.state.listeners.forEach((listener) => listener());
+            }
+
+            return response;
         } catch (error) {
             if (this.state !== state) {
                 throw new DOMException('DEMO request cancelled by reset', 'AbortError');
@@ -600,6 +692,7 @@ export class DemoApi {
 
         if (method !== 'GET' && this.state.failNextMutation) {
             this.state.failNextMutation = false;
+            this.state.tutorial.failedWrite = true;
             this.addLog('Simulated write failure; no data changed', 'error');
             this.announce(
                 'DEMO: Write failed intentionally. Retry only after inspecting the result.',
@@ -869,6 +962,7 @@ export class DemoApi {
 
             if (method === 'POST') {
                 this.state.config = parseDemoConfig(body);
+                this.state.tutorial.configSaved = true;
                 this.emitState();
                 this.addLog(
                     'Configuration saved to memory; no listener or remote connection opened',
@@ -892,6 +986,10 @@ export class DemoApi {
         if (path === '/api/ui') {
             if (method === 'POST') {
                 this.state.ui = parseUiUpdate(this.state.ui, body);
+
+                if (body.appearance) {
+                    this.state.tutorial.appearanceSaved = true;
+                }
             } else if (method !== 'GET') {
                 return fakeError('DEMO: Unsupported UI method', 405);
             }
@@ -955,6 +1053,7 @@ export class DemoApi {
         }
 
         if (path === '/api/logs/export/trace' && method === 'GET') {
+            this.state.tutorial.traceExported = true;
             return new Response(this.state.logs.map((log) => log.line).join('\n'), {
                 headers: { 'Content-Disposition': 'attachment; filename="DEMO-trace.log"' },
             });
@@ -1032,6 +1131,7 @@ export class DemoApi {
         if (path === '/api/system/settings' && (method === 'GET' || method === 'POST')) {
             if (method === 'POST') {
                 this.state.settings = parseSettingsUpdate(this.state.settings, body);
+                this.state.tutorial.serviceSaved = true;
                 return json({ settings: this.state.settings, restartRequiredToApply: true });
             }
 
@@ -1064,6 +1164,7 @@ export class DemoApi {
         }
 
         if (path === '/api/system/backup/export' && method === 'GET') {
+            this.state.tutorial.backupExported = true;
             return json({
                 demo: true,
                 version: 1,
@@ -1114,6 +1215,7 @@ export class DemoApi {
             validateStorageLimits(body);
             this.state.storage.settings.saved = { ...this.state.storage.settings.saved, ...body };
             this.state.storage.settings.effective = { ...this.state.storage.settings.saved };
+            this.state.tutorial.storageSaved = true;
             this.state.storage.snapshot.logs = {
                 ...this.state.storage.snapshot.logs,
                 maxTotalBytes: this.state.storage.settings.saved.logMaxTotalMb * 1024 ** 2,
@@ -1301,6 +1403,7 @@ export class DemoApi {
 
     private announce(message: string) {
         this.state.notice = message;
+        this.revision++;
         this.state.listeners.forEach((listener) => listener());
     }
 
@@ -1500,6 +1603,10 @@ export class DemoApi {
                     return { status: 'failed', retcode: 1404, message: 'DEMO: Message not found' };
                 }
 
+                if (Number(params.message_id) === this.state.tutorial.sentMessageId) {
+                    this.state.tutorial.inspectedMessageId = Number(params.message_id);
+                }
+
                 break;
             case 'send_private_msg':
             case 'send_group_msg':
@@ -1534,6 +1641,11 @@ export class DemoApi {
                               })
                               .join('');
                 const messageId = this.state.nextMessageId++;
+
+                if (action === 'send_private_msg' && text === '#nl') {
+                    this.state.tutorial.sentMessageId = messageId;
+                }
+
                 this.state.messages.set(messageId, {
                     message_id: messageId,
                     user_id: 10002,

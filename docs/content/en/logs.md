@@ -1,9 +1,16 @@
 ---
 title: Run log
 description: Live log stream, four presets, level filters, search, highlight rules, server log level, TRACE warning, export and clearing.
+tutorial: logs
 ---
 
 # Run log
+
+Practise filtering and searching above, then inspect the complete error. Check for account data or tokens before exporting real logs; clearing the view is different from deleting stored logs.
+
+![Run log stream with level and search filters](/images/tutorials/logs.png)
+
+_Figure: sample events. Level text and error details matter more than colour._
 
 Path `/logs`. It shows console and access-layer events as they happen. It does not change QQ connections or repair errors automatically.
 
@@ -15,12 +22,12 @@ Levels are `TRACE`, `DEBUG`, `INFO`, `SUCCESS`, `WARN`, `ERROR`, with distinct c
 
 ## Presets
 
-| Preset | Content |
-| --- | --- |
-| `开发` | All levels, 2000 lines, auto-scroll, wrap |
-| `运维` | INFO and above, 1000 lines |
-| `精简` | WARN/ERROR only, 500 lines |
-| `自定义` | Shown after you change any setting |
+| Preset   | Content                                   |
+| -------- | ----------------------------------------- |
+| `开发`   | All levels, 2000 lines, auto-scroll, wrap |
+| `运维`   | INFO and above, 1000 lines                |
+| `精简`   | WARN/ERROR only, 500 lines                |
+| `自定义` | Shown after you change any setting        |
 
 The preset is saved as a page preference. Switching changes visible levels, line limit, auto-scroll and wrapping together.
 
@@ -52,21 +59,21 @@ Do not leave TRACE on, and do not post unredacted logs publicly.
 
 ## Export and clear
 
-| Control | Result |
-| --- | --- |
-| `导出当前视图` | Exports the filtered text; disabled when empty |
+| Control          | Result                                                             |
+| ---------------- | ------------------------------------------------------------------ |
+| `导出当前视图`   | Exports the filtered text; disabled when empty                     |
 | `导出完整 TRACE` | Reads the server TRACE file; can be slow, reports `TRACE 导出失败` |
-| `清空视图` | After `清空当前日志视图？`, clears only the browser view |
+| `清空视图`       | After `清空当前日志视图？`, clears only the browser view           |
 
 New entries continue after clearing. Export first if the log is evidence.
 
 ## Save and apply
 
-| Item | Saved as | Applies |
-| --- | --- | --- |
-| Preset, levels, search, scroll, wrap, highlights | Page preference, auto-save | Immediately; survives refresh |
-| Server log level | Server setting | Immediately; file level still follows the environment |
-| Clear view | Current browser | Immediately, not persisted |
+| Item                                             | Saved as                   | Applies                                               |
+| ------------------------------------------------ | -------------------------- | ----------------------------------------------------- |
+| Preset, levels, search, scroll, wrap, highlights | Page preference, auto-save | Immediately; survives refresh                         |
+| Server log level                                 | Server setting             | Immediately; file level still follows the environment |
+| Clear view                                       | Current browser            | Immediately, not persisted                            |
 
 ## Troubleshooting
 

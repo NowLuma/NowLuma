@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -5,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
+const favicon = `data:image/svg+xml;base64,${fs.readFileSync(path.join(directory, 'src/assets/nowluma-mark.svg')).toString('base64')}`;
 
 export default defineConfig({
     root: directory,
@@ -17,6 +19,10 @@ export default defineConfig({
         {
             name: 'demo-entry-and-safety',
             enforce: 'post',
+            // Inline the canonical mark in development too, without relaxing the CSP.
+            transformIndexHtml(html) {
+                return html.replace('./src/assets/nowluma-mark.svg?inline', favicon);
+            },
             generateBundle(_, bundle) {
                 const entry = bundle['demo.html'];
 

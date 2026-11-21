@@ -1,21 +1,28 @@
 ---
 title: What Nowluma is
 description: The access layer and workspace, connection states, save/apply semantics, per-account kernel choice, platforms and GPL-3.0-only licensing.
+tutorial: introduction
 ---
 
 # What Nowluma is
+
+In the lesson above, locate QQ sessions, bot connections and the run log. Distinguishing their responsibilities prevents a saved configuration from being mistaken for delivered messages.
+
+![Example workspace showing session and connection states](/images/tutorials/overview.png)
+
+_Figure: sample readings explain the interface; they are not your real account state._
 
 Nowluma runs on your machine. It finds an already-running QQ client, attaches the account to OneBot v11, and gives you a browser workspace for accounts, connections, logs and the desktop.
 
 ## Components
 
-| Part | Responsibility |
-| --- | --- |
-| Access layer | Discover local QQ processes, attach the native component after your confirmation, establish the pipe |
-| Account kernel | Persist an access-kernel choice and risk acknowledgement per real QQ number |
-| OneBot layer | Per-account HTTP and WebSocket endpoints; events and actions |
-| Workspace | Six pages: Workspace, QQ sessions, Bot connections, Run log, Debug tools, Settings |
-| Desktop | Operate QQ login and dialogs in a browser, local or Docker desktop |
+| Part           | Responsibility                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| Access layer   | Discover local QQ processes, attach the native component after your confirmation, establish the pipe |
+| Account kernel | Persist an access-kernel choice and risk acknowledgement per real QQ number                          |
+| OneBot layer   | Per-account HTTP and WebSocket endpoints; events and actions                                         |
+| Workspace      | Six pages: Workspace, QQ sessions, Bot connections, Run log, Debug tools, Settings                   |
+| Desktop        | Operate QQ login and dialogs in a browser, local or Docker desktop                                   |
 
 QQ itself performs login, QR scan, verification and auto-login. Nowluma never asks for the QQ password, forges device tokens or migrates your QQ user directory.
 
@@ -29,22 +36,22 @@ QQ itself performs login, QR scan, verification and auto-login. Nowluma never as
 
 ## Three kinds of save result
 
-| Action | How it is saved | When it applies |
-| --- | --- | --- |
-| UI preferences, layout, navigation order | Auto-saved to UI config (debounced) | Immediately in the browser, synced across devices; on failure local state remains and an error is shown |
-| Per-account bot connections | Dialog or `立即保存`, written to the server | Live hot reload gives “saved and applied”; otherwise it applies on the next connection |
-| Service settings | Explicit save | Usually requires restarting Nowluma; the UI says so |
+| Action                                   | How it is saved                             | When it applies                                                                                         |
+| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| UI preferences, layout, navigation order | Auto-saved to UI config (debounced)         | Immediately in the browser, synced across devices; on failure local state remains and an error is shown |
+| Per-account bot connections              | Dialog or `立即保存`, written to the server | Live hot reload gives “saved and applied”; otherwise it applies on the next connection                  |
+| Service settings                         | Explicit save                               | Usually requires restarting Nowluma; the UI says so                                                     |
 
 Example: change the HTTP port while the QQ account is offline. The save succeeds but shows “已保存，下次连接时应用”. Only “已保存并应用” means the server hot-reloaded the endpoint.
 
 ## Four “connected” meanings
 
-| Phrase | Where | Meaning |
-| --- | --- | --- |
-| Console connected | Masthead connection status | The browser session is valid |
-| Account online | QQ session card, `已登录会话` widget | QQ is logged in and the local identity was recognized and attached |
-| Endpoint healthy | Bot connection summary, `机器人连接` widget | Listening or connected; the bot still needs the right address and token |
-| Notification delivered | `通知投递` widget | Online/offline events reached the selected channels |
+| Phrase                 | Where                                       | Meaning                                                                 |
+| ---------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
+| Console connected      | Masthead connection status                  | The browser session is valid                                            |
+| Account online         | QQ session card, `已登录会话` widget        | QQ is logged in and the local identity was recognized and attached      |
+| Endpoint healthy       | Bot connection summary, `机器人连接` widget | Listening or connected; the bot still needs the right address and token |
+| Notification delivered | `通知投递` widget                           | Online/offline events reached the selected channels                     |
 
 ## Account kernel choice
 
@@ -64,21 +71,21 @@ Bot endpoint: `正常`, `注意`, `异常`, `应用失败`, `未启用`. `应用
 
 ## Platforms and releases
 
-| Form | Requirement | Verification |
-| --- | --- | --- |
-| Linux Docker | Docker Engine and Compose v2, linux/amd64 | Automated build and recreate smoke; no fabricated QQ login |
-| Linux Lite | Node.js `24.22.1` (24.x) or `>=26.12.1` | Launcher and release-layout checks; native attach must be verified by you |
-| Windows x64 | Self-contained `Nowluma.exe` with Node 24 and .NET runtime | Built, unsigned; real-account behaviour unverified |
-| Docker arm64 | Build inputs exist | Not verified |
+| Form         | Requirement                                                | Verification                                                              |
+| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Linux Docker | Docker Engine and Compose v2, linux/amd64                  | Automated build and recreate smoke; no fabricated QQ login                |
+| Linux Lite   | Node.js `24.22.1` (24.x) or `>=26.12.1`                    | Launcher and release-layout checks; native attach must be verified by you |
+| Windows x64  | Self-contained `Nowluma.exe` with Node 24 and .NET runtime | Built, unsigned; real-account behaviour unverified                        |
+| Docker arm64 | Build inputs exist                                         | Not verified                                                              |
 
 ## Data locations
 
-| Content | Native | Docker volume |
-| --- | --- | --- |
-| Console password/2FA, connections, kernel choices, appearance | `config/` | `nowluma_config` → `/app/config` |
-| Account message store and media | `data/` | `nowluma_data` → `/app/data` |
-| Runtime logs | `logs/` | `nowluma_logs` → `/app/logs` |
-| QQ user environment | controlled by QQ | `nowluma_qq-home` → `/home/nowluma` |
+| Content                                                       | Native           | Docker volume                       |
+| ------------------------------------------------------------- | ---------------- | ----------------------------------- |
+| Console password/2FA, connections, kernel choices, appearance | `config/`        | `nowluma_config` → `/app/config`    |
+| Account message store and media                               | `data/`          | `nowluma_data` → `/app/data`        |
+| Runtime logs                                                  | `logs/`          | `nowluma_logs` → `/app/logs`        |
+| QQ user environment                                           | controlled by QQ | `nowluma_qq-home` → `/home/nowluma` |
 
 ## Licence
 

@@ -1,9 +1,16 @@
 ---
 title: Native install
 description: Linux Lite package, self-contained Windows exe and running from source, including Node baselines, data locations and verification limits.
+tutorial: install-native
 ---
 
 # Native install
+
+Choose the release for your system and verify its checksum before launching it. The lesson above begins at the console and never downloads or runs the QQ installer.
+
+![Console login page used after native startup](/images/tutorials/login.png)
+
+_Figure: the example console entry. Its access password comes from Nowluma startup output, not your QQ password._
 
 Native mode does not use Docker. The app runs in your user environment and QQ is your desktop client. Use it when you already manage your own desktop and processes.
 
@@ -39,7 +46,7 @@ Windows x64 uses a self-contained `Nowluma.exe`:
 
 - Bundles Node 24 and the .NET self-contained runtime; Docker, Node and .NET are not required.
 - Extracts to `%LOCALAPPDATA%\Nowluma` and opens the console in your browser.
-- After startup, use the console. Windows native does not provide the `打开 QQ 桌面` entry; desktop capability comes from the actual server. Complete the in-console notice reading and password setup; there is no additional OOBE installation or platform-chooser wizard.
+- The launcher can use the local environment or an existing Linux Docker engine for an isolated desktop; it does not install a VM. Windows-native consoles have no `打开 QQ 桌面` entry; a connected Linux server determines its own desktop capability.
 - The build is **unsigned** and may trigger SmartScreen. Release notes should provide SHA-256; do not run a binary without a checksum.
 - Closing the window may end the process early; use Ctrl+C in the console for a clean stop. QQ data and settings are not deleted.
 
@@ -75,13 +82,13 @@ Auto-connect running QQ is a service setting applied after restart. It auto-atta
 
 ## Limits and verification
 
-| Item | Status |
-| --- | --- |
-| Linux Lite startup and release layout | Automated checks |
-| Real Linux QQ login/attach | Verify on your desktop |
-| Windows exe | Built, unsigned; real-account behaviour unverified |
-| Docker arm64 | Build inputs only, unverified |
-| Rewrite kernel | Incomplete and unselectable; no automatic fallback |
-| Six original prebuilt files | Used by the current release; internal bytes and required ABI unchanged |
+| Item                                  | Status                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| Linux Lite startup and release layout | Automated checks                                                       |
+| Real Linux QQ login/attach            | Verify on your desktop                                                 |
+| Windows exe                           | Built, unsigned; real-account behaviour unverified                     |
+| Docker arm64                          | Build inputs only, unverified                                          |
+| Rewrite kernel                        | Incomplete and unselectable; no automatic fallback                     |
+| Six original prebuilt files           | Used by the current release; internal bytes and required ABI unchanged |
 
 Native mode does not automatically gain Docker's process isolation or desktop gateway; your desktop, user permissions and network define the boundary. Unverified platforms and artifacts are listed under [Planned and unverified](planned.md).

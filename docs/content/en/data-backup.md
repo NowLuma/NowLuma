@@ -1,20 +1,31 @@
 ---
 title: Data, backup and updates
 description: Where configuration, messages, logs and QQ HOME live; backup, restore, cleanup, upgrades, the updater and manual QQ persistence checks.
+tutorial: data-backup
 ---
 
 # Data, backup and updates
+
+Practise storage categories and cleanup confirmation above before backing up real data. Confirm the scope before deletion; a console JSON backup cannot replace the full QQ HOME.
+
+![Storage categories for logs, transfers and account databases](/images/tutorials/storage.png)
+
+_Figure: tutorial cleanup changes sample counters and retains active transfers._
+
+![Configuration backup and restore controls](/images/tutorials/backup.png)
+
+_Figure: a complete migration also needs the message data and full QQ HOME._
 
 Nowluma keeps program data separate from QQ's own user environment. Back up, upgrade and clean up with that distinction in mind, so you do not delete account login state or the message store.
 
 ## Locations
 
-| Content | Native | Docker volume → path |
-| --- | --- | --- |
-| Password/2FA, connections, kernel choices, runtime and appearance | `config/` | `nowluma_config` → `/app/config` |
-| Account message store and media | `data/` | `nowluma_data` → `/app/data` |
-| Runtime logs | `logs/` | `nowluma_logs` → `/app/logs` |
-| QQ environment, credentials, auto-login, machine ID | QQ's own directory | `nowluma_qq-home` → `/home/nowluma` |
+| Content                                                           | Native             | Docker volume → path                |
+| ----------------------------------------------------------------- | ------------------ | ----------------------------------- |
+| Password/2FA, connections, kernel choices, runtime and appearance | `config/`          | `nowluma_config` → `/app/config`    |
+| Account message store and media                                   | `data/`            | `nowluma_data` → `/app/data`        |
+| Runtime logs                                                      | `logs/`            | `nowluma_logs` → `/app/logs`        |
+| QQ environment, credentials, auto-login, machine ID               | QQ's own directory | `nowluma_qq-home` → `/home/nowluma` |
 
 `dist/` is build output and is replaced on upgrade; do not store your own files there. Kernel choices live in `config/kernel-selections.json`, keyed by real UIN; never copy them to another account by hand.
 
@@ -44,7 +55,9 @@ A backup is not a chat export. Restore the database into the same layout; do not
 4. Start and check login, accounts, connections and logs.
 5. If configuration is corrupt, the program reports the error and preserves the original; do not overwrite it with defaults or silently delete it.
 
-Service configuration can also be exported/restored under Settings → `服务` → `服务配置备份`, but that excludes message databases. The panel states `备份外观、服务设置与证书。不含消息数据库；通知渠道与 OneBot 配置仅随敏感配置导出。`. Sensitive inclusion is your choice: `导出时包含敏感配置` adds `kernel-selections.json`, notification channels and OneBot configuration; without it those files are skipped and no risk consent is implied. On restore, `恢复时一并恢复敏感配置` decides whether those files are overwritten; the format, acknowledgement values and UINs are validated and malformed data or a false acknowledgement is rejected. An old risk version or rewrite choice is preserved but not auto-authorized; older backups without kernel choices remain valid. A successful restore needs a Nowluma restart. UI configuration can be exported/imported separately under `高级`.
+Open Settings → `服务` → `服务配置备份`, then choose `导出备份`. The default export contains appearance, service settings and certificates, not message databases. Explicitly enable `包含敏感配置` to include account kernel selections, notification channels and OneBot configuration. Such files may contain login state, TLS private keys and access tokens; store them encrypted.
+
+For restoration, choose `选择备份文件` and read the overwrite confirmation. Enable `恢复敏感配置` only when those contents should also be restored. The format, UINs and acknowledgement values must be valid. Old risk versions or rewrite selections are retained without automatic authorization; older backups without kernel choices remain usable. Restart Nowluma after a successful restore. For UI layout only, `高级` also provides a separate UI export/import.
 
 A service snapshot restores desired configuration only; it does not hot-replace live kernel authorization or process state. Restart to apply the restored configuration.
 
@@ -83,12 +96,12 @@ Even with all files present, QQ's servers may expire the session or require veri
 
 Release assets:
 
-| Asset | Purpose |
-| --- | --- |
-| `Nowluma-v<version>-linux-x64-lite.tar.gz` | Linux x64 Lite package, used by runtime updates |
-| `Nowluma-v<version>-win-x64-lite.zip` | Windows runtime update archive, no bundled Node |
-| `Nowluma-win32-x64-<version>.exe` | Windows launcher with Node 24 and self-contained .NET, unsigned |
-| `SHA256SUMS` | Checksums for all release files |
+| Asset                                      | Purpose                                                         |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| `Nowluma-v<version>-linux-x64-lite.tar.gz` | Linux x64 Lite package, used by runtime updates                 |
+| `Nowluma-v<version>-win-x64-lite.zip`      | Windows runtime update archive, no bundled Node                 |
+| `Nowluma-win32-x64-<version>.exe`          | Windows launcher with Node 24 and self-contained .NET, unsigned |
+| `SHA256SUMS`                               | Checksums for all release files                                 |
 
 Update packages retain `LICENSE`, `LICENSING.md`, `EULA.md` and `PRIVACY.md`. After download, `重启并更新`; connections drop briefly, configuration and data remain. Do not install packages without checksums or from untrusted sources.
 

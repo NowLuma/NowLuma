@@ -2,11 +2,11 @@ import {
     createRootRoute,
     createRoute,
     createRouter,
-    createHashHistory,
     lazyRouteComponent,
     Outlet,
 } from '@tanstack/react-router';
 import { AppLayout } from './app-layout';
+import { createDemoHistory } from '@/demo/history';
 // Imported eagerly (not lazy): the error / not-found fallbacks must render
 // even when a route's own chunk failed to load.
 import { ErrorPage, NotFoundPage } from '@/components/pages/status-screens';
@@ -104,7 +104,7 @@ const routeTree = rootRoute.addChildren([
 
 export const appRouter = createRouter({
     routeTree,
-    ...(import.meta.env.MODE === 'demo' ? { history: createHashHistory() } : {}),
+    ...(import.meta.env.MODE === 'demo' ? { history: createDemoHistory() } : {}),
     defaultPreload: 'intent',
     defaultNotFoundComponent: () => <NotFoundPage />,
     defaultErrorComponent: ({ error, reset }) => <ErrorPage error={error} reset={reset} />,

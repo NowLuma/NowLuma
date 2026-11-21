@@ -1,24 +1,31 @@
 ---
-title: "Settings: appearance and account"
+title: 'Settings: appearance and account'
 description: Ten settings categories, theme and background, manual display effects, accessibility, data format, access password and 2FA.
+tutorial: settings-console
 ---
 
 # Settings: appearance and account
 
+Use the lesson above to change the theme, motion and glass material. Motion and material are independent manual choices; changing material does not toggle motion.
+
+![Theme and display choices in Appearance settings](/images/tutorials/settings-appearance.png)
+
+_Figure: tutorial settings are resettable and do not change your real console preferences or password._
+
 Path `/settings`; ten categories use a document-style index and the active one is stored in `?tab=`. The index wraps on narrow screens; direct links remain available.
 
-| Category | Content |
-| --- | --- |
-| `外观` | Theme, palette, background, typography, top bar, manual motion/glass, accessibility |
-| `数据与格式` | Polling interval, default page, time format |
-| `账号安全` | Access password, 2FA, logout |
-| `全局配置` | rkey fallback, video upload connections, music signing |
-| `存储管理` | Space usage, log retention, cleanup |
-| `通知` | Debounce window, notification channels |
-| `服务` | WebUI listener, desktop, TLS, backup, runtime |
-| `高级` | Custom CSS, UI config import/export/reset |
-| `开发者` | Re-enter onboarding, trigger crash |
-| `关于` | Version, updates, licence, feedback |
+| Category     | Content                                                                             |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `外观`       | Theme, palette, background, typography, top bar, manual motion/glass, accessibility |
+| `数据与格式` | Polling interval, default page, time format                                         |
+| `账号安全`   | Access password, 2FA, logout                                                        |
+| `全局配置`   | rkey fallback, video upload connections, music signing                              |
+| `存储管理`   | Space usage, log retention, cleanup                                                 |
+| `通知`       | Debounce window, notification channels                                              |
+| `服务`       | WebUI listener, desktop, TLS, backup, runtime                                       |
+| `高级`       | Custom CSS, UI config import/export/reset                                           |
+| `开发者`     | Re-enter onboarding, trigger crash                                                  |
+| `关于`       | Version, updates, licence, feedback                                                 |
 
 Appearance changes apply immediately and auto-save. Service settings state whether a restart is required. Runtime categories are covered in [Settings: runtime and services](settings-runtime.md).
 
@@ -58,13 +65,13 @@ Solid colour, gradient or wallpaper, shown between cards and on the login page. 
 
 ### Interaction and accessibility
 
-| Setting | Effect |
-| --- | --- |
-| `自定义光标` | Themed adaptive cursor, off by default |
-| `动效` | Manually enable or disable motion; static glass remains when off |
-| `玻璃材质` | Manually choose full or frosted glass; no automatic degradation |
-| `减弱动效` | System or manual accessibility reduction for movement and springs |
-| `高对比模式` | Strengthens borders and secondary text |
+| Setting        | Effect                                                                          |
+| -------------- | ------------------------------------------------------------------------------- |
+| `自定义光标`   | Themed adaptive cursor, off by default                                          |
+| `动效`         | Manually enable or disable motion; static glass remains when off                |
+| `玻璃材质`     | Manually choose full or frosted glass; no automatic degradation                 |
+| `减弱动效`     | System or manual accessibility reduction for movement and springs               |
+| `高对比模式`   | Strengthens borders and secondary text                                          |
 | `显示导航说明` | Shows each destination's purpose in the wide dock; persisted as `sidebarPinned` |
 
 Motion and glass quality are independent: full glass can be static and frosted glass can animate. System reduced-motion, reduced-transparency and high-contrast preferences are accessibility constraints, not frame-rate-driven settings.
@@ -103,20 +110,20 @@ There is one local `admin` account. The password is stored as a scrypt hash in `
 2. Enter the current password and a 6-digit code; `确认开启`.
 3. Save the recovery codes shown once.
 
-| Action | Requirement |
-| --- | --- |
-| Regenerate recovery codes | Current password and a code; old codes become invalid |
-| Disable 2FA | Current password plus a code or recovery code; sessions expire |
-| Login with `使用恢复码` | Each recovery code works once; hyphens ignored |
+| Action                    | Requirement                                                    |
+| ------------------------- | -------------------------------------------------------------- |
+| Regenerate recovery codes | Current password and a code; old codes become invalid          |
+| Disable 2FA               | Current password plus a code or recovery code; sessions expire |
+| Login with `使用恢复码`   | Each recovery code works once; hyphens ignored                 |
 
 The remaining recovery-code count appears in `账号安全`. Store the codes separately from the password.
 
 ## Save and apply
 
-| Item | Storage | Applies |
-| --- | --- | --- |
-| Appearance, data and format | Server UI config, auto-save | Immediately, cross-device |
-| Password, 2FA | `config/webui.json` | Immediately; relevant sessions expire |
-| UI config import/export | Manual | Reloads the interface after import |
+| Item                        | Storage                     | Applies                               |
+| --------------------------- | --------------------------- | ------------------------------------- |
+| Appearance, data and format | Server UI config, auto-save | Immediately, cross-device             |
+| Password, 2FA               | `config/webui.json`         | Immediately; relevant sessions expire |
+| UI config import/export     | Manual                      | Reloads the interface after import    |
 
 Failures keep the current state and show the reason; defaults never overwrite your configuration silently.

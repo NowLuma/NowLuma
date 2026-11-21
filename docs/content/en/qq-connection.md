@@ -1,35 +1,46 @@
 ---
 title: QQ sessions
 description: Discover and attach a running QQ, choose and acknowledge the access kernel per real UIN, refresh the pipe, unload and open the desktop.
+tutorial: qq-connection
 ---
 
 # QQ sessions
+
+The lesson above asks you to choose a kernel for an example account, confirm attachment, then unload and observe manual stop. On a real deployment, authenticate in QQ first.
+
+![QQ session page with the identified example process](/images/tutorials/qq-session.png)
+
+_Figure: example PID 4242. Detecting an account does not mean it is attached._
+
+![Per-account kernel dialog before risk acknowledgement](/images/tutorials/account-kernel.png)
+
+_Figure: choices apply to one account; attachment remains unavailable until the user selects and acknowledges it._
 
 Path `/processes`. This page works only with an already-running QQ: discover processes, show their state, attach after confirmation, and let you refresh the pipe or unload. It does not start QQ or log in for you. The page subtitle is `选择 QQ 进程，查看状态并接入账号。`.
 
 ## Page structure
 
-| Area | Content |
-| --- | --- |
-| Header | `刷新`; `打开 QQ 桌面` only when the server actually provides the same-origin desktop |
-| Sort | `PID`, `名称`, `状态`; hidden when there is only one process |
-| Process list | Avatar or placeholder, name, state badge, `PID … · QQ …`, path and error |
-| Detail | Process, account, attach state, session connection, optional path/error |
-| Actions | `加载` or `卸载`, plus `刷新管道` when relevant |
+| Area         | Content                                                                               |
+| ------------ | ------------------------------------------------------------------------------------- |
+| Header       | `刷新`; `打开 QQ 桌面` only when the server actually provides the same-origin desktop |
+| Sort         | `PID`, `名称`, `状态`; hidden when there is only one process                          |
+| Process list | Avatar or placeholder, name, state badge, `PID … · QQ …`, path and error              |
+| Detail       | Process, account, attach state, session connection, optional path/error               |
+| Actions      | `加载` or `卸载`, plus `刷新管道` when relevant                                       |
 
 Desktop shows list and detail together; narrow screens select first. The selected PID owns every detail and action, so a disappearing or re-sorted process never retargets an operation.
 
 ## Process states
 
-| State | Meaning | Action |
-| --- | --- | --- |
-| `可加载` | QQ main process found, not attached | `加载` |
-| `加载中` | Native component is being attached | Wait |
-| `等待连接` | Attached, pipe not connected | `刷新管道` if needed |
-| `等待登录` | Pipe connected, QQ not logged in | Log in inside QQ |
-| `已在线` | Logged in and real account recognized | Configure bot connections |
-| `错误` | Attach or connection failed | Read the error, retry or refresh |
-| `已断开` | Previous connection dropped | `刷新管道` |
+| State      | Meaning                               | Action                           |
+| ---------- | ------------------------------------- | -------------------------------- |
+| `可加载`   | QQ main process found, not attached   | `加载`                           |
+| `加载中`   | Native component is being attached    | Wait                             |
+| `等待连接` | Attached, pipe not connected          | `刷新管道` if needed             |
+| `等待登录` | Pipe connected, QQ not logged in      | Log in inside QQ                 |
+| `已在线`   | Logged in and real account recognized | Configure bot connections        |
+| `错误`     | Attach or connection failed           | Read the error, retry or refresh |
+| `已断开`   | Previous connection dropped           | `刷新管道`                       |
 
 `刷新管道` has the tooltip `刷新管道状态 / 重连`. It reconnects an existing attach; it does not repeat the kernel acknowledgement.
 
@@ -54,9 +65,9 @@ Expected result: `PID … · QQ your-UIN`, attach state `Nowluma 已加载`, ses
 
 The dialog title is `选择接入内核`, description `nickname · QQ UIN`, and the footer states `风险说明版本 … · 仅对 QQ … 生效`. Options:
 
-| Option | State | Explanation |
-| --- | --- | --- |
-| `兼容内核` | `可选择` | Uses the bundled native component; an explicit risk acknowledgement is required |
+| Option     | State      | Explanation                                                                          |
+| ---------- | ---------- | ------------------------------------------------------------------------------------ |
+| `兼容内核` | `可选择`   | Uses the bundled native component; an explicit risk acknowledgement is required      |
 | `重写内核` | `暂不可用` | Not verified on this platform; cannot be selected and never falls back automatically |
 
 Neither option is selected by default, and the compatibility kernel is never pre-selected for you. Select the `兼容内核` radio first; only then does the risk checkbox become enabled. After checking `我已阅读并主动确认此账号的兼容内核使用与法律风险`, `确认并接入` becomes available; while saving it reads `保存中…`. Errors appear inside the dialog and are never treated as success.
@@ -94,13 +105,13 @@ If it still stays at `等待连接`, read the error and [Run log](logs.md). Linu
 
 ## Empty states and errors
 
-| Symptom | UI | Action |
-| --- | --- | --- |
-| No process | `未检测到可加载 QQ 主进程` | Open and log in to QQ, then `刷新` |
-| Read failed | Error panel and `重试` | Fix the service/permission and retry |
-| Stale data | `…；当前显示上次成功读取的进程状态。` | Do not assume the process is online now |
-| Selection lost | `进程 … 已不在列表中` | Select again; the operation is not retargeted |
-| Attach failed | Error line and `重试接入` | Fix permission, login or component issue |
+| Symptom        | UI                                    | Action                                        |
+| -------------- | ------------------------------------- | --------------------------------------------- |
+| No process     | `未检测到可加载 QQ 主进程`            | Open and log in to QQ, then `刷新`            |
+| Read failed    | Error panel and `重试`                | Fix the service/permission and retry          |
+| Stale data     | `…；当前显示上次成功读取的进程状态。` | Do not assume the process is online now       |
+| Selection lost | `进程 … 已不在列表中`                 | Select again; the operation is not retargeted |
+| Attach failed  | Error line and `重试接入`             | Fix permission, login or component issue      |
 
 ## Open QQ desktop
 
@@ -115,13 +126,13 @@ If it still stays at `等待连接`, read the error and [Run log](logs.md). Linu
 
 ## Save and restart
 
-| Action | Persisted? | When it applies |
-| --- | --- | --- |
-| Attach / unload | No | Immediately |
-| Kernel choice and risk acknowledgement | Yes, per UIN in `config/kernel-selections.json` | On future attaches for that account |
-| Auto-connect running QQ | Yes, service setting | After restart; an UIN with a current acknowledgement can attach once QQ login identity appears |
-| Sort order | Yes, page preference | Immediately |
-| Desktop entry | No | Current session |
+| Action                                 | Persisted?                                      | When it applies                                                                                |
+| -------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Attach / unload                        | No                                              | Immediately                                                                                    |
+| Kernel choice and risk acknowledgement | Yes, per UIN in `config/kernel-selections.json` | On future attaches for that account                                                            |
+| Auto-connect running QQ                | Yes, service setting                            | After restart; an UIN with a current acknowledgement can attach once QQ login identity appears |
+| Sort order                             | Yes, page preference                            | Immediately                                                                                    |
+| Desktop entry                          | No                                              | Current session                                                                                |
 
 `自动连接已打开的 QQ` is not QQ auto-login and does not skip kernel confirmation. When enabled, it attaches only after local QQ login, a real UIN is recognized, and that UIN already has a current-risk-version compatibility acknowledgement. An unknown account cannot borrow another acknowledgement, and a new UIN must choose its own kernel.
 

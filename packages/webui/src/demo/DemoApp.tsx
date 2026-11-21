@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { BookOpen, FlaskConical, Monitor, RotateCcw, X } from 'lucide-react';
+import { BookOpen, Monitor, RotateCcw, X } from 'lucide-react';
 import App from '@/App';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/interior/modal';
 import { createApiClient } from '@/lib/api';
 import { appRouter } from '@/router';
-import { DEMO_NEW_PASSWORD, DEMO_TOTP } from './constants';
 import { DEMO_JOURNEY } from './journey';
 import type { DemoApi, DemoScenario } from './api';
+import { TutorialGuide } from './TutorialGuide';
+import { TUTORIAL_LESSONS, tutorialText } from './tutorial-lessons';
+import type { TutorialOptions } from './tutorial-options';
 import './demo.css';
 
-export function DemoApp({ api }: { api: DemoApi }) {
+export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOptions }) {
+    const lesson = options?.tutorial ? TUTORIAL_LESSONS[options.tutorial] : undefined;
     const [epoch, setEpoch] = useState(0);
     const [guideOpen, setGuideOpen] = useState(true);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -62,12 +65,41 @@ export function DemoApp({ api }: { api: DemoApi }) {
         };
     }, []);
 
+    useEffect(() => {
+        const console = document.querySelector<HTMLElement>('.demo-console');
+
+        if (!console || !lesson) {
+            return;
+        }
+
+        const observer = new ResizeObserver(([entry]) => {
+            console.style.setProperty(
+                '--workspace-viewport-height',
+                `${entry.contentRect.height}px`,
+            );
+        });
+        observer.observe(console);
+        return () => observer.disconnect();
+    }, [lesson]);
+
     const reset = () => {
-        api.reset();
+        if (!lesson) {
+            api.reset();
+        }
+
         localStorage.clear();
         sessionStorage.clear();
         sessionStorage.setItem('nowluma_safe_mode', '1');
-        appRouter.history.replace('/');
+
+        if (lesson) {
+            const token = api.resetTutorial(lesson.baseline);
+
+            if (token) {
+                localStorage.setItem('nowluma_token', token);
+            }
+        }
+
+        appRouter.history.replace(lesson?.steps[0].route ?? '/');
         setEpoch((value) => value + 1);
         setSelectedStep(0);
         setLinkError('');
@@ -89,18 +121,24 @@ export function DemoApp({ api }: { api: DemoApi }) {
     const step = DEMO_JOURNEY[selectedStep];
 
     return (
-        <div className="demo-shell">
-            <header className="demo-banner" aria-label="Practice simulator / 安全模拟器">
+        <div
+            className={`demo-shell${lesson ? ' demo-tutorial' : ''}`}
+            data-tutorial={lesson?.id}
+            data-embed={options?.embed ? 'true' : undefined}
+        >
+            <header className="demo-banner" aria-label="Nowluma">
                 <div className="demo-banner-label">
-                    <FlaskConical aria-hidden="true" size={19} />
-                    <strong>DEMO · 安全练习</strong>
-                    <span>Real console · memory only · no QQ</span>
+                    <strong>
+                        {lesson ? tutorialText(lesson.title, options?.lang ?? 'zh') : 'Nowluma'}
+                    </strong>
+                    <span>{options?.lang === 'en' ? 'Sample data' : '示例数据'}</span>
                 </div>
                 <div className="demo-banner-actions">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setGuideOpen((open) => !open)}
+                        data-demo-guide-toggle="true"
                         aria-expanded={guideOpen}
                         aria-controls="demo-guide"
                     >
@@ -111,19 +149,29 @@ export function DemoApp({ api }: { api: DemoApi }) {
                     </Button>
                 </div>
             </header>
+            {lesson && (
+                <TutorialGuide
+                    key={epoch}
+                    api={api}
+                    lesson={lesson}
+                    language={options?.lang ?? 'zh'}
+                    open={guideOpen}
+                    onClose={() => {
+                        setGuideOpen(false);
+                        document.querySelector<HTMLElement>('[data-demo-guide-toggle]')?.focus();
+                    }}
+                    onRestart={reset}
+                    onNavigate={(route) => appRouter.history.push(route)}
+                />
+            )}
             <div className="demo-console">
                 <App key={epoch} client={client} />
             </div>
-            {guideOpen && (
-                <aside
-                    id="demo-guide"
-                    className="demo-guide"
-                    aria-label="Practice guide / 操作引导"
-                >
+            {!lesson && guideOpen && (
+                <aside id="demo-guide" className="demo-guide" aria-label="Console guide / 操作引导">
                     <div className="demo-guide-heading">
                         <div>
-                            <span className="demo-eyebrow">INTERACTIVE PRACTICE</span>
-                            <h2>Try the actual console / 操作真实控制台</h2>
+                            <h2>操作引导 / Console guide</h2>
                         </div>
                         <Button
                             variant="ghost"
@@ -133,28 +181,6 @@ export function DemoApp({ api }: { api: DemoApi }) {
                         >
                             <X size={16} />
                         </Button>
-                    </div>
-                    <p>
-                        登录后依次阅读说明、设置密码、选择显示效果和账号内核。
-                        / Log in, then complete notices, password, display effects and account kernel.
-                    </p>
-                    <div className="demo-credentials">
-                        <strong>Public examples only — never real secrets</strong>
-                        <dl>
-                            <dt>访问密码 / Login</dt>
-                            <dd>
-                                <code>{api.examplePassword}</code>
-                            </dd>
-                            <dt>新密码 / New password</dt>
-                            <dd>
-                                <code>{DEMO_NEW_PASSWORD}</code> · 填写新密码与确认新密码 →{' '}
-                                <strong>保存并继续</strong>
-                            </dd>
-                            <dt>2FA code / 验证码</dt>
-                            <dd>
-                                <code>{DEMO_TOTP}</code> · example only
-                            </dd>
-                        </dl>
                     </div>
                     <nav className="demo-steps" aria-label="Practice steps">
                         {DEMO_JOURNEY.map((item, index) => (
@@ -171,6 +197,12 @@ export function DemoApp({ api }: { api: DemoApi }) {
                     <section className="demo-step-detail" aria-labelledby="demo-step-title">
                         <h3 id="demo-step-title">{step.title}</h3>
                         <p>{step.description}</p>
+                        {step.id === 'setup' && (
+                            <p>
+                                访问密码 <code>{api.examplePassword}</code>；新密码{' '}
+                                <code>DemoChanged!2026</code>。
+                            </p>
+                        )}
                         <p className="demo-control-label">
                             Actual control: <strong>{step.control}</strong>
                         </p>
@@ -230,29 +262,19 @@ export function DemoApp({ api }: { api: DemoApi }) {
                     <p className="demo-notice" role="status">
                         {linkError || notice}
                     </p>
-                    <details className="demo-limits">
-                        <summary>演练边界 / Practice limits</summary>
-                        <p>
-                            只使用公开示例。无真实 QQ、VNC 或消息投递；自定义 CSS 禁用，备份仅接受
-                            DEMO 导出。刷新或重置会清空内存，生产控制台会保存手动显示偏好。
-                            / Public examples only. No QQ, VNC or delivery; custom CSS is disabled.
-                            Only DEMO backups are accepted. Reload resets memory; production saves
-                            manual display preferences.
-                        </p>
-                    </details>
                 </aside>
             )}
             <Modal
                 open={desktopOpen}
                 onClose={() => setDesktopOpen(false)}
-                title="DEMO QQ 桌面 / Mock desktop"
-                description="No VNC, QR login, cookies or real QQ process. This is a practice control, not a physical desktop."
+                title="QQ 桌面示例 / Desktop example"
+                description="选择下方操作以识别示例账号 10001。"
                 maxWidth={512}
             >
                 <div className="demo-desktop">
                     <Monitor size={44} aria-hidden="true" />
-                    <strong>DEMO — NOT A QR CODE</strong>
-                    <p>QQ 扫码练习 / Simulated scan</p>
+                    <strong>QQ 桌面示例 / Desktop example</strong>
+                    <p>账号识别 / Account detection</p>
                     <span>Account 10001 · DEMO 小光</span>
                 </div>
                 <Button
@@ -265,11 +287,10 @@ export function DemoApp({ api }: { api: DemoApi }) {
                     Simulate scan / 模拟扫码
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                    Next: 在进程页对 DEMO 4242 点「加载」并完成每账号内核风险确认。Local detection
-                    alone is not a completed QQ login.
+                    下一步：在进程页对 4242 点「加载」，再完成此账号的内核选择。
                 </p>
             </Modal>
-            {!guideOpen && linkError && (
+            {(lesson || !guideOpen) && linkError && (
                 <div className="demo-link-alert" role="alert">
                     {linkError}
                     <Button

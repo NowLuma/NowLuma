@@ -62,12 +62,6 @@
   justify-content: space-between;
   gap: 0.5rem;
 }
-.demo-eyebrow {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  color: var(--primary);
-}
 .demo-guide h2 {
   font-size: 1.2rem;
   font-weight: 650;
@@ -80,26 +74,6 @@
 .demo-guide p {
   margin: 0.65rem 0;
   color: var(--muted-foreground);
-}
-.demo-credentials {
-  border: 1px solid color-mix(in oklab, var(--primary) 30%, var(--border));
-  padding: 0.75rem;
-  border-radius: 0.65rem;
-  background: color-mix(in oklab, var(--primary) 7%, var(--background));
-}
-.demo-credentials strong {
-  display: block;
-  font-size: 0.72rem;
-  margin-bottom: 0.4rem;
-}
-.demo-credentials dt {
-  font-size: 0.65rem;
-  color: var(--muted-foreground);
-}
-.demo-credentials dd {
-  margin-bottom: 0.25rem;
-  font-size: 0.8rem;
-  user-select: all;
 }
 .demo-steps {
   display: grid;
@@ -165,9 +139,6 @@
   color: var(--foreground);
   font-size: 0.7rem;
 }
-.demo-guide .demo-limits {
-  font-size: 0.65rem;
-}
 .demo-desktop {
   min-height: 220px;
   display: flex;
@@ -202,6 +173,78 @@
   font-size: 0.8rem;
   box-shadow: 0 8px 24px #0002;
 }
+.demo-tutorial-guide {
+  flex-shrink: 0;
+  max-height: min(19rem, 43dvh);
+  overflow: auto;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.demo-tutorial-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.demo-tutorial-heading strong {
+  flex: 1;
+}
+.demo-tutorial-heading button {
+  min-width: 2rem;
+  min-height: 2rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.demo-tutorial-guide h2 {
+  font-size: 1rem;
+  font-weight: 650;
+}
+.demo-tutorial-guide p {
+  margin: 0.25rem 0;
+}
+.demo-tutorial-baseline,
+.demo-tutorial-proof {
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+}
+.demo-tutorial-guide progress {
+  display: block;
+  width: 100%;
+  height: 0.25rem;
+  margin: 0.45rem 0;
+  accent-color: var(--foreground);
+}
+.demo-tutorial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.demo-tutorial-actions button {
+  min-height: 2rem;
+  font-size: 0.7rem;
+}
+[data-tutorial-focus] {
+  outline: 3px solid #1680dc !important;
+  outline-offset: 3px;
+  scroll-margin: 1.5rem;
+}
+.demo-tutorial .demo-banner {
+  height: 2.75rem;
+  padding-block: 0.25rem;
+}
+.demo-tutorial .demo-console {
+  position: relative;
+}
+.demo-tutorial [data-tutorial-verified='true'] .demo-tutorial-proof {
+  color: var(--foreground);
+}
+.demo-tutorial-heading button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
 @media (max-width: 640px) {
   .demo-banner {
     padding: 0.5rem;
@@ -231,4 +274,11 @@
   .demo-guide {
     backdrop-filter: none;
   }
+}
+.demo-tutorial .demo-banner-label {
+  min-width: 0;
+}
+.demo-tutorial .demo-banner-label strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

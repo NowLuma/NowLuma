@@ -1,19 +1,26 @@
 ---
-title: "Settings: runtime and services"
+title: 'Settings: runtime and services'
 description: Global config, storage cleanup, notification channels, WebUI and desktop services, TLS, configuration backup, updates and developer tools.
+tutorial: settings-runtime
 ---
 
 # Settings: runtime and services
+
+Locate Services and deployment diagnostics in the lesson above, then distinguish a saved value from a restart-required change. Keep a working recovery entry before changing a real listener.
+
+![Service listener and runtime settings](/images/tutorials/settings-service.png)
+
+_Figure: example service settings; tutorial saves do not change device listeners or TLS._
 
 These categories control how the service runs, how long data is kept, where notifications go and how updates are installed. Appearance and account settings are in [Settings: appearance and account](settings-console.md).
 
 ## Global config
 
-| Setting | Effect |
-| --- | --- |
-| rkey fallback | Ordered services used when the kernel cannot obtain an rkey; empty disables it; self-hosting is recommended |
-| Video upload connections | 1–4; applies to the next upload; short videos stay single-connection |
-| Music signing service | Signing endpoint for music cards; empty uses the built-in service |
+| Setting                  | Effect                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| rkey fallback            | Ordered services used when the kernel cannot obtain an rkey; empty disables it; self-hosting is recommended |
+| Video upload connections | 1–4; applies to the next upload; short videos stay single-connection                                        |
+| Music signing service    | Signing endpoint for music cards; empty uses the built-in service                                           |
 
 Success reads `全局配置已更新`; invalid entries are reported as ignored rather than silently counted as fully saved. Configuration lives under `config/`, not in the account database.
 
@@ -30,11 +37,11 @@ Success reads `全局配置已更新`; invalid entries are reported as ignored r
 
 ### Cleanup
 
-| Item | Behaviour |
-| --- | --- |
-| Logs | Rotate active files first, then delete old logs, keeping a fresh empty file |
-| Temporary transfer data | Delete inactive items; active uploads/downloads are kept |
-| Account databases | Per account and category: message history, media index, reactions |
+| Item                    | Behaviour                                                                   |
+| ----------------------- | --------------------------------------------------------------------------- |
+| Logs                    | Rotate active files first, then delete old logs, keeping a fresh empty file |
+| Temporary transfer data | Delete inactive items; active uploads/downloads are kept                    |
+| Account databases       | Per account and category: message history, media index, reactions           |
 
 Account cleanup removes only the selected category and sidecar files. It does not remove configuration, credentials or exported chats. Online accounts cannot be cleaned; “all accounts” requires every account offline and a confirmation phrase. Deletion is irreversible; back up first.
 
@@ -111,11 +118,11 @@ Update checks use the network, but the current source contains no analytics or t
 
 ## Save and restart
 
-| Item | After saving |
-| --- | --- |
-| Global config, notifications, log retention | Applied immediately; normally no restart |
-| WebUI port, bind address, trust proxy, auto-connect | Restart Nowluma |
-| Desktop entry | Decided by the server's applied gateway capability; setting a port/address alone does not make it appear |
-| TLS certificate | Restart with the new certificate |
-| Restore service backup | Restart |
-| Update | After restart-and-update |
+| Item                                                | After saving                                                                                             |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Global config, notifications, log retention         | Applied immediately; normally no restart                                                                 |
+| WebUI port, bind address, trust proxy, auto-connect | Restart Nowluma                                                                                          |
+| Desktop entry                                       | Decided by the server's applied gateway capability; setting a port/address alone does not make it appear |
+| TLS certificate                                     | Restart with the new certificate                                                                         |
+| Restore service backup                              | Restart                                                                                                  |
+| Update                                              | After restart-and-update                                                                                 |
