@@ -14,6 +14,8 @@ import './demo.css';
 
 export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOptions }) {
     const lesson = options?.tutorial ? TUTORIAL_LESSONS[options.tutorial] : undefined;
+    const embedded =
+        lesson && options?.embed && typeof window !== 'undefined' && window.parent !== window;
     const [epoch, setEpoch] = useState(0);
     const [guideOpen, setGuideOpen] = useState(true);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -124,7 +126,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
         <div
             className={`demo-shell${lesson ? ' demo-tutorial' : ''}`}
             data-tutorial={lesson?.id}
-            data-embed={options?.embed ? 'true' : undefined}
+            data-embed={embedded ? 'true' : undefined}
         >
             <header className="demo-banner" aria-label="Nowluma">
                 <div className="demo-banner-label">
@@ -142,11 +144,14 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                         aria-expanded={guideOpen}
                         aria-controls="demo-guide"
                     >
-                        <BookOpen size={15} /> Guide / 引导
+                        <BookOpen size={15} />{' '}
+                        {embedded ? (options?.lang === 'en' ? 'Guide' : '引导') : 'Guide / 引导'}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={reset}>
-                        <RotateCcw size={15} /> Reset / 重置
-                    </Button>
+                    {!embedded && (
+                        <Button variant="outline" size="sm" onClick={reset}>
+                            <RotateCcw size={15} /> Reset / 重置
+                        </Button>
+                    )}
                 </div>
             </header>
             {lesson && (
