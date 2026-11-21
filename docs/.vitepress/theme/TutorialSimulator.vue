@@ -19,12 +19,14 @@ const copy = computed(() =>
     ? {
         title: `${page.value.title} — interactive tutorial`,
         restart: 'Restart tutorial',
-        larger: 'Open larger view (new tab)',
+        larger: 'Full view ↗',
+        largerLabel: 'Open larger view (new tab)',
       }
     : {
         title: `${page.value.title} — 交互教程`,
         restart: '重新开始',
-        larger: '在新标签页中放大',
+        larger: '放大查看 ↗',
+        largerLabel: '在新标签页中放大',
       },
 );
 
@@ -60,9 +62,14 @@ onBeforeUnmount(() => window.removeEventListener('message', onSectionRequest));
         <button type="button" data-tutorial-restart @click="restarts += 1">
           {{ copy.restart }}
         </button>
-        <a :href="source" target="_blank" rel="noopener noreferrer" data-tutorial-larger>{{
-          copy.larger
-        }}</a>
+        <a
+          :href="source"
+          :aria-label="copy.largerLabel"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-tutorial-larger
+          >{{ copy.larger }}</a
+        >
       </div>
     </div>
     <iframe

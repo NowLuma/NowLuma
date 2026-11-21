@@ -113,6 +113,15 @@ export function TutorialGuide({
                     {en ? 'Step' : '步骤'} {complete ? lesson.steps.length : index + 1} /{' '}
                     {lesson.steps.length}
                 </strong>
+                <span className="demo-tutorial-baseline" data-tutorial-baseline={lesson.baseline}>
+                    {lesson.baseline === 'clean'
+                        ? en
+                            ? 'First setup'
+                            : '首次设置'
+                        : en
+                          ? 'Sample account'
+                          : '示例账号'}
+                </span>
                 <button
                     type="button"
                     onClick={onClose}
@@ -121,22 +130,13 @@ export function TutorialGuide({
                     ×
                 </button>
             </div>
-            <p className="demo-tutorial-baseline" data-tutorial-baseline={lesson.baseline}>
-                {lesson.baseline === 'clean'
-                    ? en
-                        ? 'First setup'
-                        : '首次设置'
-                    : en
-                      ? `Sample account preloaded · ${lesson.baseline}`
-                      : `已预置示例账号 · ${lesson.baseline}`}
-            </p>
             <progress
                 value={complete ? lesson.steps.length : index}
                 max={lesson.steps.length}
                 aria-label={en ? 'Completed practice steps' : '已完成练习步骤'}
             />
             {complete ? (
-                <div role="status" data-tutorial-complete="true">
+                <div className="demo-tutorial-message" role="status" data-tutorial-complete="true">
                     <h2>{en ? 'Chapter practice completed' : '本章练习已完成'}</h2>
                     <p>
                         {en
@@ -145,7 +145,11 @@ export function TutorialGuide({
                     </p>
                 </div>
             ) : (
-                <section aria-labelledby="tutorial-objective">
+                <section
+                    className="demo-tutorial-message"
+                    aria-labelledby="tutorial-objective"
+                    tabIndex={0}
+                >
                     <h2 id="tutorial-objective">{tutorialText(step.title, language)}</h2>
                     <p id="tutorial-hint">{tutorialText(step.hint, language)}</p>
                     <p
@@ -174,12 +178,12 @@ export function TutorialGuide({
                     disabled={!complete && index === 0}
                     onClick={() => selectStep(complete ? lesson.steps.length - 1 : index - 1)}
                 >
-                    {en ? 'Previous / repeat' : '上一步 / 重看'}
+                    {complete ? (en ? 'Review' : '重看') : en ? 'Previous' : '上一步'}
                 </Button>
                 {!complete && (
                     <>
                         <Button size="sm" variant="outline" onClick={() => onNavigate(step.route)}>
-                            {en ? 'Open console page' : '打开操作页'}
+                            {en ? 'Open page' : '打开操作页'}
                         </Button>
                         {typeof window !== 'undefined' && window.parent !== window && section && (
                             <Button
@@ -196,7 +200,7 @@ export function TutorialGuide({
                                     window.parent.postMessage(request, window.location.origin);
                                 }}
                             >
-                                {en ? 'Read this section' : '阅读对应小节'}
+                                {en ? 'Read section' : '阅读对应小节'}
                             </Button>
                         )}
                         <Button
@@ -221,7 +225,7 @@ export function TutorialGuide({
                                 control?.focus({ preventScroll: true });
                             }}
                         >
-                            {en ? 'Find highlighted control' : '定位高亮操作'}
+                            {en ? 'Find control' : '定位控件'}
                         </Button>
                         <Button
                             size="sm"
@@ -265,7 +269,7 @@ export function TutorialGuide({
                     </>
                 )}
                 <Button size="sm" variant="outline" onClick={onRestart}>
-                    {en ? 'Restart chapter' : '重新练习本章'}
+                    {en ? 'Restart' : '重新练习本章'}
                 </Button>
             </div>
         </aside>

@@ -7,6 +7,7 @@ export default {
   extends: DefaultTheme,
   Layout: () =>
     h(DefaultTheme.Layout, null, {
-      'doc-before': () => h(TutorialSimulator),
+      // Keep the simulator outside the narrow prose and outline columns.
+      'doc-top': () => h(TutorialSimulator),
     }),
 };

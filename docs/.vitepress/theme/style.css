@@ -12,8 +12,9 @@
 }
 
 .tutorial-simulator {
-  margin-bottom: 2rem;
-  padding: 1rem;
+  max-width: 75rem;
+  margin: 0 auto clamp(1.75rem, 3vw, 2.75rem);
+  overflow: hidden;
   border: 1px solid var(--vp-c-divider);
   border-radius: 12px;
   background: var(--vp-c-bg-soft);
@@ -29,6 +30,8 @@
 
 .tutorial-simulator-toolbar {
   justify-content: space-between;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid var(--vp-c-divider);
 }
 
 .tutorial-simulator-toolbar h2 {
@@ -38,12 +41,16 @@
 }
 
 .tutorial-simulator-actions {
+  gap: 0.375rem;
   font-size: 0.8rem;
 }
 
 .tutorial-simulator-actions button,
 .tutorial-simulator-actions a {
-  padding: 0.3rem 0.55rem;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
   background: var(--vp-c-bg);
@@ -60,30 +67,59 @@
 .tutorial-simulator iframe {
   display: block;
   width: 100%;
-  height: clamp(32rem, 72vh, 56rem);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  height: clamp(34rem, 76vh, 52rem);
+  border: 0;
   background: var(--vp-c-bg);
 }
 
 .vp-doc img[src*='/images/tutorials/'] {
-  width: 100%;
+  max-width: 100%;
   height: auto;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
 }
 
-@media (max-width: 639px) {
+/* Keep the outline beside the prose, not over the full-width tutorial. */
+@media (min-width: 1280px) {
+  .tutorial-simulator + .container .aside-container {
+    position: sticky;
+    top: calc(var(--vp-nav-height) + var(--vp-layout-top-height, 0px) + 1rem);
+    height: auto;
+    max-height: calc(100vh - var(--vp-nav-height) - var(--vp-layout-top-height, 0px) - 2rem);
+    padding-top: 0;
+  }
+
+  .tutorial-simulator + .container .aside-curtain {
+    display: none;
+  }
+
+  .tutorial-simulator + .container .aside-content {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 959px) {
   .tutorial-simulator {
-    margin-right: -0.75rem;
-    margin-left: -0.75rem;
-    padding: 0.75rem;
+    margin-inline: -0.75rem;
+  }
+}
+
+@media (max-width: 639px) {
+  body {
+    min-width: 0;
+  }
+
+  .tutorial-simulator {
+    margin-inline: -1rem;
+  }
+
+  .tutorial-simulator-toolbar {
+    gap: 0.375rem 0.75rem;
+    padding-inline: 0.5rem;
   }
 
   .tutorial-simulator iframe {
-    height: 42rem;
-    max-height: 85vh;
-    min-height: 30rem;
+    height: clamp(36rem, 88svh, 48rem);
   }
 }
 
