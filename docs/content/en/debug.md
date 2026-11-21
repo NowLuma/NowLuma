@@ -30,7 +30,7 @@ The first three stay mounted when switching tabs, so drafts and the live feed su
 1. Choose `账号` and `接口` (searchable).
 2. Fill `请求参数` as a form or JSON; a no-parameter action says `该接口无参数。`.
 3. Read the badges: `只读`, `有副作用`, `流式`.
-4. Press `运行调用` or `运行流式调用`; `取消` aborts.
+4. Press `运行调用` or `运行流式调用`. Use `取消` to stop a running stream.
 
 Results show `响应内容` or `实时帧` / `N 帧`. Failures show the reason rather than a fabricated success. `历史` keeps this session's calls for replay; `清空` clears only history.
 
@@ -38,7 +38,9 @@ Validation blocks malformed input: `参数 JSON 格式无效`, `参数必须是 
 
 Upload-style actions can also be found in `接口库` and run from `接口调用`; confirm the account and target first, and do not auto-retry a failed upload.
 
-**Destructive actions** open `确认执行破坏性操作`: `即将以账号 … 执行 …，该操作会真实生效且通常不可撤销。` Confirm with `确认执行`.
+**Destructive actions** such as deleting or recalling open `确认执行破坏性操作`. Other actions marked `有副作用`, including sending a message, may submit as soon as you press `运行调用`. Check the account and destination before invoking them; do not rely on a confirmation dialog.
+
+**In the tutorial above:** select sample account `10001` and `send_private_msg`, switch to JSON, and enter `{"user_id":10002,"message":"#nl"}`. Run it, note the `message_id` in the response, then select `get_msg` and look up that ID. The tutorial completes only when you retrieve the message you just sent. Use these parameters only in the simulator.
 
 ## Send message
 
@@ -73,7 +75,7 @@ Browse by category; search name, summary or alias. Each action shows `只读` / 
 ## Safety boundaries
 
 - Every call is bound to the account you selected.
-- Side-effect actions ask again, but confirmation is not undo.
+- Not every side-effecting call asks again. Start with a read-only action when unsure.
 - No QQ password, login bypass, account forgery or kernel-selection override is exposed here.
 - Activity and exports may contain account, message or path data; redact before sharing.
 - The console still does not auto-reply; your bot owns reply logic.
