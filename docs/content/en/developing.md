@@ -1,9 +1,16 @@
 ---
 title: Development
 description: Nowluma's GPL-3.0-only licensing, repository layout, local validation, documentation, change boundaries and release flow.
+tutorial: developing
 ---
 
 # Development
+
+Use the tutorial above to understand the operation before editing its owning module. Developer replay previews the flow without changing real credentials, risk acceptance or preferences.
+
+![Debug workspace for reproducible action inspection](/images/tutorials/debug.png)
+
+_Figure: sample API controls for replaying an operation and inspecting its result._
 
 Nowluma is released under GPL-3.0-only. Follow GPLv3 when modifying and distributing source. Bundled native and third-party components follow their own terms in `LICENSING.md`.
 
@@ -16,18 +23,18 @@ Nowluma is released under GPL-3.0-only. Follow GPLv3 when modifying and distribu
 
 ## Layout
 
-| Path | Responsibility |
-| --- | --- |
-| `packages/bridge` | QQ process discovery, account detection, native transport lifecycle |
-| `packages/core` | Per-account orchestration, WebUI backend, startup/update assembly |
-| `packages/onebot` | Actions, event conversion, account storage, HTTP/WebSocket transports |
-| `packages/protocol` | Packet parsing, identity mapping, protocol/media requests |
-| `packages/common` | Leaf utilities; browser imports must not pull in Node filesystem modules |
-| `packages/webui` | React console |
-| `packages/runtime` | Release scaffold and original prebuilt files |
-| `packages/sdk` / `mcp` / `ui` | Consumer APIs and tools |
-| `deploy` | Docker, installation, supervision, persistence and smoke |
-| `tools` | Build, checks, release and documentation scripts |
+| Path                          | Responsibility                                                           |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| `packages/bridge`             | QQ process discovery, account detection, native transport lifecycle      |
+| `packages/core`               | Per-account orchestration, WebUI backend, startup/update assembly        |
+| `packages/onebot`             | Actions, event conversion, account storage, HTTP/WebSocket transports    |
+| `packages/protocol`           | Packet parsing, identity mapping, protocol/media requests                |
+| `packages/common`             | Leaf utilities; browser imports must not pull in Node filesystem modules |
+| `packages/webui`              | React console                                                            |
+| `packages/runtime`            | Release scaffold and original prebuilt files                             |
+| `packages/sdk` / `mcp` / `ui` | Consumer APIs and tools                                                  |
+| `deploy`                      | Docker, installation, supervision, persistence and smoke                 |
+| `tools`                       | Build, checks, release and documentation scripts                         |
 
 Read every caller and neighbouring test before changing a shared function. Preserve per-account identity, message/media history, signed non-zero int32 message IDs, teardown order and in-flight work.
 
@@ -67,12 +74,13 @@ A missing native artifact or target is NOT_RUN, not permission to skip validatio
 Documentation lives in `docs/content/{zh,en}` with 18 chapters per language and a shared feature map at `docs/content/coverage.json`.
 
 ```bash
-pnpm docs:build
-pnpm docs:check
+pnpm docs:dev          # Start both docs and the embedded simulator
+pnpm docs:build:all    # Build and validate the complete site
+pnpm docs:preview     # Preview the built site
 node --test tools/docs.test.mjs
 ```
 
-- Use relative links so the `/Nowluma/` base path and offline reading both work.
+- Keep chapter links valid under `/Nowluma/`; use `pnpm docs:dev` or a built HTTP preview rather than `file://` for interactive features.
 - Update every cross-chapter link when renaming a heading; never weaken `tools/check-docs.mjs` to pass.
 - Quote actual UI labels from source; the English guide explains the same controls without inventing a separate UI language.
 - No pixel coordinates, unverified screenshots or FPS promises.

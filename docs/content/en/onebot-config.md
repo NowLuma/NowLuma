@@ -1,9 +1,16 @@
 ---
 title: Bot connections
-description: Per-account message behaviour and HTTP/WebSocket endpoints: tabs, fields, tokens, auto-save, hot reload and recovery.
+description: 'Per-account message behaviour and HTTP/WebSocket endpoints: tabs, fields, tokens, auto-save, hot reload and recovery.'
+tutorial: onebot-config
 ---
 
 # Bot connections
+
+Select the account in the lesson above, open a transport and edit its example configuration. Observe whether a successful save was also applied; use real endpoint addresses and tokens only in your own console.
+
+![Bot connection configuration for an example account](/images/tutorials/connection.png)
+
+_Figure: tutorial endpoints exist only in memory and never open a real listening socket._
 
 Path `/config`. Heading: `按账号管理连接方式与消息行为，改动自动保存。` Every adapter belongs to the selected QQ account; switching accounts with unsaved edits asks `放弃未保存的修改？`.
 
@@ -24,12 +31,12 @@ The active tab is remembered.
 
 ### Status reply
 
-| Setting | Meaning |
-| --- | --- |
-| `启用状态回复` | Anyone can trigger; off means no response |
-| `触发词` | Default `#nl`, max 32 characters; leading/trailing spaces and case ignored |
-| `回复冷却（秒）` | Same conversation is not answered again during cooldown; 0 means unlimited |
-| `拦截已命中的消息` | The trigger is not forwarded downstream; it still replies and logs |
+| Setting            | Meaning                                                                    |
+| ------------------ | -------------------------------------------------------------------------- |
+| `启用状态回复`     | Anyone can trigger; off means no response                                  |
+| `触发词`           | Default `#nl`, max 32 characters; leading/trailing spaces and case ignored |
+| `回复冷却（秒）`   | Same conversation is not answered again during cooldown; 0 means unlimited |
+| `拦截已命中的消息` | The trigger is not forwarded downstream; it still replies and logs         |
 
 ### Notification opt-in
 
@@ -37,12 +44,12 @@ The active tab is remembered.
 
 ## Four transports
 
-| Tab | Default | Purpose |
-| --- | --- | --- |
-| `HTTP 接口` | `127.0.0.1:3000`, path `/` | Local HTTP API; optional WebSocket and SSE |
-| `HTTP 推送` | `http://127.0.0.1:5700` | Push events to a URL |
-| `WebSocket 监听` | `127.0.0.1:3001`, role `Universal` | Wait for bot connections |
-| `反向 WebSocket` | `ws://127.0.0.1:8080/ws`, reconnect 5000 ms | Connect out to the bot |
+| Tab              | Default                                     | Purpose                                    |
+| ---------------- | ------------------------------------------- | ------------------------------------------ |
+| `HTTP 接口`      | `127.0.0.1:3000`, path `/`                  | Local HTTP API; optional WebSocket and SSE |
+| `HTTP 推送`      | `http://127.0.0.1:5700`                     | Push events to a URL                       |
+| `WebSocket 监听` | `127.0.0.1:3001`, role `Universal`          | Wait for bot connections                   |
+| `反向 WebSocket` | `ws://127.0.0.1:8080/ws`, reconnect 5000 ms | Connect out to the bot                     |
 
 Copied addresses never include the token or query parameters: `复制地址不含令牌，请在机器人程序中单独填写。` Listening does not mean a bot has connected.
 
@@ -59,13 +66,13 @@ Deleting asks `删除连接 …？`, explains that this removes the configuratio
 
 ## Dialog fields
 
-| Section | Fields |
-| --- | --- |
-| Connection | `启用`, `名称`, transport-specific defaults |
-| Authentication | `授权 Token` with generate, copy and show/hide |
-| Behaviour | `启用 WebSocket`, `启用 SSE`, `消息格式` (`数组` / `CQ 码`), `角色` (`Universal` / `Event` / `Api`), `上报自身消息` |
-| Address | `主机`, `端口`, `路径` or `目标 URL`, `超时 (ms)`, `重连间隔 (ms)` |
-| Advanced | `单帧上限 (bytes)` |
+| Section        | Fields                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Connection     | `启用`, `名称`, transport-specific defaults                                                                         |
+| Authentication | `授权 Token` with generate, copy and show/hide                                                                      |
+| Behaviour      | `启用 WebSocket`, `启用 SSE`, `消息格式` (`数组` / `CQ 码`), `角色` (`Universal` / `Event` / `Api`), `上报自身消息` |
+| Address        | `主机`, `端口`, `路径` or `目标 URL`, `超时 (ms)`, `重连间隔 (ms)`                                                  |
+| Advanced       | `单帧上限 (bytes)`                                                                                                  |
 
 `127.0.0.1` accepts local connections only. `0.0.0.0` requires a firewall and a strong token; the dialog warns about this. Duplicate names show `名称与其它节点重复` and block save. The footer uses `添加连接` / `保存连接`, with `保存中…` while writing.
 
@@ -97,11 +104,11 @@ Goal: expose account `10001` over HTTP on port 3000.
 
 ## Troubleshooting
 
-| Symptom | Check |
-| --- | --- |
-| Bot cannot connect | Enabled, address, port, path, token |
-| Row says `未启用` | Turn the toggle on; deleting is not pausing |
-| `应用失败` | Saved but hot reload failed; read the error and save again |
-| Token change dropped bots | Expected; update the bot with the new token |
-| Offline account | Save succeeds but waits for next connect |
-| Empty tab | Create the first connection of that type |
+| Symptom                   | Check                                                      |
+| ------------------------- | ---------------------------------------------------------- |
+| Bot cannot connect        | Enabled, address, port, path, token                        |
+| Row says `未启用`         | Turn the toggle on; deleting is not pausing                |
+| `应用失败`                | Saved but hot reload failed; read the error and save again |
+| Token change dropped bots | Expected; update the bot with the new token                |
+| Offline account           | Save succeeds but waits for next connect                   |
+| Empty tab                 | Create the first connection of that type                   |

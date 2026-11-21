@@ -1,19 +1,26 @@
 ---
 title: Access and network
 description: Local, SSH, LAN and reverse-proxy access; TLS, desktop authentication, token handling and recovery.
+tutorial: access-network
 ---
 
 # Access and network
+
+The lesson above locates listener settings and diagnostics. SSH forwarding, published ports and TLS certificates still require configuration on your actual deployment.
+
+![Deployment diagnostics on the service settings page](/images/tutorials/deployment-diagnostics.png)
+
+_Figure: sample paths only. Redact real addresses and directories before requesting help._
 
 By default only the local machine can reach the console. Prefer an SSH tunnel for remote use; use an HTTPS reverse proxy for LAN or public entry. Never expose the management UI and desktop directly over plaintext public HTTP.
 
 ## Three entry modes
 
-| Entry | Suitable for | Key point |
-| --- | --- | --- |
-| `http://127.0.0.1:5099` | Same machine | Default bind is `127.0.0.1` |
-| SSH tunnel | Remote server | Only a local port is opened; traffic goes through SSH |
-| LAN / reverse proxy | Trusted network or existing HTTPS | Strong access password; public entry requires TLS |
+| Entry                   | Suitable for                      | Key point                                             |
+| ----------------------- | --------------------------------- | ----------------------------------------------------- |
+| `http://127.0.0.1:5099` | Same machine                      | Default bind is `127.0.0.1`                           |
+| SSH tunnel              | Remote server                     | Only a local port is opened; traffic goes through SSH |
+| LAN / reverse proxy     | Trusted network or existing HTTPS | Strong access password; public entry requires TLS     |
 
 The installer's `1. 仅本机/SSH（推荐）` sets `127.0.0.1`; `2. 局域网` sets `0.0.0.0` and warns that HTTP is unencrypted.
 
@@ -85,13 +92,13 @@ Docker desktop is served under `/desktop/`:
 
 ## Recovery
 
-| Situation | Action |
-| --- | --- |
-| Forgot access password | Stop, back up and move `config/webui.json`, restart to get a new initial password; this also clears 2FA and sessions |
-| Lost 2FA | Use a recovery code; otherwise reset as above |
-| Suspected session leak | Change the password to expire other sessions; review proxy and network access |
-| Insecure banner | Non-loopback without HTTPS; use SSH or TLS |
-| Wrong source behind proxy | Check `trust-proxy` and forwarded headers, never trust all sources |
+| Situation                 | Action                                                                                                               |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Forgot access password    | Stop, back up and move `config/webui.json`, restart to get a new initial password; this also clears 2FA and sessions |
+| Lost 2FA                  | Use a recovery code; otherwise reset as above                                                                        |
+| Suspected session leak    | Change the password to expire other sessions; review proxy and network access                                        |
+| Insecure banner           | Non-loopback without HTTPS; use SSH or TLS                                                                           |
+| Wrong source behind proxy | Check `trust-proxy` and forwarded headers, never trust all sources                                                   |
 
 Recovery is documented in [First run](first-run.md#forgot-password-or-lost-2fa). Resetting authentication does not delete accounts, messages or connections.
 

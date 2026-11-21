@@ -4,204 +4,207 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-    CHAPTERS,
-    LOCALES,
-    buildSite,
-    createSlugger,
-    escapeHtml,
-    parseFrontmatter,
-    plainText,
-    renderInline,
-    renderMarkdown,
-    slugify,
-} from './build-docs.mjs';
+import { buildSite } from './build-docs.mjs';
+import { CHAPTERS, DOCS_BASE, readDocuments } from './docs-metadata.mjs';
 import { checkSite, checkSources } from './check-docs.mjs';
+import {
+  CHAPTER_IDS,
+  tutorialForPage,
+  tutorialSectionForEvent,
+  tutorialUrl,
+} from '../docs/.vitepress/tutorials.mjs';
+import { TUTORIAL_SECTION_ANCHORS } from '../packages/webui/src/demo/tutorial-sections.ts';
 
-test('slugify keeps CJK text and matches the anchors used by the content', () => {
-    assert.equal(slugify(plainText('7. 忘记密码或丢失 2FA')), '7-忘记密码或丢失-2fa');
-    assert.equal(slugify(plainText('通知选择（opt-in）')), '通知选择opt-in');
-    assert.equal(slugify(plainText('QQ 的持久化与手动验证')), 'qq-的持久化与手动验证');
-    assert.equal(slugify(plainText('内置状态命令 `#nl`')), '内置状态命令-nl');
-    assert.equal(slugify(plainText('Every field in the node dialog')), 'every-field-in-the-node-dialog');
+test('tutorial routes accept only the chapter and language allowlists', () => {
+  for (const chapter of CHAPTER_IDS) {
+    for (const lang of ['zh', 'en']) {
+      assert.deepEqual(tutorialForPage(`${lang}/${chapter}.md`, chapter), { chapter, lang });
+      assert.equal(
+        tutorialUrl(DOCS_BASE, chapter, lang),
+        `${DOCS_BASE}demo/?tutorial=${chapter}&lang=${lang}&embed=1`,
+      );
+    }
+  }
+  assert.deepEqual(tutorialForPage('en/logs.md'), { chapter: 'logs', lang: 'en' });
+  assert.equal(tutorialForPage('index.md', 'index'), null);
+  assert.equal(tutorialForPage('en/logs.md', 'debug'), null);
+  assert.equal(tutorialForPage('en/../../demo.md', 'demo'), null);
+  assert.throws(() => tutorialUrl('//example.invalid/', 'logs', 'en'));
+  assert.throws(() => tutorialUrl(DOCS_BASE, 'logs&token=private', 'en'));
+  assert.throws(() => tutorialUrl(DOCS_BASE, 'logs', 'en&embed=0'));
 });
 
-test('slugger de-duplicates repeated headings', () => {
-    const slugger = createSlugger();
-    assert.equal(slugger('Docker'), 'docker');
-    assert.equal(slugger('Docker'), 'docker-1');
-    assert.equal(slugger('Docker'), 'docker-2');
+test('sources use real VitePress frontmatter, links, images and coverage', async () => {
+  assert.deepEqual(await checkSources(), []);
 });
 
-test('frontmatter parsing keeps title and description out of the body', () => {
-    const { data, body } = parseFrontmatter('---\ntitle: 标题\ndescription: 描述\n---\n\n# 标题\n');
-    assert.equal(data.title, '标题');
-    assert.equal(data.description, '描述');
-    assert.equal(body.trim(), '# 标题');
+test('published hash URLs coexist with native VitePress heading anchors', async () => {
+  const documents = await readDocuments();
+  const anchors = documents.get('zh/onebot-config.md').anchors;
+  assert.ok(anchors.has('通知选择opt-in'), 'the published hash remains reachable');
+  assert.ok(anchors.has('通知选择-opt-in'), 'new links use the native framework hash');
+  assert.ok(!documents.get('en/index.md').anchors.has('title-nowluma-documentation'));
+  for (const [chapter, steps] of Object.entries(TUTORIAL_SECTION_ANCHORS)) {
+    for (const anchors of Object.values(steps)) {
+      for (const lang of ['zh', 'en']) {
+        assert.ok(
+          documents.get(`${lang}/${chapter}.md`).anchors.has(anchors[lang]),
+          `${lang}/${chapter}: ${anchors[lang]}`,
+        );
+      }
+    }
+  }
 });
 
-test('inline rendering escapes markup and rewrites chapter links', () => {
-    assert.equal(escapeHtml('<b>&"'), '&lt;b&gt;&amp;&quot;');
-    assert.equal(renderInline('`a < b`'), '<code>a &lt; b</code>');
-    assert.equal(renderInline('**粗体**'), '<strong>粗体</strong>');
-    assert.equal(renderInline('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
-    assert.equal(
-        renderInline('[节点配置](onebot-config.md#通知选择opt-in)'),
-        '<a href="onebot-config.html#通知选择opt-in">节点配置</a>',
+test('section requests reject untrusted windows, origins, fields and step IDs', () => {
+  const source = {};
+  const origin = 'https://docs.example.invalid';
+  const lesson = { chapter: 'first-run', lang: 'en' };
+  const data = {
+    type: 'nowluma-tutorial-section',
+    tutorial: 'first-run',
+    step: 'login',
+    lang: 'en',
+  };
+  const request = (changes = {}, event = {}) =>
+    tutorialSectionForEvent(
+      { origin, source, data: { ...data, ...changes }, ...event },
+      origin,
+      source,
+      lesson,
+      TUTORIAL_SECTION_ANCHORS,
     );
-    assert.equal(renderInline('[坏链接](javascript:alert(1))'), '[坏链接](javascript:alert(1))');
-    assert.equal(renderInline('[外部](https://example.invalid/)'), '<a href="https://example.invalid/">外部</a>');
+  assert.equal(request(), TUTORIAL_SECTION_ANCHORS['first-run'].login.en);
+  assert.equal(request({}, { origin: 'https://other.example.invalid' }), null);
+  assert.equal(request({}, { source: {} }), null);
+  assert.equal(request({ tutorial: 'logs' }), null);
+  assert.equal(request({ lang: 'zh' }), null);
+  assert.equal(request({ step: 'toString' }), null);
+  assert.equal(request({ step: 'login#arbitrary' }), null);
+  assert.equal(request({ step: { anchor: 'login' } }), null);
+  assert.equal(request({ url: 'https://other.example.invalid/' }), null);
+  assert.equal(request({ anchor: 'login' }), null);
 });
 
-test('markdown rendering covers headings, tables, lists, quotes and code', () => {
-    const { html, headings } = renderMarkdown(
-        [
-            '# 标题',
-            '',
-            '## 二级',
-            '',
-            '| 字段 | 说明 |',
-            '| --- | --- |',
-            '| `端口` | **5099** |',
-            '',
-            '1. 第一步',
-            '   - 子项',
-            '2. 第二步',
-            '',
-            '> 引用 **加粗**',
-            '',
-            '```bash',
-            'bash <(curl https://example.invalid/x.sh)',
-            '```',
-        ].join('\n'),
-        { strings: LOCALES.zh.strings },
-    );
-
-    assert.deepEqual(
-        headings.map((heading) => heading.id),
-        ['标题', '二级'],
-    );
-    assert.match(html, /<table><thead><tr><th scope="col">字段<\/th>/);
-    assert.match(html, /<td><code>端口<\/code><\/td><td><strong>5099<\/strong><\/td>/);
-    assert.match(html, /<ol><li>第一步<ul><li>子项<\/li><\/ul><\/li><li>第二步<\/li><\/ol>/);
-    assert.match(html, /<blockquote><p>引用 <strong>加粗<\/strong><\/p><\/blockquote>/);
-    assert.match(html, /<code class="language-bash">bash &lt;\(curl https:\/\/example.invalid\/x.sh\)<\/code>/);
-    assert.match(html, /id="二级"/);
-});
-
-test('source content passes frontmatter, link, anchor and coverage checks', () => {
-    assert.deepEqual(checkSources(), []);
-});
-
-test('build produces 18 chapters per language, a landing page and a search index', (t) => {
-    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-docs-'));
+test(
+  'real VitePress output preserves base paths, anchors and one safe inline tutorial',
+  { timeout: 180000 },
+  async (t) => {
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-vitepress-'));
     t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
+    await buildSite({ outDir });
+    assert.deepEqual(checkSite({ outDir }), []);
+    assert.ok(
+      checkSite({ outDir, withDemo: true }).some((problem) => problem.includes('demo route')),
+    );
 
-    const result = buildSite({ outDir });
-    assert.equal(result.pages, CHAPTERS.length * 2);
-    assert.equal(result.searchEntries, CHAPTERS.length * 2);
-
-    for (const lang of Object.keys(LOCALES)) {
-        for (const chapter of CHAPTERS) {
-            const file = path.join(outDir, lang, chapter.replace(/\.md$/, '.html'));
-            assert.ok(fs.existsSync(file), `${lang}/${chapter} should be built`);
-        }
+    const file = path.join(outDir, 'en/first-run.html');
+    const original = fs.readFileSync(file, 'utf8');
+    const mutations = [
+      {
+        html: original.replace(
+          /(<iframe\b[^>]*\bsrc=")[^"]*"/,
+          '$1/demo/?tutorial=first-run&amp;lang=en&amp;embed=1"',
+        ),
+        problem: 'base path',
+      },
+      {
+        html: original.replace(/(<iframe\b[^>]*\bsrc=")[^"]*"/, '$1https://example.invalid/demo/"'),
+        problem: 'tutorial iframe must use exactly',
+      },
+      {
+        html: original.replace(/(<iframe\b[^>]*\bsandbox=")/, '$1allow-top-navigation '),
+        problem: 'unsafe sandbox',
+      },
+      {
+        html: original.replace('</iframe>', '</iframe><iframe src="about:blank"></iframe>'),
+        problem: 'expected one tutorial iframe',
+      },
+    ];
+    try {
+      for (const mutation of mutations) {
+        assert.notEqual(mutation.html, original, 'the regression must modify an actual iframe');
+        fs.writeFileSync(file, mutation.html);
+        assert.ok(
+          checkSite({ outDir }).some((problem) => problem.includes(mutation.problem)),
+          mutation.problem,
+        );
+      }
+    } finally {
+      fs.writeFileSync(file, original);
     }
 
-    assert.ok(fs.existsSync(path.join(outDir, 'index.html')));
-    for (const asset of ['style.css', 'site.js', 'search.json', 'nowluma-mark.svg']) {
-        assert.ok(fs.existsSync(path.join(outDir, 'assets', asset)), `assets/${asset} should be copied`);
-    }
-
-    const page = fs.readFileSync(path.join(outDir, 'zh', 'install-docker.html'), 'utf8');
-    assert.match(page, /<html lang="zh-CN"/);
-    assert.match(page, /aria-current="page"/);
-    assert.match(page, /href="\.\.\/en\/install-docker\.html"/);
-    assert.match(page, /data-search-input/);
-    assert.match(page, /data-demo-link/);
-    assert.match(page, /<link rel="icon" type="image\/svg\+xml" href="\.\.\/assets\/nowluma-mark\.svg">/);
-    assert.match(page, /<img class="brand-mark" src="\.\.\/assets\/nowluma-mark\.svg" alt="" width="27" height="27">/);
-    assert.doesNotMatch(page, /<访问密码>/);
-
-    const landing = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
-    assert.match(landing, /<link rel="icon" type="image\/svg\+xml" href="assets\/nowluma-mark\.svg">/);
-    assert.match(landing, /<img class="landing-mark" src="assets\/nowluma-mark\.svg" alt="" width="48" height="48">/);
-
-    assert.deepEqual(checkSite({ outDir }), []);
-});
-
-test('the demo route is optional by default and required with withDemo', (t) => {
-    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-docs-demo-'));
-    t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
-    buildSite({ outDir });
-
-    assert.deepEqual(checkSite({ outDir }), []);
-
-    const demoDir = path.join(outDir, 'demo');
-    fs.mkdirSync(demoDir);
-    fs.writeFileSync(path.join(demoDir, 'index.html'), '<!doctype html><html lang="zh-CN"><title>demo</title></html>');
-    assert.deepEqual(checkSite({ outDir, withDemo: true }), []);
-
-    fs.rmSync(demoDir, { recursive: true, force: true });
-    const problems = checkSite({ outDir, withDemo: true });
-    assert.ok(problems.some((problem) => problem.includes('demo route')));
-});
+    const linkedFile = path.join(outDir, 'zh/introduction.html');
+    const linked = fs.readFileSync(linkedFile, 'utf8');
+    const broken = linked.replace('id="三种不同的保存结果"', 'id="renamed-save-results"');
+    assert.notEqual(broken, linked, 'the regression must rename a real linked heading');
+    fs.writeFileSync(linkedFile, broken);
+    assert.ok(checkSite({ outDir }).some((problem) => problem.includes('missing anchor')));
+  },
+);
 
 // Official https://www.gnu.org/licenses/gpl-3.0.txt (35149 bytes).
 const GPL3_SHA256 = '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986';
 
 test('LICENSE is the unmodified GNU GPLv3 text', () => {
-    const licence = fs.readFileSync(new URL('../LICENSE', import.meta.url));
-    assert.equal(createHash('sha256').update(licence).digest('hex'), GPL3_SHA256);
+  const licence = fs.readFileSync(new URL('../LICENSE', import.meta.url));
+  assert.equal(createHash('sha256').update(licence).digest('hex'), GPL3_SHA256);
 
-    const text = licence.toString('utf8');
-    assert.match(text, /^ {20}GNU GENERAL PUBLIC LICENSE\n {23}Version 3, 29 June 2007\n/);
-    assert.ok(text.endsWith('why-not-lgpl.html>.\n'));
-    assert.ok(!/Nowluma/i.test(text), 'LICENSE must not carry project-specific additions');
+  const text = licence.toString('utf8');
+  assert.match(text, /^ {20}GNU GENERAL PUBLIC LICENSE\n {23}Version 3, 29 June 2007\n/);
+  assert.ok(text.endsWith('why-not-lgpl.html>.\n'));
+  assert.ok(!/Nowluma/i.test(text), 'LICENSE must not carry project-specific additions');
 });
 
 test('licence metadata, recorded GPL hash and infringement contact stay in sync', () => {
-    const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-    const lastLine = readme
-        .split(/\r?\n/)
-        .filter((line) => line.trim() !== '')
-        .at(-1);
-    assert.match(lastLine, /^本项目参考了 \*\*[A-Za-z]{3,}\*\* 的实现思路。$/);
+  const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  const lastLine = readme
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== '')
+    .at(-1);
+  assert.match(lastLine, /^本项目参考了 \*\*[A-Za-z]{3,}\*\* 的实现思路。$/);
 
-    const contact = 'ws675170761@gmail.com';
-    assert.equal(readme.split(contact).length - 1, 1, 'README is the only infringement contact');
-    for (const file of ['LICENSE', 'LICENSING.md', 'EULA.md', 'PRIVACY.md', 'CONTRIBUTING.md', 'deploy/README.md']) {
-        const text = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-        assert.ok(!text.includes(contact), `${file} must not carry the contact email`);
-    }
+  const contact = 'ws675170761@gmail.com';
+  assert.equal(readme.split(contact).length - 1, 1, 'README is the only infringement contact');
+  for (const file of [
+    'LICENSE',
+    'LICENSING.md',
+    'EULA.md',
+    'PRIVACY.md',
+    'CONTRIBUTING.md',
+    'deploy/README.md',
+  ]) {
+    const text = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    assert.ok(!text.includes(contact), `${file} must not carry the contact email`);
+  }
 
-    const licensing = fs.readFileSync(new URL('../LICENSING.md', import.meta.url), 'utf8');
-    assert.ok(licensing.includes(GPL3_SHA256), 'LICENSING.md must record the shipped GPL text hash');
-    assert.ok(licensing.includes('https://www.gnu.org/licenses/gpl-3.0.txt'));
+  const licensing = fs.readFileSync(new URL('../LICENSING.md', import.meta.url), 'utf8');
+  assert.ok(licensing.includes(GPL3_SHA256), 'LICENSING.md must record the shipped GPL text hash');
+  assert.ok(licensing.includes('https://www.gnu.org/licenses/gpl-3.0.txt'));
 
-    const root = new URL('../', import.meta.url);
-    const packageFiles = [
-        'package.json',
-        ...fs.readdirSync(new URL('packages', root)).map((name) => `packages/${name}/package.json`),
-    ];
-    for (const file of packageFiles) {
-        const pkg = JSON.parse(fs.readFileSync(new URL(file, root), 'utf8'));
-        assert.equal(pkg.license, 'GPL-3.0-only', `${file} should declare GPL-3.0-only`);
-        assert.ok(!JSON.stringify(pkg).includes(contact), `${file} must not carry the contact email`);
-    }
+  const root = new URL('../', import.meta.url);
+  const packageFiles = [
+    'package.json',
+    ...fs.readdirSync(new URL('packages', root)).map((name) => `packages/${name}/package.json`),
+  ];
+  for (const file of packageFiles) {
+    const pkg = JSON.parse(fs.readFileSync(new URL(file, root), 'utf8'));
+    assert.equal(pkg.license, 'GPL-3.0-only', `${file} should declare GPL-3.0-only`);
+    assert.ok(!JSON.stringify(pkg).includes(contact), `${file} must not carry the contact email`);
+  }
 });
 
 test('coverage features map to known chapters and include performance mode', () => {
-    const coverage = JSON.parse(
-        fs.readFileSync(new URL('../docs/content/coverage.json', import.meta.url), 'utf8'),
-    );
-    const ids = new Set();
-    for (const feature of coverage.features) {
-        assert.ok(feature.id && !ids.has(feature.id), `duplicate or empty feature id: ${feature.id}`);
-        ids.add(feature.id);
-        for (const page of feature.pages) {
-            assert.ok(CHAPTERS.includes(page), `${feature.id} points at unknown page ${page}`);
-        }
+  const coverage = JSON.parse(
+    fs.readFileSync(new URL('../docs/content/coverage.json', import.meta.url), 'utf8'),
+  );
+  const ids = new Set();
+  for (const feature of coverage.features) {
+    assert.ok(feature.id && !ids.has(feature.id), `duplicate or empty feature id: ${feature.id}`);
+    ids.add(feature.id);
+    for (const page of feature.pages) {
+      assert.ok(CHAPTERS.includes(page), `${feature.id} points at unknown page ${page}`);
     }
-    assert.ok(ids.has('appearance-performance-mode'), 'performance mode should be covered');
+  }
+  assert.ok(ids.has('appearance-performance-mode'), 'performance mode should be covered');
 });

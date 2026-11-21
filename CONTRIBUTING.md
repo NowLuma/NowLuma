@@ -15,6 +15,8 @@ node tools/check-release-layout.mjs dist
 node tools/check-identity.mjs
 ```
 
+文档使用 VitePress，`pnpm docs:dev` 同时启动文档和内嵌模拟器；`pnpm docs:build:all` 构建并检查完整站点，`pnpm docs:preview` 预览产物。章节内容在 `docs/content/{zh,en}`，配图在 `docs/content/public/images/tutorials`。
+
 修改 OneBot 动作名称、文档或返回 schema 后运行：
 
 ```bash

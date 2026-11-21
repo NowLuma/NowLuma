@@ -1,0 +1,34 @@
+{
+    "zh/access-network.md": {
+        "HTTPS / TLS": "https--tls",
+        "令牌、密码与会话": "令牌密码与会话"
+    },
+    "zh/data-backup.md": {
+        "数据、备份与更新": "数据备份与更新"
+    },
+    "zh/install-docker.md": {
+        "Docker 安装（Linux）": "docker-安装linux"
+    },
+    "zh/introduction.md": {
+        "四类“连接”": "四类连接"
+    },
+    "zh/onebot-config.md": {
+        "通知选择（opt-in）": "通知选择opt-in"
+    },
+    "zh/qq-connection.md": {
+        "第一步：让 QQ 出现": "第一步让-qq-出现"
+    },
+    "zh/settings-console.md": {
+        "偏好设置：外观与账号": "偏好设置外观与账号"
+    },
+    "zh/settings-runtime.md": {
+        "偏好设置：运行与服务": "偏好设置运行与服务",
+        "HTTPS / TLS": "https--tls"
+    },
+    "en/access-network.md": {
+        "HTTPS / TLS": "https--tls"
+    },
+    "en/settings-runtime.md": {
+        "HTTPS / TLS": "https--tls"
+    }
+}

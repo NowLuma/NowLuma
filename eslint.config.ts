@@ -15,6 +15,7 @@ export const sourceIgnores = globalIgnores([
     '**/coverage/**',
     '**/.turbo/**',
     '**/.vite/**',
+    'docs/.vitepress/cache/**',
     '.claude/**',
     'dev/**',
     '**/*.tsbuildinfo',

@@ -30,17 +30,16 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Test the docs builder
+      - name: Test documentation contracts
         run: node --test tools/docs.test.mjs
       - name: Build the documentation site
         run: node tools/build-docs.mjs
       - name: Check generated pages, links and anchors
         run: node tools/check-docs.mjs
       - name: Build the static simulator demo
-        if: ${{ hashFiles('packages/webui/vite.demo.config.ts') != '' }}
+        # Every tutorial embeds this route; it is a required part of the site.
         run: pnpm --filter webui exec vite build --config vite.demo.config.ts
       - name: Check the demo route
-        if: ${{ hashFiles('packages/webui/vite.demo.config.ts') != '' }}
         run: node tools/check-docs.mjs --with-demo
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1

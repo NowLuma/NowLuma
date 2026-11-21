@@ -1,26 +1,33 @@
 ---
 title: Planned and unverified
 description: The real status of the rewrite kernel, platforms, release artifacts, documentation site and performance effects; what is NOT RUN.
+tutorial: planned
 ---
 
 # Planned and unverified
 
+Use the lesson above to inspect kernel availability and the version entry. An unavailable option is not a hidden feature; neither the simulator nor a successful build proves platform support.
+
+![Available and unavailable choices in the kernel dialog](/images/tutorials/account-kernel.png)
+
+_Figure: example account selection. The rewrite kernel remains unavailable._
+
 This page states only what can currently be confirmed. Plans, successful builds and old CI history are not real-account acceptance.
 
-| Item | Status | What you can say |
-| --- | --- | --- |
-| Account kernel choice | Implemented; compatibility selectable | Persisted per real UIN; risk acknowledgement required |
-| Rewrite kernel | Visible as `暂不可用` | Unverified on this platform; no automatic fallback |
-| Six original prebuilt files | Used by the current release | Internal bytes and required old socket ABI unchanged |
-| External rewrite attempt | Incomplete, not shipped | Not the current access kernel |
-| Windows exe | Built, unsigned | Bundled Node 24 and self-contained .NET; real account unverified |
-| Docker arm64 | Build inputs exist | Not actually verified |
-| Display effects | Implemented | Motion and glass quality are manual; no FPS or power claims |
-| QQ desktop entry | Decided by runtime server capability | Shown only on a Linux server with the same-origin gateway; not on Windows native or old servers |
-| Auto-attach | Implemented | Local QQ login, recognized real UIN and a current-risk-version acknowledgement; manual unload does not auto-resume |
-| Static documentation site | 18 chapters × 2 languages and `/demo/` build | Publishing is by the maintainer; not claimed live |
-| Real QQ login/delivery | Needs your account | CI does not prove QR-free login, delivery or long-term stability |
-| Signed artifacts/official image tags | Not confirmed | Do not claim they exist |
+| Item                        | Status                                                                            | What you can say                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Account kernel choice       | Implemented; compatibility selectable                                             | Persisted per real UIN; risk acknowledgement required                                                              |
+| Rewrite kernel              | Visible as `暂不可用`                                                             | Unverified on this platform; no automatic fallback                                                                 |
+| Six original prebuilt files | Used by the current release                                                       | Internal bytes and required old socket ABI unchanged                                                               |
+| External rewrite attempt    | Incomplete, not shipped                                                           | Not the current access kernel                                                                                      |
+| Windows exe                 | Built, unsigned                                                                   | Bundled Node 24 and self-contained .NET; real account unverified                                                   |
+| Docker arm64                | Build inputs exist                                                                | Not actually verified                                                                                              |
+| Display effects             | Implemented                                                                       | Motion and glass quality are manual; no FPS or power claims                                                        |
+| QQ desktop entry            | Decided by runtime server capability                                              | Shown only on a Linux server with the same-origin gateway; not on Windows native or old servers                    |
+| Auto-attach                 | Implemented                                                                       | Local QQ login, recognized real UIN and a current-risk-version acknowledgement; manual unload does not auto-resume |
+| Documentation and tutorials | VitePress bilingual chapters with inline guided lessons                           | Check the [public site](https://wsxyt.github.io/Nowluma/) and its matching Pages deployment                        |
+| Real QQ login/delivery      | Needs your account                                                                | CI does not prove QR-free login, delivery or long-term stability                                                   |
+| Releases and signing        | x64 RC, checksums and versioned GHCR image are published; Windows exe is unsigned | Only claim assets actually present on the release page; provenance is not account acceptance                       |
 
 ## Rewrite kernel
 
@@ -70,11 +77,11 @@ A successful build, provenance attestation or checksum proves origin and integri
 
 ## Verify yourself
 
-| Item | How |
-| --- | --- |
-| QQ auto-login | Restart and watch the QQ desktop; see [manual verification](data-backup.md#qq-persistence-and-manual-verification) |
-| Bot replies | Real account + real endpoint + the bot's own log |
-| Message delivery | What the receiving side actually gets |
-| Long-term stability | Record version, time and observations |
-| Account restriction risk | No probability is offered |
-| arm64 | Build and run on that machine |
+| Item                     | How                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| QQ auto-login            | Restart and watch the QQ desktop; see [manual verification](data-backup.md#qq-persistence-and-manual-verification) |
+| Bot replies              | Real account + real endpoint + the bot's own log                                                                   |
+| Message delivery         | What the receiving side actually gets                                                                              |
+| Long-term stability      | Record version, time and observations                                                                              |
+| Account restriction risk | No probability is offered                                                                                          |
+| arm64                    | Build and run on that machine                                                                                      |

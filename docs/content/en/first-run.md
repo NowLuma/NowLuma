@@ -1,9 +1,16 @@
 ---
 title: First run
 description: From the splash and console password through 2FA, the notices step and setting a new password, to the first account entry point.
+tutorial: first-run
 ---
 
 # First run
+
+Follow the lesson above with its public example credentials before repeating the four setup stages on your own instance. Never enter a real password in the tutorial.
+
+![First-run notices and the unchecked confirmation control](/images/tutorials/first-run.png)
+
+_Figure: sample notices. A real instance serves its own versioned documents._
 
 The first visit checks the console password, then completes four browser-based stages: notices, password, display effects and account kernel.
 
@@ -29,12 +36,12 @@ The installer or startup log prints the initial password. It is only for the fir
 
 When 2FA is enabled, a correct password also needs a one-time code:
 
-| Control | Use |
-| --- | --- |
-| `验证码` | 6-digit Authenticator code; paste the whole code into any cell |
-| `使用恢复码` | Switch to a recovery code; hyphens are ignored |
-| `改用验证码` | Switch back to the 6-digit code |
-| `恢复码` | Each code works once; remaining count is shown under Settings → `账号安全` |
+| Control      | Use                                                                        |
+| ------------ | -------------------------------------------------------------------------- |
+| `验证码`     | 6-digit Authenticator code; paste the whole code into any cell             |
+| `使用恢复码` | Switch to a recovery code; hyphens are ignored                             |
+| `改用验证码` | Switch back to the 6-digit code                                            |
+| `恢复码`     | Each code works once; remaining count is shown under Settings → `账号安全` |
 
 Wrong second factors show `验证码不正确，改错的那一位即可。` or `恢复码不正确，改错的那一位即可。` without clearing the other cells.
 
@@ -85,17 +92,28 @@ When you need the graphical QQ, press `打开 QQ 桌面` (shown only when the se
 
 ## Forgot password or lost 2FA
 
-There is one local account and no email recovery. If you cannot log in:
+There is one local account and no email recovery. Reset only when you genuinely cannot sign in: this removes 2FA and existing sessions. Leave other configuration and QQ HOME intact.
+
+For **Docker installations**, configuration lives in a named volume, not the repository's `config/` directory. Stop the service from its installation directory, then mount the same volume with the original Compose configuration and retain the authentication file:
 
 ```bash
 bash deploy/manage.sh stop
-cp -a config config.backup-$(date +%F)
-mv config/webui.json config/webui.json.old
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no-deps \
+  --user 1000:1000 --entrypoint bash nowluma -lc '
+    set -eu
+    cd /app/config
+    backup="webui.json.recovery-$(date -u +%Y%m%dT%H%M%SZ)"
+    test -f webui.json
+    test ! -e "$backup"
+    mv -- webui.json "$backup"
+  '
 bash deploy/manage.sh start
 bash deploy/manage.sh logs
 ```
 
-The startup log prints a new initial password. This also clears 2FA and all sessions; `config.backup-*` is a rollback copy, not something to delete. `NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` only supplies an initial password when `webui.json` does not exist.
+For a **native runtime**, stop Nowluma with Ctrl+C. In the actual runtime directory containing `index.mjs`, rename `config/webui.json` to an unused backup name, then start normally. The Windows executable's runtime is under `%LOCALAPPDATA%\Nowluma`; do not edit an unused copy in Downloads.
+
+Read the startup log for the new initial password and complete first-run setup. Keep the old file. To roll back, stop the service before restoring its original name; its old password, 2FA and sessions return too. `NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` only supplies an initial password when `webui.json` is absent; it does not override existing authentication.
 
 ## Notice status failed to load
 
@@ -107,9 +125,9 @@ If the page says `协议状态加载失败`, the console cannot confirm the noti
 
 ## Save and restart
 
-| Action | Stored in | Restart? |
-| --- | --- | --- |
-| Notice acknowledgement | Server config | No |
-| Password change | scrypt hash in `config/webui.json` | No; other sessions expire |
-| Enable/disable 2FA | `config/webui.json` | No |
-| Log out | Current browser session only | No |
+| Action                 | Stored in                          | Restart?                  |
+| ---------------------- | ---------------------------------- | ------------------------- |
+| Notice acknowledgement | Server config                      | No                        |
+| Password change        | scrypt hash in `config/webui.json` | No; other sessions expire |
+| Enable/disable 2FA     | `config/webui.json`                | No                        |
+| Log out                | Current browser session only       | No                        |

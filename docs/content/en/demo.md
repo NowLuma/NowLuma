@@ -1,31 +1,38 @@
 ---
 title: Practice demo
-description: The /demo/ environment in the static documentation site: explore the new workspace with simulated data, without connecting a real QQ.
+description: 'The /demo/ environment in the documentation site: learn the workspace using guided example data without connecting a real QQ account.'
+tutorial: demo
 ---
 
 # Practice demo
 
+Every chapter has its own embedded lesson above the text. The objective, hint and progress follow that chapter; restart the lesson to practise again without repeating unrelated setup.
+
+![Tutorial guidance alongside the actual console](/images/tutorials/simulator-guide.png)
+
+_Figure: example data; guidance never accepts real account risks or sends real messages for you._
+
 The documentation site includes a `/demo/` environment that renders console components with simulated data. Use it to learn the new workspace before touching a real instance.
 
-**Status:** it is part of the static documentation build and exists only when that build includes the simulator. Publishing is performed by the maintainer; this page does not claim it is already live.
+Each embedded simulator selects that chapter's operation path. First-run lessons begin at login; other lessons can use a preloaded example account. Standalone `/demo/` remains available for free exploration, not as a substitute for chapter guidance.
 
 ## Opening it
 
-- Use `模拟练习` in the site header or the link on this page to open `/demo/`.
+- Use the console above, follow its current objective, then continue. Operational steps cannot be skipped by pressing Continue before their result is confirmed.
 - Paths are relative, so it works under the `/Nowluma/` base path and in a local static preview.
 - Use only the public example password and code shown on the page; no real QQ account or OneBot token is required.
 
 ## What you can practise
 
-| Scenario | Chapter |
-| --- | --- |
-| Floating navigation, masthead, connection workflow, runtime readings | [Workspace](overview.md) |
-| Four-stage setup: notices, access password, manual display effects and account kernel | [First run](first-run.md) |
-| Process states and the attach confirmation | [QQ sessions](qq-connection.md) |
-| Four transport tabs and save states | [Bot connections](onebot-config.md) |
-| Log presets, search and the TRACE warning | [Run log](logs.md) |
-| Action testing, message composition and live activity | [Debug tools](debug.md) |
-| Settings categories and save/restart hints | [Settings: appearance and account](settings-console.md) |
+| Scenario                                                                              | Chapter                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Floating navigation, masthead, connection workflow, runtime readings                  | [Workspace](overview.md)                                |
+| Four-stage setup: notices, access password, manual display effects and account kernel | [First run](first-run.md)                               |
+| Process states and the attach confirmation                                            | [QQ sessions](qq-connection.md)                         |
+| Four transport tabs and save states                                                   | [Bot connections](onebot-config.md)                     |
+| Log presets, search and the TRACE warning                                             | [Run log](logs.md)                                      |
+| Action testing, message composition and live activity                                 | [Debug tools](debug.md)                                 |
+| Settings categories and save/restart hints                                            | [Settings: appearance and account](settings-console.md) |
 
 The simulated data covers normal, empty and error branches, including the difference between `已保存并应用` and `已保存，下次连接时应用`.
 
@@ -39,12 +46,12 @@ The simulated data covers normal, empty and error branches, including the differ
 
 ## Differences from the real console
 
-| Item | Demo | Real console |
-| --- | --- | --- |
-| Data | Fixed simulated data | Your accounts, processes and connections |
-| Network | No real requests | Reads the local service and QQ |
-| Account | Not needed | You must log in inside QQ |
-| Saves | Not persisted | Written to config; applied or restarted as indicated |
-| Kernel | UI demonstration only | Confirmed per real UIN and persisted |
+| Item    | Demo                  | Real console                                         |
+| ------- | --------------------- | ---------------------------------------------------- |
+| Data    | Fixed simulated data  | Your accounts, processes and connections             |
+| Network | No real requests      | Reads the local service and QQ                       |
+| Account | Not needed            | You must log in inside QQ                            |
+| Saves   | Not persisted         | Written to config; applied or restarted as indicated |
+| Kernel  | UI demonstration only | Confirmed per real UIN and persisted                 |
 
 There is no hidden bypass in the demo. For real use, follow [First run](first-run.md) and [QQ sessions](qq-connection.md). Real behaviour must be verified with a real account and endpoint.

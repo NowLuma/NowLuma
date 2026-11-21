@@ -1,20 +1,27 @@
 ---
 title: Debug tools
 description: Four workspaces for action calls, message composition, live activity and the API library, plus side-effect and account safety boundaries.
+tutorial: debug
 ---
 
 # Debug tools
+
+The lesson above runs actions only for an example account. Read the action description before entering parameters; real sends, deletions and changes require the correct account and destination.
+
+![Debug action, account and parameter controls](/images/tutorials/debug.png)
+
+_Figure: an example action call cannot prove QQ delivery._
 
 Path `/debug`. It is a developer and troubleshooting workspace: call OneBot actions, compose and send messages, watch live activity, and read the API catalog. The header says `选择账号与接口，构建消息并查看实时结果。` and shows `N 个账号 · N 个接口`.
 
 ## Four workspaces
 
-| Tab | Purpose |
-| --- | --- |
-| `接口调用` | Choose account/action, fill parameters, run; streaming and history |
-| `发送消息` | Choose group or friend, compose OneBot segments, send |
-| `活动记录` | Live events and calls; pause, export, search |
-| `接口库` | Browse signatures, parameters, constraints and returns; `试一下` opens the tester |
+| Tab        | Purpose                                                                           |
+| ---------- | --------------------------------------------------------------------------------- |
+| `接口调用` | Choose account/action, fill parameters, run; streaming and history                |
+| `发送消息` | Choose group or friend, compose OneBot segments, send                             |
+| `活动记录` | Live events and calls; pause, export, search                                      |
+| `接口库`   | Browse signatures, parameters, constraints and returns; `试一下` opens the tester |
 
 The first three stay mounted when switching tabs, so drafts and the live feed survive a glance elsewhere. The large API library loads on demand.
 
@@ -47,13 +54,13 @@ Empty messages, missing account or target are rejected with a reason.
 
 Shows `调用` and `事件`.
 
-| Control | Effect |
-| --- | --- |
-| State | `已连接`, `重连中`, `未连接`; a deliberate pause reads `已暂停` |
-| Pause / resume | Stops UI updates, not the server |
-| `导出 JSON` | Exports current activity |
-| `清空` | Clears the current view |
-| Search | Filter by type/account/content; type `全部` / `事件` / `调用` |
+| Control        | Effect                                                          |
+| -------------- | --------------------------------------------------------------- |
+| State          | `已连接`, `重连中`, `未连接`; a deliberate pause reads `已暂停` |
+| Pause / resume | Stops UI updates, not the server                                |
+| `导出 JSON`    | Exports current activity                                        |
+| `清空`         | Clears the current view                                         |
+| Search         | Filter by type/account/content; type `全部` / `事件` / `调用`   |
 
 If the client is too slow, the UI states `因客户端过慢丢弃了 N 条` instead of pretending the feed is complete.
 

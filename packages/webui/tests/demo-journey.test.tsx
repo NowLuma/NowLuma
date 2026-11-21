@@ -4,7 +4,6 @@ import { demoLinkTarget, installDemoIsolation, memoryStorage } from '../src/demo
 
 afterEach(() => vi.unstubAllGlobals());
 
-
 describe('DEMO browser isolation boundary', () => {
     it('keeps all storage memory-only with normal Storage semantics', () => {
         const first = memoryStorage();
@@ -42,14 +41,21 @@ describe('DEMO browser isolation boundary', () => {
         );
     });
 
-    it('never reads existing site credentials and blocks real browser transports before API attach', async () => {
+    it.each([
+        ['?token=do-not-forward', '/Nowluma/demo/'],
+        [
+            '?tutorial=debug&lang=en&embed=1&token=secret&selector=body&url=https://evil.invalid#/settings?tab=storage&token=secret',
+            '/Nowluma/demo/?tutorial=debug&lang=en&embed=1#/settings?tab=storage',
+        ],
+        ['?tutorial=__proto__&password=secret#/https://evil.invalid', '/Nowluma/demo/'],
+    ])('isolates storage and transports while sanitizing %s', async (query, canonical) => {
         const originalFetch = vi.fn();
         const readExisting = vi.fn(() => {
             throw new Error('must never read real storage');
         });
         const host = Object.assign(new EventTarget(), {
             fetch: originalFetch,
-            location: { href: 'https://example.invalid/Nowluma/demo/?token=do-not-forward' },
+            location: { href: `https://example.invalid/Nowluma/demo/${query}` },
             history: { replaceState: vi.fn() },
         });
         Object.defineProperty(host, 'localStorage', { configurable: true, get: readExisting });
@@ -72,7 +78,7 @@ describe('DEMO browser isolation boundary', () => {
         expect(readExisting).not.toHaveBeenCalled();
         expect(isolation.local.getItem('nowluma_token')).toBeNull();
         expect(isolation.session.getItem('nowluma_safe_mode')).toBe('1');
-        expect(host.history.replaceState).toHaveBeenCalledWith({}, '', '/Nowluma/demo/');
+        expect(host.history.replaceState).toHaveBeenCalledWith({}, '', canonical);
         const blocked = await host.fetch('/api/system');
         expect(blocked.status).toBe(503);
         expect(originalFetch).not.toHaveBeenCalled();

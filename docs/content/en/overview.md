@@ -1,9 +1,16 @@
 ---
 title: Workspace
-description: The workspace page: connection workflow, runtime readings, editable widgets, bottom dock, navigation editing, kiosk and mobile layout.
+description: 'The workspace page: connection workflow, runtime readings, editable widgets, bottom dock, navigation editing, kiosk and mobile layout.'
+tutorial: overview
 ---
 
 # Workspace
+
+Find the selected session and next action in the lesson above, then explore the six main routes. Read the state before acting; layout editing is optional.
+
+![Workspace connection workflow and bottom navigation](/images/tutorials/overview.png)
+
+_Figure: example sessions and runtime readings._
 
 The landing page is `/`. The masthead title comes from the current navigation item and reads `工作台`; the page heading is `从会话，到结果`. It combines the connection workflow, runtime readings and an editable widget grid.
 
@@ -16,13 +23,13 @@ The landing page is `/`. The masthead title comes from the current navigation it
 
 ## Masthead and workspace management
 
-| Element | Purpose |
-| --- | --- |
-| Page title | Taken from the current navigation item, e.g. `工作台` |
-| Connection state | Whether the console session is usable; when connected it reads `服务在线`; not QQ online state |
-| Theme menu | Light, dark or follow system; one control, not an old three-icon pill |
-| `工作区管理` | Directly opens the management sheet: reorder/show navigation, open hidden pages, edit layout and see updates |
-| `更多操作` (`⋯`) | Session menu with `展示模式` and `退出登录`; logout is always available |
+| Element          | Purpose                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| Page title       | Taken from the current navigation item, e.g. `工作台`                                                        |
+| Connection state | Whether the console session is usable; when connected it reads `服务在线`; not QQ online state               |
+| Theme menu       | Light, dark or follow system; one control, not an old three-icon pill                                        |
+| `工作区管理`     | Directly opens the management sheet: reorder/show navigation, open hidden pages, edit layout and see updates |
+| `更多操作` (`⋯`) | Session menu with `展示模式` and `退出登录`; logout is always available                                      |
 
 `退出登录` first asks `退出登录？`, then clears the current session token. The connection state, theme menu and kiosk entry can each be hidden under Settings → `外观` → `顶栏`; the page title, workspace management and logout cannot.
 
@@ -30,14 +37,14 @@ The landing page is `/`. The masthead title comes from the current navigation it
 
 Desktop and mobile share a floating, labelled dock:
 
-| Label | Path | Description |
-| --- | --- | --- |
-| 工作台 | `/` | 会话、连接与结果 |
-| QQ 会话 | `/processes` | 选择并接入会话 |
-| 机器人连接 | `/config` | 建立机器人连接 |
-| 运行记录 | `/logs` | 查看连接结果 |
-| 调试工具 | `/debug` | 测试动作与排查 |
-| 偏好设置 | `/settings` | 外观、账号与设备 |
+| Label      | Path         | Description      |
+| ---------- | ------------ | ---------------- |
+| 工作台     | `/`          | 会话、连接与结果 |
+| QQ 会话    | `/processes` | 选择并接入会话   |
+| 机器人连接 | `/config`    | 建立机器人连接   |
+| 运行记录   | `/logs`      | 查看连接结果     |
+| 调试工具   | `/debug`     | 测试动作与排查   |
+| 偏好设置   | `/settings`  | 外观、账号与设备 |
 
 This bottom dock is the only primary navigation: there is no collapse button and hover does not push the content. On wide screens, Settings → `外观` → `显示导航说明` controls whether each description is shown; it persists as `sidebarPinned`.
 
@@ -63,18 +70,18 @@ Below it are the `当前 QQ` card and the next-step prompt:
 - The prompt states what to do now, one hint and a primary action; when everything is ready the action is `查看结果`, which opens the run log.
 - `打开 QQ 桌面` appears next to the action only when the server actually provides the same-origin desktop.
 
-| Action | When | Result |
-| --- | --- | --- |
-| `重新检查` | Read failed or state did not change | Re-reads processes and login state |
-| `我已打开 QQ` | No QQ detected | Re-reads the process list |
-| `选择 QQ` | Multiple processes | Opens `选择 QQ 会话`; one account at a time |
-| `重试接入` | Attach failed | Retries attaching the current session |
-| `重新连接` | Existing attachment disconnected | Reconnects the pipe without re-injecting |
-| `选择内核并接入` | Account has no current risk acknowledgement | Opens `选择接入内核`; attaching starts only after confirmation |
-| `已登录，检查状态` | Attached but not logged in | Re-checks login |
-| `配置机器人连接` | Attached but no enabled endpoint | Opens Bot connections |
-| `连接说明` | Everything ready | Explains that the console does not auto-reply |
-| `查看原因` | Read/attach/endpoint problem | Opens the error; failures are not only transient toasts |
+| Action             | When                                        | Result                                                         |
+| ------------------ | ------------------------------------------- | -------------------------------------------------------------- |
+| `重新检查`         | Read failed or state did not change         | Re-reads processes and login state                             |
+| `我已打开 QQ`      | No QQ detected                              | Re-reads the process list                                      |
+| `选择 QQ`          | Multiple processes                          | Opens `选择 QQ 会话`; one account at a time                    |
+| `重试接入`         | Attach failed                               | Retries attaching the current session                          |
+| `重新连接`         | Existing attachment disconnected            | Reconnects the pipe without re-injecting                       |
+| `选择内核并接入`   | Account has no current risk acknowledgement | Opens `选择接入内核`; attaching starts only after confirmation |
+| `已登录，检查状态` | Attached but not logged in                  | Re-checks login                                                |
+| `配置机器人连接`   | Attached but no enabled endpoint            | Opens Bot connections                                          |
+| `连接说明`         | Everything ready                            | Explains that the console does not auto-reply                  |
+| `查看原因`         | Read/attach/endpoint problem                | Opens the error; failures are not only transient toasts        |
 
 If any read fails, the panel shows the error and `重新检查`; it never treats failure as success.
 
@@ -82,14 +89,14 @@ If any read fails, the panel shows the error and `重新检查`; it never treats
 
 `编辑布局` toggles to `完成编辑`; `恢复默认` appears in the page header.
 
-| Action | Desktop | Phone |
-| --- | --- | --- |
-| Move | Drag cards | Drag handles in the single column |
-| Resize | Bottom-right corner | Default widget height |
-| Add | `卡片库` plus button or drag | Eye toggle |
-| Remove | Drag back to `卡片库` | Eye toggle |
-| Configure | Gear on the card | Inline gear |
-| Reset | `恢复默认` | Same |
+| Action    | Desktop                      | Phone                             |
+| --------- | ---------------------------- | --------------------------------- |
+| Move      | Drag cards                   | Drag handles in the single column |
+| Resize    | Bottom-right corner          | Default widget height             |
+| Add       | `卡片库` plus button or drag | Eye toggle                        |
+| Remove    | Drag back to `卡片库`        | Eye toggle                        |
+| Configure | Gear on the card             | Inline gear                       |
+| Reset     | `恢复默认`                   | Same                              |
 
 Desktop is a free 12-column grid; cards do not auto-compact. Mobile order is independent and never rewrites the desktop layout.
 
@@ -99,21 +106,21 @@ Layout, widget settings and mobile order auto-save. On failure the local state r
 
 ## Widgets
 
-| Widget | Visible by default | Content |
-| --- | --- | --- |
-| 控制台连接 | Yes | Whether the console is `服务在线`; otherwise the current status |
-| 已登录会话 | Yes | Attached session count; `—` or `更新失败，显示上次数据` on read failure |
-| QQ 程序 | Yes | Process count with attached/unattached counts, links to QQ sessions |
-| 运行设备 | Yes | Hostname, OS and architecture |
-| 连续运行 | Yes | System and service process uptime |
-| 机器人连接 | Yes | Live endpoint states and filters |
-| 运行动态 | Yes | Recent warnings/errors |
-| 资源用量 | Yes | CPU, memory, processes, heap, external memory |
-| QQ 会话 | Yes | Online account sessions |
-| 便签 | No | Local note up to 4000 characters |
-| 链接卡 | No | Title and http/https link |
-| 账号快捷卡 | No | Summary for one UIN |
-| 通知投递 | No | Recent online/offline notification deliveries |
+| Widget     | Visible by default | Content                                                                 |
+| ---------- | ------------------ | ----------------------------------------------------------------------- |
+| 控制台连接 | Yes                | Whether the console is `服务在线`; otherwise the current status         |
+| 已登录会话 | Yes                | Attached session count; `—` or `更新失败，显示上次数据` on read failure |
+| QQ 程序    | Yes                | Process count with attached/unattached counts, links to QQ sessions     |
+| 运行设备   | Yes                | Hostname, OS and architecture                                           |
+| 连续运行   | Yes                | System and service process uptime                                       |
+| 机器人连接 | Yes                | Live endpoint states and filters                                        |
+| 运行动态   | Yes                | Recent warnings/errors                                                  |
+| 资源用量   | Yes                | CPU, memory, processes, heap, external memory                           |
+| QQ 会话    | Yes                | Online account sessions                                                 |
+| 便签       | No                 | Local note up to 4000 characters                                        |
+| 链接卡     | No                 | Title and http/https link                                               |
+| 账号快捷卡 | No                 | Summary for one UIN                                                     |
+| 通知投递   | No                 | Recent online/offline notification deliveries                           |
 
 Instruments show only real data: a failed read with no cache shows `—`; with cache it says `更新失败，显示上次数据`. There are no invented online counts or FPS metrics.
 
@@ -132,8 +139,8 @@ The same pages and dock adapt to narrow screens: the workflow stacks, widgets be
 
 ## System banners
 
-| Banner | When | Action |
-| --- | --- | --- |
-| Insecure access | Non-loopback without HTTPS | Use SSH or TLS; see [Access and network](access-network.md) |
-| Account database status | Preparing, migrating or failed | Wait or check the log; states are counted separately |
-| Low integrity | Windows only | Follow the temporary/permanent dismissal notice |
+| Banner                  | When                           | Action                                                      |
+| ----------------------- | ------------------------------ | ----------------------------------------------------------- |
+| Insecure access         | Non-loopback without HTTPS     | Use SSH or TLS; see [Access and network](access-network.md) |
+| Account database status | Preparing, migrating or failed | Wait or check the log; states are counted separately        |
+| Low integrity           | Windows only                   | Follow the temporary/permanent dismissal notice             |

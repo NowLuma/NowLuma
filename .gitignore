@@ -7,6 +7,7 @@ node_modules/
 dist/
 **/dist/
 /_site/
+/docs/.vitepress/cache/
 .vscode/
 .idea/
 

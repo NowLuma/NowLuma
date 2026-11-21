@@ -1,9 +1,16 @@
 ---
 title: 参与开发
 description: Nowluma 的 GPL-3.0-only 许可、仓库结构、本地验证、文档构建、变更边界与发行流程。
+tutorial: developing
 ---
 
 # 参与开发
+
+先用上方教学控制台理解真实操作，再修改对应的拥有者模块。开发者演练只预览，不应修改真实密码、风险确认或外观配置。
+
+![开发和排障共用的调试工具页面](/images/tutorials/debug.png)
+
+_图：示例接口调试入口，便于复现操作与核对结果。_
 
 Nowluma 以 GPL-3.0-only 发布。修改和分发源码时遵守 GPLv3；随包原生组件与第三方组件按 `LICENSING.md` 的各自条款处理。
 
@@ -16,18 +23,18 @@ Nowluma 以 GPL-3.0-only 发布。修改和分发源码时遵守 GPLv3；随包�
 
 ## 目录
 
-| 路径 | 负责 |
-| --- | --- |
-| `packages/bridge` | QQ 进程发现、账号识别、原生传输生命周期 |
-| `packages/core` | 每账号编排、WebUI 后端、启动与更新组装 |
-| `packages/onebot` | 动作、事件转换、账号存储、HTTP/WebSocket 传输 |
-| `packages/protocol` | 数据包解析、身份映射、协议与媒体请求 |
-| `packages/common` | 叶子工具；浏览器导入不得拉入 Node 文件系统模块 |
-| `packages/webui` | React 控制台 |
-| `packages/runtime` | 发行脚手架与原始预编译文件 |
-| `packages/sdk` / `mcp` / `ui` | 消费端 API 与工具 |
-| `deploy` | Docker、安装、进程监督、持久化与 smoke |
-| `tools` | 构建、检查、发行与文档脚本 |
+| 路径                          | 负责                                           |
+| ----------------------------- | ---------------------------------------------- |
+| `packages/bridge`             | QQ 进程发现、账号识别、原生传输生命周期        |
+| `packages/core`               | 每账号编排、WebUI 后端、启动与更新组装         |
+| `packages/onebot`             | 动作、事件转换、账号存储、HTTP/WebSocket 传输  |
+| `packages/protocol`           | 数据包解析、身份映射、协议与媒体请求           |
+| `packages/common`             | 叶子工具；浏览器导入不得拉入 Node 文件系统模块 |
+| `packages/webui`              | React 控制台                                   |
+| `packages/runtime`            | 发行脚手架与原始预编译文件                     |
+| `packages/sdk` / `mcp` / `ui` | 消费端 API 与工具                              |
+| `deploy`                      | Docker、安装、进程监督、持久化与 smoke         |
+| `tools`                       | 构建、检查、发行与文档脚本                     |
 
 改动共享函数前先读所有调用方与相邻测试。新增或修改功能时，保持每账号身份、消息历史、非零有符号 int32 消息 ID、teardown 顺序与在途工作不变。
 
@@ -67,12 +74,13 @@ pnpm test:native
 文档在 `docs/content/{zh,en}`，每语言 18 章，共用 `docs/content/coverage.json` 的功能映射。
 
 ```bash
-pnpm docs:build
-pnpm docs:check
+pnpm docs:dev          # 同时启动文档与内嵌模拟器
+pnpm docs:build:all    # 构建并检查完整站点
+pnpm docs:preview     # 预览已构建的站点
 node --test tools/docs.test.mjs
 ```
 
-- 链接用相对路径，保持 `/Nowluma/` 基路径与离线阅读都可用。
+- 章节链接保持 `/Nowluma/` 基路径；本地用 `pnpm docs:dev` 或构建后的 HTTP 预览，不依赖 `file://` 执行交互。
 - 改标题时同时更新所有跨章链接；不要为了通过检查而放宽 `tools/check-docs.mjs`。
 - 界面标签以源码实际文案为准；英文文档解释同一功能，不另造界面文案。
 - 不写像素坐标、未经验证的截图或帧率承诺。

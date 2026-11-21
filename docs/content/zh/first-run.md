@@ -1,9 +1,16 @@
 ---
 title: 首次启动
 description: 从启动画面、访问密码、双重验证到阅读说明与设置新密码，再到第一个 QQ 账号的接入入口。
+tutorial: first-run
 ---
 
 # 首次启动
+
+先在上方引导使用公开示例密码走完四步设置，再对真实实例重复操作。真实密码不要填进教学模拟器。
+
+![首次设置中的说明阅读与确认页面](/images/tutorials/first-run.png)
+
+_图：示例说明文本与未勾选的确认控件；真实实例读取自己的版本化说明。_
 
 首次打开时先验证控制台访问密码，再完成使用说明、访问密码、显示效果和账号内核四步设置。整个过程在浏览器中完成。
 
@@ -29,12 +36,12 @@ description: 从启动画面、访问密码、双重验证到阅读说明与设�
 
 开启 2FA 后，密码验证通过还要输入一次性验证码：
 
-| 控件 | 用法 |
-| --- | --- |
-| 「验证码」 | 输入 Authenticator 中的 6 位验证码，可以整段粘贴到任意一格 |
-| 「使用恢复码」 | 切换到恢复码输入；连字符会自动忽略 |
-| 「改用验证码」 | 从恢复码切回 6 位验证码 |
-| 「恢复码」 | 每个恢复码只能用一次；剩余数量在偏好设置的「账号安全」里查看 |
+| 控件           | 用法                                                         |
+| -------------- | ------------------------------------------------------------ |
+| 「验证码」     | 输入 Authenticator 中的 6 位验证码，可以整段粘贴到任意一格   |
+| 「使用恢复码」 | 切换到恢复码输入；连字符会自动忽略                           |
+| 「改用验证码」 | 从恢复码切回 6 位验证码                                      |
+| 「恢复码」     | 每个恢复码只能用一次；剩余数量在偏好设置的「账号安全」里查看 |
 
 验证码或恢复码错误时，页面会提示「验证码不正确，改错的那一位即可。」或「恢复码不正确，改错的那一位即可。」，不会清空其他已填内容。
 
@@ -85,17 +92,28 @@ description: 从启动画面、访问密码、双重验证到阅读说明与设�
 
 ## 忘记密码或丢失 2FA
 
-控制台只有一个本地账号，没有邮箱找回。确认无法登录时：
+控制台只有一个本地账号，没有邮箱找回。只有在确实无法登录时才重置：这会移除 2FA 和现有会话，其他配置与 QQ HOME 不应改动。
+
+**Docker 安装**的配置在命名卷中，不是仓库根目录的 `config/`。在安装目录停止服务，再用原 Compose 配置挂载同一个卷，保留原认证文件：
 
 ```bash
 bash deploy/manage.sh stop
-cp -a config config.backup-$(date +%F)
-mv config/webui.json config/webui.json.old
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no-deps \
+  --user 1000:1000 --entrypoint bash nowluma -lc '
+    set -eu
+    cd /app/config
+    backup="webui.json.recovery-$(date -u +%Y%m%dT%H%M%SZ)"
+    test -f webui.json
+    test ! -e "$backup"
+    mv -- webui.json "$backup"
+  '
 bash deploy/manage.sh start
 bash deploy/manage.sh logs
 ```
 
-启动日志会打印新的初始密码。这个操作会同时清除 2FA 绑定和所有会话；`config.backup-*` 是可回退的备份，不要直接删除。只在没有 `webui.json` 时，`NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` 才能指定初始密码。
+**原生运行**请先用 Ctrl+C 停止 Nowluma，在实际运行目录（含 `index.mjs`）中把 `config/webui.json` 改为一个尚不存在的备份名称，再按原方式启动。Windows exe 的运行目录在 `%LOCALAPPDATA%\Nowluma`；不要改下载目录里未使用的副本。
+
+启动后按日志提示获取新的初始密码并完成首设。保留旧文件，回退时先停止服务，再恢复原名称；旧密码、2FA 与会话也会随原文件恢复。`NOWLUMA_WEBUI_BOOTSTRAP_PASSWORD` 仅在没有 `webui.json` 时提供初始密码，不能覆盖现有认证。
 
 ## 协议状态加载失败
 
@@ -107,9 +125,9 @@ bash deploy/manage.sh logs
 
 ## 保存与重启
 
-| 动作 | 保存位置 | 是否需要重启 |
-| --- | --- | --- |
-| 阅读说明确认 | 服务端配置 | 否 |
-| 修改访问密码 | `config/webui.json` 的 scrypt 哈希 | 否，其他会话立即失效 |
-| 开启/关闭 2FA | `config/webui.json` | 否 |
-| 退出登录 | 仅清除当前浏览器会话 | 否 |
+| 动作          | 保存位置                           | 是否需要重启         |
+| ------------- | ---------------------------------- | -------------------- |
+| 阅读说明确认  | 服务端配置                         | 否                   |
+| 修改访问密码  | `config/webui.json` 的 scrypt 哈希 | 否，其他会话立即失效 |
+| 开启/关闭 2FA | `config/webui.json`                | 否                   |
+| 退出登录      | 仅清除当前浏览器会话               | 否                   |

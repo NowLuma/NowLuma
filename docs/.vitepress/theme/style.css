@@ -1,0 +1,94 @@
+:root {
+  --vp-c-brand-1: #29796e;
+  --vp-c-brand-2: #338d80;
+  --vp-c-brand-3: #267368;
+  --vp-c-brand-soft: rgba(41, 121, 110, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #82c9be;
+  --vp-c-brand-2: #65b3a7;
+  --vp-c-brand-3: #4b9a8e;
+}
+
+.tutorial-simulator {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+}
+
+.tutorial-simulator-toolbar,
+.tutorial-simulator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tutorial-simulator-toolbar {
+  justify-content: space-between;
+}
+
+.tutorial-simulator-toolbar h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.tutorial-simulator-actions {
+  font-size: 0.8rem;
+}
+
+.tutorial-simulator-actions button,
+.tutorial-simulator-actions a {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-brand-1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tutorial-simulator-actions :focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 3px;
+}
+
+.tutorial-simulator iframe {
+  display: block;
+  width: 100%;
+  height: clamp(32rem, 72vh, 56rem);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+}
+
+.vp-doc img[src*='/images/tutorials/'] {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+@media (max-width: 639px) {
+  .tutorial-simulator {
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+    padding: 0.75rem;
+  }
+
+  .tutorial-simulator iframe {
+    height: 42rem;
+    max-height: 85vh;
+    min-height: 30rem;
+  }
+}
+
+@media print {
+  .tutorial-simulator {
+    display: none;
+  }
+}
