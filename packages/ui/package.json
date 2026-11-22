@@ -3,7 +3,7 @@
   "author": {
     "name": "Nowluma contributors"
   },
-  "version": "2.5.0-rc.1",
+  "version": "2.5.0-rc.2",
   "description": "Shared Nowluma UI primitives — Tailwind 4 theme tokens + shadcn-style atomic components",
   "keywords": [
     "nowluma",

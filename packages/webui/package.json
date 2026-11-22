@@ -2,7 +2,7 @@
   "license": "GPL-3.0-only",
   "name": "webui",
   "private": true,
-  "version": "2.5.0-rc.1",
+  "version": "2.5.0-rc.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
