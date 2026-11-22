@@ -1,0 +1,51 @@
+name: Seed Docker Hub latest for the existing rc.2 release
+on:
+  push:
+    branches: [verify/dockerhub-latest-rc2]
+permissions:
+  contents: read
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: dockerhub-release
+    env:
+      IMAGE: docker.io/wsxyt/nowluma
+      VERSION: 2.5.0-rc.2
+      DIGEST: sha256:c570909375d534b0b43fe6b38b8da80a39b715a0ad9cd6c674cbf4ca17640e46
+    steps:
+      - name: Verify and publish the already released manifest
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          url="https://github.com/NowLuma/NowLuma/releases/download/v$VERSION"
+          asset="nowluma-ghcr-linux-x64-$VERSION.txt"
+          curl -fsSL "$url/$asset" -o "$dir/$asset"
+          curl -fsSL "$url/SHA256SUMS" -o "$dir/SHA256SUMS"
+          (cd "$dir"; awk -v asset="$asset" '$2 == asset' SHA256SUMS | sha256sum -c --strict)
+          grep -Fxq "digest: $DIGEST" "$dir/$asset"
+          command -v skopeo >/dev/null || sudo apt-get install -y skopeo
+          check() {
+            hash=$(skopeo inspect --no-creds --raw "docker://$IMAGE:$1" | sha256sum)
+            test "sha256:${hash%% *}" = "$DIGEST"
+          }
+          check "$VERSION"
+          if skopeo inspect --no-creds --raw "docker://$IMAGE:latest" > "$dir/current" 2> "$dir/error"; then
+            check latest
+          else
+            grep -Eqi 'manifest unknown|manifest.*not found' "$dir/error" || { cat "$dir/error" >&2; exit 1; }
+            auth="$dir/auth.json"
+            printf '%s' "$DOCKERHUB_TOKEN" | skopeo login --authfile "$auth" --username "$DOCKERHUB_USERNAME" --password-stdin docker.io
+            skopeo copy --all --preserve-digests --authfile "$auth" "docker://$IMAGE@$DIGEST" "docker://$IMAGE:latest"
+            check latest
+          fi
+          export DOCKER_CONFIG="$dir/docker"
+          mkdir "$DOCKER_CONFIG"
+          unset DOCKER_AUTH_CONFIG
+          docker pull --platform linux/amd64 "$IMAGE:latest"
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$IMAGE:latest")" = linux/amd64
+          printf 'Verified anonymously: %s:latest -> %s\n' "$IMAGE" "$DIGEST"
