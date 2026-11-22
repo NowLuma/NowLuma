@@ -85,7 +85,7 @@ export function TopBar({ status, onManageWorkspace, onLogout }: TopBarProps) {
     });
 
     return (
-        <header data-ui-surface="chrome" className="workspace-masthead">
+        <header data-ui-surface="chrome" className="workspace-masthead ui-glass-raised">
             <div className="workspace-masthead-inner max-sm:gap-2! max-sm:pl-[max(12px,env(safe-area-inset-left))]! max-sm:pr-[max(12px,env(safe-area-inset-right))]!">
                 <button
                     type="button"

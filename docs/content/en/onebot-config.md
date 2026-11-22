@@ -6,11 +6,9 @@ tutorial: onebot-config
 
 # Bot connections
 
-Select the account in the lesson above, open a transport and edit its example configuration. Observe whether a successful save was also applied; use real endpoint addresses and tokens only in your own console.
+Choose the QQ account, then configure the transport your bot uses.
 
 ![Bot connection configuration for an example account](/images/tutorials/connection.png)
-
-_Figure: tutorial endpoints exist only in memory and never open a real listening socket._
 
 Path `/config`. Heading: `按账号管理连接方式与消息行为，改动自动保存。` Every adapter belongs to the selected QQ account; switching accounts with unsaved edits asks `放弃未保存的修改？`.
 
@@ -51,7 +49,9 @@ The active tab is remembered.
 | `WebSocket 监听` | `127.0.0.1:3001`, role `Universal`          | Wait for bot connections                   |
 | `反向 WebSocket` | `ws://127.0.0.1:8080/ws`, reconnect 5000 ms | Connect out to the bot                     |
 
-Copied addresses never include the token or query parameters: `复制地址不含令牌，请在机器人程序中单独填写。` Listening does not mean a bot has connected.
+<span id="example" class="legacy-heading-anchor" aria-hidden="true"></span>
+
+To connect a local HTTP bot, add an `HTTP 接口` connection, keep the default loopback address, generate a token and save. Use the saved address and token in the bot's settings, then check the run log and the bot's log for traffic.
 
 ## Connection list
 
@@ -81,23 +81,12 @@ Deleting asks `删除连接 …？`, explains that this removes the configuratio
 - Message behaviour is debounced (500 ms) and auto-saved; `立即保存` forces it.
 - Transport changes are written immediately.
 - Chip meanings: `已保存并应用` (server hot-reloaded), `已保存，下次连接时应用` (offline account or next connect), `已保存，但热重载失败：…`, `保存失败：…`.
-- If only part of the reload fails, the previous endpoints are restored best-effort; the failure is shown rather than reported as success.
-- Offline accounts can still save; the change applies when the account next connects.
-
-## Example
-
-Goal: expose account `10001` over HTTP on port 3000.
-
-1. Select the account, open `HTTP 接口`, `添加连接`.
-2. Keep `127.0.0.1`, port `3000`, path `/`, leave WS/SSE off, copy the generated token.
-3. Save. With the account online, expect `已保存并应用`; offline, expect `已保存，下次连接时应用`.
-4. Copy the endpoint address (no token) and paste it, plus the token, into the bot.
-5. Expected: the row changes to `运行中` once the bot connects. Listening alone is not proof the bot is receiving.
+- If a reload fails in part, read the error and correct the configuration before saving again. The service tries to restore the previous endpoints.
 
 ## Tokens and addresses
 
 - Generate a fresh 32-byte token per endpoint; do not reuse the console password.
-- Copying the address intentionally omits the token; configure it separately.
+- Copying the address omits the token and query parameters. Enter the token separately in the bot.
 - Changing a token disconnects bots using the old one; update and reconnect them.
 - For reverse WebSocket, enter the bot's address, not the console or desktop address.
 - Multiple accounts using listeners need distinct ports and matching published ports.

@@ -150,6 +150,7 @@ export function OnboardingWizardPage({
             canSkip: false,
             hideAdvance: true,
             hideBack: true,
+            scrollMode: 'content',
             content: (
                 <PasswordStep
                     knownOldPassword={knownOldPassword}
@@ -167,7 +168,7 @@ export function OnboardingWizardPage({
 
     const steps: WizardStep[] = [
         ...required,
-        ...additionalSteps.map((step) => ({
+        ...additionalSteps.map<WizardStep>((step) => ({
             id: step.id,
             label:
                 step.id === 'display-effects' && step.label === '显示效果'
@@ -179,6 +180,7 @@ export function OnboardingWizardPage({
             canSkip: step.canSkip,
             onSkip: step.onSkip,
             hideAdvance: step.hideAdvance,
+            scrollMode: step.id === 'display-effects' ? 'content' : undefined,
         })),
     ];
 
@@ -301,6 +303,7 @@ function AgreementStep({
 
     return (
         <div className="flex h-full min-h-0 flex-col">
+            <div className="workspace-step-body">
             <div className="flex items-start gap-3 sm:gap-4">
                 <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
                     <ScrollText className="size-5" />
@@ -344,8 +347,8 @@ function AgreementStep({
                 </p>
             ) : null}
 
-            <div
-                className="workspace-agreement-reading mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[4px] border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
+            <section
+                className="workspace-agreement-reading ui-glass-raised mt-3 rounded-[var(--radius)] border border-border p-3 outline-none focus-visible:outline-2 focus-visible:outline-ring sm:p-5"
                 tabIndex={0}
                 aria-label={
                     active
@@ -365,7 +368,9 @@ function AgreementStep({
                         </p>
                     )}
                 </div>
+            </section>
             </div>
+            <div className="workspace-step-footer">
 
             <button
                 type="button"
@@ -373,7 +378,7 @@ function AgreementStep({
                 onClick={() => setAgreed((current) => !current)}
                 aria-pressed={agreed}
                 className={cn(
-                    'mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
+                    'flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
                     agreed
                         ? 'border-primary/60 bg-primary/5'
                         : 'border-border hover:border-primary/40 hover:bg-accent/40',
@@ -432,6 +437,7 @@ function AgreementStep({
                     </Button>
                 </div>
             </div>
+            </div>
         </div>
     );
 }
@@ -456,8 +462,8 @@ function PasswordStep({
     const { back, isLast } = useWizardNavigation();
 
     return (
-        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-start py-2 sm:py-5">
-            <div className="mb-6 flex items-start gap-3">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-xl flex-col">
+            <div className="mb-3 flex shrink-0 items-center gap-3">
                 <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
                     <ShieldAlert className="size-5" />
                 </div>
@@ -465,17 +471,6 @@ function PasswordStep({
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
                         {t('设置新的访问密码', 'Set a new access password')}
                     </h2>
-                    <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
-                        {mode === 'rehearsal'
-                            ? t(
-                                  '演练密码设置，不保存输入内容。',
-                                  'Practice setting a password. Nothing you enter is saved.',
-                              )
-                            : t(
-                                  '设置用于打开控制台的密码。',
-                                  'Set the password you will use to open the console.',
-                              )}
-                    </p>
                 </div>
             </div>
             <ChangePasswordForm
@@ -492,9 +487,10 @@ function PasswordStep({
                           ? t('保存并完成', 'Save and finish')
                           : t('保存并继续', 'Save and continue')
                 }
-                className="gap-4"
+                className="min-h-0 flex-1"
+                bodyClassName="workspace-step-body"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
-                    <div className="workspace-onboarding-actions grid grid-cols-2 gap-3 pt-2 sm:flex sm:items-center">
+                    <div className="workspace-step-footer workspace-onboarding-actions grid grid-cols-2 gap-3 sm:flex sm:items-center">
                         <Button
                             type="button"
                             variant="outline"

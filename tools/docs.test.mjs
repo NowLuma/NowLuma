@@ -48,6 +48,15 @@ test('published hash URLs coexist with native VitePress heading anchors', async 
   assert.ok(anchors.has('通知选择opt-in'), 'the published hash remains reachable');
   assert.ok(anchors.has('通知选择-opt-in'), 'new links use the native framework hash');
   assert.ok(!documents.get('en/index.md').anchors.has('title-nowluma-documentation'));
+  for (const [lang, title, current, published] of [
+    ['en', 'Roadmap', 'roadmap', 'planned-and-unverified'],
+    ['zh', '路线图', '路线图', '计划中与未验证'],
+  ]) {
+    const roadmap = documents.get(`${lang}/planned.md`);
+    assert.equal(roadmap.frontmatter.title, title);
+    assert.ok(roadmap.anchors.has(current), `${lang}: ${current}`);
+    assert.ok(roadmap.anchors.has(published), `${lang}: ${published}`);
+  }
   for (const [chapter, steps] of Object.entries(TUTORIAL_SECTION_ANCHORS)) {
     for (const anchors of Object.values(steps)) {
       for (const lang of ['zh', 'en']) {
@@ -98,6 +107,13 @@ test(
     t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
     await buildSite({ outDir });
     assert.deepEqual(checkSite({ outDir }), []);
+    const installer = path.join(outDir, 'install.sh');
+    const originalInstaller = fs.readFileSync(installer);
+    fs.rmSync(installer);
+    assert.ok(checkSite({ outDir }).includes('missing hosted deployment file install.sh'));
+    fs.writeFileSync(installer, '<html>Not found</html>');
+    assert.ok(checkSite({ outDir }).includes('hosted deployment file differs from deploy/install.sh'));
+    fs.writeFileSync(installer, originalInstaller);
     assert.ok(
       checkSite({ outDir, withDemo: true }).some((problem) => problem.includes('demo route')),
     );
@@ -143,6 +159,13 @@ test(
           '$1',
         ),
         problem: 'disabled until hydration',
+      },
+      {
+        html: original.replace(
+          /(<div\b[^>]*\bid="tutorial-simulator-stage"[^>]*?) inert(?=[\s>])/,
+          '$1',
+        ),
+        problem: 'an inert stage',
       },
       {
         html: original.replace(

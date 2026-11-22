@@ -31,8 +31,8 @@ export const DEMO_JOURNEY = [
             en: 'Load → Choose attachment kernel → Acknowledge risks → Confirm and attach',
         },
         description: {
-            zh: '对进程 4242 点「加载」，选择兼容内核并主动勾选风险确认，再确认接入。重写内核不可用。取消不会接入；卸载后保持停止，只有主动再次加载才接入。',
-            en: 'Load process 4242, select the compatible kernel and actively acknowledge its risks. The rewrite is unavailable. Cancel does not attach; unloading stays in effect until another explicit load.',
+            zh: '对进程 4242 点「加载」，选择兼容内核并主动勾选风险确认，再确认接入。重写内核不可用。取消或卸载后保持停止；需要时手动加载。',
+            en: 'Load process 4242, select the compatible kernel and actively acknowledge its risks. The rewrite is unavailable. Cancel or unload leaves it stopped; load manually when needed.',
         },
     },
     {

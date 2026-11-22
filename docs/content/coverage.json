@@ -6,11 +6,11 @@
         "en": "docs/content/en"
     },
     "notes": [
-        "labels 是界面中的真实中文文案；英文文档解释同一控件，不另造界面语言。",
-        "status 取值 implemented / pending-integration / unverified；未验证不等于可用。",
-        "账号内核按真实 UIN 保存到 config/kernel-selections.json；重写内核当前不可选，也不会静默回退。",
-        "Docker smoke 使用全新 HOME，不证明真实 QQ 登录、消息投递或重写内核；Windows 与 arm64 未验证。",
-        "静态文档站点为 18 章 × 2 语言并可使用相对 /demo/；发布由维护者执行。"
+        "labels 记录实际界面文案；文档与模拟器跟随所选语言。",
+        "status 取值 implemented / pending-integration / unverified。",
+        "内核选择按真实 UIN 写入 config/kernel-selections.json。",
+        "Docker smoke 使用全新 HOME，覆盖进程发现、桌面认证和容器重建时的数据持久化；实机验证另行记录。",
+        "静态文档包含中英文各 18 章和独立的 /demo/ 模拟器。"
     ],
     "features": [
         {
@@ -1209,8 +1209,7 @@
             ],
             "status": "implemented",
             "pages": [
-                "settings-console.md",
-                "planned.md"
+                "settings-console.md"
             ]
         },
         {
@@ -1773,8 +1772,7 @@
             "status": "unverified",
             "pages": [
                 "planned.md",
-                "install-docker.md",
-                "introduction.md"
+                "install-docker.md"
             ]
         },
         {
@@ -1786,8 +1784,16 @@
             "status": "pending-integration",
             "pages": [
                 "demo.md",
-                "planned.md",
                 "index.md"
+            ]
+        },
+        {
+            "id": "deploy-docker-hub",
+            "group": "计划",
+            "labels": [],
+            "status": "pending-integration",
+            "pages": [
+                "planned.md"
             ]
         },
         {
@@ -1796,7 +1802,6 @@
             "labels": ["手动显示效果"],
             "status": "implemented",
             "pages": [
-                "planned.md",
                 "settings-console.md"
             ]
         },
@@ -1806,7 +1811,6 @@
             "labels": [],
             "status": "pending-integration",
             "pages": [
-                "planned.md",
                 "settings-console.md"
             ]
         },
@@ -1874,8 +1878,7 @@
             "labels": [],
             "status": "unverified",
             "pages": [
-                "developing.md",
-                "planned.md"
+                "developing.md"
             ]
         }
     ]

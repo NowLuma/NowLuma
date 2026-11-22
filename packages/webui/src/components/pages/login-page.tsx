@@ -25,6 +25,7 @@ interface LoginPageProps {
     initialPassword?: string;
     initialNeedsTotp?: boolean;
     initialUseRecovery?: boolean;
+    autoFocusPassword?: boolean;
 }
 
 export function loginErrorMessage(message: string, recovery: boolean, t: Translate): string {
@@ -66,6 +67,7 @@ export function LoginPage({
     initialPassword = '',
     initialNeedsTotp = false,
     initialUseRecovery = false,
+    autoFocusPassword = true,
 }: LoginPageProps) {
     const t = useT();
     const { appearance, performance } = useTheme();
@@ -286,7 +288,7 @@ export function LoginPage({
                                 aria-describedby={error ? 'login-error' : undefined}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                autoFocus
+                                autoFocus={autoFocusPassword}
                                 autoComplete="current-password"
                                 className="h-12 bg-background pl-10 pr-12 text-base"
                             />

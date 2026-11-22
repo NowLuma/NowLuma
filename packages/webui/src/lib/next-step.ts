@@ -148,7 +148,7 @@ const STEP_COPY = {
     ],
     'manual-stopped': [
         ['QQ 会话已停止', 'The QQ session was stopped'],
-        ['不会自动重新接入。', 'It will not reconnect automatically.'],
+        ['需要时手动接入。', 'Load it manually when needed.'],
         null,
         null,
     ],

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotionConfig } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -142,6 +143,8 @@ export type CollapsibleBannerProps = {
     onDismissed?: () => void;
     dismissLabel?: string;
     dismissedMessage?: string;
+    /** Bounded floating notices may use optics; in-flow banners stay matte. */
+    optical?: boolean;
     className?: string;
 };
 
@@ -159,6 +162,7 @@ export function CollapsibleBanner({
     onDismissed,
     dismissLabel = 'Dismiss notice',
     dismissedMessage = 'Notice dismissed.',
+    optical = false,
     className = '',
 }: CollapsibleBannerProps) {
     const reduced = useReducedMotionConfig() === true;
@@ -251,8 +255,9 @@ export function CollapsibleBanner({
                     aria-labelledby={titleId}
                     aria-hidden={dismissed}
                     inert={dismissed}
-                    className={`action-feedback-surface rounded-[14px] border border-border/80 bg-popover/95 text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06),0_16px_36px_-18px_rgb(0_0_0/0.5)] backdrop-blur-xl ${className}`}
+                    className={`ui-glass-feedback ${optical ? 'ui-glass-overlay relative' : 'ui-glass-raised'} rounded-[14px] border text-popover-foreground ${className}`}
                 >
+                    {optical && <GlassMaterial />}
                     <div className="flex items-center gap-2.5 px-2.5 py-1">
                         <span
                             aria-hidden="true"

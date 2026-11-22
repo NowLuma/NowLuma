@@ -1,4 +1,5 @@
 import { Dropdown } from '@/components/interior/dropdown';
+import { cn } from '@/lib/utils';
 
 export interface DropdownOption<T extends string> {
     value: T;
@@ -29,7 +30,7 @@ export function DropdownSelect<T extends string>({
             items={options.map((option) => ({ ...option }))}
             onChange={(next) => onChange(next as T)}
             label={ariaLabel}
-            className={className}
+            className={cn('ui-glass-select', className)}
             disabled={disabled}
         />
     );

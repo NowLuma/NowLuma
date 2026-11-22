@@ -668,7 +668,7 @@ export function LogsPage() {
                 data-tutorial-control="log-workspace"
                 className="cp-panel"
             >
-                <div className="cp-log-controls">
+                <div className="cp-log-controls ui-glass-raised">
                     <div className="cp-toolbar gap-2">
                         <GlassSurface className="ui-glass-search cp-search min-w-0 flex-1 basis-56">
                             <Search className="pointer-events-none size-4 shrink-0 text-popover-foreground" />

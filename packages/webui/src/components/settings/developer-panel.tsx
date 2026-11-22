@@ -24,8 +24,8 @@ export function DeveloperPanel() {
                 <SettingRow
                     label={t('首次使用引导', 'First-run setup')}
                     hint={t(
-                        '演练完整引导，不保存协议确认、访问密码或外观设置。',
-                        'Replay setup without saving agreement acceptance, the access password, or appearance settings.',
+                        '预览首次使用引导。',
+                        'Preview first-run setup.',
                     )}
                 >
                     <Button variant="glass" size="sm" onClick={() => setConfirmOnboarding(true)}>
@@ -50,8 +50,8 @@ export function DeveloperPanel() {
                 onOpenChange={setConfirmOnboarding}
                 title={t('重新进入首次使用引导？', 'Replay first-run setup?')}
                 description={t(
-                    '将以演练模式展示完整流程，不会修改协议确认记录、真实访问密码或外观设置。',
-                    'The entire setup runs in rehearsal mode. It will not change your saved agreement acceptance, actual access password, or appearance settings.',
+                    '演练结束后恢复当前设置。',
+                    'Your current settings are restored after the rehearsal.',
                 )}
                 confirmText={t('进入引导', 'Start setup')}
                 onConfirm={restartOnboarding}
@@ -62,8 +62,8 @@ export function DeveloperPanel() {
                 onOpenChange={setConfirmCrash}
                 title={t('触发 WebUI 崩溃测试？', 'Trigger a WebUI crash test?')}
                 description={t(
-                    '当前设置页面将主动抛出测试异常，并交由崩溃界面接管。',
-                    'This Settings page will throw a test error and show the crash screen.',
+                    '预览设置页的崩溃界面。点「重试」返回。',
+                    'Preview the Settings error screen. Select Retry to return.',
                 )}
                 confirmText={t('触发崩溃', 'Trigger crash')}
                 destructive

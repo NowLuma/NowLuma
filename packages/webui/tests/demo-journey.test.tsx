@@ -4,6 +4,54 @@ import { demoLinkTarget, installDemoIsolation, memoryStorage } from '../src/demo
 
 afterEach(() => vi.unstubAllGlobals());
 
+function browserFixture(query = '') {
+    const originalFetch = vi.fn();
+    const readExisting = vi.fn(() => {
+        throw new Error('must never read real storage');
+    });
+    const host = Object.assign(new EventTarget(), {
+        fetch: originalFetch,
+        location: new URL(`https://example.invalid/Nowluma/demo/${query}`),
+        history: { replaceState: vi.fn() },
+    });
+    Object.defineProperty(host, 'localStorage', { configurable: true, get: readExisting });
+    Object.defineProperty(host, 'sessionStorage', { configurable: true, get: readExisting });
+
+    class FakeAnchor {
+        constructor(readonly href: string) {}
+        closest(selector: string) {
+            return selector === 'a' ? this : null;
+        }
+        setAttribute() {}
+    }
+
+    const addEventListener =
+        vi.fn<(type: string, listener: (event: MouseEvent) => void, capture?: boolean) => void>();
+    vi.stubGlobal('window', host);
+    vi.stubGlobal('navigator', {});
+    vi.stubGlobal('Element', FakeAnchor);
+    vi.stubGlobal('HTMLImageElement', class extends FakeAnchor {});
+    vi.stubGlobal('document', { documentElement: {}, addEventListener });
+    vi.stubGlobal('MutationObserver', class { observe() {} });
+
+    const isolation = installDemoIsolation();
+    const click = (href: string, appHandler?: (event: Event) => void) => {
+        const event = new Event('click', { cancelable: true });
+        Object.defineProperty(event, 'target', { value: new FakeAnchor(new URL(href, host.location).href) });
+        const listeners = addEventListener.mock.calls.filter(([type]) => type === 'click');
+        // The app root runs between document capture and document bubbling.
+        for (const [, listener, capture] of listeners) {
+            if (capture) listener(event as MouseEvent);
+        }
+        if (!event.cancelBubble) appHandler?.(event);
+        for (const [, listener, capture] of listeners) {
+            if (!capture && !event.cancelBubble) listener(event as MouseEvent);
+        }
+        return event;
+    };
+    return { host, isolation, originalFetch, readExisting, click };
+}
+
 describe('DEMO browser isolation boundary', () => {
     it('keeps all storage memory-only with normal Storage semantics', () => {
         const first = memoryStorage();
@@ -41,6 +89,39 @@ describe('DEMO browser isolation boundary', () => {
         );
     });
 
+    it('preserves app navigation, routes plain console links and intercepts desktop and external links', () => {
+        const { host, isolation, click } = browserFixture('?tutorial=logs&lang=en&embed=1#/');
+        const navigate = vi.fn();
+        const desktop = vi.fn();
+        const blocked = vi.fn();
+        host.addEventListener('nowluma-demo-desktop', desktop);
+        host.addEventListener('nowluma-demo-blocked-link', blocked);
+        isolation.setNavigate(navigate);
+
+        let handledByApp = false;
+        click('#/logs', (event) => {
+            if (!event.defaultPrevented) {
+                handledByApp = true;
+                event.preventDefault();
+            }
+        });
+        expect(handledByApp).toBe(true);
+        expect(navigate).not.toHaveBeenCalled();
+
+        expect(click('/settings?tab=storage').defaultPrevented).toBe(true);
+        expect(navigate).toHaveBeenCalledExactlyOnceWith('/settings?tab=storage');
+        expect(host.location.hash).toBe('#/');
+        expect(host.location.search).toBe('?tutorial=logs&lang=en&embed=1');
+
+        const appHandler = vi.fn();
+        expect(click('/desktop/', appHandler).defaultPrevented).toBe(true);
+        expect(click('https://external.invalid/', appHandler).defaultPrevented).toBe(true);
+        expect(appHandler).not.toHaveBeenCalled();
+        expect(desktop).toHaveBeenCalledOnce();
+        expect(blocked).toHaveBeenCalledOnce();
+        expect(navigate).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
         ['?token=do-not-forward', '/Nowluma/demo/'],
         [
@@ -49,32 +130,7 @@ describe('DEMO browser isolation boundary', () => {
         ],
         ['?tutorial=__proto__&password=secret#/https://evil.invalid', '/Nowluma/demo/'],
     ])('isolates storage and transports while sanitizing %s', async (query, canonical) => {
-        const originalFetch = vi.fn();
-        const readExisting = vi.fn(() => {
-            throw new Error('must never read real storage');
-        });
-        const host = Object.assign(new EventTarget(), {
-            fetch: originalFetch,
-            location: { href: `https://example.invalid/Nowluma/demo/${query}` },
-            history: { replaceState: vi.fn() },
-        });
-        Object.defineProperty(host, 'localStorage', { configurable: true, get: readExisting });
-        Object.defineProperty(host, 'sessionStorage', { configurable: true, get: readExisting });
-        class FakeElement {
-            setAttribute() {}
-        }
-        vi.stubGlobal('window', host);
-        vi.stubGlobal('navigator', {});
-        vi.stubGlobal('Element', FakeElement);
-        vi.stubGlobal('HTMLImageElement', class extends FakeElement {});
-        vi.stubGlobal('document', { documentElement: {}, addEventListener: vi.fn() });
-        vi.stubGlobal(
-            'MutationObserver',
-            class {
-                observe() {}
-            },
-        );
-        const isolation = installDemoIsolation();
+        const { host, isolation, originalFetch, readExisting } = browserFixture(query);
         expect(readExisting).not.toHaveBeenCalled();
         expect(isolation.local.getItem('nowluma_token')).toBeNull();
         expect(isolation.session.getItem('nowluma_safe_mode')).toBe('1');

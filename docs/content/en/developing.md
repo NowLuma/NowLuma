@@ -6,20 +6,16 @@ tutorial: developing
 
 # Development
 
-Use the tutorial above to understand the operation before editing its owning module. Developer replay previews the flow without changing real credentials, risk acceptance or preferences.
+Reproduce the workflow before editing the module that owns it.
 
 ![Debug workspace for reproducible action inspection](/images/tutorials/debug.png)
 
-_Figure: sample API controls for replaying an operation and inspecting its result._
-
-Nowluma is released under GPL-3.0-only. Follow GPLv3 when modifying and distributing source. Bundled native and third-party components follow their own terms in `LICENSING.md`.
-
 ## Licence
 
-- Source may be used, studied, modified and redistributed, **including commercially**, with no extra non-commercial condition.
+- Nowluma's own source is **GPL-3.0-only**. You may use, study, modify and redistribute it, including commercially, under GPLv3.
 - When distributing a modified version, provide the corresponding source and licence notices under GPLv3 and add no further restrictions.
-- Root `LICENSE` is the verbatim GNU GPLv3 text; `LICENSING.md` records native/third-party boundaries; `EULA.md` and `PRIVACY.md` describe use and privacy and do not reduce GPL rights.
-- `ws675170761@gmail.com` is only for infringement complaints; it is not general, commercial or privacy contact.
+- `LICENSE` contains the verbatim GNU GPLv3 text. `LICENSING.md` describes the section 7 linking permission and the separate terms for bundled native and third-party components. `EULA.md` and `PRIVACY.md` describe use and privacy without changing GPL rights.
+- Send infringement complaints to `ws675170761@gmail.com`. Use the repository issue templates for development and support questions.
 
 ## Layout
 
@@ -65,7 +61,7 @@ The frontend package is `webui`. Native coverage is separate:
 pnpm test:native
 ```
 
-A missing native artifact or target is NOT_RUN, not permission to skip validation.
+Record a missing native artifact or target as `NOT_RUN` in the validation report.
 
 `pnpm dev` tries to attach to a real local QQ; use it only for real runtime testing. Prefer isolated fakes or the Docker smoke.
 
@@ -81,11 +77,14 @@ node --test tools/docs.test.mjs
 ```
 
 - Keep chapter links valid under `/NowLuma/`; use `pnpm docs:dev` or a built HTTP preview rather than `file://` for interactive features.
-- Update every cross-chapter link when renaming a heading; never weaken `tools/check-docs.mjs` to pass.
+- When changing a heading, keep published anchors and the chapter's simulator **Read** targets reachable.
 - Quote the actual localized UI labels; keep tutorial targets independent of the language of the label.
-- No pixel coordinates, unverified screenshots or FPS promises.
 
 ## Change boundaries
+
+The compatibility kernel uses the six supplied prebuilds. Retain their original bytes and required socket ABI, and follow the native terms in `LICENSING.md`.
+
+Unless separately authorised in writing, the six supplied prebuilds may only be run as bundled for non-commercial use. This does not restrict use or distribution of GPL-covered source.
 
 - Fix a shared problem once in its owning module; do not duplicate it across callers.
 - Parse input separately from effects; validate trust boundaries; retain error details; never turn failure into success.
@@ -120,6 +119,6 @@ pnpm release 2.5.0
 - `gates` reuses CI verify, Docker start/recreate smoke and Windows checks.
 - Artifacts include the Linux Lite archive, Windows update archive, unsigned exe, image digest and `SHA256SUMS`.
 - The current Docker smoke uses a fresh HOME and verifies process discovery, no auto-attach before account confirmation, desktop authentication and persistence across recreation; real QQ login and hook attach are NOT RUN.
-- Archives, images and the exe prove build origin and content, not account login or long-term availability.
+- Record real-account attach, login recovery and message delivery separately from artifact checks and container smoke.
 
 Detailed version, tag and workflow steps are in `docs/releasing.md`.

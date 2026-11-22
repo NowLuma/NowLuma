@@ -6,11 +6,9 @@ tutorial: settings-console
 
 # Settings: appearance and account
 
-Use the lesson above to change the theme, motion and glass material. Motion and material are independent manual choices; changing material does not toggle motion.
+Choose the look of your console, adjust accessibility settings, or manage your password and 2FA.
 
 ![Theme and display choices in Appearance settings](/images/tutorials/settings-appearance.png)
-
-_Figure: tutorial settings are resettable and do not change your real console preferences or password._
 
 Path `/settings`; ten categories use a document-style index and the active one is stored in `?tab=`. The index wraps on narrow screens; direct links remain available.
 
@@ -74,17 +72,17 @@ Solid colour, gradient or wallpaper, shown between cards and on the login page. 
 | `高对比模式`   | Strengthens borders and secondary text                                          |
 | `显示导航说明` | Shows each destination's purpose in the wide dock; persisted as `sidebarPinned` |
 
-Motion and glass quality are independent: full glass can be static and frosted glass can animate. System reduced-motion, reduced-transparency and high-contrast preferences are accessibility constraints, not frame-rate-driven settings.
+Motion and glass quality are independent. Full glass can be static, and frosted glass can animate.
 
 ### Display effects
 
 - **Full glass**: supported Chromium renders real backdrop displacement; labels and focus rings are not filtered.
 - **Frosted glass**: skips displacement maps while retaining readable edges and the selected motion setting.
-- **Motion**: changes immediately and is chosen during first setup or in Appearance; no continuous FPS detector runs.
+- **Motion**: preview changes immediately in first setup and in Appearance.
 
-Choices use the existing UI configuration and synchronise across devices. Legacy automatic quality becomes full glass; saved motion-off, palette and unrelated preferences are preserved. Material quality does not change account, message or network behavior.
+Display preferences sync with your console settings. Legacy automatic quality becomes full glass; your motion choice and palette are retained.
 
-Glass itself degrades: high contrast, system reduced transparency or a host overlay use solid surfaces; only Chromium with backdrop-filter support attempts refraction, others use frost. Optics are limited to small chrome, never a full-page filter.
+High contrast, system reduced transparency, and host-controlled appearance use solid surfaces. Browsers without supported backdrop refraction use the frosted surface.
 
 ## Data and format
 

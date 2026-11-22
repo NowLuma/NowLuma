@@ -6,7 +6,7 @@ tutorial: install-docker
 
 # Docker install (Linux)
 
-Install on Linux first, then practise the console entry in the lesson above. The embedded console does not install Docker, start containers or authenticate QQ.
+Deploy Nowluma on a Linux server or NAS. The lesson above lets you practise signing in to the console.
 
 ![Console login after installation](/images/tutorials/login.png)
 
@@ -16,35 +16,37 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Requirements
 
-- Linux x86_64 (amd64). arm64 has build inputs but is not actually verified.
-- Docker Engine and Compose v2; use sudo for subsequent commands when required.
-- Network access to container images, Node and the pinned QQ package.
-- Four persistent volumes: `config`, `data`, `logs` and the complete QQ HOME.
+- Linux x86_64 (amd64), Bash, and curl. See the [roadmap](planned.md#platforms) for other platforms.
+- Docker Engine, Compose v2, and access to the registry or mirror. The wizard can install missing components.
 
 ## Installer
 
-From the source directory:
+For a prebuilt install, choose a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/nowluma/nowluma/tags). The [GitHub release page](https://github.com/NowLuma/NowLuma/releases) lists release files and checksums. Run this in a Linux terminal:
 
 ```bash
-bash deploy/install.sh --docker
+bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
 ```
 
-The first run asks:
+Select a language first. After the Docker check, choose an installation directory (default `$HOME/Nowluma`) and an image version. If you know the version, append `--version VERSION` to the command.
+
+The wizard uses these setup defaults:
 
 | Prompt                      | Meaning                                |
 | --------------------------- | -------------------------------------- |
 | Language                    | `1. 简体中文` or `2. English`          |
-| Access                      | `1. 仅本机/SSH（推荐）` or `2. 局域网` |
+| Access                      | `1. Localhost/SSH (recommended)` or `2. LAN` |
 | Console and QQ desktop port | Default `5099`                         |
 | Bot HTTP port               | Default `3000`                         |
 | Bot WebSocket port          | Default `3001`                         |
 | Timezone                    | For example `Asia/Shanghai`            |
 
-Enter accepts the default. The three ports must differ. Configuration is stored in private `deploy/.env`; an existing file is preserved verbatim and never regenerated.
+Press Enter to accept a default. Use three different ports. The wizard reuses an existing `deploy/.env` as-is.
 
-If Docker is missing, the installer shows an install command and asks first; it does not install silently or require disabling the firewall/SELinux. Mirror choice is yours.
+The wizard uses the existing Docker and registry mirror settings. If Docker is missing, choose the official installer or the third-party LinuxMirrors installer to select a mirror. The wizard shows the command and asks before running it.
 
-On success it prints the generated initial console password and actual address. Existing deployments are not given a new password.
+If the first image pull fails, the wizard does not save the new deployment. Run it again with an available version. If your target version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
+
+After startup, the wizard prints the console address and, for a new deployment, the initial password.
 
 ## First entry
 
@@ -54,11 +56,11 @@ bash deploy/manage.sh logs
 
 Open `http://127.0.0.1:5099`, log in with the initial password and complete [First run](first-run.md). Then:
 
-1. Press `打开 QQ 桌面` to reach the graphical QQ inside the container.
+1. Click **Open QQ desktop** to reach the graphical QQ inside the container.
 2. Log in inside QQ and optionally enable QQ's own auto-login.
-3. In `QQ 会话`, refresh and attach the account.
+3. In **QQ sessions**, refresh and attach the account.
 4. On first attach, choose and acknowledge the kernel for that real UIN.
-5. Add an endpoint in `机器人连接` and paste the address and token into your bot.
+5. Add an endpoint in **Bot connections** and paste the address and token into your bot.
 
 The desktop reuses the current console session; no extra VNC password is needed. Do not expose it directly to the public internet.
 
@@ -72,11 +74,10 @@ bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
 ```
 
-- `start` builds and waits for health; failure returns non-zero and keeps existing data.
-- `restart` stops gracefully and waits for recovery.
+- `start` uses the saved, locally available image (or builds an existing source deployment) and waits for health.
+- `restart` stops gracefully and waits for recovery without pulling or building.
 - `stop` deletes no volumes.
 - `doctor` checks the container, processes, ports and directories.
-- Errors in the log do not mean installation succeeded.
 
 ## Ports and network
 
@@ -120,26 +121,25 @@ A reverse proxy must preserve `/desktop/`, the real Host, WebSocket upgrade head
 ## Upgrade and removal
 
 1. Stop and back up all four volumes to avoid copying live SQLite/WAL.
-2. Update the source or release directory and run `bash deploy/manage.sh start`; volumes are reused.
+2. For an image deployment, verify the new tag, change only `NOWLUMA_IMAGE` in `deploy/.env` to the new versioned `docker.io/nowluma/nowluma` image, and run `bash deploy/manage.sh update`. For a source deployment, update the checkout and run `bash deploy/manage.sh start`. Both reuse the existing volumes.
 3. Do not use `down -v` to upgrade.
 4. Confirm backups before deleting anything; normal `stop` keeps data.
 
-## Verification status
+## Check the deployment {#verification-status}
 
-Container smoke uses a fresh HOME and verifies QQ process discovery, that unconfirmed accounts are not auto-attached, desktop authentication and persistence across restart/recreate. It does not fabricate account confirmation or call process discovery a real QQ login.
-
-Real hook attach, QQ login and long-running account sessions are **NOT RUN** in the latest smoke. The published installer, container and Windows launcher have automated checks, but these do not prove delivery, QR-free restarts or a working rewrite kernel. Use CI for the specific source revision.
+Run `bash deploy/manage.sh doctor` to check the running deployment, or use `logs` to diagnose a startup failure. See the [roadmap](planned.md#platforms) for platform coverage.
 
 ## Troubleshooting
 
 | Symptom                       | Check                                                           |
 | ----------------------------- | --------------------------------------------------------------- |
+| Image pull fails             | Verify the versioned tag, platform and registry access          |
 | Console unreachable           | Container health, port conflict, tunnel or LAN publish address  |
 | Desktop unreachable           | Console session, onboarding, proxy Host and WebSocket           |
-| No QQ process                 | QQ started, Xvfb/QQ logs; an empty list is not success          |
+| No QQ process                 | Check the Xvfb and QQ startup logs                              |
 | Cannot attach                 | Native component/architecture, `SYS_PTRACE`, matching users     |
 | Auto-login lost after restart | `nowluma_qq-home` reused, HOME/XDG not overridden, no `down -v` |
 | Files exist but QR required   | QQ server session expired; verify inside QQ                     |
-| Corrupt configuration         | The program reports and preserves it; it is not overwritten     |
+| Corrupt configuration         | Find the file named in the error and restore it from a backup    |
 
 More entry points: [Troubleshooting](troubleshooting.md).

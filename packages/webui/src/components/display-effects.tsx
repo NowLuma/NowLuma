@@ -66,10 +66,6 @@ export function DisplayEffectsControls({
         <>
             <SettingRow
                 label={t('动效', 'Motion')}
-                hint={t(
-                    '由你手动开启或关闭；关闭后仍保留静态玻璃。系统与无障碍设置仍可减弱动画。',
-                    'Turn motion on or off manually. Turning it off keeps the static glass effect. System and accessibility settings can still reduce motion.',
-                )}
                 layout={requireExplicit ? 'auto' : 'inline'}
             >
                 {requireExplicit ? (
@@ -106,8 +102,8 @@ export function DisplayEffectsControls({
             <SettingRow
                 label={t('玻璃材质', 'Glass material')}
                 hint={t(
-                    '完整玻璃提供背景折射；磨砂玻璃减少渲染开销。不会自动切换，也不会改变动效开关。',
-                    'Full glass refracts the background; frosted glass costs less to render. The material does not switch automatically or change your motion setting.',
+                    '完整玻璃折射背景；磨砂玻璃渲染更轻。',
+                    'Full glass refracts the background. Frosted glass is lighter to render.',
                 )}
             >
                 <Segmented<PerformanceMode | ''>
@@ -297,23 +293,24 @@ export function DisplayEffectsOnboardingStep({ replay }: { replay: boolean }) {
     };
 
     return (
-        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col gap-5 py-2 sm:py-5">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-xl flex-col">
+            <div className="workspace-step-body flex flex-col gap-4">
             <header>
                 <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
                     {t('显示效果', 'Display effects')}
                 </h2>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     {t(
-                        '分别选择动效与玻璃材质，再继续设置。以后可在设置 → 外观中调整。',
-                        'Choose motion and glass material separately to continue setup. You can change them later in Settings → Appearance.',
+                        '之后可在「偏好设置 → 外观」调整。',
+                        'You can adjust these in Settings → Appearance.',
                     )}
                 </p>
             </header>
             {replay && (
                 <p role="status" className="text-xs leading-relaxed text-muted-foreground">
                     {t(
-                        '开发者演练：只预览显示效果，不保存外观、密码或协议确认；退出后恢复原来的显示设置。',
-                        'Developer rehearsal: display effects are previewed only. Appearance settings, passwords, and notice acknowledgments are not saved. Your previous display settings return when you exit.',
+                        '正在预览。退出演练后恢复原设置。',
+                        'Previewing. Your settings return when you leave the rehearsal.',
                     )}
                 </p>
             )}
@@ -330,7 +327,8 @@ export function DisplayEffectsOnboardingStep({ replay }: { replay: boolean }) {
                     {displayEffectsError(error, t)}
                 </p>
             )}
-            <div className="workspace-onboarding-actions mt-auto flex justify-end pt-3">
+            </div>
+            <div className="workspace-step-footer workspace-onboarding-actions flex justify-end">
                 <Button
                     type="button"
                     className="min-h-11 w-full sm:w-auto"

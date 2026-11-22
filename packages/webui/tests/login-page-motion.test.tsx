@@ -70,10 +70,9 @@ describe('LoginPage display effects and motion', () => {
         expect(html).not.toContain('data-line-motion="true"');
     });
 
-    it('uses frosted glass under an explicit low-quality preference without enabling motion', () => {
+    it('does not enable line motion in the lightweight display mode', () => {
         state.low = true;
         const html = render();
-        expect(html).toContain('data-glass-renderer="frosted"');
         expect(html).not.toContain('data-line-motion="true"');
     });
 

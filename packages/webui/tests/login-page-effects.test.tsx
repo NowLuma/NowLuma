@@ -97,6 +97,17 @@ function mountedPage(onLogin = vi.fn(async () => ({ success: false }))) {
 }
 
 describe('LoginPage authentication and preference ownership', () => {
+    it('leaves password focus with the embed host when the host owns focus', () => {
+        const onLogin = vi.fn(async () => ({ success: false }));
+        const render = (autoFocusPassword?: boolean) =>
+            host().render(() => LoginPage({ onLogin, autoFocusPassword }));
+        const password = (view: ReactNode) =>
+            find(view, (element) => element.props.id === 'login-password');
+
+        expect(password(render()).props.autoFocus).toBe(true);
+        expect(password(render(false)).props.autoFocus).toBe(false);
+    });
+
     it('leaves asynchronous authentication and the separate second-factor focus path with the auth owner', async () => {
         const { promise, resolve } = Promise.withResolvers<{
             success: boolean;

@@ -114,9 +114,6 @@
 
 .cp-panel {
   min-width: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
   color: var(--card-foreground);
 }
 
@@ -129,6 +126,30 @@
   gap: 0.75rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.cp-process-list,
+.cp-process-detail,
+.cp-settings-rows {
+  border-width: 1px;
+  border-radius: calc(var(--radius) + 0.625rem);
+}
+
+.cp-process-list {
+  padding-inline: clamp(0.625rem, 2vw, 1rem);
+}
+
+.cp-process-detail,
+.cp-settings-rows {
+  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.cp-process-detail {
+  padding-block: clamp(0.875rem, 2vw, 1.25rem);
+}
+
+.cp-process-list .cp-panel-head .ui-segmented {
+  max-width: 100%;
 }
 
 .cp-split,
@@ -313,9 +334,6 @@
 
 .cp-settings-rows {
   min-width: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
 }
 
 .cp-settings-content .ui-card {
@@ -358,9 +376,10 @@
   min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
-  padding-block: 0.75rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
+  padding: 0.625rem clamp(0.5rem, 2vw, 0.875rem);
+  border-width: 1px;
+  border-radius: calc(var(--radius) + 0.625rem);
+  --glass-raised-opacity: 100%;
 }
 
 .cp-log-levels {

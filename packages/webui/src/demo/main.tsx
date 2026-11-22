@@ -35,12 +35,14 @@ void (async () => {
         );
     }
 
-    const [{ createRoot }, { DemoApp }, { prepareTargetAppearance }] = await Promise.all([
+    const [{ createRoot }, { DemoApp }, { prepareTargetAppearance }, { appRouter }] = await Promise.all([
         import('react-dom/client'),
         import('./DemoApp'),
         import('@/appearance/runtime'),
+        import('@/router'),
     ]);
     await prepareTargetAppearance();
+    isolation.setNavigate((route) => appRouter.history.push(route));
     createRoot(root).render(
         <LocaleProvider initial={language} fixed={lesson ? language : undefined} title={title}>
             <DemoApp api={api} options={options} />

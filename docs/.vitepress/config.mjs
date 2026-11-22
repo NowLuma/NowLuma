@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
+import { CHAPTER_GROUPS } from './tutorials.mjs';
 import {
-  CHAPTERS,
   DOCS_BASE,
   LOCALES,
   markdownOptions,
@@ -18,15 +18,13 @@ export default defineConfig(async () => {
   const sidebar = Object.fromEntries(
     Object.keys(LOCALES).map((lang) => [
       `/${lang}/`,
-      [
-        {
-          text: lang === 'zh' ? '完整指南' : 'Complete guide',
-          items: CHAPTERS.map((chapter) => ({
-            text: documents.get(`${lang}/${chapter}`)?.frontmatter.title ?? chapter,
-            link: `/${lang}/${chapter.replace(/\.md$/, '.html')}`,
-          })),
-        },
-      ],
+      CHAPTER_GROUPS.map(({ title, chapters }) => ({
+        text: title[lang],
+        items: chapters.map((chapter) => ({
+          text: documents.get(`${lang}/${chapter}.md`).frontmatter.title,
+          link: `/${lang}/${chapter}.html`,
+        })),
+      })),
     ]),
   );
   return {
@@ -35,12 +33,13 @@ export default defineConfig(async () => {
     cacheDir: path.resolve(docsRoot, '.vitepress/cache'),
     base: DOCS_BASE,
     title: 'Nowluma',
-    description: 'Nowluma 中文文档 / English documentation',
+    description: '自托管 QQ 会话与 OneBot v11 控制台',
     lang: 'zh-CN',
     cleanUrls: false,
     markdown: markdownOptions,
-    // The simulator is built separately, immediately after VitePress in CI.
-    ignoreDeadLinks: [/^\/demo\/$/, /^\.\.\/demo\/$/],
+    // VitePress normalizes /demo/ to /demo/index. The separate Vite build
+    // supplies that page, and check-docs verifies it in the complete site.
+    ignoreDeadLinks: ['/demo/index'],
     head: [['link', { rel: 'icon', type: 'image/svg+xml', href: mark }]],
     vite: {
       resolve: { dedupe: ['vue'] },
@@ -61,7 +60,7 @@ export default defineConfig(async () => {
         themeConfig: {
           nav: [
             { text: '指南', link: '/zh/index.html' },
-            { text: '独立模拟器', link: '/demo/' },
+            { text: '独立模拟器', link: '/demo/', target: '_self', noIcon: true },
           ],
           outline: { label: '本页目录', level: [2, 3] },
           docFooter: { prev: '上一章', next: '下一章' },
@@ -81,7 +80,7 @@ export default defineConfig(async () => {
         themeConfig: {
           nav: [
             { text: 'Guide', link: '/en/index.html' },
-            { text: 'Standalone simulator', link: '/demo/' },
+            { text: 'Standalone simulator', link: '/demo/', target: '_self', noIcon: true },
           ],
           outline: { label: 'On this page', level: [2, 3] },
         },
@@ -90,6 +89,10 @@ export default defineConfig(async () => {
     themeConfig: {
       logo: mark,
       siteTitle: 'Nowluma',
+      nav: [
+        { text: '文档', link: '/zh/index.html' },
+        { text: '下载与安装', link: '/#downloads' },
+      ],
       sidebar,
       search: {
         provider: 'local',

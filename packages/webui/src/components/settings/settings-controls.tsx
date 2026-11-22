@@ -163,7 +163,7 @@ export function Group({
                     </div>
                 )}
             </header>
-            <div className="cp-settings-rows divide-y divide-border/60">{children}</div>
+            <div className="cp-settings-rows ui-glass-raised divide-y divide-border/60">{children}</div>
         </section>
     );
 }

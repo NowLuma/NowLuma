@@ -6,15 +6,13 @@ tutorial: first-run
 
 # First run
 
-Select **Load simulator** above and use its public example credentials to practise all four setup stages. Never enter a real password in the tutorial.
+Have the initial access password from the installer or startup log ready. To practise first, select **Load simulator** and use the credentials shown there.
 
 ![First-run notices and the unchecked confirmation control](/images/tutorials/first-run.png)
 
-_Figure: sample notices. A real instance serves its own versioned documents._
-
 The first visit checks the console password, then completes four browser-based stages: notices, password, display effects and account kernel.
 
-During first setup, running and result feedback occupies a dedicated row in the document rather than covering confirmation/save controls. After setup, the same viewport returns to the workspace's bottom-right position, preserving in-flight operations, notification countdowns and keyboard focus.
+Setup shows progress and errors next to the step you’re completing.
 
 ## Splash
 
@@ -24,13 +22,7 @@ If it never leaves this screen: confirm the service is running (`bash deploy/man
 
 ## Login
 
-On **Sign in to the workspace**, enter the **console access password** (not the QQ password) in **Access password**, then select **Open workspace**. The eye button toggles **Show password** and **Hide password**.
-
-- A wrong password keeps you on the sign-in screen with an error.
-- Motion and glass quality are selected manually during first setup and under Settings → Appearance. Login uses the saved choices; no frame-rate detector turns motion off. System accessibility preferences still take precedence.
-- Network errors or a required second factor leave you on the login page with the error preserved.
-
-The installer or startup log prints the initial password. It is only for the first entry; after onboarding, use the password you chose.
+On **Sign in to the workspace**, enter the initial **Access password** from Nowluma and select **Open workspace**. After setup, sign in with the password you choose here. Use the QQ window for QQ credentials.
 
 ## Two-factor authentication
 
@@ -47,9 +39,7 @@ If a second factor is rejected, correct the incorrect character without clearing
 
 ## Link login
 
-Append `?token=<access password>` to the console URL to skip manual entry. The page removes the parameter from the address bar and browser history immediately so it does not leak through Referer or screenshots.
-
-This is a one-shot convenience, not a long-lived token. Do not share the link; use an [SSH tunnel or HTTPS](access-network.md) for remote access.
+Append `?token=<access password>` to sign in without typing the password. The console strips the parameter from the address bar before trying to sign in. If 2FA is enabled, enter the verification code as usual. Keep the link private and use an [SSH tunnel or HTTPS](access-network.md) for remote access.
 
 ## Reading notices and setting a password
 
@@ -114,7 +104,7 @@ Read the startup log for the new initial password and complete first-run setup. 
 
 ## Notice status failed to load
 
-If the page says **Could not load agreement status**, the console cannot confirm the notice state. It refuses entry rather than bypassing the required acknowledgement.
+**Could not load agreement status** means the console is waiting to verify the notice record before letting you in.
 
 - **Reload** retries.
 - **Sign out** returns to sign-in.

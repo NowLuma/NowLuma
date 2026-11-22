@@ -75,8 +75,8 @@ export function TotpPanel() {
                     </p>
                     <p className="text-muted-foreground">
                         {t(
-                            '当前状态未知；请重新载入页面后确认，不能据此判断是否已开启。',
-                            'Status is unknown; reload the page to confirm. Do not use this to decide whether 2FA is enabled.',
+                            '当前状态未知；请重新载入页面后确认是否已开启。',
+                            'Status is unknown; reload the page to confirm whether 2FA is enabled.',
                         )}
                     </p>
                 </div>

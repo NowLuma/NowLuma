@@ -295,6 +295,7 @@ export function WizardSteps({
             </p>
             <span
                 aria-hidden
+                data-wizard-step-label=""
                 className={`${spacious ? 'mb-1 text-sm' : 'mb-2 text-[13px]'} grid select-none font-medium text-foreground`}
             >
                 {steps.map((candidate, stepIndex) => (
@@ -419,6 +420,7 @@ export function WizardSteps({
                 <AnimatePresence initial={false} custom={direction} mode="wait">
                     <motion.div
                         key={complete ? '__complete' : step.id}
+                        data-wizard-step-panel=""
                         custom={direction}
                         variants={variants}
                         initial="enter"

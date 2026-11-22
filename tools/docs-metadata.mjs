@@ -8,6 +8,7 @@ import { idsOf, referencesOf } from './docs-html.mjs';
 export { CHAPTER_IDS, DOCS_BASE, LOCALES };
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const CONTENT_ROOT = path.join(ROOT, 'docs/content');
+export const HOSTED_DEPLOY_FILES = ['install.sh', 'manage.sh', 'docker-compose.yml'];
 export const CHAPTERS = CHAPTER_IDS.map((chapter) => `${chapter}.md`);
 const legacyHeadingIds = JSON.parse(
   fs.readFileSync(new URL('../docs/.vitepress/legacy-heading-ids.json', import.meta.url), 'utf8'),

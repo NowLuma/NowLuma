@@ -1,18 +1,16 @@
 ---
 title: Native install
-description: Linux Lite package, self-contained Windows exe and running from source, including Node baselines, data locations and verification limits.
+description: Install Linux Lite, start the self-contained Windows launcher, or run Nowluma from source.
 tutorial: install-native
 ---
 
 # Native install
 
-Choose the release for your system and verify its checksum before launching it. The lesson above begins at the console and never downloads or runs the QQ installer.
+Download the release for your system and compare its SHA-256 with `SHA256SUMS` on the [release page](https://github.com/NowLuma/NowLuma/releases).
 
 ![Console login page used after native startup](/images/tutorials/login.png)
 
-_Figure: the example console entry. Its access password comes from Nowluma startup output, not your QQ password._
-
-Native mode does not use Docker. The app runs in your user environment and QQ is your desktop client. Use it when you already manage your own desktop and processes.
+Use a native install to run Nowluma and QQ in your desktop environment. For an isolated Linux QQ desktop, see [Docker install](install-docker.md).
 
 ## Linux Lite
 
@@ -22,7 +20,7 @@ Requirements:
 
 - Linux x64.
 - Node.js `24.22.1` (24.x) or `>=26.12.1`; a bundled Node is preferred.
-- A desktop QQ that you can install and log in to. Nowluma does not install QQ.
+- A working desktop QQ installation.
 
 Start:
 
@@ -36,7 +34,7 @@ Install from a source checkout into a release directory:
 bash deploy/install.sh --native --directory /path/to/release
 ```
 
-`deploy/install.sh` ships only in the source repository, not in the Lite package. Native mode does not modify your QQ user directory or log in for you.
+Run this command from the source checkout: the Lite archive does not include `deploy/install.sh`.
 
 Program data is under `config/`, `data/` and `logs/` in the release or working directory. QQ keeps its own data in its user directory; do not move or delete it during upgrades. See [Data, backup and updates](data-backup.md).
 
@@ -47,10 +45,10 @@ Windows x64 uses a self-contained `Nowluma.exe`:
 - Bundles Node 24 and the .NET self-contained runtime; Docker, Node and .NET are not required.
 - Extracts to `%LOCALAPPDATA%\Nowluma` and opens the console in your browser.
 - The launcher can use the local environment or an existing Linux Docker engine for an isolated desktop; it does not install a VM. Windows-native consoles have no `打开 QQ 桌面` entry; a connected Linux server determines its own desktop capability.
-- The build is **unsigned** and may trigger SmartScreen. Release notes should provide SHA-256; do not run a binary without a checksum.
+- The launcher is **unsigned** and may trigger SmartScreen. Verify the release checksum before opening it.
 - Closing the window may end the process early; use Ctrl+C in the console for a clean stop. QQ data and settings are not deleted.
 
-After starting, complete [First run](first-run.md), then attach in `QQ 会话`. The first attach for an account requires a kernel choice and risk acknowledgement. Real injection, login and long sessions on Windows must be verified by you. A Windows browser connected to a Linux Docker server gets the desktop entry only when that server reports the capability.
+After starting, follow [First run](first-run.md), then [attach your account](#first-attach). Native attach, sign-in and long sessions on Windows still need real-account validation.
 
 ## Running from source
 
@@ -62,7 +60,7 @@ pnpm start
 
 The workspace pins Node `24.22.1` and pnpm `11.25.0`. Do not bypass the version check with an older Node.
 
-`pnpm dev` tries to attach to a real local QQ; use it only when you intend a real runtime test. Prefer isolated fakes or the Docker smoke for routine development.
+For development commands and real-account testing, see [Local validation](developing.md#local-validation).
 
 ## First attach
 
@@ -72,7 +70,7 @@ The workspace pins Node `24.22.1` and pnpm `11.25.0`. Do not bypass the version 
 4. On the first attach for that account, confirm the risk in `选择接入内核`; submit stays disabled until checked.
 5. Once `已在线`, add an endpoint in `机器人连接`.
 
-Auto-connect running QQ is a service setting applied after restart. It auto-attaches only after local QQ login, a recognized real UIN, and a current-risk-version compatibility acknowledgement. It neither logs in to QQ nor skips kernel confirmation; a PID explicitly unloaded still needs a manual load.
+To automate subsequent attaches, see [the service listener settings](settings-runtime.md#webui-listener).
 
 ## Desktop and permissions
 
@@ -80,15 +78,6 @@ Auto-connect running QQ is a service setting applied after restart. It auto-atta
 - Windows may show an integrity-level notice; follow the UI and do not disable all isolation.
 - For remote access, prefer SSH tunnels or HTTPS; see [Access and network](access-network.md).
 
-## Limits and verification
+<span id="limits-and-verification" class="legacy-heading-anchor" aria-hidden="true"></span>
 
-| Item                                  | Status                                                                 |
-| ------------------------------------- | ---------------------------------------------------------------------- |
-| Linux Lite startup and release layout | Automated checks                                                       |
-| Real Linux QQ login/attach            | Verify on your desktop                                                 |
-| Windows exe                           | Built, unsigned; real-account behaviour unverified                     |
-| Docker arm64                          | Build inputs only, unverified                                          |
-| Rewrite kernel                        | Incomplete and unselectable; no automatic fallback                     |
-| Six original prebuilt files           | Used by the current release; internal bytes and required ABI unchanged |
-
-Native mode does not automatically gain Docker's process isolation or desktop gateway; your desktop, user permissions and network define the boundary. Unverified platforms and artifacts are listed under [Planned and unverified](planned.md).
+For outstanding platform checks, see [Roadmap](planned.md#platforms).

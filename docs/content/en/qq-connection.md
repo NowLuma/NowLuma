@@ -6,17 +6,13 @@ tutorial: qq-connection
 
 # QQ sessions
 
-The lesson above asks you to choose a kernel for an example account, confirm attachment, then unload and observe manual stop. On a real deployment, authenticate in QQ first.
+Use the lesson above to choose a kernel, attach the sample account, then unload it.
 
 ![QQ session page with the identified example process](/images/tutorials/qq-session.png)
 
-_Figure: example PID 4242. Detecting an account does not mean it is attached._
-
 ![Per-account kernel dialog before risk acknowledgement](/images/tutorials/account-kernel.png)
 
-_Figure: choices apply to one account; attachment remains unavailable until the user selects and acknowledges it._
-
-Path `/processes`. This page works only with an already-running QQ: discover processes, show their state, attach after confirmation, and let you refresh the pipe or unload. It does not start QQ or log in for you. The page subtitle is `选择 QQ 进程，查看状态并接入账号。`.
+Open `QQ 会话` (`/processes`) to find running clients, attach the selected account, reconnect its pipe or unload it.
 
 ## Page structure
 
@@ -70,7 +66,9 @@ The dialog title is `选择接入内核`, description `nickname · QQ UIN`, and 
 | `兼容内核` | `可选择`   | Uses the bundled native component; an explicit risk acknowledgement is required      |
 | `重写内核` | `暂不可用` | Not verified on this platform; cannot be selected and never falls back automatically |
 
-Neither option is selected by default, and the compatibility kernel is never pre-selected for you. Select the `兼容内核` radio first; only then does the risk checkbox become enabled. After checking `我已阅读并主动确认此账号的兼容内核使用与法律风险`, `确认并接入` becomes available; while saving it reads `保存中…`. Errors appear inside the dialog and are never treated as success.
+Select `兼容内核`, review the notice, check the account's risk acknowledgement, then choose `确认并接入`. The option and checkbox start unchecked. `保存中…` indicates submission; errors stay in the dialog.
+
+The notice covers account, data security and legal risks. Acknowledging it does not waive liability that cannot be waived by law or change the GPL licence of the source.
 
 The choice is persisted **per real QQ number** in `config/kernel-selections.json`; it applies only to that UIN. A confirmation from one PID is never copied to another account.
 
@@ -115,14 +113,9 @@ If it still stays at `等待连接`, read the error and [Run log](logs.md). Linu
 
 ## Open QQ desktop
 
-`打开 QQ 桌面` opens the browser desktop when the server actually provides an applied same-origin gateway. The capability is reported at runtime: only a Linux server with the gateway applied returns it; Windows native, an old server that does not report it, or merely configuring a VNC address does not make the entry appear.
+Select `打开 QQ 桌面` to open QQ in your browser. The entry uses same-origin `/desktop/` and appears only when the Linux server has an active desktop gateway, regardless of the browser's platform. A configured VNC address alone does not enable it.
 
-- Automatic entry always uses same-origin `/desktop/`; it does not branch on browser user agent and does not redirect to a configured external desktop URL.
-- Entry is authorized by the current console session; no console token, QQ password or desktop password is placed in the URL.
-- The Docker desktop reuses the console session and needs no separate VNC password; its backend still listens only on loopback.
-- A Windows browser connected to a Linux Docker server still gets the entry when that server reports the capability.
-- Closing the browser does not delete QQ's login state; QQ auto-login remains in QQ's own environment. See [QQ persistence](data-backup.md#qq-persistence-and-manual-verification).
-- If the entry is absent, do not force it with `桌面地址`; confirm the server is Linux Docker with the same-origin gateway applied.
+Use your console session to enter; no separate VNC password is needed. See [Desktop authentication](access-network.md#desktop-authentication) for the gateway and [QQ persistence](data-backup.md#qq-persistence-and-manual-verification) for sign-in after restart.
 
 ## Save and restart
 
@@ -134,17 +127,13 @@ If it still stays at `等待连接`, read the error and [Run log](logs.md). Linu
 | Sort order                             | Yes, page preference                            | Immediately                                                                                    |
 | Desktop entry                          | No                                              | Current session                                                                                |
 
-`自动连接已打开的 QQ` is not QQ auto-login and does not skip kernel confirmation. When enabled, it attaches only after local QQ login, a real UIN is recognized, and that UIN already has a current-risk-version compatibility acknowledgement. An unknown account cannot borrow another acknowledgement, and a new UIN must choose its own kernel.
-
-A PID explicitly unloaded stays manually stopped: refresh, watchers and auto-connect will not restart it; only a manual `加载` resumes it.
-
 ## Troubleshooting
 
 - **No QQ listed**: confirm QQ runs on the same machine/container; Docker needs `/proc` and `SYS_PTRACE`; check permissions in the log.
 - **Stuck loading**: verify native component architecture and permission; wait for an error instead of repeated clicks.
 - **Waiting for connection**: refresh the pipe; check ports, permissions and logs.
-- **Waiting for login**: log in inside QQ; the app does not log in for you.
+- **Waiting for login**: finish sign-in in QQ, then refresh.
 - **It did not return after unload**: that is the manual stop; press `加载` to resume.
 - **Online but no bot messages**: check [Bot connections](onebot-config.md).
 - **New account asks for confirmation**: expected per-UIN isolation; old acknowledgements are not reusable.
-- **Rewrite kernel unavailable**: it is unverified; there is no hidden switch or fake fallback.
+- **Rewrite kernel unavailable**: use the compatibility kernel. See [Roadmap](planned.md#rewrite-kernel).

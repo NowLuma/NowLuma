@@ -77,6 +77,7 @@ export function installDemoIsolation(options: TutorialOptions = parseTutorialOpt
     Object.defineProperty(window, 'localStorage', { configurable: true, value: local });
     Object.defineProperty(window, 'sessionStorage', { configurable: true, value: session });
     let api: DemoApi | null = null;
+    let navigate: ((route: string) => void) | undefined;
     window.fetch = (...args) =>
         api
             ? api.fetch(...args)
@@ -106,35 +107,40 @@ export function installDemoIsolation(options: TutorialOptions = parseTutorialOpt
         return null;
     };
 
+    const linkTarget = (event: MouseEvent) => {
+        const anchor = event.target instanceof Element ? event.target.closest('a') : null;
+        return anchor ? demoLinkTarget(anchor.href, window.location.href) : undefined;
+    };
+
+    // Block out-of-demo destinations before the app can handle the click.
     document.addEventListener(
         'click',
         (event) => {
-            const anchor = event.target instanceof Element ? event.target.closest('a') : null;
+            const target = linkTarget(event);
 
-            if (!anchor) {
-                return;
-            }
-
-            const target = demoLinkTarget(anchor.href, window.location.href);
-
-            if (target === 'download') {
-                return;
-            }
-
-            event.preventDefault();
-
-            if (target === 'desktop') {
+            if (target === 'desktop' || target === null) {
+                event.preventDefault();
                 event.stopPropagation();
-                openDesktop();
-            } else if (target === null) {
-                event.stopPropagation();
-                blockedLink();
-            } else {
-                window.location.hash = target;
+                (target === 'desktop' ? openDesktop : blockedLink)();
             }
         },
         true,
     );
+
+    // Router links handle navigation (and account selection) in React first.
+    // Route unhandled console links through the same history, not location.hash.
+    document.addEventListener('click', (event) => {
+        if (event.defaultPrevented) {
+            return;
+        }
+
+        const target = linkTarget(event);
+
+        if (typeof target === 'string' && target !== 'desktop' && target !== 'download') {
+            event.preventDefault();
+            navigate?.(target);
+        }
+    });
 
     // React sets src via setAttribute; rewrite before the browser can request root avatars.
     const setAttribute = Element.prototype.setAttribute;
@@ -194,6 +200,9 @@ export function installDemoIsolation(options: TutorialOptions = parseTutorialOpt
         session,
         attach: (instance: DemoApi) => {
             api = instance;
+        },
+        setNavigate: (handler: (route: string) => void) => {
+            navigate = handler;
         },
     };
 }

@@ -391,6 +391,7 @@ export function ActionFeedbackViewport() {
                 <ActionNoticeBanner
                     key={notice.id}
                     notice={notice}
+                    optical={!inline}
                     onRemoved={() => removeNotice(notice.id)}
                 />
             ))}
@@ -408,9 +409,11 @@ export function ActionFeedbackViewport() {
 
 function ActionNoticeBanner({
     notice,
+    optical,
     onRemoved,
 }: {
     notice: ActionNotice;
+    optical: boolean;
     onRemoved: () => void;
 }) {
     const reduced = useReducedMotionConfig() === true;
@@ -449,6 +452,7 @@ function ActionNoticeBanner({
         >
             <CollapsibleBanner
                 state={state}
+                optical={optical}
                 onStateChange={setState}
                 onDismissed={onRemoved}
                 title={notice.title}

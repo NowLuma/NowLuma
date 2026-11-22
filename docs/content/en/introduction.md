@@ -6,11 +6,9 @@ tutorial: introduction
 
 # What Nowluma is
 
-In the lesson above, locate QQ sessions, bot connections and the run log. Distinguishing their responsibilities prevents a saved configuration from being mistaken for delivered messages.
+Use the lesson above to find QQ sessions, bot connections and the run log.
 
 ![Example workspace showing session and connection states](/images/tutorials/overview.png)
-
-_Figure: sample readings explain the interface; they are not your real account state._
 
 Nowluma runs on your machine. It finds an already-running QQ client, attaches the account to OneBot v11, and gives you a browser workspace for accounts, connections, logs and the desktop.
 
@@ -22,17 +20,11 @@ Nowluma runs on your machine. It finds an already-running QQ client, attaches th
 | Account kernel | Persist an access-kernel choice and risk acknowledgement per real QQ number                          |
 | OneBot layer   | Per-account HTTP and WebSocket endpoints; events and actions                                         |
 | Workspace      | Six pages: Workspace, QQ sessions, Bot connections, Run log, Debug tools, Settings                   |
-| Desktop        | Operate QQ login and dialogs in a browser, local or Docker desktop                                   |
+| Desktop        | Use the local QQ window or, on Linux Docker, open the QQ desktop from the console                    |
 
-QQ itself performs login, QR scan, verification and auto-login. Nowluma never asks for the QQ password, forges device tokens or migrates your QQ user directory.
+<span id="what-it-does-not-do" class="legacy-heading-anchor" aria-hidden="true"></span>
 
-## What it does not do
-
-- It does not log in to QQ, and the console password is not the QQ password.
-- It does not guarantee a bot will reply just because an endpoint is `正常`.
-- It does not call a saved configuration “applied”.
-- It does not promise that keeping local data avoids a future QR scan.
-- It does not attach the compatibility kernel without the account holder's active acknowledgement.
+Sign in and complete any QR scan or verification in QQ. For Nowluma itself, use the access password from [First run](first-run.md#login). Nowluma leaves the QQ user directory in place and does not store your QQ password or generate device tokens.
 
 ## Three kinds of save result
 
@@ -42,7 +34,7 @@ QQ itself performs login, QR scan, verification and auto-login. Nowluma never as
 | Per-account bot connections              | Dialog or `立即保存`, written to the server | Live hot reload gives “saved and applied”; otherwise it applies on the next connection                  |
 | Service settings                         | Explicit save                               | Usually requires restarting Nowluma; the UI says so                                                     |
 
-Example: change the HTTP port while the QQ account is offline. The save succeeds but shows “已保存，下次连接时应用”. Only “已保存并应用” means the server hot-reloaded the endpoint.
+For endpoint changes, check [Save and apply](onebot-config.md#save-and-apply) before testing the new address.
 
 ## Four “connected” meanings
 
@@ -55,13 +47,7 @@ Example: change the HTTP port while the QQ account is offline. The save succeeds
 
 ## Account kernel choice
 
-Before attaching a QQ number, the console asks for a kernel choice for that real UIN:
-
-- `兼容内核` uses the bundled native component and requires an unchecked-by-default risk acknowledgement for the current risk version.
-- `重写内核` is shown as `暂不可用`; it cannot be selected and there is no silent fallback to compatibility.
-- The choice is stored per UIN in `config/kernel-selections.json`.
-- Saving the choice alone does not attach the process; only `加载` or reconnect in QQ sessions does.
-- A different QQ number, a changed account identity, or a new risk version requires a new acknowledgement. A confirmation from one PID is never cloned to another account.
+On first attach, choose the compatibility kernel and confirm the risks for the detected QQ number (UIN). See [QQ sessions](qq-connection.md#choosing-the-access-kernel) for selection and re-attachment, or [Roadmap](planned.md#rewrite-kernel) for the rewrite.
 
 ## State words
 
@@ -71,12 +57,11 @@ Bot endpoint: `正常`, `注意`, `异常`, `应用失败`, `未启用`. `应用
 
 ## Platforms and releases
 
-| Form         | Requirement                                                | Verification                                                              |
-| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Linux Docker | Docker Engine and Compose v2, linux/amd64                  | Automated build and recreate smoke; no fabricated QQ login                |
-| Linux Lite   | Node.js `24.22.1` (24.x) or `>=26.12.1`                    | Launcher and release-layout checks; native attach must be verified by you |
-| Windows x64  | Self-contained `Nowluma.exe` with Node 24 and .NET runtime | Built, unsigned; real-account behaviour unverified                        |
-| Docker arm64 | Build inputs exist                                         | Not verified                                                              |
+| Install method                             | Requirements                                       |
+| ------------------------------------------ | -------------------------------------------------- |
+| [Linux Docker](install-docker.md)          | Linux amd64, Docker Engine and Compose v2          |
+| [Linux Lite](install-native.md#linux-lite) | Linux x64, Node.js `24.22.1` (24.x) or `>=26.12.1` |
+| [Windows x64](install-native.md#windows)   | Unsigned launcher with Node 24 and .NET            |
 
 ## Data locations
 

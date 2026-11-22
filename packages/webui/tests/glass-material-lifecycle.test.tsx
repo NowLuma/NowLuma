@@ -204,7 +204,16 @@ describe('GlassMaterial cached optics lifecycle', () => {
         dataset.contrast = 'high';
         preferenceChange();
         expect(renderer(glass.render())).toBe('solid');
+        const forcedColors = media.get('(forced-colors: active)')!;
         dataset.contrast = 'normal';
+        dataset.lowPerformance = '1';
+        forcedColors.matches = true;
+        forcedColors.dispatchEvent(new Event('change'));
+        flush();
+        expect(renderer(glass.render())).toBe('solid');
+        expect(images(glass.render())).toHaveLength(0);
+        dataset.lowPerformance = '0';
+        forcedColors.matches = false;
         hostManaged = true;
         preferenceChange();
         expect(renderer(glass.render())).toBe('solid');
@@ -213,6 +222,31 @@ describe('GlassMaterial cached optics lifecycle', () => {
         vi.stubGlobal('navigator', { userAgent: 'Firefox/142.0' });
         preferenceChange();
         expect(renderer(glass.render())).toBe('frosted');
+        expect(canvas).toHaveBeenCalledOnce();
+    });
+
+    it('skips refraction when oversized and reuses its bounded raster when resized back', () => {
+        const glass = mount(438, 516);
+        expect(renderer(glass.render())).toBe('frosted');
+        expect(canvas).not.toHaveBeenCalled();
+
+        glass.surface.offsetHeight = 280;
+        resize[0].callback();
+        flush();
+        const href = images(glass.render())[0].props.href;
+        expect(renderer(glass.render())).toBe('refracted');
+        expect(canvas).toHaveBeenCalledOnce();
+
+        glass.surface.offsetHeight = 516;
+        resize[0].callback();
+        flush();
+        expect(renderer(glass.render())).toBe('frosted');
+        expect(images(glass.render())).toHaveLength(0);
+
+        glass.surface.offsetHeight = 280;
+        resize[0].callback();
+        flush();
+        expect(images(glass.render())[0].props.href).toBe(href);
         expect(canvas).toHaveBeenCalledOnce();
     });
 

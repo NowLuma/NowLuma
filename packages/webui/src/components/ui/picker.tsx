@@ -255,7 +255,7 @@ export function Picker({
                     }
                 }}
                 className={cn(
-                    'flex h-11 w-full items-center gap-2 rounded-[var(--radius)] border border-border bg-transparent px-3 text-sm outline-none transition-colors',
+                    'ui-glass-field flex h-11 w-full items-center gap-2 rounded-[var(--radius)] border px-3 text-sm outline-none transition-colors',
                     'focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:border-ring disabled:opacity-50',
                     !selected && !value && 'text-muted-foreground',
                 )}

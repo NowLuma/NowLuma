@@ -463,8 +463,8 @@ export function SystemPanel() {
             <div className="flex min-w-0 flex-col gap-7">
                 <p className="text-xs leading-relaxed text-muted-foreground">
                     {t(
-                        '监听、桌面入口与 HTTPS 设置保存后需重启 Nowluma。本机不会自动重启。',
-                        'Listener, desktop access, and HTTPS changes require a Nowluma restart. The service does not restart automatically.',
+                        '监听、桌面入口与 HTTPS 设置保存后需重启 Nowluma；请在部署中手动重启。',
+                        'Listener, desktop access, and HTTPS changes require a Nowluma restart. Restart Nowluma manually in your deployment.',
                     )}
                 </p>
 

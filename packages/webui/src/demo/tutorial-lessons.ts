@@ -60,8 +60,8 @@ const overview: TutorialStep = {
     id: 'overview',
     title: { zh: '检查会话与运行状态', en: 'Inspect session and runtime status' },
     hint: {
-        zh: '观察概览中的示例账号、进程和连接。在线仅表示模拟器会话；不证明机器人回复。',
-        en: 'Inspect the sample account, process and adapter on Overview. Online here is a simulated session, not evidence of bot replies.',
+        zh: '在工作台查看示例账号、进程和机器人连接。',
+        en: 'On the dashboard, find the sample account, process and bot connection.',
     },
     route: '/',
     proof: 'console',
@@ -71,8 +71,8 @@ const process: TutorialStep = {
     id: 'process',
     title: { zh: '选择 PID 4242 的示例进程', en: 'Inspect sample process PID 4242' },
     hint: {
-        zh: '在进程列表选择 4242，查看右侧账号和接入状态。本地识别不等于登录成功。',
-        en: 'Select PID 4242 in the process list and inspect its account and attachment status. Local detection is not confirmed login.',
+        zh: '在进程列表选择 4242，查看右侧账号和接入状态。本机识别 · 登录待确认。',
+        en: 'Select PID 4242 and inspect its account and attachment status. Detected locally · sign-in unconfirmed.',
     },
     route: '/processes',
     proof: 'process',
@@ -82,8 +82,8 @@ const config: TutorialStep = {
     id: 'account',
     title: { zh: '确认账号 10001 的配置上下文', en: 'Inspect account 10001 configuration' },
     hint: {
-        zh: '选择 DEMO 小光 / 10001，打开消息行为。配置按账号隔离，不是全局设置。',
-        en: 'Select DEMO 小光 / 10001 and inspect Message behavior. These settings belong to this account, not the whole service.',
+        zh: '选择 DEMO 小光 / 10001，打开「消息行为」。',
+        en: 'Select DEMO 小光 / 10001 and open Message behavior.',
     },
     route: '/config',
     proof: 'account-config',
@@ -93,8 +93,8 @@ const http: TutorialStep = {
     id: 'http',
     title: { zh: '打开 HTTP 接口配置', en: 'Open the HTTP adapter configuration' },
     hint: {
-        zh: '点「HTTP 接口」，查看 DEMO HTTP 的监听地址和开关；编辑仅保存在本页内存，不会打开端口。',
-        en: 'Choose HTTP API and inspect DEMO HTTP. Edits remain in this page’s memory and never open a listening port.',
+        zh: '点「HTTP 接口」，查看 DEMO HTTP 的监听地址和开关。',
+        en: 'Under HTTP API, find DEMO HTTP’s listen address and switch.',
     },
     route: '/config',
     proof: 'http-config',
@@ -104,8 +104,8 @@ const saveConfig: TutorialStep = {
     id: 'save-config',
     title: { zh: '保存一次示例账号配置', en: 'Save the sample account configuration' },
     hint: {
-        zh: '可编辑 DEMO HTTP 后保存，或点「立即保存」。只有 API 接受保存才完成；失败不会算作完成。',
-        en: 'Edit DEMO HTTP and save, or choose Save now. Only an accepted API save completes this step; a failed write does not.',
+        zh: '编辑 DEMO HTTP，然后点「立即保存」。',
+        en: 'Edit DEMO HTTP and choose Save now.',
     },
     route: '/config',
     proof: 'config-saved',
@@ -115,8 +115,8 @@ const logs: TutorialStep = {
     id: 'logs',
     title: { zh: '查看示例日志工作区', en: 'Inspect the sample log workspace' },
     hint: {
-        zh: '日志中的 DEMO 标记表示样本，不是真实 QQ 记录。搜索、级别过滤和清空视图不删除服务器文件。',
-        en: 'DEMO entries are samples, not QQ records. Search, level filters and clearing the view do not delete server files.',
+        zh: '查看带 DEMO 标记的运行记录。下一步用搜索筛选。',
+        en: 'Find entries marked DEMO. You’ll filter them in the next step.',
     },
     route: '/logs',
     proof: 'logs',
@@ -137,8 +137,8 @@ const service: TutorialStep = {
     id: 'service',
     title: { zh: '打开服务设置', en: 'Inspect service settings' },
     hint: {
-        zh: '查看监听端口 5099、绑定地址和代理设置。此处是安装完成后的控制台，不执行系统安装或真实重启。',
-        en: 'Inspect port 5099, bind address and proxy settings. This is the post-install console; it does not install software or restart an OS service.',
+        zh: '查看监听端口 5099、绑定地址和代理设置。此处是安装完成后的控制台；安装与重启见本章正文。',
+        en: 'Inspect port 5099, bind address and proxy settings. This is the post-install console; the chapter covers installation and restarts.',
     },
     route: '/settings?tab=system',
     proof: 'service-panel',
@@ -174,10 +174,10 @@ function reading(id: string, title: TutorialText, hint: TutorialText, route = '/
 const firstRun: readonly TutorialStep[] = [
     {
         id: 'login',
-        title: { zh: '用公开示例密码登录', en: 'Log in with the public example password' },
+        title: { zh: '用示例密码登录', en: 'Sign in with the sample password' },
         hint: {
-            zh: '访问密码填 DemoOnly!2026 并登录。不要输入自己的密码。',
-            en: 'Enter DemoOnly!2026 in Access password and log in. Never enter your own password.',
+            zh: '访问密码填 DemoOnly!2026，再点「打开工作台」。',
+            en: 'Enter DemoOnly!2026, then choose Open workspace.',
         },
         route: '/',
         proof: 'login',
@@ -186,12 +186,12 @@ const firstRun: readonly TutorialStep[] = [
     {
         id: 'consent',
         title: {
-            zh: '阅读并主动确认练习说明',
-            en: 'Read and actively accept the practice notices',
+            zh: '阅读并确认说明',
+            en: 'Read and acknowledge the notices',
         },
         hint: {
-            zh: '阅读使用与隐私说明，主动勾选「我已阅读」，再点「确认并继续」。引导不会代替你确认。',
-            en: 'Read the use and privacy notices, actively acknowledge both, then confirm and continue. The guide never accepts on your behalf.',
+            zh: '阅读使用和隐私说明，勾选「我已阅读」，然后点「确认并继续」。',
+            en: 'Read the usage and privacy notices, select I have read, then choose Confirm and continue.',
         },
         route: '/',
         proof: 'consent',
@@ -199,10 +199,10 @@ const firstRun: readonly TutorialStep[] = [
     },
     {
         id: 'password',
-        title: { zh: '设置公开示例新密码', en: 'Set the public example new password' },
+        title: { zh: '设置示例新密码', en: 'Set the sample password' },
         hint: {
-            zh: '新密码与确认都填 DemoChanged!2026，再「保存并继续」。只保存成功才完成。',
-            en: 'Enter DemoChanged!2026 in both new-password fields, then choose Save and continue. Only a successful save completes this step.',
+            zh: '两个密码框都填 DemoChanged!2026，然后点「保存并继续」。',
+            en: 'Enter DemoChanged!2026 in both fields and choose Save and continue.',
         },
         route: '/',
         proof: 'password',
@@ -210,10 +210,10 @@ const firstRun: readonly TutorialStep[] = [
     },
     {
         id: 'effects',
-        title: { zh: '手动选择显示效果并保存', en: 'Choose and save display effects manually' },
+        title: { zh: '选择显示效果', en: 'Choose display effects' },
         hint: {
-            zh: '主动选择动效开关与完整/磨砂玻璃，再点「保存并继续」。没有自动性能分档。',
-            en: 'Explicitly choose motion and full or frosted glass, then select Save and continue. There is no automatic performance tier selection.',
+            zh: '选择动效和玻璃材质，然后点「保存并继续」。',
+            en: 'Choose motion and glass material, then select Save and continue.',
         },
         route: '/',
         proof: 'appearance',
@@ -221,10 +221,10 @@ const firstRun: readonly TutorialStep[] = [
     },
     {
         id: 'finish',
-        title: { zh: '完成内核预览并进入概览', en: 'Finish the kernel preview and enter Overview' },
+        title: { zh: '查看内核选项', en: 'Review kernel options' },
         hint: {
-            zh: '无已识别账号时查看可用性，点「继续」进入控制台。重写内核不可用；此步不伪造账号风险确认。',
-            en: 'With no detected account, inspect availability and choose Continue to enter the console. Rewrite remains unavailable; this step does not fabricate account risk consent.',
+            zh: '查看内核选项，然后点「继续」进入工作台。',
+            en: 'Review the kernel options, then choose Continue to open the dashboard.',
         },
         route: '/',
         proof: 'console',
@@ -240,8 +240,8 @@ const qq: readonly TutorialStep[] = [
             en: 'Load and confirm this account’s kernel',
         },
         hint: {
-            zh: '先在 PID 4242 详情点「加载」。阅读弹出的说明，选择兼容内核、主动勾选风险，再点「确认并接入」。取消不接入，重写内核不可用。',
-            en: 'Choose Load for PID 4242. Read the dialog, select the compatible kernel, actively check its risk box, then confirm and attach. Cancel does not attach, and the rewrite remains unavailable.',
+            zh: '先在 PID 4242 详情点「加载」。阅读弹出的说明，选择兼容内核、主动勾选风险，再点「确认并接入」。取消则保持未接入；重写内核不可用。',
+            en: 'Choose Load for PID 4242. Read the dialog, select the compatible kernel, actively check its risk box, then confirm and attach. Cancel leaves the process detached; the rewrite remains unavailable.',
         },
         route: '/processes',
         proof: 'kernel',
@@ -251,8 +251,8 @@ const qq: readonly TutorialStep[] = [
         id: 'online',
         title: { zh: '检查模拟会话在线结果', en: 'Inspect the simulated online result' },
         hint: {
-            zh: '等待进程详情显示会话已建立。保存内核不等于接入；本课不证明真实 QQ 投递。',
-            en: 'Inspect the process detail after attachment. Saving a kernel choice alone is not attachment, and this lesson proves no real QQ delivery.',
+            zh: '等待进程详情显示会话已建立，以进程状态确认接入。真实 QQ 投递需在运行环境验证。',
+            en: 'Wait for the process detail to show the session connected; use process status to confirm attachment. Verify real QQ delivery in your runtime.',
         },
         route: '/processes',
         proof: 'online',
@@ -262,8 +262,8 @@ const qq: readonly TutorialStep[] = [
         id: 'stop',
         title: { zh: '卸载并保持手动停止', en: 'Unload and preserve the manual stop' },
         hint: {
-            zh: '点「卸载」，确认会话断开。已停止状态不会自动重连，只有主动再次加载才接入。重置可重新练习门禁。',
-            en: 'Choose Unload and inspect the disconnected result. Manual stop does not auto-reconnect; only an explicit load attaches again. Restart the lesson to repeat the risk gate.',
+            zh: '点「卸载」，确认会话断开。停止后需手动加载才接入；重置可重新练习门禁。',
+            en: 'Choose Unload and confirm the session is disconnected. Load manually to attach again; restart the lesson to repeat the risk gate.',
         },
         route: '/processes',
         proof: 'stopped',
@@ -300,8 +300,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
             'layers',
             { zh: '区分控制台、会话和适配器', en: 'Distinguish console, session and adapter' },
             {
-                zh: '控制台登录、QQ 账号会话、适配器可用和机器人回复是不同证据。模拟在线或接口成功不证明真实消息投递。',
-                en: 'Console login, QQ session, adapter availability and bot replies are separate evidence. Simulated online status or API success is not real delivery proof.',
+                zh: '控制台登录、QQ 账号会话、适配器可用和机器人回复是不同证据。模拟在线与接口成功只说明对应环节；真实投递需在运行环境验证。',
+                en: 'Console login, QQ session, adapter availability and bot replies are separate evidence. Simulated online status and API success cover their own link only; verify real delivery in your runtime.',
             },
             '/config',
         ),
@@ -334,8 +334,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 'post-install',
                 { zh: '此处不执行系统安装', en: 'This simulator does not install software' },
                 {
-                    zh: '真实安装器、权限和程序输出须在隔离系统验证。此处学习安装后的端口、HOME、数据目录检查，样本不代表安装验收。',
-                    en: 'Verify the actual installer, permissions and process output in an isolated OS. Here you inspect post-install port, HOME and data directories; samples are not installer acceptance evidence.',
+                    zh: '真实安装器、权限和程序输出须在隔离系统验证。此处练习安装后的端口、HOME 和数据目录检查；样本只用于练习。',
+                    en: 'Verify the real installer, permissions and process output in an isolated system. Practise post-install port, HOME and data-directory checks here; samples are for practice only.',
                 },
             ),
             service,
@@ -369,10 +369,10 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
             saveConfig,
             reading(
                 'availability',
-                { zh: '配置保存不是投递证明', en: 'Saved configuration is not delivery proof' },
+                { zh: '保存后验证连接', en: 'Verify the connection after saving' },
                 {
-                    zh: '样本适配器的 ok 仅为模拟监听状态。真实服务还需检查访问令牌、地址、防火墙和自己的客户端结果。',
-                    en: 'The sample adapter’s ok is only a simulated listener state. A real service also requires checking tokens, addresses, firewall and your own client results.',
+                    zh: '样本适配器的 ok 表示模拟监听。真实服务还需检查访问令牌、地址、防火墙和客户端结果。',
+                    en: 'The sample adapter’s ok is a simulated listener. For a real service, check tokens, addresses, firewall and your client results.',
                 },
                 '/config',
             ),
@@ -420,8 +420,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
             id: 'get',
             title: { zh: '用返回的 message_id 查询样本', en: 'Look up the returned message_id' },
             hint: {
-                zh: '记下发送结果 message_id（首次为 101），选择 get_msg，填写该 ID 并「运行调用」。查询预置 100 或失败结果不算完成此步。',
-                en: 'Note the returned message_id (initially 101), choose get_msg and run it with that ID. Reading seeded message 100 or receiving a failed result does not complete this step.',
+                zh: '记下发送结果 message_id（首次为 101），选择 get_msg，填写该 ID 并「运行调用」。用本次返回的 ID 查询后完成本步。',
+                en: 'Note the returned message_id (initially 101), choose get_msg and run it with that ID. Look up the ID returned by your send to complete this step.',
             },
             route: '/debug',
             proof: 'message-inspected',
@@ -436,8 +436,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 id: 'appearance',
                 title: { zh: '打开外观设置', en: 'Open appearance settings' },
                 hint: {
-                    zh: '查看外观中的主题、动效与玻璃材质。显示选择由你主动设置，不由性能检测自动切换。',
-                    en: 'Inspect theme, motion and glass under Appearance. Display choices are manual, never automatically selected by performance detection.',
+                    zh: '在「偏好设置 → 外观」找到主题、动效和玻璃材质。',
+                    en: 'Find theme, motion and glass under Settings → Appearance.',
                 },
                 route: '/settings?tab=appearance',
                 proof: 'appearance-panel',
@@ -447,8 +447,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 id: 'save-appearance',
                 title: { zh: '改变并保存一项显示选择', en: 'Change and save a display choice' },
                 hint: {
-                    zh: '切换动效或选择磨砂/完整玻璃。需要 API 实际接受显示保存；仅点击设置导航不算。此模拟器刷新后丢弃偏好。',
-                    en: 'Toggle motion or choose frosted/full glass. The API must accept the saved appearance; merely clicking navigation does not count. Reload discards simulator preferences.',
+                    zh: '切换动效或选择另一种玻璃材质，等待界面提示已保存。',
+                    en: 'Toggle motion or select a different glass material. Wait for the saved confirmation.',
                 },
                 route: '/settings?tab=appearance',
                 proof: 'appearance',
@@ -513,8 +513,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 id: 'cleanup',
                 title: { zh: '确认清理示例日志', en: 'Confirm sample log cleanup' },
                 hint: {
-                    zh: '在「清理临时数据」区域找到「日志」一行，点该行「清理」；阅读「清理全部日志？」对话框，再点「确认清理」。日志字节数归零后才完成；取消不算。',
-                    en: 'Under temporary data cleanup, find the Logs row and choose its cleanup button. Read the confirmation and confirm. Completion requires zero log bytes; cancel does not count.',
+                    zh: '在「清理临时数据」区域找到「日志」一行，点该行「清理」；阅读「清理全部日志？」对话框，再点「确认清理」。日志字节数归零后完成本步。',
+                    en: 'Under temporary data cleanup, find the Logs row and choose its cleanup button. Read the confirmation and confirm. The step completes when log bytes reach zero.',
                 },
                 route: '/settings?tab=storage',
                 proof: 'logs-cleaned',
@@ -541,12 +541,12 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 ...process,
                 id: 'offline',
                 title: {
-                    zh: '识别离线而不是猜测原因',
-                    en: 'Inspect offline status without guessing the cause',
+                    zh: '先读错误再判断离线',
+                    en: 'Read the error before diagnosing offline',
                 },
                 hint: {
-                    zh: '本课预置离线样本。选择进程，阅读错误和会话状态；离线不能单独证明扫码失败、权限问题或 QQ 退出。',
-                    en: 'This lesson seeds an offline sample. Select the process and inspect its error/session state. Offline alone proves neither QR failure, permissions problems nor QQ exit.',
+                    zh: '本课预置离线样本。选择进程，阅读错误和会话状态；离线有多种原因，先依据错误和运行记录判断。',
+                    en: 'This lesson seeds an offline sample. Select the process and inspect its error and session state; offline has many causes, so decide from the error and runtime logs.',
                 },
                 proof: 'offline',
             },
@@ -570,14 +570,14 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
         http,
         saveConfig,
     ]),
-    planned: lesson('planned', { zh: '能力状态与规划', en: 'Capability status and plans' }, [
+    planned: lesson('planned', { zh: '路线图', en: 'Roadmap' }, [
         process,
         reading(
             'unavailable',
-            { zh: '不可用不是已实现', en: 'Unavailable does not mean implemented' },
+            { zh: '重写内核', en: 'Rewrite kernel' },
             {
-                zh: '重写内核仍标记不可用，不能选择，也不能静默回退。规划正文不是承诺交付；只以实际控制台和运行时可用性为准。',
-                en: 'Rewrite is still unavailable: it cannot be selected or silently substituted. Planned work is not a delivery promise; the actual console/runtime capability is authoritative.',
+                zh: '进程页将重写内核标记为不可用，接入时请选择兼容内核。路线图说明能力状态，实际可用性以控制台和运行时为准。',
+                en: 'The process page marks the rewrite kernel unavailable; choose the compatible kernel to attach. This roadmap describes capability status; the console and runtime are authoritative.',
             },
             '/processes',
         ),
@@ -592,8 +592,8 @@ export const TUTORIAL_LESSONS: Record<TutorialId, TutorialLesson> = {
                 'evidence',
                 { zh: '区分样本测试与真实验收', en: 'Separate sample tests from real acceptance' },
                 {
-                    zh: '本练习可验证表单、状态门禁与错误呈现，不能验证原生接入、真实 QQ 登录或消息送达。开发应保留账号隔离、主动风险确认与真实失败。',
-                    en: 'This practice exercises forms, state gates and error presentation, not native attachment, real QQ login or delivery. Development must preserve account isolation, active risk acceptance and genuine failures.',
+                    zh: '本练习覆盖表单、状态门禁与错误呈现；原生接入、真实 QQ 登录和消息送达需在真实环境验证。开发仍须保留账号隔离、主动风险确认与真实失败。',
+                    en: 'This practice covers forms, state gates and error presentation. Verify native attachment, real QQ login and delivery in a real environment. Development still requires account isolation, active risk consent and genuine failures.',
                 },
                 '/settings?tab=system',
             ),

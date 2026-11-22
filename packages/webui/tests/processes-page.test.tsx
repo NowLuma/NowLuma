@@ -104,7 +104,7 @@ describe('process account labels', () => {
         );
         expect(html).toContain('QQ processes');
         expect(html).toContain('Select process PID 4242, QQ 10001');
-        expect(html).toContain('Detected locally; sign-in not confirmed');
+        expect(html).toContain('Detected locally · sign-in unconfirmed');
         expect(html).toContain('Load Nowluma into this PID');
         expect(html).toContain(
             '读取超时 (E_READ) Showing the last successfully loaded process status.',

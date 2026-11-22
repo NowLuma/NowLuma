@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, BookOpen, Check, Crosshair, PanelTop } from 'lucide-react';
+import { translator } from '@/i18n';
 import type { DemoApi } from './api';
 import { findTutorialTarget, readTutorialSurface } from './tutorial-dom';
 import { tutorialStepComplete, tutorialText, type TutorialLesson } from './tutorial-lessons';
@@ -11,16 +12,12 @@ export function TutorialGuide({
     lesson,
     language,
     open,
-    onClose,
-    onRestart,
     onNavigate,
 }: {
     api: DemoApi;
     lesson: TutorialLesson;
     language: TutorialLanguage;
     open: boolean;
-    onClose: () => void;
-    onRestart: () => void;
     onNavigate: (route: string) => void;
 }) {
     const [index, setIndex] = useState(0);
@@ -28,15 +25,23 @@ export function TutorialGuide({
     const [targetPresent, setTargetPresent] = useState(false);
     const [complete, setComplete] = useState(false);
     const target = useRef<HTMLElement | null>(null);
-    const completedSteps = useRef(new Set<number>());
+    const message = useRef<HTMLElement | null>(null);
+    const focusNewStep = useRef(false);
+    const [completedSteps, setCompletedSteps] = useState(() => new Set<number>());
     const revision = useSyncExternalStore(
         api.subscribe,
         () => api.tutorialRevision,
         () => api.tutorialRevision,
     );
     const step = lesson.steps[index];
-    const en = language === 'en';
+    const t = translator(language);
     const section = TUTORIAL_SECTION_ANCHORS[lesson.id][step.id];
+    const reading = step.proof === 'reading';
+    const last = index === lesson.steps.length - 1;
+    const showSectionLink = section && typeof window !== 'undefined' && window.parent !== window;
+    const previousLabel = complete ? t('重看上一步', 'Review last step') : t('上一步', 'Previous step');
+    const locateLabel = targetPresent ? t('定位控件', 'Find control') : t('打开操作页', 'Open task page');
+    const readLabel = t('阅读本节', 'Read section');
 
     useEffect(() => {
         if (!open || complete) {
@@ -54,7 +59,7 @@ export function TutorialGuide({
 
             setTargetPresent(nextTarget !== null);
             setVerified(
-                completedSteps.current.has(index) ||
+                completedSteps.has(index) ||
                     tutorialStepComplete(step.proof, api.tutorialSnapshot, readTutorialSurface()),
             );
         };
@@ -85,13 +90,68 @@ export function TutorialGuide({
             target.current?.removeAttribute('data-tutorial-focus');
             target.current = null;
         };
-    }, [api, step, index, open, complete, revision]);
+    }, [api, step, index, open, complete, completedSteps, revision]);
+
+    useEffect(() => {
+        if (!open || !focusNewStep.current) {
+            return;
+        }
+
+        focusNewStep.current = false;
+
+        message.current?.focus({ preventScroll: true });
+    }, [index, complete, open]);
 
     const selectStep = (next: number) => {
-        setVerified(completedSteps.current.has(next));
+        focusNewStep.current = true;
+        setVerified(completedSteps.has(next));
         setComplete(false);
         setIndex(next);
         onNavigate(lesson.steps[next].route);
+    };
+
+    const continueStep = () => {
+        if (
+            !reading &&
+            !completedSteps.has(index) &&
+            !tutorialStepComplete(step.proof, api.tutorialSnapshot, readTutorialSurface())
+        ) {
+            setVerified(false);
+            return;
+        }
+
+        setCompletedSteps((steps) => steps.has(index) ? steps : new Set(steps).add(index));
+
+        if (last) {
+            focusNewStep.current = true;
+            setComplete(true);
+        } else {
+            selectStep(index + 1);
+        }
+    };
+
+    const locateControl = () => {
+        const element = target.current;
+
+        if (!element?.isConnected) {
+            onNavigate(step.route);
+            return;
+        }
+
+        const selector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]';
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        const control = element.matches(selector) ? element : element.querySelector<HTMLElement>(selector);
+        control?.focus({ preventScroll: true });
+    };
+
+    const readSection = () => {
+        const request: TutorialSectionRequest = {
+            type: 'nowluma-tutorial-section',
+            tutorial: lesson.id,
+            step: step.id,
+            lang: language,
+        };
+        window.parent.postMessage(request, window.location.origin);
     };
 
     if (!open) {
@@ -101,176 +161,99 @@ export function TutorialGuide({
     return (
         <aside
             id="demo-guide"
-            className="demo-tutorial-guide"
-            aria-label={en ? 'Chapter guide' : '本章操作引导'}
+            className="demo-tutorial-guide ui-glass-raised"
+            aria-label={t('本章引导', 'Chapter guide')}
             data-tutorial-lesson={lesson.id}
             data-tutorial-step={complete ? 'complete' : step.id}
             data-tutorial-verified={verified ? 'true' : 'false'}
             data-tutorial-section={section?.[language]}
         >
-            <div className="demo-tutorial-heading">
-                <strong>
-                    {en ? 'Step' : '步骤'} {complete ? lesson.steps.length : index + 1} /{' '}
+            <div className="demo-tutorial-meter">
+                <span>
+                    <span className="sr-only">{t('步骤', 'Step')} </span>
+                    <strong>{index + 1}</strong>
+                    {' / '}
                     {lesson.steps.length}
-                </strong>
-                <span className="demo-tutorial-baseline" data-tutorial-baseline={lesson.baseline}>
-                    {lesson.baseline === 'clean'
-                        ? en
-                            ? 'First setup'
-                            : '首次设置'
-                        : en
-                          ? 'Sample account'
-                          : '示例账号'}
                 </span>
+                <progress
+                    value={completedSteps.size}
+                    max={lesson.steps.length}
+                    aria-label={t('已完成步骤', 'Completed steps')}
+                />
+            </div>
+            <section
+                ref={message}
+                className="demo-tutorial-message"
+                aria-labelledby="tutorial-objective"
+                aria-describedby={complete ? undefined : 'tutorial-hint'}
+                data-tutorial-complete={complete ? 'true' : undefined}
+                role={complete ? 'status' : undefined}
+                tabIndex={-1}
+            >
+                <h2 id="tutorial-objective">
+                    {complete ? t('本章练习已完成', 'Chapter complete') : tutorialText(step.title, language)}
+                </h2>
+                {!complete && <p id="tutorial-hint">{tutorialText(step.hint, language)}</p>}
+            </section>
+            <div className="demo-tutorial-actions">
                 <button
                     type="button"
-                    onClick={onClose}
-                    aria-label={en ? 'Close chapter guide' : '收起本章引导'}
-                >
-                    ×
-                </button>
-            </div>
-            <progress
-                value={complete ? lesson.steps.length : index}
-                max={lesson.steps.length}
-                aria-label={en ? 'Completed practice steps' : '已完成练习步骤'}
-            />
-            {complete ? (
-                <div className="demo-tutorial-message" role="status" data-tutorial-complete="true">
-                    <h2>{en ? 'Chapter practice completed' : '本章练习已完成'}</h2>
-                    <p>
-                        {en
-                            ? 'All chapter steps are complete. Continue reading below, or repeat an earlier step.'
-                            : '本章步骤已完成。可继续阅读下方正文，或返回重看。'}
-                    </p>
-                </div>
-            ) : (
-                <section
-                    className="demo-tutorial-message"
-                    aria-labelledby="tutorial-objective"
-                    tabIndex={0}
-                >
-                    <h2 id="tutorial-objective">{tutorialText(step.title, language)}</h2>
-                    <p id="tutorial-hint">{tutorialText(step.hint, language)}</p>
-                    <p
-                        className="demo-tutorial-proof"
-                        role="status"
-                        data-tutorial-proof={step.proof}
-                    >
-                        {step.proof === 'reading'
-                            ? en
-                                ? 'Read, then acknowledge to continue.'
-                                : '阅读后确认，继续下一步。'
-                            : verified
-                              ? en
-                                  ? 'Result confirmed.'
-                                  : '已确认操作结果。'
-                              : en
-                                ? 'Complete the current operation to continue.'
-                                : '完成当前操作后继续。'}
-                    </p>
-                </section>
-            )}
-            <div className="demo-tutorial-actions">
-                <Button
-                    size="sm"
-                    variant="outline"
+                    className="demo-button demo-icon-button"
                     disabled={!complete && index === 0}
                     onClick={() => selectStep(complete ? lesson.steps.length - 1 : index - 1)}
+                    aria-label={previousLabel}
+                    title={previousLabel}
                 >
-                    {complete ? (en ? 'Review' : '重看') : en ? 'Previous' : '上一步'}
-                </Button>
+                    <ArrowLeft aria-hidden="true" />
+                </button>
                 {!complete && (
                     <>
-                        <Button size="sm" variant="outline" onClick={() => onNavigate(step.route)}>
-                            {en ? 'Open page' : '打开操作页'}
-                        </Button>
-                        {typeof window !== 'undefined' && window.parent !== window && section && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                data-tutorial-read-section="true"
-                                onClick={() => {
-                                    const request: TutorialSectionRequest = {
-                                        type: 'nowluma-tutorial-section',
-                                        tutorial: lesson.id,
-                                        step: step.id,
-                                        lang: language,
-                                    };
-                                    window.parent.postMessage(request, window.location.origin);
-                                }}
+                        {!reading && (
+                            <button
+                                type="button"
+                                className="demo-button demo-tutorial-tool"
+                                onClick={locateControl}
+                                aria-label={locateLabel}
+                                title={locateLabel}
                             >
-                                {en ? 'Read section' : '阅读对应小节'}
-                            </Button>
+                                {targetPresent ? <Crosshair aria-hidden="true" /> : <PanelTop aria-hidden="true" />}
+                                <span>{locateLabel}</span>
+                            </button>
                         )}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!targetPresent}
-                            onClick={() => {
-                                const element = target.current;
-
-                                if (!element) {
-                                    return;
-                                }
-
-                                element.scrollIntoView({ block: 'center', behavior: 'instant' });
-                                const control = element.matches(
-                                    'button, input, select, textarea, a, [tabindex]',
-                                )
-                                    ? element
-                                    : element.querySelector<HTMLElement>(
-                                          'button, input:not([disabled]), select, textarea, a, [tabindex]',
-                                      );
-                                control?.focus({ preventScroll: true });
-                            }}
-                        >
-                            {en ? 'Find control' : '定位控件'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            disabled={step.proof !== 'reading' && !verified}
+                        {showSectionLink && (
+                            <button
+                                type="button"
+                                className="demo-button demo-icon-button"
+                                data-tutorial-read-section="true"
+                                aria-label={readLabel}
+                                title={readLabel}
+                                onClick={readSection}
+                            >
+                                <BookOpen aria-hidden="true" />
+                            </button>
+                        )}
+                        {!reading && (
+                            <span id="tutorial-proof" className="sr-only" role="status" data-tutorial-proof={step.proof}>
+                                {verified ? t('操作已完成', 'Task done') : t('待完成当前操作', 'Awaiting the current task')}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            className="demo-button demo-primary-button"
+                            disabled={!reading && !verified}
                             data-tutorial-continue="true"
-                            onClick={() => {
-                                if (
-                                    step.proof !== 'reading' &&
-                                    !completedSteps.current.has(index) &&
-                                    !tutorialStepComplete(
-                                        step.proof,
-                                        api.tutorialSnapshot,
-                                        readTutorialSurface(),
-                                    )
-                                ) {
-                                    setVerified(false);
-                                    return;
-                                }
-
-                                completedSteps.current.add(index);
-
-                                if (index === lesson.steps.length - 1) {
-                                    setComplete(true);
-                                } else {
-                                    selectStep(index + 1);
-                                }
-                            }}
+                            aria-describedby={reading ? 'tutorial-hint' : 'tutorial-proof'}
+                            onClick={continueStep}
                         >
-                            {step.proof === 'reading'
-                                ? en
-                                    ? 'I understand, continue'
-                                    : '我已理解，继续'
-                                : index === lesson.steps.length - 1
-                                  ? en
-                                      ? 'Finish'
-                                      : '完成'
-                                  : en
-                                    ? 'Continue'
-                                    : '下一步'}
-                        </Button>
+                            {verified && !reading && <Check aria-hidden="true" />}
+                            {reading
+                                ? t('我已理解，继续', 'I understand, continue')
+                                : last
+                                  ? t('完成', 'Finish')
+                                  : t('下一步', 'Next')}
+                        </button>
                     </>
                 )}
-                <Button size="sm" variant="outline" onClick={onRestart}>
-                    {en ? 'Restart' : '重新练习本章'}
-                </Button>
             </div>
         </aside>
     );

@@ -120,6 +120,7 @@ export interface ChangePasswordFormProps {
     idPrefix?: string;
     submitLabel?: string;
     className?: string;
+    bodyClassName?: string;
     renderActions?: (state: {
         canSubmit: boolean;
         /** Fields are filled enough to try saving; strength may still be unmet. */
@@ -139,6 +140,7 @@ export function ChangePasswordForm({
     idPrefix = 'cpw',
     submitLabel: customSubmitLabel,
     className,
+    bodyClassName,
     renderActions,
 }: ChangePasswordFormProps) {
     const { language } = useLocale();
@@ -269,7 +271,7 @@ export function ChangePasswordForm({
                         ? t('正在验证密码设置步骤', 'Checking password setup')
                         : t('正在更新访问密码', 'Updating access password'),
                     detail: rehearsing
-                        ? t('演练内容不会保存', 'Rehearsal input will not be saved')
+                        ? undefined
                         : t(
                               '正在保存新密码并使其他会话失效',
                               'Saving the new password and invalidating other sessions',
@@ -278,7 +280,7 @@ export function ChangePasswordForm({
                         ? t('密码设置演练已完成', 'Password setup rehearsal complete')
                         : t('访问密码已更新', 'Access password updated'),
                     successDetail: rehearsing
-                        ? t('未修改真实访问密码', 'The actual access password was not changed')
+                        ? undefined
                         : t('其他会话已失效', 'Other sessions were invalidated'),
                     errorTitle: rehearsing
                         ? t('密码设置演练失败', 'Password setup rehearsal failed')
@@ -306,6 +308,7 @@ export function ChangePasswordForm({
 
     return (
         <form onSubmit={handleSubmit} className={cn('flex flex-col gap-3', className)}>
+            <div className={cn('flex flex-col gap-3', bodyClassName)}>
             {!carriesOld && (
                 <InlineValidation
                     id={`${idPrefix}-old`}
@@ -320,10 +323,6 @@ export function ChangePasswordForm({
                     validate={(value) =>
                         value.length > 0 ? null : t('请输入当前密码', 'Enter your current password')
                     }
-                    hint={t(
-                        '用于确认当前管理员身份',
-                        'Verifies the current administrator’s identity',
-                    )}
                     showValidIcon={false}
                     endAdornment={
                         <PasswordVisibilityButton
@@ -419,7 +418,6 @@ export function ChangePasswordForm({
 
                     return null;
                 }}
-                hint={t('需要与新密码完全一致', 'Must match the new password exactly')}
                 endAdornment={
                     <PasswordVisibilityButton
                         visible={showNew}
@@ -441,6 +439,7 @@ export function ChangePasswordForm({
                     </motion.p>
                 )}
             </AnimatePresence>
+            </div>
 
             {renderActions ? (
                 renderActions({ canSubmit, canAttempt, submitting, submitLabel })

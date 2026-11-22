@@ -45,17 +45,26 @@ import { useT } from '@/i18n';
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
     client?: ApiClient;
+    autoFocusPassword?: boolean;
 }
 
-export default function App({ onboardingSteps = [], client }: AppProps) {
+export default function App({ onboardingSteps = [], client, autoFocusPassword = true }: AppProps) {
     return (
         <ActionFeedbackProvider>
             <ThemeProvider>
-                <InsecureRemoteAccessBanner />
+                <div className="workspace-app">
+                    <InsecureRemoteAccessBanner />
+                    <div className="workspace-app-view">
+                        <AuthBoundary
+                            onboardingSteps={onboardingSteps}
+                            client={client}
+                            autoFocusPassword={autoFocusPassword}
+                        />
+                    </div>
+                </div>
                 <ActionFeedbackViewport />
                 <AdaptivePointer />
                 <GlobalContextMenu />
-                <AuthBoundary onboardingSteps={onboardingSteps} client={client} />
             </ThemeProvider>
         </ActionFeedbackProvider>
     );
@@ -93,9 +102,11 @@ function authLocation() {
 function AuthBoundary({
     onboardingSteps,
     client: injectedClient,
+    autoFocusPassword,
 }: {
     onboardingSteps: AdditionalOnboardingStep[];
     client?: ApiClient;
+    autoFocusPassword: boolean;
 }) {
     const t = useT();
     const finePointer = useFinePointer();
@@ -292,6 +303,7 @@ function AuthBoundary({
             <LoginGate
                 initialPassword={urlLoginPassword}
                 initialNeedsTotp={urlNeedsTotp}
+                autoFocusPassword={autoFocusPassword}
                 onAuthed={(needsChange, password) => {
                     setAuthed(true);
                     setStatus('已连接');
@@ -387,7 +399,7 @@ function AgreementLoadFailure({
 }) {
     const t = useT();
     return (
-        <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+        <div className="flex min-h-full items-center justify-center bg-background px-4 py-8">
             <Card className="w-full max-w-lg border-destructive/30">
                 <CardContent className="p-7 sm:p-9">
                     <div className="flex items-start gap-3">
@@ -403,8 +415,8 @@ function AgreementLoadFailure({
                                 className="mt-1.5 text-sm leading-relaxed text-muted-foreground"
                             >
                                 {t(
-                                    '无法确认当前用户协议与隐私政策状态。为避免绕过必要确认，控制台暂不放行。',
-                                    'The console cannot verify the current use and privacy notices. Access stays blocked until the required confirmation can be checked.',
+                                    '重新加载使用说明与隐私说明后继续。',
+                                    'Reload the usage and privacy notices to continue.',
                                 )}
                             </p>
                             <p className="mt-2 break-words text-xs text-destructive">{detail}</p>
@@ -429,7 +441,7 @@ function AgreementLoadFailure({
 
 function Splash({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
+        <div className="flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
             <SkeletonSwap
                 ready={false}
                 lines={3}
@@ -448,10 +460,12 @@ function LoginGate({
     onAuthed,
     initialPassword,
     initialNeedsTotp,
+    autoFocusPassword,
 }: {
     onAuthed: (mustChange: boolean, password: string) => void;
     initialPassword?: string;
     initialNeedsTotp?: boolean;
+    autoFocusPassword: boolean;
 }) {
     const t = useT();
     const api = useApi();
@@ -495,6 +509,7 @@ function LoginGate({
             onLogin={handleLogin}
             initialPassword={initialPassword}
             initialNeedsTotp={initialNeedsTotp}
+            autoFocusPassword={autoFocusPassword}
         />
     );
 }

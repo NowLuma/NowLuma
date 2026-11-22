@@ -178,7 +178,7 @@ export function GettingStartedPanel() {
                 transition={transition}
                 aria-busy={step.id === 'reading' || busy}
                 data-ready={step.done}
-                className="workspace-connection-workflow"
+                className="workspace-connection-workflow ui-glass-raised"
             >
                 <ol
                     aria-label={t('连接路径', 'Connection steps')}
@@ -419,14 +419,8 @@ export function GettingStartedPanel() {
                     <div className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">
                         <p>
                             {t(
-                                '连接就绪只表示端点在监听或已连上，不代表机器人已回复。',
-                                'Connection ready means the endpoint is listening or connected. It does not mean the bot has replied.',
-                            )}
-                        </p>
-                        <p>
-                            {t(
-                                '在运行记录中核对消息；回复逻辑由你的机器人程序负责。',
-                                'Check messages in the runtime logs. Your bot handles replies.',
+                                '端点已在监听或连上。消息与回复请在运行记录中核对；回复逻辑由你的机器人程序负责。',
+                                'The endpoint is listening or connected. Check messages and replies in the runtime logs; your bot handles replies.',
                             )}
                         </p>
                     </div>

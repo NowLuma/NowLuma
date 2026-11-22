@@ -14,13 +14,13 @@
 | ------------ | -------------------------------------- | --------------------------------------------- |
 | Windows x64  | 双击 `Nowluma.exe`，在浏览器进入控制台 | 已内置运行环境，无需安装 Node、.NET 或 Docker |
 | Linux x64    | 解压 Lite 包，运行 `bash launcher.sh`  | Node.js `24.22.1`（24.x）或 `>=26.12.1`       |
-| Linux Docker | 从源码目录运行下方安装向导             | Docker Engine 与 Compose v2，向导可协助安装   |
+| Linux Docker | [运行安装向导](https://nowluma.github.io/NowLuma/zh/install-docker.html) | Docker Engine 与 Compose v2，向导可协助安装 |
 
 ```bash
 bash deploy/install.sh --docker
 ```
 
-向导先选择中文或 English，再检查 Docker、选择安装来源，并配置访问地址、端口和时区。执行安装脚本前会展示命令。`deploy/install.sh` 位于源码仓库，不包含在 Lite 包中。
+上面的命令从完整源码目录构建。若已有目标版本的 Docker Hub 镜像，请按[部署指南](deploy/README.md)运行镜像安装向导。
 
 默认通过本机或 SSH 隧道访问：控制台与 QQ 桌面 **5099**、机器人 HTTP **3000**、WebSocket **3001**。
 

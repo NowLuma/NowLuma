@@ -189,7 +189,9 @@ pnpm --filter webui build
 ```
 
 The VitePress site offers chapter-specific lessons above the prose. The simulator
-does not load until activated, and collapsing it preserves the current lesson.
+does not load until activated. Collapsing clips the canvas behind a glass panel
+and makes it non-interactive without remounting it; resuming preserves the
+current lesson. The full-page link opens an independent copy in a new tab.
 `pnpm docs:dev` starts both servers; `pnpm docs:build:all` builds the complete
 static site and simulator. Tutorial options are strictly allowlisted document
 query parameters; `src/demo/history.ts` keeps them separate from hash-route search

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { BookOpen, Monitor, RotateCcw, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ArrowRight, BookOpen, ChevronUp, Monitor, RotateCcw, X } from 'lucide-react';
 import App from '@/App';
+import { BRAND_LOGO_URL } from '@/brand';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/interior/modal';
 import { createApiClient } from '@/lib/api';
@@ -26,6 +27,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [selectedStep, setSelectedStep] = useState(0);
     const [noticeKind, setNoticeKind] = useState<'blocked-link' | 'fail-next-write' | null>(null);
+    const guideToggle = useRef<HTMLButtonElement>(null);
     const notice = useSyncExternalStore(
         api.subscribe,
         () => api.notice,
@@ -71,23 +73,6 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
         };
     }, []);
 
-    useEffect(() => {
-        const console = document.querySelector<HTMLElement>('.demo-console');
-
-        if (!console || !lesson) {
-            return;
-        }
-
-        const observer = new ResizeObserver(([entry]) => {
-            console.style.setProperty(
-                '--workspace-viewport-height',
-                `${entry.contentRect.height}px`,
-            );
-        });
-        observer.observe(console);
-        return () => observer.disconnect();
-    }, [lesson]);
-
     const reset = () => {
         if (!lesson) {
             api.reset();
@@ -113,6 +98,11 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
         setGuideOpen(true);
     };
 
+    const closeGuide = () => {
+        setGuideOpen(false);
+        guideToggle.current?.focus();
+    };
+
     const navigate = (route: string) => {
         appRouter.history.push(route);
         setGuideOpen(false);
@@ -125,6 +115,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
 
     const summary = api.summary;
     const step = DEMO_JOURNEY[selectedStep];
+    const title = lesson ? tutorialText(lesson.title, language) : APP_NAME;
     const noticeText =
         noticeKind === 'blocked-link'
             ? t(
@@ -145,26 +136,43 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
             data-embed={embedded ? 'true' : undefined}
         >
             <header className="demo-banner" aria-label={APP_NAME}>
-                <div className="demo-banner-label">
-                    <strong>{lesson ? tutorialText(lesson.title, language) : APP_NAME}</strong>
-                    <span>{t('示例数据', 'Sample data')}</span>
-                </div>
-                <div className="demo-banner-actions">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGuideOpen((open) => !open)}
-                        data-demo-guide-toggle="true"
-                        aria-expanded={guideOpen}
-                        aria-controls="demo-guide"
-                    >
-                        <BookOpen size={15} /> {t('引导', 'Guide')}
-                    </Button>
-                    {!embedded && (
-                        <Button variant="outline" size="sm" onClick={reset}>
-                            <RotateCcw size={15} /> {t('重置', 'Reset')}
-                        </Button>
-                    )}
+                <div className="demo-banner-inner">
+                    <div className="demo-banner-title">
+                        <img src={BRAND_LOGO_URL} alt="" width={28} height={28} />
+                        <div>
+                            <div className="demo-banner-caption">
+                                {t('模拟器 · 示例数据', 'Simulator · Sample data')}
+                            </div>
+                            <h1 title={title}>{title}</h1>
+                        </div>
+                    </div>
+                    <div className="demo-banner-actions">
+                        <button
+                            ref={guideToggle}
+                            type="button"
+                            className="demo-button demo-guide-toggle"
+                            onClick={() => setGuideOpen((open) => !open)}
+                            data-demo-guide-toggle="true"
+                            aria-expanded={guideOpen}
+                            aria-controls={guideOpen ? 'demo-guide' : undefined}
+                        >
+                            <BookOpen aria-hidden="true" /> {t('引导', 'Guide')}
+                        </button>
+                        {!embedded && (
+                            <button
+                                type="button"
+                                className="demo-button"
+                                onClick={reset}
+                                aria-label={t('重置', 'Reset')}
+                                title={t('重置', 'Reset')}
+                            >
+                                <RotateCcw aria-hidden="true" />
+                                <span className={lesson ? 'demo-wide-label' : undefined}>
+                                    {t('重置', 'Reset')}
+                                </span>
+                            </button>
+                        )}
+                    </div>
                 </div>
             </header>
             {lesson && (
@@ -174,17 +182,9 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                     lesson={lesson}
                     language={language}
                     open={guideOpen}
-                    onClose={() => {
-                        setGuideOpen(false);
-                        document.querySelector<HTMLElement>('[data-demo-guide-toggle]')?.focus();
-                    }}
-                    onRestart={reset}
                     onNavigate={(route) => appRouter.history.push(route)}
                 />
             )}
-            <div className="demo-console">
-                <App key={epoch} client={client} />
-            </div>
             {!lesson && guideOpen && (
                 <aside
                     id="demo-guide"
@@ -195,19 +195,15 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                         <div>
                             <h2>{t('操作引导', 'Console guide')}</h2>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
+                        <button
+                            type="button"
+                            className="demo-button demo-icon-button"
+                            onClick={closeGuide}
                             aria-label={t('收起引导', 'Close guide')}
-                            onClick={() => {
-                                setGuideOpen(false);
-                                document
-                                    .querySelector<HTMLElement>('[data-demo-guide-toggle]')
-                                    ?.focus();
-                            }}
+                            title={t('收起引导', 'Close guide')}
                         >
-                            <X size={16} />
-                        </Button>
+                            <ChevronUp aria-hidden="true" />
+                        </button>
                     </div>
                     <nav className="demo-steps" aria-label={t('练习步骤', 'Practice steps')}>
                         {DEMO_JOURNEY.map((item, index) => (
@@ -236,17 +232,22 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                             {t('界面控件：', 'Controls: ')}
                             <strong>{tutorialText(step.control, language)}</strong>
                         </p>
-                        <Button size="sm" onClick={() => navigate(step.route)}>
-                            {t('打开操作页', 'Open page')}
-                        </Button>
+                        <button
+                            type="button"
+                            className="demo-button demo-primary-button"
+                            onClick={() => navigate(step.route)}
+                        >
+                            {t('打开操作页', 'Open page')} <ArrowRight aria-hidden="true" />
+                        </button>
                         {step.id === 'desktop' && (
-                            <Button
-                                size="sm"
-                                variant="outline"
+                            <button
+                                type="button"
+                                className="demo-button"
                                 onClick={() => setDesktopOpen(true)}
                             >
-                                <Monitor size={15} /> {t('打开模拟桌面', 'Open mock desktop')}
-                            </Button>
+                                <Monitor aria-hidden="true" />{' '}
+                                {t('打开模拟桌面', 'Open mock desktop')}
+                            </button>
                         )}
                     </section>
                     <div className="demo-scenarios">
@@ -265,16 +266,16 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                             <option value="offline">{t('离线', 'Account offline')}</option>
                             <option value="failure">{t('接口错误', 'API failure')}</option>
                         </select>
-                        <Button
-                            size="sm"
-                            variant="outline"
+                        <button
+                            type="button"
+                            className="demo-button"
                             onClick={() => {
                                 api.failNextMutation = true;
                                 setNoticeKind('fail-next-write');
                             }}
                         >
                             {t('下次写入失败', 'Fail next write')}
-                        </Button>
+                        </button>
                     </div>
                     <p className="demo-progress">
                         {t('会话：', 'Session: ')}
@@ -300,6 +301,25 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                     </p>
                 </aside>
             )}
+            {(lesson || !guideOpen) && noticeText && (
+                <div className="demo-link-alert">
+                    <p role="alert">{noticeText}</p>
+                    <button
+                        type="button"
+                        className="demo-button demo-icon-button"
+                        onClick={() => {
+                            setNoticeKind(null);
+                            guideToggle.current?.focus();
+                        }}
+                        aria-label={t('关闭提示', 'Dismiss notice')}
+                    >
+                        <X aria-hidden="true" />
+                    </button>
+                </div>
+            )}
+            <div className="demo-console">
+                <App key={epoch} client={client} autoFocusPassword={!embedded} />
+            </div>
             <Modal
                 open={desktopOpen}
                 onClose={() => setDesktopOpen(false)}
@@ -332,19 +352,6 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                     )}
                 </p>
             </Modal>
-            {(lesson || !guideOpen) && noticeText && (
-                <div className="demo-link-alert" role="alert">
-                    {noticeText}
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setNoticeKind(null)}
-                        aria-label={t('关闭提示', 'Dismiss notice')}
-                    >
-                        ×
-                    </Button>
-                </div>
-            )}
         </div>
     );
 }

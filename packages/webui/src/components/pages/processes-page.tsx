@@ -204,7 +204,7 @@ export function ProcessesPage() {
                             {/* master: compact process list */}
                             <section
                                 aria-label={t('进程列表', 'Process list')}
-                                className="cp-panel cp-process-list"
+                                className="cp-panel cp-process-list ui-glass-raised"
                             >
                                 <div className="cp-panel-head">
                                     <h2 className="text-sm font-semibold">
@@ -411,7 +411,7 @@ function ProcessDetail({
         <section
             aria-label={t('进程详情', 'Process details')}
             data-tutorial-control="process-detail"
-            className="cp-panel cp-process-detail"
+            className="cp-panel cp-process-detail ui-glass-raised"
         >
             <div className="cp-toolbar">
                 <div className="flex min-w-0 items-center gap-3">
@@ -514,8 +514,8 @@ function ProcessDetail({
                         {identity && !proc.loggedIn && (
                             <span className="ml-2 text-xs text-muted-foreground">
                                 {t(
-                                    '本地识别，尚未确认登录',
-                                    'Detected locally; sign-in not confirmed',
+                                    '本机识别 · 登录待确认',
+                                    'Detected locally · sign-in unconfirmed',
                                 )}
                             </span>
                         )}

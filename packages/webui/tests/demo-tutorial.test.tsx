@@ -413,8 +413,6 @@ describe('chapter baselines and genuine state proof', () => {
             api,
             language: 'en' as const,
             open: true,
-            onClose: () => {},
-            onRestart: () => {},
             onNavigate: () => {},
         };
         const operational = renderToStaticMarkup(
@@ -427,7 +425,7 @@ describe('chapter baselines and genuine state proof', () => {
             <TutorialGuide {...props} lesson={TUTORIAL_LESSONS['install-native']} />,
         );
         expect(reading).toContain('I understand, continue');
-        expect(reading).toContain('does not install software');
+        expect(reading).not.toContain('data-tutorial-proof=');
         api.reset();
     });
 });

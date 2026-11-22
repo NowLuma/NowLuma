@@ -212,8 +212,8 @@ export function UpdateSources() {
                                 <div className="flex flex-col gap-2">
                                     <p className="text-xs text-muted-foreground">
                                         {t(
-                                            '按可用性和响应延迟排序；检测结果不代表下载速度。',
-                                            'Sorted by availability and response latency; results are not download speed.',
+                                            '按可用性和响应延迟排序；实际下载速度取决于网络传输。',
+                                            'Sorted by availability and response latency; actual download speed depends on the transfer.',
                                         )}
                                     </p>
                                     <ul className="flex min-w-0 flex-col divide-y divide-border/60">

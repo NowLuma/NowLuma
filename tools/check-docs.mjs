@@ -7,6 +7,7 @@ import {
   CHAPTERS,
   CONTENT_ROOT,
   DOCS_BASE,
+  HOSTED_DEPLOY_FILES,
   LOCALES,
   ROOT,
   readDocuments,
@@ -60,7 +61,7 @@ export async function checkSources({ contentRoot = CONTENT_ROOT } = {}) {
   } catch (error) {
     return [error.message];
   }
-  if (!documents.has('index.md')) problems.push('missing bilingual landing page index.md');
+  if (!documents.has('index.md')) problems.push('missing product homepage index.md');
   for (const lang of Object.keys(LOCALES)) {
     const files = [...documents.keys()].filter((key) => key.startsWith(`${lang}/`));
     if (files.length !== CHAPTERS.length) {
@@ -88,7 +89,7 @@ export async function checkSources({ contentRoot = CONTENT_ROOT } = {}) {
         problems.push(`${key}: missing a chapter illustration under /images/tutorials/`);
       }
     } else if (frontmatter.tutorial !== undefined) {
-      problems.push('index.md: the bilingual landing page must not select a tutorial');
+      problems.push('index.md: the product homepage must not select a tutorial');
     }
     for (const ref of refs) {
       if (ref.image && !ref.alt.trim())
@@ -252,6 +253,7 @@ function checkTutorial(html, lang, chapter, label) {
   }
   const toggle = /<button\b[^>]*\sdata-tutorial-load(?=[\s=>])[^>]*>/i.exec(html);
   const stage = /<div\b[^>]*\bid="tutorial-simulator-stage"[^>]*>/i.exec(html);
+  const glass = /<div\b[^>]*\sdata-tutorial-glass(?=[\s=>])[^>]*>/i.exec(html);
   const control = toggle && attributes(toggle[0]);
   if (
     !control ||
@@ -259,10 +261,12 @@ function checkTutorial(html, lang, chapter, label) {
     !Object.hasOwn(control, 'disabled') ||
     control['aria-controls'] !== 'tutorial-simulator-stage' ||
     !stage ||
-    !Object.hasOwn(attributes(stage[0]), 'hidden')
+    !Object.hasOwn(attributes(stage[0]), 'inert') ||
+    !glass ||
+    Object.hasOwn(attributes(glass[0]), 'inert')
   ) {
     problems.push(
-      `${label}: collapsed simulator needs an accessible load control disabled until hydration and a hidden stage`,
+      `${label}: collapsed simulator needs an accessible load control disabled until hydration, an inert stage, and an active glass launcher`,
     );
   }
   const larger = referencesOf(html).find(
@@ -287,6 +291,14 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
   if (!fs.existsSync(outDir))
     return [`${relative(ROOT, outDir)} does not exist; run pnpm docs:build first`];
   const problems = [];
+  for (const name of HOSTED_DEPLOY_FILES) {
+    const file = path.join(outDir, name);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      problems.push(`missing hosted deployment file ${name}`);
+    } else if (!fs.readFileSync(file).equals(fs.readFileSync(path.join(ROOT, 'deploy', name)))) {
+      problems.push(`hosted deployment file differs from deploy/${name}`);
+    }
+  }
   for (const lang of Object.keys(LOCALES)) {
     for (const chapterFile of CHAPTERS) {
       const chapter = chapterFile.replace(/\.md$/, '');
@@ -305,6 +317,14 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
       }
       const h1Count = (html.match(/<h1[\s>]/g) ?? []).length;
       if (h1Count !== 1) problems.push(`${label}: expected one h1, found ${h1Count}`);
+      const refs = referencesOf(html);
+      for (const peer of Object.keys(LOCALES)) {
+        if (peer === lang) continue;
+        const counterpart = `${DOCS_BASE}${peer}/${chapter === 'index' ? '' : `${chapter}.html`}`;
+        if (!refs.some(({ href }) => href === counterpart)) {
+          problems.push(`${label}: missing corresponding ${peer} chapter link`);
+        }
+      }
       problems.push(...checkTutorial(html, lang, chapter, label));
       problems.push(...checkHtmlReferences({ html, file, outDir, withDemo }));
     }
@@ -315,16 +335,13 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
   } else {
     const html = fs.readFileSync(landing, 'utf8');
     if (/<iframe\b/i.test(html)) problems.push('landing page must not embed a tutorial');
-    for (const lang of Object.keys(LOCALES)) {
-      const refs = referencesOf(html);
-      if (
-        !refs.some(
-          (ref) =>
-            ref.href === `${DOCS_BASE}${lang}/index.html` || ref.href === `${DOCS_BASE}${lang}/`,
-        )
-      ) {
-        problems.push(`landing page: missing ${lang} documentation link`);
-      }
+    const links = referencesOf(html).filter((ref) => ref.tag === 'a');
+    if (!links.some(({ href }) => href === `${DOCS_BASE}zh/index.html` || href === `${DOCS_BASE}zh/`)) {
+      problems.push('landing page: missing documentation entry');
+    }
+    if (!idsOf(html).has('downloads')) problems.push('landing page: missing downloads section');
+    if (!links.some(({ href }) => href === 'https://github.com/NowLuma/NowLuma/releases')) {
+      problems.push('landing page: missing GitHub releases link');
     }
     problems.push(...checkHtmlReferences({ html, file: landing, outDir, withDemo }));
   }
