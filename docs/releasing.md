@@ -46,8 +46,9 @@ pnpm release 2.5.0
 - `--no-wait`：推送 tag 后退出，不等待也不校验工作流。
 
 自动等待需要已登录的 `gh`；没有 `gh` 时请用 `--no-wait`，然后按下面的手工流程核对。
-工作流失败时草稿保持私有，不会发布任何东西；修复后在 Actions 中重跑该 tag 的作业，或
-重跑 `pnpm release 2.5.0` 继续等待（tag 不会被重建）。
+工作流失败时 GitHub 发行保持草稿，已经推送的镜像版本标签可能仍然可见。如果失败可重试，
+在 Actions 中重跑该 tag 的作业，或运行 `pnpm release 2.5.0` 继续等待（不会重建 tag）。
+若需修改已打 tag 的源码，使用新版本和新 tag，不移动旧 tag。
 
 手工等价流程：
 
@@ -73,7 +74,7 @@ git push origin refs/tags/v2.5.0
 | `linux`   | 构建 `dist/`、打包 `Nowluma-v<version>-linux-x64-lite.tar.gz`、生成构建来源证明、上传到草稿                                                              |
 | `windows` | 类型检查、构建、`tools/build-windows-exe.mjs`、运行打包后的 `deploy/windows/launcher.test.cjs`、上传 exe 与 `build.json`                                 |
 | `docker`  | 构建 `linux/amd64` 镜像，只推送版本 tag `ghcr.io/<owner>/<repo>:<version>`，生成镜像来源证明，上传镜像摘要                                               |
-| `publish` | 下载草稿全部产物，确认齐全，生成并上传 `SHA256SUMS`，重新下载校验；稳定版在全部校验通过后把已验证摘要提升为 `:latest`；最后发布                          |
+| `publish` | 下载并重新校验草稿产物；如已配置 Docker Hub，将已校验的 GHCR 摘要镜像到 Hub 并验证匿名拉取；仅稳定版更新 `:latest`；最后公开发行 |
 
 `gates` 失败时草稿保持私有，也不会推送镜像；之后的作业失败时草稿仍保持私有，但已推送的
 版本化镜像 tag 可能已经可见。
@@ -97,7 +98,8 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   GitHub 发行仍是草稿时就已可见；稳定版的 `:latest` 只在 `publish` 作业校验完
   `SHA256SUMS` 之后才移动。
 - Linux 包、Windows 产物与容器镜像都通过 `actions/attest-build-provenance` 生成构建来源证明。
-- 不发布 npm 包，也不使用 Docker Hub。发行说明取自 `CHANGELOG.md` 的对应版本小节。
+- Docker Hub 是可选镜像源：配置凭据后，发布作业把同一摘要推送到 `docker.io/wsxyt/nowluma:<version>`，并验证可匿名拉取 Linux/amd64 镜像。预发布版本不会更新任何仓库的 `:latest`。
+- 不发布 npm 包。发行说明取自 `CHANGELOG.md` 的对应版本小节。
 - Windows exe 没有代码签名，发行说明与文档都不应声称已签名。
 - 归档重新打开后会校验 `release.json`、`LICENSE`、`LICENSING.md`、`EULA.md` 与 `PRIVACY.md`；更新包不能缺少这些文件。
 
@@ -107,6 +109,7 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   与 `packages: write` 会被仓库策略降级。工作流本身已按作业最小化权限。
 - 首次推送镜像后，在 Packages 中把 `nowluma` 容器包设为 public（或按需限制访问）。
   版本化 tag 在发行草稿阶段即可见，`:latest` 要等 `publish` 校验通过后才更新。
+- 如需发布官方 Docker Hub 镜像，在 `NowLuma/NowLuma` 创建 `dockerhub-release` 环境，将部署范围限制为 `v*` 标签。设置 Actions 环境变量 `DOCKERHUB_USERNAME` 和具有 `wsxyt/nowluma` 推送权限的环境密钥 `DOCKERHUB_TOKEN`，并确保 Docker Hub 仓库公开。两项都不配置时跳过 Hub；只配置一项会阻止发行。只有对应版本的匿名拉取验证通过后，才把它列为安装向导可用版本。
 - 保护 `main`：要求 `Nowluma PR / pr-check`、`Nowluma CI / verify`、
   `Nowluma CI / docker`、`Nowluma CI / windows` 通过。
 - 保护 `v*` tag，只有维护者能创建；发行作业不会移动已存在的 tag。
@@ -139,6 +142,6 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   因此发行作业需要外网。
 - 归档、镜像与 exe 都只证明构建来源与内容，不证明 QQ 账号可登录、消息可投递、重启后免扫码或重写内核可用。
 - 最新 Docker smoke 使用全新 HOME：真实原生 hook 接入与真实 QQ 登录是 NOT RUN。此前 CI 的历史通过记录不能写成当前版本的真实账号验收。
-- 当前源码门禁和发行状态以[Actions](https://github.com/WSXYT/Nowluma/actions)与[发行页面](https://github.com/WSXYT/Nowluma/releases)对应的源码提交为准，历史成功不能替代本次验收。
+- 当前源码门禁和发行状态以[Actions](https://github.com/NowLuma/NowLuma/actions)与[发行页面](https://github.com/NowLuma/NowLuma/releases)对应的源码提交为准，历史成功不能替代本次验收。
 - Pages 使用工作流部署，是否上线以成功部署与实际站点 HTTP 结果为准。
 - 不要用构建成功、来源证明或健康检查结果声称机器人会自动回复；回复逻辑由用户的机器人程序决定。

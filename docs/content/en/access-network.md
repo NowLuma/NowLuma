@@ -6,13 +6,11 @@ tutorial: access-network
 
 # Access and network
 
-The lesson above locates listener settings and diagnostics. SSH forwarding, published ports and TLS certificates still require configuration on your actual deployment.
+Start with local access. To reach a remote host, use SSH forwarding or HTTPS.
 
 ![Deployment diagnostics on the service settings page](/images/tutorials/deployment-diagnostics.png)
 
-_Figure: sample paths only. Redact real addresses and directories before requesting help._
-
-By default only the local machine can reach the console. Prefer an SSH tunnel for remote use; use an HTTPS reverse proxy for LAN or public entry. Never expose the management UI and desktop directly over plaintext public HTTP.
+The console listens locally by default. Use an SSH tunnel for individual access, or an HTTPS reverse proxy for a shared entry.
 
 ## Three entry modes
 
@@ -81,13 +79,13 @@ Docker desktop is served under `/desktop/`:
 - HttpOnly, SameSite=Strict, path-scoped cookies; console tokens and VNC passwords never appear in URLs.
 - The gateway validates the console session server-side; the VNC backend listens only on loopback 5900 and keeps independent authentication. Its password is not returned to the browser.
 - Logout, password change or session expiry stops desktop operations; WebSocket also checks Origin.
-- The automatic `打开 QQ 桌面` entry always uses same-origin `/desktop/`; it does not use browser user agent or a configured external URL, and appears only when the server has actually applied the gateway.
+- To check whether `打开 QQ 桌面` is available, see [Open QQ desktop](qq-connection.md#open-qq-desktop).
 
 ## Tokens, passwords and sessions
 
 - Sessions live in the browser; `退出登录` clears the current browser token.
 - Changing the access password immediately invalidates other sessions.
-- `?token=<password>` is a one-shot convenience removed from the address bar after reading; never share such a link.
+- For [link sign-in](first-run.md#link-login), keep the URL private: it contains the access password.
 - With 2FA enabled, a one-time code or recovery code is also required; recovery codes are shown once.
 
 ## Recovery

@@ -6,7 +6,7 @@ tutorial: install-docker
 
 # Docker 安装（Linux）
 
-本页先完成 Linux 安装，再练习打开控制台。上方模拟器只演练安装后的页面，不会在你的设备上安装 Docker、启动容器或登录 QQ。
+在 Linux 服务器或 NAS 上部署 Nowluma。安装完成后，可在上方练习登录控制台。
 
 ![安装完成后使用的控制台登录页](/images/tutorials/login.png)
 
@@ -16,20 +16,20 @@ _图：控制台示例入口。真实部署的初始密码从安装输出获取�
 
 ## 准备
 
-- Linux x86_64（amd64）。arm64 有构建输入，但未实际验证。
-- Docker Engine 与 Compose v2；需要 sudo 时，后续命令也要加 sudo。
-- 服务器能访问容器镜像、Node 与固定版本的 QQ 包。
-- 至少保留 `config`、`data`、`logs` 和完整 QQ HOME 四个卷。
+- Linux x86_64（amd64）、Bash 和 curl。其他平台见[路线图](planned.md#平台)。
+- Docker Engine、Compose v2，以及对所选镜像仓库或镜像源的访问。向导可协助安装缺少的组件。
 
 ## 安装向导
 
-在源码目录执行：
+使用预构建镜像时，请从 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)选一个已发布的 Linux/amd64 版本。[GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)提供发行文件与校验值。在 Linux 终端运行：
 
 ```bash
-bash deploy/install.sh --docker
+bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
 ```
 
-首次会依次询问：
+先选语言。向导检查 Docker 后，请选择安装目录（默认 `$HOME/Nowluma`）和镜像版本。已知版本时，可在命令末尾加 `--version 版本`。
+
+向导中的设置与默认值：
 
 | 提示                      | 说明                                   |
 | ------------------------- | -------------------------------------- |
@@ -40,11 +40,13 @@ bash deploy/install.sh --docker
 | 机器人 WebSocket 接口端口 | 默认 `3001`                            |
 | 时区                      | 例如 `Asia/Shanghai`                   |
 
-回车使用默认值。三个端口不能重复。配置保存在私有 `deploy/.env`，已有配置逐字保留，不会被重新生成。
+按回车使用默认值，三个端口需不同。已有 `deploy/.env` 会原样复用。
 
-缺少 Docker 时，向导会显示安装命令并让你确认；不会静默安装，也不会要求关闭防火墙或 SELinux。镜像源可选官方或第三方，由你决定。
+向导沿用现有 Docker 和镜像源。缺少 Docker 时，可选择官方安装脚本，或使用第三方 LinuxMirrors 选择镜像源；向导显示命令后等待确认。
 
-安装成功后直接在终端显示本次生成的控制台初始密码和实际地址。已有部署不会重置密码。
+如果首次拉取镜像失败，向导不会保存新部署，可以重新运行并选择已发布的版本。如果目标版本没有 Docker Hub 镜像，可从完整源码目录运行 `bash deploy/install.sh --docker`。
+
+安装成功后，终端会显示控制台地址；新部署还会显示初始密码。
 
 ## 首次进入
 
@@ -72,11 +74,10 @@ bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
 ```
 
-- `start` 构建并等待健康检查；失败返回非零状态并保留原数据。
-- `restart` 正常结束进程再等待恢复。
+- `start` 使用本地已有的指定镜像（源码部署则构建），并等待健康检查。
+- `restart` 正常结束进程再等待恢复，不拉取或构建镜像。
 - `stop` 不删除任何数据卷。
 - `doctor` 检查容器、进程、端口与目录。
-- 日志里出现错误不等于安装完成。
 
 ## 端口与网络
 
@@ -120,26 +121,25 @@ QQ 与程序固定以 UID/GID 1000 运行，共用 HOME 和 XDG 环境。机器 
 ## 升级与卸载
 
 1. 先停服务，再备份四个卷，避免复制正在写入的 SQLite/WAL。
-2. 更新源码或发行目录，运行 `bash deploy/manage.sh start`；原卷继续使用。
+2. 镜像部署：确认新标签已发布，只修改 `deploy/.env` 中 `NOWLUMA_IMAGE` 的 `docker.io/wsxyt/nowluma` 版本，再运行 `bash deploy/manage.sh update`。源码部署：更新源码并运行 `bash deploy/manage.sh start`。两种方式都复用原卷。
 3. 不要用 `down -v` 升级。
 4. 彻底删除前确认备份；普通 `stop` 不删除数据。
 
-## 自动化验证现状
+## 检查运行状态 {#自动化验证现状}
 
-容器 smoke 使用全新 HOME，验证 QQ 进程发现、未确认账号不会被自动接入、桌面认证、重启/重建后的数据持久化。它不伪造账号确认，也不把「进程发现」说成真实 QQ 登录。
-
-真实 hook 接入、真实账号登录与长期会话在最新 smoke 中是 **NOT RUN**。已发布版本的安装器、容器与 Windows 启动器有自动化检查，但它们不证明 QQ 消息必达、重启免扫码或重写内核可用；每次变更仍以对应提交的 CI 为准。
+运行 `bash deploy/manage.sh doctor` 检查部署，或在 `logs` 中查看启动失败的原因。平台验收进度见[路线图](planned.md#平台)。
 
 ## 排障
 
 | 现象               | 检查                                                                |
 | ------------------ | ------------------------------------------------------------------- |
+| 镜像拉取失败       | 确认版本标签、架构与镜像仓库访问                                    |
 | 控制台打不开       | 容器健康、端口冲突、隧道或局域网发布地址                            |
 | 桌面打不开         | 控制台会话、首次改密/说明确认、反向代理的 Host 与 WebSocket         |
-| 没有 QQ 进程       | QQ 是否启动、Xvfb/QQ 日志；空列表不是安装成功                       |
+| 没有 QQ 进程       | 查看 Xvfb 与 QQ 启动日志                                            |
 | 无法接入           | 原生组件与架构、`SYS_PTRACE`、QQ 与程序用户是否一致                 |
 | 重启后自动登录消失 | `nowluma_qq-home` 是否复用、HOME/XDG 是否被覆盖、是否用了 `down -v` |
 | 文件都在但仍要扫码 | QQ 服务端会话失效；需要在 QQ 窗口验证                               |
-| 配置损坏           | 程序会报错并保留原文件，不会静默覆盖                                |
+| 配置损坏           | 按错误中的路径找到原文件，从备份恢复                                 |
 
 更多入口见[排障与失败恢复](troubleshooting.md)。

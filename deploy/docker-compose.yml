@@ -1,13 +1,8 @@
 name: nowluma
 services:
   nowluma:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile
-      args:
-        QQ_DEB_URL: ${QQ_DEB_URL:-}
-        QQ_DEB_SHA256: ${QQ_DEB_SHA256:-}
-    image: nowluma:local
+    # manage.sh adds a build definition only for source checkouts.
+    image: ${NOWLUMA_IMAGE:-nowluma:local}
     hostname: nowluma
     restart: unless-stopped
     # Publish locally by default; the installer can explicitly opt into LAN access.

@@ -2,6 +2,7 @@ import { useState, type ReactNode, type RefObject } from 'react';
 import { useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, ScrollText, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LanguageToggle } from '@/components/language-toggle';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LineField } from '@/components/ui/line-field';
 import { PaperBackdrop } from '@/components/layout/paper-backdrop';
@@ -22,6 +23,7 @@ import type { AgreementDoc } from '@/lib/api/types';
 import { BRAND_LOGO_URL } from '@/brand';
 import { APP_NAME } from '@/types';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useT, type Translate } from '@/i18n';
 import '@/styles/workspace.css';
 
 export interface AdditionalOnboardingStep {
@@ -54,10 +56,27 @@ interface OnboardingWizardPageProps {
     feedbackHostRef?: RefObject<HTMLDivElement | null>;
 }
 
-const DOCUMENT_LABELS: Record<AgreementDoc['id'], string> = {
-    eula: '使用说明',
-    privacy: '隐私说明',
-};
+export function agreementErrorMessage(message: string, t: Translate): string {
+    switch (message) {
+        case '提交失败，请重试':
+            return t(message, 'Could not submit. Please try again.');
+        case '网络错误，请重试':
+            return t(message, 'Network error. Please try again.');
+        case '请求格式错误':
+            return t(message, 'Invalid request format.');
+        case '协议版本已更新，请刷新后重新确认':
+            return t(message, 'The notices were updated. Refresh and confirm again.');
+        case '协议已更新，已为你载入最新版本，请重新阅读后确认。':
+            return t(
+                message,
+                'The latest notices have been loaded. Review them before confirming again.',
+            );
+        case '保存失败，请检查服务器日志':
+            return t(message, 'Could not save. Check the server logs.');
+        default:
+            return message;
+    }
+}
 
 export function OnboardingWizardPage({
     documents,
@@ -76,6 +95,7 @@ export function OnboardingWizardPage({
     additionalSteps = [],
     feedbackHostRef,
 }: OnboardingWizardPageProps) {
+    const t = useT();
     const { appearance } = useTheme();
     const reduced = useReducedMotionConfig() || appearance.reduceMotion || appearance.disableMotion;
     const [requiredStepIds] = useState(() =>
@@ -104,7 +124,7 @@ export function OnboardingWizardPage({
         if (stepId === 'agreements') {
             return {
                 id: stepId,
-                label: '阅读使用说明',
+                label: t('使用与隐私', 'Usage and privacy'),
                 canSkip: false,
                 hideAdvance: true,
                 hideBack: true,
@@ -126,10 +146,11 @@ export function OnboardingWizardPage({
 
         return {
             id: stepId,
-            label: '设置访问密码',
+            label: t('设置访问密码', 'Set an access password'),
             canSkip: false,
             hideAdvance: true,
             hideBack: true,
+            scrollMode: 'content',
             content: (
                 <PasswordStep
                     knownOldPassword={knownOldPassword}
@@ -147,13 +168,19 @@ export function OnboardingWizardPage({
 
     const steps: WizardStep[] = [
         ...required,
-        ...additionalSteps.map((step) => ({
+        ...additionalSteps.map<WizardStep>((step) => ({
             id: step.id,
-            label: step.label,
+            label:
+                step.id === 'display-effects' && step.label === '显示效果'
+                    ? t(step.label, 'Display effects')
+                    : step.id === 'kernel-choice' && step.label === '选择接入内核'
+                      ? t(step.label, 'Choose a connection kernel')
+                      : step.label,
             content: step.content,
             canSkip: step.canSkip,
             onSkip: step.onSkip,
             hideAdvance: step.hideAdvance,
+            scrollMode: step.id === 'display-effects' ? 'content' : undefined,
         })),
     ];
 
@@ -175,29 +202,29 @@ export function OnboardingWizardPage({
                     <span>{APP_NAME}</span>
                 </div>
                 <div className="workspace-toolbar-scene">
+                    <LanguageToggle />
                     <ThemeToggle />
                 </div>
             </header>
             <div className="workspace-onboarding-layout">
-                <aside className="workspace-onboarding-identity" aria-label="首次使用设置">
+                <aside
+                    className="workspace-onboarding-identity"
+                    aria-label={t('首次使用设置', 'First-time setup')}
+                >
                     <div className="workspace-auth-artwork">
                         <LineField animated={!reduced} />
                         <div className="workspace-auth-artwork-caption">
                             <span>{APP_NAME}</span>
-                            <span>开始连接</span>
+                            <span>{t('控制台设置', 'Console setup')}</span>
                         </div>
                     </div>
-                    <p className="workspace-eyebrow mt-6">从这里开始</p>
                     <p className="workspace-auth-statement">
-                        连接之前，
-                        <br />
-                        准备就绪。
+                        {t('先完成设置，再接入 QQ', 'Set up the console before attaching QQ')}
                     </p>
                 </aside>
                 <main className="workspace-onboarding-document">
                     <header className="workspace-onboarding-heading">
-                        <p className="workspace-eyebrow">欢迎使用 {APP_NAME}</p>
-                        <h1>完成首次使用设置</h1>
+                        <h1>{t('首次设置', 'First-time setup')}</h1>
                     </header>
                     <div ref={feedbackHostRef} className="workspace-onboarding-feedback" />
                     <WizardSteps
@@ -205,11 +232,11 @@ export function OnboardingWizardPage({
                         index={index}
                         onIndexChange={setIndex}
                         onComplete={onComplete}
-                        label="首次使用设置步骤"
-                        backLabel="上一步"
-                        nextLabel="下一步"
-                        finishLabel="完成"
-                        skipLabel="跳过"
+                        label={t('首次使用设置步骤', 'First-time setup steps')}
+                        backLabel={t('上一步', 'Back')}
+                        nextLabel={t('下一步', 'Next')}
+                        finishLabel={t('完成', 'Finish')}
+                        skipLabel={t('跳过', 'Skip')}
                         spacious
                         fill
                     />
@@ -232,6 +259,11 @@ function AgreementStep({
     onDecline: () => void;
     onComplete: () => void;
 }) {
+    const t = useT();
+    const documentLabels: Record<AgreementDoc['id'], string> = {
+        eula: t('使用说明', 'Usage notice'),
+        privacy: t('隐私说明', 'Privacy notice'),
+    };
     const [activeId, setActiveId] = useState(documents[0]?.id ?? 'eula');
     const [agreed, setAgreed] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -265,16 +297,17 @@ function AgreementStep({
 
     return (
         <div className="flex h-full min-h-0 flex-col">
+            <div className="workspace-step-body">
             <div className="flex items-start gap-3 sm:gap-4">
                 <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
                     <ScrollText className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
-                        阅读使用说明
+                        {t('阅读使用说明与隐私说明', 'Read the Usage Notice and Privacy Notice')}
                     </h2>
                     <p className="mt-0.5 max-w-2xl text-pretty text-xs leading-relaxed text-muted-foreground sm:mt-1 sm:text-sm">
-                        阅读后确认，即可继续设置。
+                        {t('查看两份说明后确认继续。', 'Read both notices, then confirm to continue.')}
                     </p>
                 </div>
             </div>
@@ -282,12 +315,12 @@ function AgreementStep({
             {documents.length > 1 ? (
                 <div className="mt-3 max-w-full overflow-x-auto pb-1 sm:mt-4">
                     <SegmentedControl
-                        label="说明文档"
+                        label={t('说明文档', 'Notices')}
                         value={activeId}
                         onValueChange={(next) => setActiveId(next as AgreementDoc['id'])}
                         options={documents.map((document) => ({
                             value: document.id,
-                            label: DOCUMENT_LABELS[document.id],
+                            label: documentLabels[document.id],
                         }))}
                     />
                 </div>
@@ -295,34 +328,48 @@ function AgreementStep({
 
             {active && (active.declaredVersion || active.effectiveDate) ? (
                 <p className="mt-1.5 px-0.5 text-meta leading-relaxed text-muted-foreground">
-                    {active.declaredVersion ? `版本 / Version ${active.declaredVersion}` : ''}
+                    {active.declaredVersion
+                        ? `${t('版本', 'Version')} ${active.declaredVersion}`
+                        : ''}
                     {active.declaredVersion && active.effectiveDate ? ' · ' : ''}
-                    {active.effectiveDate ? `生效 / Effective ${active.effectiveDate}` : ''}
+                    {active.effectiveDate
+                        ? `${t('生效', 'Effective')} ${active.effectiveDate}`
+                        : ''}
                 </p>
             ) : null}
 
-            <div
-                className="workspace-agreement-reading mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-[4px] border border-border bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
+            <section
+                className="workspace-agreement-reading ui-glass-raised mt-3 rounded-[var(--radius)] border border-border p-3 outline-none focus-visible:outline-2 focus-visible:outline-ring sm:p-5"
                 tabIndex={0}
-                aria-label={active ? `${DOCUMENT_LABELS[active.id]}正文` : '说明正文'}
+                aria-label={
+                    active
+                        ? t(`${documentLabels[active.id]}正文`, `${documentLabels[active.id]} text`)
+                        : t('说明正文', 'Notice text')
+                }
             >
                 <div className="mx-auto max-w-[44.25rem]">
                     {active ? (
                         <Markdown content={active.text} />
                     ) : (
                         <p className="text-sm text-muted-foreground">
-                            未能加载说明文本，请刷新页面重试。
+                            {t(
+                                '未能加载说明文本，请刷新页面重试。',
+                                'Could not load the notices. Refresh the page to try again.',
+                            )}
                         </p>
                     )}
                 </div>
+            </section>
             </div>
+            <div className="workspace-step-footer">
 
             <button
                 type="button"
+                data-tutorial-control="agreement-ack"
                 onClick={() => setAgreed((current) => !current)}
                 aria-pressed={agreed}
                 className={cn(
-                    'mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
+                    'ui-glass-field flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
                     agreed
                         ? 'border-primary/60 bg-primary/5'
                         : 'border-border hover:border-primary/40 hover:bg-accent/40',
@@ -339,19 +386,22 @@ function AgreementStep({
                     {agreed ? <Check className="size-3.5" strokeWidth={3} /> : null}
                 </span>
                 <span className="text-sm font-medium leading-relaxed">
-                    我已阅读《使用说明》和《隐私说明》
+                    {t(
+                        '我已阅读《使用说明》和《隐私说明》',
+                        'I have read the Usage Notice and Privacy Notice',
+                    )}
                 </span>
             </button>
 
             {error ? (
                 <p role="alert" className="mt-2 text-xs text-destructive">
-                    {error}
+                    {agreementErrorMessage(error, t)}
                 </p>
             ) : null}
 
             <div className="mt-3 flex items-center gap-3 sm:justify-between">
                 <span className="hidden text-micro text-muted-foreground/70 sm:inline">
-                    说明版本 {version.slice(0, 8)}
+                    {t('说明版本', 'Notices version')} {version.slice(0, 8)}
                 </span>
                 <div className="workspace-onboarding-actions grid w-full grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
                     <Button
@@ -361,7 +411,7 @@ function AgreementStep({
                         disabled={submitting}
                         className="h-11 w-full sm:w-auto"
                     >
-                        退出
+                        {t('退出', 'Exit')}
                     </Button>
                     <Button
                         type="button"
@@ -369,12 +419,15 @@ function AgreementStep({
                             void accept();
                         }}
                         disabled={!agreed || submitting}
-                        className="h-11 w-full sm:min-w-36 sm:w-auto"
+                        className="h-auto w-full whitespace-normal text-balance sm:min-w-36 sm:w-auto"
                     >
                         <ShieldCheck className="size-4" />
-                        {submitting ? '提交中…' : '确认并继续'}
+                        {submitting
+                            ? t('提交中…', 'Submitting…')
+                            : t('确认并继续', 'Confirm and continue')}
                     </Button>
                 </div>
+            </div>
             </div>
         </div>
     );
@@ -396,23 +449,19 @@ function PasswordStep({
     ) => Promise<{ success: boolean; message?: string }>;
     onComplete: () => void;
 }) {
+    const t = useT();
     const { back, isLast } = useWizardNavigation();
 
     return (
-        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-start py-2 sm:py-5">
-            <div className="mb-6 flex items-start gap-3">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-xl flex-col">
+            <div className="mb-3 flex shrink-0 items-center gap-3">
                 <div className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
                     <ShieldAlert className="size-5" />
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
-                        设置新的访问密码
+                        {t('设置新的访问密码', 'Set a new access password')}
                     </h2>
-                    <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
-                        {mode === 'rehearsal'
-                            ? '演练密码设置，不保存输入内容。'
-                            : '设置用于打开控制台的密码。'}
-                    </p>
                 </div>
             </div>
             <ChangePasswordForm
@@ -423,11 +472,16 @@ function PasswordStep({
                 onSuccess={onComplete}
                 idPrefix="onboarding-cpw"
                 submitLabel={
-                    mode === 'rehearsal' ? '完成演练' : isLast ? '保存并完成' : '保存并继续'
+                    mode === 'rehearsal'
+                        ? t('完成演练', 'Finish rehearsal')
+                        : isLast
+                          ? t('保存并完成', 'Save and finish')
+                          : t('保存并继续', 'Save and continue')
                 }
-                className="gap-4"
+                className="min-h-0 flex-1"
+                bodyClassName="workspace-step-body"
                 renderActions={({ canAttempt, submitting, submitLabel }) => (
-                    <div className="workspace-onboarding-actions grid grid-cols-2 gap-3 pt-2 sm:flex sm:items-center">
+                    <div className="workspace-step-footer workspace-onboarding-actions grid grid-cols-2 gap-3 sm:flex sm:items-center">
                         <Button
                             type="button"
                             variant="outline"
@@ -435,16 +489,17 @@ function PasswordStep({
                             disabled={submitting}
                             className="h-11 w-full sm:w-auto"
                         >
-                            上一步
+                            {t('上一步', 'Back')}
                         </Button>
                         <Button
                             type="submit"
                             disabled={!canAttempt}
-                            className="h-11 w-full sm:ml-auto sm:min-w-36 sm:w-auto"
+                            className="h-auto w-full whitespace-normal text-balance sm:ml-auto sm:min-w-36 sm:w-auto"
                         >
                             {submitting ? (
                                 <>
-                                    <Loader2 className="size-4 animate-spin" /> 提交中…
+                                    <Loader2 className="size-4 animate-spin" />{' '}
+                                    {t('提交中…', 'Submitting…')}
                                 </>
                             ) : (
                                 submitLabel

@@ -6,11 +6,9 @@ tutorial: settings-runtime
 
 # Settings: runtime and services
 
-Locate Services and deployment diagnostics in the lesson above, then distinguish a saved value from a restart-required change. Keep a working recovery entry before changing a real listener.
+Keep a working SSH or other recovery path before changing the listener.
 
 ![Service listener and runtime settings](/images/tutorials/settings-service.png)
-
-_Figure: example service settings; tutorial saves do not change device listeners or TLS._
 
 These categories control how the service runs, how long data is kept, where notifications go and how updates are installed. Appearance and account settings are in [Settings: appearance and account](settings-console.md).
 
@@ -54,7 +52,7 @@ Account cleanup removes only the selected category and sidecar files. It does no
 - Webhook: URL and optional headers.
 - Email: SMTP host, port, username, password/authorisation code, sender, recipients, subject template.
 
-Each row can be enabled, test-sent, edited or deleted. A successful test proves the channel works, not that a particular account event will arrive. After saving, opt the account in under Bot connections → `消息行为` → `上下线通知渠道`.
+Use **Test send** to check the channel. To receive a particular account's events, save the channel and select it under Bot connections → `消息行为` → `上下线通知渠道`.
 
 ## Services
 
@@ -63,16 +61,13 @@ Each row can be enabled, test-sent, edited or deleted. A successful test proves 
 - `端口`: default `5099`.
 - `绑定地址`: `127.0.0.1` local only, `0.0.0.0` all interfaces; the UI warns to use HTTPS and strong credentials for LAN.
 - `信任代理 (trust-proxy)`: only behind a trusted reverse proxy.
-- `自动连接已打开的 QQ`: applies after restart. It auto-attaches only when local QQ is logged in, a real UIN is recognized, and that UIN already has a current-risk-version compatibility acknowledgement. It is not QQ auto-login and does not skip kernel confirmation. A PID explicitly unloaded stays manually stopped; refresh and auto-connect do not restart it.
+- `自动连接已打开的 QQ`: after restart, automatically attaches signed-in QQ accounts with a recognized UIN and current-risk-version compatibility acknowledgement. For first attach and manual stops, see [QQ sessions](qq-connection.md#saving-is-not-attaching).
 
 Restart Nowluma after changing listener settings.
 
 ### QQ desktop
 
-- `noVNC 端口` and `桌面地址（可选）` are still saved, but the automatic `打开 QQ 桌面` entry is no longer decided by those fields alone; it appears only when the server has actually applied the same-origin desktop gateway.
-- The automatic entry always uses same-origin `/desktop/`; it does not branch on browser user agent and does not redirect to a configured external URL.
-- The capability is true only on a Linux server with the gateway applied. Windows native does not show the entry even with a VNC address configured. A Windows browser connected to a Linux Docker server can still use it.
-- The desktop reuses the current console session; no separate desktop password is needed. QQ login still happens inside QQ.
+`noVNC 端口` and `桌面地址（可选）` can be saved. To enable the built-in desktop entry, the Linux server must apply the [same-origin desktop gateway](access-network.md#desktop-authentication).
 
 ### HTTPS / TLS
 
@@ -109,7 +104,7 @@ Both are always visible for UI testing and do not depend on an environment switc
 Shows the current version, update check and state:
 
 - `重新检查` queries the latest release; when checks are disabled it reads `检查已关闭`.
-- `更新来源`: auto, GitHub direct or a specified mirror. Auto tries GitHub first, then candidates in order. `检测可用性` measures reachability, not download speed; `保存来源` applies it.
+- `更新来源`: auto, GitHub direct or a specified mirror. Auto tries GitHub first, then the other sources in order. Use `检测可用性` to check reachability and `保存来源` to save.
 - When an update exists, `下载更新`; when ready, `重启并更新`. Connections drop briefly; configuration and data remain.
 
 `项目与许可` links source, releases, issues and GPLv3, and states that commercial use is allowed and native/third-party components follow their own terms. The infringement mailbox is for infringement complaints only, not general support, commercial enquiries or privacy requests.

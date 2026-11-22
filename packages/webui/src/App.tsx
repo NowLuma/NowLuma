@@ -6,8 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { SessionProvider } from '@/contexts/SessionContext';
-import { LoginPage } from '@/components/pages/login-page';
+import { LoginPage, loginErrorMessage } from '@/components/pages/login-page';
 import {
+    agreementErrorMessage,
     OnboardingWizardPage,
     type AdditionalOnboardingStep,
 } from '@/components/pages/onboarding-wizard-page';
@@ -38,21 +39,32 @@ import {
 import { onboardingExecution } from '@/lib/onboarding-actions';
 import { KernelOnboardingStep } from '@/components/kernel-onboarding-step';
 import { DisplayEffectsOnboardingStep } from '@/components/display-effects';
+import { LanguageToggle } from '@/components/language-toggle';
+import { useT } from '@/i18n';
 
 interface AppProps {
     onboardingSteps?: AdditionalOnboardingStep[];
     client?: ApiClient;
+    autoFocusPassword?: boolean;
 }
 
-export default function App({ onboardingSteps = [], client }: AppProps) {
+export default function App({ onboardingSteps = [], client, autoFocusPassword = true }: AppProps) {
     return (
         <ActionFeedbackProvider>
             <ThemeProvider>
-                <InsecureRemoteAccessBanner />
+                <div className="workspace-app">
+                    <InsecureRemoteAccessBanner />
+                    <div className="workspace-app-view">
+                        <AuthBoundary
+                            onboardingSteps={onboardingSteps}
+                            client={client}
+                            autoFocusPassword={autoFocusPassword}
+                        />
+                    </div>
+                </div>
                 <ActionFeedbackViewport />
                 <AdaptivePointer />
                 <GlobalContextMenu />
-                <AuthBoundary onboardingSteps={onboardingSteps} client={client} />
             </ThemeProvider>
         </ActionFeedbackProvider>
     );
@@ -90,10 +102,13 @@ function authLocation() {
 function AuthBoundary({
     onboardingSteps,
     client: injectedClient,
+    autoFocusPassword,
 }: {
     onboardingSteps: AdditionalOnboardingStep[];
     client?: ApiClient;
+    autoFocusPassword: boolean;
 }) {
+    const t = useT();
     const finePointer = useFinePointer();
     const [authChecked, setAuthChecked] = useState(false);
     const [authed, setAuthed] = useState(false);
@@ -280,12 +295,15 @@ function AuthBoundary({
     let view: React.ReactNode;
 
     if (authLoading || showAuthSkeleton) {
-        view = <Splash>{authChecked ? '加载中…' : '初始化中…'}</Splash>;
+        view = (
+            <Splash>{authChecked ? t('加载中…', 'Loading…') : t('初始化中…', 'Starting…')}</Splash>
+        );
     } else if (!authed) {
         view = (
             <LoginGate
                 initialPassword={urlLoginPassword}
                 initialNeedsTotp={urlNeedsTotp}
+                autoFocusPassword={autoFocusPassword}
                 onAuthed={(needsChange, password) => {
                     setAuthed(true);
                     setStatus('已连接');
@@ -379,8 +397,9 @@ function AgreementLoadFailure({
     onRetry: () => void;
     onLogout: () => void;
 }) {
+    const t = useT();
     return (
-        <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+        <div className="flex min-h-full items-center justify-center bg-background px-4 py-8">
             <Card className="w-full max-w-lg border-destructive/30">
                 <CardContent className="p-7 sm:p-9">
                     <div className="flex items-start gap-3">
@@ -388,24 +407,30 @@ function AgreementLoadFailure({
                             <AlertTriangle className="size-5" />
                         </div>
                         <div className="min-w-0">
-                            <h1 className="text-base font-semibold">协议状态加载失败</h1>
+                            <h1 className="text-base font-semibold">
+                                {t('协议状态加载失败', 'Could not load agreement status')}
+                            </h1>
                             <p
                                 role="alert"
                                 className="mt-1.5 text-sm leading-relaxed text-muted-foreground"
                             >
-                                无法确认当前用户协议与隐私政策状态。为避免绕过必要确认，控制台暂不放行。
+                                {t(
+                                    '重新加载使用说明与隐私说明后继续。',
+                                    'Reload the usage and privacy notices to continue.',
+                                )}
                             </p>
                             <p className="mt-2 break-words text-xs text-destructive">{detail}</p>
                         </div>
                     </div>
                     <div className="mt-6 flex flex-wrap justify-end gap-2">
+                        <LanguageToggle />
                         <Button type="button" variant="ghost" onClick={onLogout}>
                             <LogOut className="size-4" />
-                            退出登录
+                            {t('退出登录', 'Sign out')}
                         </Button>
                         <Button type="button" onClick={onRetry}>
                             <RefreshCw className="size-4" />
-                            重新加载
+                            {t('重新加载', 'Reload')}
                         </Button>
                     </div>
                 </CardContent>
@@ -416,7 +441,7 @@ function AgreementLoadFailure({
 
 function Splash({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
+        <div className="flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
             <SkeletonSwap
                 ready={false}
                 lines={3}
@@ -435,42 +460,56 @@ function LoginGate({
     onAuthed,
     initialPassword,
     initialNeedsTotp,
+    autoFocusPassword,
 }: {
     onAuthed: (mustChange: boolean, password: string) => void;
     initialPassword?: string;
     initialNeedsTotp?: boolean;
+    autoFocusPassword: boolean;
 }) {
+    const t = useT();
     const api = useApi();
     const { startAction, dismiss } = useActionFeedback();
     const handleLogin = useCallback(
         async (password: string, secondFactor?: { totp?: string; recoveryCode?: string }) => {
             const handle = startAction({
-                title: '正在登录',
-                detail: secondFactor ? '正在验证一次性密码' : '正在验证 WebUI 访问密码',
+                title: t('正在登录', 'Signing in'),
+                detail: secondFactor
+                    ? t('正在验证一次性密码', 'Verifying the one-time code')
+                    : t('正在验证 WebUI 访问密码', 'Verifying the console password'),
             });
             const result = await api.login(password, secondFactor);
 
             if (result.ok) {
-                handle.succeed({ title: '登录成功', detail: '正在进入控制台' });
+                handle.succeed({
+                    title: t('登录成功', 'Signed in'),
+                    detail: t('正在进入控制台', 'Opening the console'),
+                });
                 onAuthed(result.mustChangePassword, password);
                 return { success: true };
             }
 
             if ('message' in result) {
-                handle.fail(result.message, { title: '登录失败' });
+                handle.fail(
+                    loginErrorMessage(result.message, Boolean(secondFactor?.recoveryCode), t),
+                    {
+                        title: t('登录失败', 'Sign-in failed'),
+                    },
+                );
                 return { success: false, error: result.message };
             }
 
             dismiss();
             return { success: false, needsTotp: true };
         },
-        [api, dismiss, onAuthed, startAction],
+        [api, dismiss, onAuthed, startAction, t],
     );
     return (
         <LoginPage
             onLogin={handleLogin}
             initialPassword={initialPassword}
             initialNeedsTotp={initialNeedsTotp}
+            autoFocusPassword={autoFocusPassword}
         />
     );
 }
@@ -500,7 +539,12 @@ function OnboardingGate({
     onStale: () => void;
     onDecline: () => void;
 }) {
+    const t = useT();
     const api = useApi();
+    const checkStrength = useCallback(
+        (password: string) => api.checkPasswordStrength(password),
+        [api],
+    );
     const { runAction, registerViewportHost } = useActionFeedback();
     const { setAppearancePreview } = useTheme();
     const feedbackHostRef = useRef<HTMLDivElement>(null);
@@ -541,11 +585,17 @@ function OnboardingGate({
         acceptAgreements: async () => {
             const result = await runAction(
                 {
-                    title: '正在记录协议确认',
-                    detail: `协议版本 ${payload.version.slice(0, 8)}`,
-                    successTitle: '协议确认已记录',
-                    errorTitle: '协议确认失败',
-                    resultError: (consent) => (consent.success ? null : consent.message),
+                    title: t('正在记录协议确认', 'Recording your acknowledgement'),
+                    detail: t(
+                        `协议版本 ${payload.version.slice(0, 8)}`,
+                        `Version ${payload.version.slice(0, 8)}`,
+                    ),
+                    successTitle: t('协议确认已记录', 'Acknowledgement recorded'),
+                    errorTitle: t('协议确认失败', 'Could not record acknowledgement'),
+                    resultError: (consent) =>
+                        consent.success || !consent.message
+                            ? null
+                            : agreementErrorMessage(consent.message, t),
                 },
                 () => api.agreements.recordConsent(payload.version),
             );
@@ -579,7 +629,7 @@ function OnboardingGate({
             onComplete={onComplete}
             additionalSteps={activeAdditionalSteps}
             feedbackHostRef={feedbackHostRef}
-            checkStrength={(password) => api.checkPasswordStrength(password)}
+            checkStrength={checkStrength}
             submitPassword={execution.actions.changePassword}
             onAccept={execution.actions.acceptAgreements}
         />

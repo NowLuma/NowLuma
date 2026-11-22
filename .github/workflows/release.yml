@@ -118,8 +118,10 @@ jobs:
           NOWLUMA_TEST_EXE: _re/releases/windows-exe/Nowluma.exe
       - name: Stage the versioned Windows assets
         shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.draft.outputs.version }}
         run: |
-          version="${{ needs.draft.outputs.version }}"
+          version="$RELEASE_VERSION"
           mkdir -p "$RUNNER_TEMP/release"
           cp _re/releases/windows-exe/Nowluma.exe "$RUNNER_TEMP/release/Nowluma-win32-x64-$version.exe"
           cp "_re/releases/windows-exe/Nowluma-v$version-win-x64-lite.zip" "$RUNNER_TEMP/release/Nowluma-v$version-win-x64-lite.zip"
@@ -142,6 +144,10 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    env:
+      RELEASE_VERSION: ${{ needs.draft.outputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Resolve the image name and tags
@@ -149,7 +155,7 @@ jobs:
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "name=$image" >> "$GITHUB_OUTPUT"
-          printf '%s:%s\n' "$image" "${{ needs.draft.outputs.version }}" > tags.txt
+          printf '%s:%s\n' "$image" "$RELEASE_VERSION" > tags.txt
           { echo 'tags<<NOWLUMA_TAGS'; cat tags.txt; echo 'NOWLUMA_TAGS'; } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -177,27 +183,49 @@ jobs:
       - name: Upload the image digest to the draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          asset="$RUNNER_TEMP/nowluma-ghcr-linux-x64-${{ needs.draft.outputs.version }}.txt"
-          {
-            echo "image: ${{ steps.image.outputs.name }}:${{ needs.draft.outputs.version }}"
-            echo "digest: ${{ steps.build.outputs.digest }}"
-          } > "$asset"
+          asset="$RUNNER_TEMP/nowluma-ghcr-linux-x64-$RELEASE_VERSION.txt"
+          printf 'image: %s:%s\ndigest: %s\n' "$IMAGE_NAME" "$RELEASE_VERSION" "$IMAGE_DIGEST" > "$asset"
           gh release upload "$GITHUB_REF_NAME" "$asset" --clobber
   # The GitHub release stays private until every asset is in the draft and its
-  # SHA256SUMS verifies against a fresh download. The versioned container tag is
-  # already visible from the docker job; the mutable :latest tag is promoted
-  # here, after those checks.
+  # SHA256SUMS verifies against a fresh download. The versioned GHCR image is
+  # already visible; publish the verified digest to Docker Hub if configured.
+  # Only stable releases promote the mutable :latest tags.
   publish:
     needs: [draft, linux, windows, docker]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    # Configure this environment to allow only v* tags before adding the Hub token.
+    environment: dockerhub-release
     permissions:
       contents: write
       packages: write
     env:
       GH_REPO: ${{ github.repository }}
+      RELEASE_VERSION: ${{ needs.draft.outputs.version }}
+      RELEASE_PRERELEASE: ${{ needs.draft.outputs.prerelease }}
+      HUB_IMAGE: docker.io/wsxyt/nowluma
     steps:
+      - name: Check Docker Hub configuration
+        id: hub
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN_CONFIGURED: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+        run: |
+          if [[ -z "$DOCKERHUB_USERNAME" && "$DOCKERHUB_TOKEN_CONFIGURED" == 'false' ]]; then
+            echo '::notice::Docker Hub publication skipped: no Docker Hub credentials configured.'
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          elif [[ -z "$DOCKERHUB_USERNAME" || "$DOCKERHUB_TOKEN_CONFIGURED" == 'false' ]]; then
+            echo '::error::Set both vars.DOCKERHUB_USERNAME and secrets.DOCKERHUB_TOKEN, or neither.' >&2
+            exit 1
+          elif [[ "${GITHUB_REPOSITORY,,}" != 'nowluma/nowluma' ]]; then
+            echo '::error::Only NowLuma/NowLuma can publish the official Docker Hub image.' >&2
+            exit 1
+          else
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          fi
       - name: Download every draft asset
         env:
           GH_TOKEN: ${{ github.token }}
@@ -208,7 +236,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version="${{ needs.draft.outputs.version }}"
+          version="$RELEASE_VERSION"
           cd "$RUNNER_TEMP/assets"
           for asset in \
             "Nowluma-v$version-linux-x64-lite.tar.gz" \
@@ -230,6 +258,70 @@ jobs:
           gh release download "$GITHUB_REF_NAME" --dir "$RUNNER_TEMP/verify" --clobber
           cd "$RUNNER_TEMP/verify"
           sha256sum --check --strict SHA256SUMS
+      - name: Resolve the verified GHCR image
+        id: verified-image
+        env:
+          IMAGE_DIGEST: ${{ needs.docker.outputs.digest }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          asset="$RUNNER_TEMP/verify/nowluma-ghcr-linux-x64-$RELEASE_VERSION.txt"
+          if [[ ! "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] ||
+             [[ "$(cat "$asset")" != "$(printf 'image: %s:%s\ndigest: %s\n' "$image" "$RELEASE_VERSION" "$IMAGE_DIGEST")" ]]; then
+            echo '::error::The checksummed GHCR asset does not match the built image.' >&2
+            exit 1
+          fi
+          printf 'name=%s\ndigest=%s\n' "$image" "$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Install the registry copy tool
+        if: steps.hub.outputs.enabled == 'true'
+        run: |
+          if ! command -v skopeo >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends skopeo
+          fi
+      - name: Mirror and verify the public Docker Hub image
+        if: steps.hub.outputs.enabled == 'true'
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GHCR_IMAGE: ${{ steps.verified-image.outputs.name }}
+          IMAGE_DIGEST: ${{ steps.verified-image.outputs.digest }}
+        run: |
+          registry=$(mktemp -d)
+          trap 'rm -rf -- "$registry"' EXIT
+          authfile="$registry/auth.json"
+          printf '%s' "$GH_TOKEN" | skopeo login --authfile "$authfile" --username "$GITHUB_ACTOR" --password-stdin ghcr.io
+          printf '%s' "$DOCKERHUB_TOKEN" | skopeo login --authfile "$authfile" --username "$DOCKERHUB_USERNAME" --password-stdin docker.io
+
+          verify_tag() {
+            local hash
+            hash=$(skopeo inspect --no-creds --raw "docker://$HUB_IMAGE:$1" | sha256sum)
+            if [[ "sha256:${hash%% *}" != "$IMAGE_DIGEST" ]]; then
+              echo "::error::$HUB_IMAGE:$1 does not match the verified GHCR digest." >&2
+              return 1
+            fi
+          }
+
+          # Copy the full index and its blobs, not a rebuilt or repacked image.
+          skopeo copy --all --preserve-digests --authfile "$authfile" \
+            "docker://$GHCR_IMAGE@$IMAGE_DIGEST" "docker://$HUB_IMAGE:$RELEASE_VERSION"
+          verify_tag "$RELEASE_VERSION"
+          # Pull all runtime layers into an empty directory, without registry credentials.
+          skopeo --override-os linux --override-arch amd64 copy --src-no-creds \
+            "docker://$HUB_IMAGE@$IMAGE_DIGEST" "dir:$registry/pull"
+          if ! skopeo inspect --config "dir:$registry/pull" |
+            jq -e '.os == "linux" and .architecture == "amd64"' >/dev/null; then
+            echo '::error::The public Docker Hub image is not linux/amd64.' >&2
+            exit 1
+          fi
+          echo "::notice::Verified public linux/amd64 image $HUB_IMAGE:$RELEASE_VERSION ($IMAGE_DIGEST)."
+
+          if [[ "$RELEASE_PRERELEASE" == 'false' ]]; then
+            skopeo copy --all --preserve-digests --authfile "$authfile" \
+              "docker://$HUB_IMAGE@$IMAGE_DIGEST" "docker://$HUB_IMAGE:latest"
+            verify_tag latest
+          fi
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: needs.draft.outputs.prerelease == 'false'
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -240,18 +332,15 @@ jobs:
           password: ${{ github.token }}
       - name: Promote the verified image to :latest
         if: needs.draft.outputs.prerelease == 'false'
-        run: |
-          version="${{ needs.draft.outputs.version }}"
-          asset="$RUNNER_TEMP/verify/nowluma-ghcr-linux-x64-$version.txt"
-          image="ghcr.io/${GITHUB_REPOSITORY,,}"
-          digest=$(sed -n 's/^digest: //p' "$asset")
-          test -n "$digest" || { echo "draft release is missing the image digest" >&2; exit 1; }
-          docker buildx imagetools create --tag "$image:latest" "$image@$digest"
+        env:
+          image: ${{ steps.verified-image.outputs.name }}
+          digest: ${{ steps.verified-image.outputs.digest }}
+        run: docker buildx imagetools create --tag "$image:latest" "$image@$digest"
       - name: Publish the verified release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ needs.draft.outputs.prerelease }}" = "true" ]; then
+          if [ "$RELEASE_PRERELEASE" = "true" ]; then
             gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease --latest=false
           else
             gh release edit "$GITHUB_REF_NAME" --draft=false --latest

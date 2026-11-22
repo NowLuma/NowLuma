@@ -21,13 +21,13 @@
 .workspace-onboarding-feedback {
   flex: 0 0 auto;
   min-width: 0;
-  max-height: min(12rem, 24dvh);
+  max-height: var(--onboarding-feedback-limit, min(7rem, 15cqh));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 
-/* The fixed workspace dock reserves 70px plus a gap, including on a 375px viewport. */
+/* Keep floating results above the in-flow workspace dock. */
 body:has(.workspace-dock-anchor) .action-feedback-viewport {
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.25rem);
   max-height: calc(
@@ -35,17 +35,17 @@ body:has(.workspace-dock-anchor) .action-feedback-viewport {
   );
 }
 
-html[data-low-performance='1'] .action-feedback-surface,
-html[data-contrast='high'] .action-feedback-surface {
-  background: var(--popover);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
+/* Keep the visual timer readable when the system replaces author fills. */
+@media (forced-colors: active) {
+  [data-action-feedback-countdown-track] {
+    forced-color-adjust: none;
+    background: Canvas;
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
 
-@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
-  .action-feedback-surface {
-    background: var(--popover);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+  [data-action-feedback-countdown-track] > [data-action-feedback-countdown] {
+    background: Highlight;
+    box-shadow: none;
   }
 }

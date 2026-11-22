@@ -7,8 +7,8 @@
 // are debounced (500 ms). The editor surface reports unsaved state, save
 // results and load errors in place.
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useT, type Translate } from '@/i18n';
 import { Check, Loader2, MousePointerClick, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollableTabList } from '@/components/ui/tabs';
@@ -45,6 +45,7 @@ type DialogState =
 //   index: null → create with `seed`, otherwise edit the item at that position.
 
 export function ConfigPage() {
+    const t = useT();
     const { qqList, connections, selectedUin, setSelectedUin, resources, refreshQqList } =
         useAppState();
     const {
@@ -153,11 +154,16 @@ export function ConfigPage() {
         nextList: OneBotNetworks[K],
     ): Promise<void> {
         if (!config) {
-            throw new Error('账号配置尚未加载');
+            throw new Error(t('账号配置尚未加载', 'Account settings have not loaded yet'));
         }
 
         if (!canEditConfig()) {
-            throw new Error('配置正在保存或已更新，请重新确认修改');
+            throw new Error(
+                t(
+                    '配置正在保存或已更新，请重新确认修改',
+                    'Settings are being saved or have changed. Review your changes and try again.',
+                ),
+            );
         }
 
         editContextRef.current = null;
@@ -249,15 +255,21 @@ export function ConfigPage() {
         <div className="cp-page">
             <header className="cp-document-header">
                 <div className="min-w-0">
-                    <h2 className="cp-page-heading">账号连接</h2>
-                    <p className="cp-lede">按 QQ 账号配置连接与消息行为，改动自动保存。</p>
+                    <h2 className="cp-page-heading">{t('账号连接', 'Account connections')}</h2>
+                    <p className="cp-lede">
+                        {t(
+                            '按 QQ 账号配置连接与消息行为，改动自动保存。',
+                            'Manage connections and message behavior for each QQ account. Changes save automatically.',
+                        )}
+                    </p>
                 </div>
                 {resources.qqList.error && qqList.length > 0 && (
-                    <div
-                        role="alert"
-                        className="cp-inline-notice text-destructive"
-                    >
-                        {resources.qqList.error}；当前显示上次成功读取的账号列表。
+                    <div role="alert" className="cp-inline-notice text-destructive">
+                        {resources.qqList.error}
+                        {t(
+                            '；当前显示上次成功读取的账号列表。',
+                            '; showing the last account list that loaded successfully.',
+                        )}
                     </div>
                 )}
                 {qqList.length > 0 && (
@@ -275,7 +287,7 @@ export function ConfigPage() {
                 lineHeight={28}
                 barHeight={11}
                 reserve={196}
-                label="账号列表"
+                label={t('账号列表', 'Account list')}
                 className={resources.qqList.ready ? 'skeleton-swap-fluid min-h-[196px]' : ''}
             >
                 {resources.qqList.ready ? (
@@ -290,13 +302,16 @@ export function ConfigPage() {
                             lineHeight={28}
                             barHeight={11}
                             reserve={196}
-                            label="账号配置"
+                            label={t('账号配置', 'Account settings')}
                             className={!loading ? 'skeleton-swap-fluid min-h-[196px]' : 'w-full'}
                         >
                             {!loading ? (
                                 loadError || !config ? (
                                     <ConfigLoadError
-                                        message={loadError ?? '账号配置不可用'}
+                                        message={
+                                            loadError ??
+                                            t('账号配置不可用', 'Account settings unavailable')
+                                        }
                                         onRetry={reload}
                                     />
                                 ) : (
@@ -309,8 +324,8 @@ export function ConfigPage() {
                                         <EditorBar
                                             title={
                                                 activeTab === 'general'
-                                                    ? '消息行为'
-                                                    : NETWORK_TABS[activeTab].title
+                                                    ? t('消息行为', 'Message behavior')
+                                                    : NETWORK_TABS[activeTab].title(t)
                                             }
                                             selectedUin={selectedUin}
                                             dirty={dirty}
@@ -325,10 +340,12 @@ export function ConfigPage() {
                                             }
                                         />
 
-
                                         <div
                                             key={`${selectedUin}-${activeTab}`}
-                                            className="cp-fade cp-config-body"
+                                            className={cn(
+                                                'cp-config-body',
+                                                activeTab === 'general' && 'cp-fade',
+                                            )}
                                             id={`config-panel-${activeTab}`}
                                             role="tabpanel"
                                             aria-labelledby={`config-tab-${activeTab}`}
@@ -394,26 +411,30 @@ export function ConfigPage() {
             <ConfirmDialog
                 open={pendingSwitchUin != null}
                 onOpenChange={(open) => !open && cancelSwitch()}
-                title="放弃未保存的修改？"
+                title={t('放弃未保存的修改？', 'Discard unsaved changes?')}
                 description={
                     <>
                         <p>
-                            当前会话 <code className="font-mono">{selectedUin}</code>{' '}
-                            还有未保存的修改。
+                            {t('当前会话 ', 'Account ')}
+                            <code className="font-mono">{selectedUin}</code>
+                            {t(' 还有未保存的修改。', ' has unsaved changes.')}
                         </p>
                         <p className="mt-2">
-                            切换到{' '}
+                            {t('切换到 ', 'Switching to ')}
                             <code className="font-mono">
                                 {pendingSwitchAccount?.uin ?? pendingSwitchUin}
                             </code>
                             {pendingSwitchAccount?.nickname
-                                ? `（${pendingSwitchAccount.nickname}）`
+                                ? t(
+                                      `（${pendingSwitchAccount.nickname}）`,
+                                      ` (${pendingSwitchAccount.nickname})`,
+                                  )
                                 : ''}{' '}
-                            会丢弃这些修改。
+                            {t('会丢弃这些修改。', 'will discard these changes.')}
                         </p>
                     </>
                 }
-                confirmText="放弃并切换"
+                confirmText={t('放弃并切换', 'Discard and switch')}
                 destructive
                 onConfirm={confirmSwitch}
             />
@@ -442,8 +463,9 @@ function EditorBar({
     onSave,
     onCreate,
 }: EditorBarProps) {
+    const t = useT();
     return (
-        <div className="cp-toolbar cp-editorbar">
+        <div className="cp-toolbar cp-editorbar cp-matte ui-glass-raised">
             <div className="min-w-0">
                 <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
                 <code className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums">
@@ -459,7 +481,9 @@ function EditorBar({
                         {saveStatusTone === 'saving' ? (
                             <>
                                 <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-                                <span className="text-muted-foreground">保存中</span>
+                                <span className="text-muted-foreground">
+                                    {t('保存中', 'Saving…')}
+                                </span>
                             </>
                         ) : saveStatusTone === 'success' ? (
                             <>
@@ -479,7 +503,7 @@ function EditorBar({
                         ) : (
                             <>
                                 <span className="size-1.5 rounded-full bg-warning" />
-                                <span className="text-warning">未保存</span>
+                                <span className="text-warning">{t('未保存', 'Unsaved')}</span>
                             </>
                         )}
                     </span>
@@ -492,11 +516,17 @@ function EditorBar({
                         disabled={saveStatusTone === 'saving'}
                     >
                         <Plus className="size-3.5" />
-                        添加连接
+                        {t('添加连接', 'Add connection')}
                     </Button>
                 )}
-                <Button variant="glass" onClick={onSave} size="sm" disabled={saveStatusTone === 'saving'}>
-                    <Save className="size-3.5" /> 立即保存
+                <Button
+                    variant="glass"
+                    onClick={onSave}
+                    size="sm"
+                    disabled={saveStatusTone === 'saving'}
+                    data-tutorial-control="config-save"
+                >
+                    <Save className="size-3.5" /> {t('立即保存', 'Save now')}
                 </Button>
             </div>
         </div>
@@ -512,8 +542,7 @@ interface TabStripProps {
 }
 
 function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
-    const id = useId();
-    const reduced = useReducedMotionConfig();
+    const t = useT();
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const moveTab = (from: number, direction: 1 | -1 | 'home' | 'end') => {
@@ -535,15 +564,18 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
     };
 
     return (
-        <GlassSurface className="cp-category-chrome">
+        <GlassSurface className="cp-category-chrome" data-ui-surface="chrome">
             <ScrollableTabList
                 activeValue={activeTab}
                 role="tablist"
-                aria-label="账号配置分类"
+                aria-label={t('账号配置分类', 'Account settings categories')}
                 className="gap-1"
             >
                 {ALL_TABS.map((key, index) => {
-                    const label = key === 'general' ? '消息行为' : NETWORK_TABS[key].title;
+                    const label =
+                        key === 'general'
+                            ? t('消息行为', 'Message behavior')
+                            : NETWORK_TABS[key].title(t);
                     const count = key === 'general' ? null : counts[key];
                     const active = activeTab === key;
                     return (
@@ -575,26 +607,8 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
                                     moveTab(index, 'end');
                                 }
                             }}
-                            className={cn(
-                                'cp-catnav-item whitespace-nowrap',
-                                'focus-visible:ring-[3px] focus-visible:ring-ring/40',
-                                active
-                                    ? 'text-foreground'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            )}
+                            className="cp-catnav-item cp-mode-item whitespace-nowrap"
                         >
-                            {active && (
-                                <motion.span
-                                    aria-hidden="true"
-                                    layoutId={reduced ? undefined : `config-category-${id}`}
-                                    className="cp-selection"
-                                    transition={
-                                        reduced
-                                            ? { duration: 0 }
-                                            : { duration: 0.42, ease: [0.16, 1, 0.3, 1] }
-                                    }
-                                />
-                            )}
                             <span className="relative">{label}</span>
                             {count != null && (
                                 <span className="relative font-mono text-xs text-muted-foreground tabular-nums">
@@ -641,6 +655,7 @@ function NetworkTabView({
     onDelete,
     onToggleEnabled,
 }: NetworkTabViewProps) {
+    const t = useT();
     const tab = NETWORK_TABS[kind];
     const { runAction } = useActionFeedback();
     const [copyError, setCopyError] = useState('');
@@ -650,27 +665,32 @@ function NetworkTabView({
         try {
             await runAction(
                 {
-                    title: '正在复制连接地址',
-                    successTitle: '地址已复制（不含令牌）',
-                    errorTitle: '复制失败',
+                    title: t('正在复制连接地址', 'Copying connection URL'),
+                    successTitle: t('地址已复制（不含令牌）', 'URL copied (without token)'),
+                    errorTitle: t('复制失败', 'Copy failed'),
                 },
                 async () => {
-                    const endpoint = connectionEndpoint(kind, item, window.location.href);
+                    const endpoint = connectionEndpoint(kind, item, window.location.href, t);
 
                     if (!(await copyText(endpoint))) {
-                        throw new Error('无法写入剪贴板，请手动选中地址复制');
+                        throw new Error(
+                            t(
+                                '无法写入剪贴板，请手动选中地址复制',
+                                'Could not write to the clipboard. Select the URL and copy it manually.',
+                            ),
+                        );
                     }
                 },
             );
             setCopyError('');
         } catch (error) {
-            setCopyError(error instanceof Error ? error.message : '复制失败');
+            setCopyError(error instanceof Error ? error.message : t('复制失败', 'Copy failed'));
         }
     };
 
     // `summarize` is typed per K in NETWORK_TABS; the union here forces a
     // widening cast at the call site rather than ladder-of-ifs per tab.
-    const summarize = tab.summarize as (it: (typeof list)[number]) => string;
+    const summarize = tab.summarize as (it: (typeof list)[number], t: Translate) => string;
 
     // Tally name occurrences once instead of doing `list.filter(...).map(...).includes(...)`
     // inside `.map()` (O(n²) per render). With this lookup, the duplicate
@@ -694,10 +714,12 @@ function NetworkTabView({
 
     if (list.length === 0) {
         return (
-            <div className="cp-empty-state text-muted-foreground">
-                <p className="text-sm">还没有{tab.title}连接</p>
+            <div className="cp-empty-state ui-glass-raised text-muted-foreground">
+                <p className="text-sm">
+                    {t(`还没有${tab.title(t)}连接`, `No ${tab.title(t)} connections yet`)}
+                </p>
                 <Button variant="glass" size="sm" onClick={onCreateClick} disabled={busy}>
-                    <Plus className="size-3.5" /> 添加连接
+                    <Plus className="size-3.5" /> {t('添加连接', 'Add connection')}
                 </Button>
             </div>
         );
@@ -706,7 +728,11 @@ function NetworkTabView({
     return (
         <div className="flex flex-col gap-2">
             <p className="text-xs text-muted-foreground">
-                {tab.description} · 复制地址不含令牌，请在机器人程序中单独填写。
+                {tab.description(t)} ·{' '}
+                {t(
+                    '复制地址不含令牌，请在机器人程序中单独填写。',
+                    'Copied URLs do not include access tokens. Enter the token separately in your bot.',
+                )}
             </p>
             {copyError && (
                 <p role="alert" className="text-xs text-destructive">
@@ -715,25 +741,29 @@ function NetworkTabView({
             )}
             <div className="cp-adapter-table">
                 <div aria-hidden="true" className="cp-adapter-table-head">
-                    <span>连接</span>
-                    <span>地址与运行状态</span>
-                    <span>操作</span>
+                    <span>{t('连接', 'Connection')}</span>
+                    <span>{t('地址与运行状态', 'Address and status')}</span>
+                    <span>{t('操作', 'Actions')}</span>
                 </div>
                 {list.map((item, idx) => {
                     const duplicate = !!item.name && (nameCounts.get(item.name) ?? 0) > 1;
                     return (
-                        <AdapterRow
+                        <div
                             key={`${item.name}-${idx}`}
-                            item={item}
-                            summary={summarize(item)}
-                            duplicateName={duplicate}
-                            busy={busy}
-                            liveStatus={statusByName.get(item.name)}
-                            onToggleEnabled={(v) => onToggleEnabled(idx, v)}
-                            onEdit={() => onEdit(idx)}
-                            onCopy={() => void copyEndpoint(item)}
-                            onDelete={() => onDelete(idx)}
-                        />
+                            className="cp-connection-card ui-glass-raised"
+                        >
+                            <AdapterRow
+                                item={item}
+                                summary={summarize(item, t)}
+                                duplicateName={duplicate}
+                                busy={busy}
+                                liveStatus={statusByName.get(item.name)}
+                                onToggleEnabled={(v) => onToggleEnabled(idx, v)}
+                                onEdit={() => onEdit(idx)}
+                                onCopy={() => void copyEndpoint(item)}
+                                onDelete={() => onDelete(idx)}
+                            />
+                        </div>
                     );
                 })}
             </div>
@@ -744,25 +774,35 @@ function NetworkTabView({
 // ─────────────── empty + loading ───────────────
 
 function EmptyState() {
+    const t = useT();
     return (
-        <div className="cp-empty-state text-muted-foreground">
+        <div className="cp-empty-state ui-glass-raised text-muted-foreground">
             <MousePointerClick className="size-8 opacity-40" strokeWidth={1.5} />
-            <p className="text-sm">先选择 QQ 账号，再设置连接方式和状态回复。</p>
+            <p className="text-sm">
+                {t(
+                    '先选择 QQ 账号，再设置连接方式和状态回复。',
+                    'Select a QQ account to configure connections and status replies.',
+                )}
+            </p>
             <p className="text-xs">
-                没有账号时，先连接并登录 QQ。#nl 状态回复可在“消息行为”中关闭。
+                {t(
+                    '没有账号时，先连接并登录 QQ。#nl 状态回复可在“消息行为”中关闭。',
+                    'If no accounts are listed, connect and sign in to QQ first. You can turn off the #nl status reply in Message behavior.',
+                )}
             </p>
         </div>
     );
 }
 
 function ConfigLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+    const t = useT();
     return (
-        <div className="cp-empty-state text-muted-foreground">
+        <div className="cp-empty-state ui-glass-raised">
             <p role="alert" className="max-w-xl break-words text-sm text-destructive">
                 {message}
             </p>
             <Button variant="glass" size="sm" onClick={onRetry}>
-                重试
+                {t('重试', 'Retry')}
             </Button>
         </div>
     );

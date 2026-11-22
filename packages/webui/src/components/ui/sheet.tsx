@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useT } from '@/i18n';
 
 const Sheet = DialogPrimitive.Root;
 const SheetTrigger = DialogPrimitive.Trigger;
@@ -26,7 +27,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = 'SheetOverlay';
 
 const sheetVariants = cva(
-    'fixed z-50 gap-4 bg-card p-0 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 outline-none',
+    'ui-glass-raised ui-glass-panel fixed z-50 gap-4 p-0 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 outline-none',
     {
         variants: {
             side: {
@@ -47,6 +48,24 @@ interface SheetContentProps
     showClose?: boolean;
 }
 
+function SheetCloseButton() {
+    const t = useT();
+
+    return (
+        <DialogPrimitive.Close asChild>
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-2 top-2 z-10 text-muted-foreground hover:text-foreground"
+            >
+                <X className="size-4" />
+                <span className="sr-only">{t('关闭', 'Close')}</span>
+            </Button>
+        </DialogPrimitive.Close>
+    );
+}
+
 const SheetContent = React.forwardRef<
     React.ElementRef<typeof DialogPrimitive.Content>,
     SheetContentProps
@@ -59,19 +78,7 @@ const SheetContent = React.forwardRef<
             {...props}
         >
             {children}
-            {showClose && (
-                <DialogPrimitive.Close asChild>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="absolute right-2 top-2 z-10 text-muted-foreground hover:text-foreground"
-                    >
-                        <X className="size-4" />
-                        <span className="sr-only">关闭</span>
-                    </Button>
-                </DialogPrimitive.Close>
-            )}
+            {showClose && <SheetCloseButton />}
         </DialogPrimitive.Content>
     </SheetPortal>
 ));

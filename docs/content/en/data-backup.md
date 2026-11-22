@@ -6,17 +6,11 @@ tutorial: data-backup
 
 # Data, backup and updates
 
-Practise storage categories and cleanup confirmation above before backing up real data. Confirm the scope before deletion; a console JSON backup cannot replace the full QQ HOME.
+For a complete backup, copy both Nowluma's data and QQ's user environment. The two are stored separately.
 
 ![Storage categories for logs, transfers and account databases](/images/tutorials/storage.png)
 
-_Figure: tutorial cleanup changes sample counters and retains active transfers._
-
 ![Configuration backup and restore controls](/images/tutorials/backup.png)
-
-_Figure: a complete migration also needs the message data and full QQ HOME._
-
-Nowluma keeps program data separate from QQ's own user environment. Back up, upgrade and clean up with that distinction in mind, so you do not delete account login state or the message store.
 
 ## Locations
 
@@ -55,11 +49,11 @@ A backup is not a chat export. Restore the database into the same layout; do not
 4. Start and check login, accounts, connections and logs.
 5. If configuration is corrupt, the program reports the error and preserves the original; do not overwrite it with defaults or silently delete it.
 
-Open Settings → `服务` → `服务配置备份`, then choose `导出备份`. The default export contains appearance, service settings and certificates, not message databases. Explicitly enable `包含敏感配置` to include account kernel selections, notification channels and OneBot configuration. Such files may contain login state, TLS private keys and access tokens; store them encrypted.
+Open Settings → `服务` → `服务配置备份`, then choose `导出备份`. The default export contains appearance, service settings and certificates, not message databases. Enable `包含敏感配置` to include account kernel selections, notification channels and OneBot configuration. Encrypt backups and share only redacted extracts: a backup can contain session data, private keys, tokens or message history.
 
-For restoration, choose `选择备份文件` and read the overwrite confirmation. Enable `恢复敏感配置` only when those contents should also be restored. The format, UINs and acknowledgement values must be valid. Old risk versions or rewrite selections are retained without automatic authorization; older backups without kernel choices remain usable. Restart Nowluma after a successful restore. For UI layout only, `高级` also provides a separate UI export/import.
+For restoration, choose `选择备份文件` and read the overwrite confirmation. Enable `恢复敏感配置` only when those contents should also be restored. The format, UINs and acknowledgement values must be valid. Old risk versions or rewrite selections are retained without automatic authorization; older backups without kernel choices remain usable. Restart Nowluma after a successful restore to apply the new configuration. For UI layout only, `高级` also provides a separate UI export/import.
 
-A service snapshot restores desired configuration only; it does not hot-replace live kernel authorization or process state. Restart to apply the restored configuration.
+<span id="do-not" class="legacy-heading-anchor" aria-hidden="true"></span>
 
 ## Cleanup
 
@@ -81,18 +75,18 @@ Verify:
 3. Open the QQ desktop and see whether QQ restored the session; do not rely only on the console health badge.
 4. Run `stop` and `start`, or recreate the container, and confirm the volume is still used.
 
-Even with all files present, QQ's servers may expire the session or require verification; complete it inside QQ. The app does not store the QQ password, forge device tokens or guarantee QR-free login. Native QQ directories depend on QQ's own user environment; do not move them during upgrades.
+If QQ's server expires the session or requests verification, complete it in QQ. Keep native QQ directories in their original locations when upgrading.
 
 ## Upgrade
 
-- Docker: stop, back up, update source/image, then `start`; existing volumes are reused. Do not use `down -v`.
+- Docker: stop, back up, update source/image, then `start` to reuse the volumes. `docker compose down -v` deletes the named data volumes and QQ HOME.
 - Native: replace program files in the release directory, keeping `config/`, `data/`, `logs/` and the QQ directory.
 - The program migrates database schemas itself. During migration the UI may mark accounts unavailable or migrating; do not start duplicate instances.
 - After upgrading, check accounts, connections, kernel choices and appearance. Kernel choices persist per UIN, but an account identity change still requires a new acknowledgement.
 
 ## Updater
 
-`关于` checks for and installs updates. Sources are auto, GitHub direct or a specified mirror; auto tries GitHub first, then candidates. Reachability is not download speed.
+`关于` checks for and installs updates. Choose a mirror, GitHub directly, or auto. Auto tries GitHub first, then the other sources in order.
 
 Release assets:
 
@@ -104,13 +98,3 @@ Release assets:
 | `SHA256SUMS`                               | Checksums for all release files                                 |
 
 Update packages retain `LICENSE`, `LICENSING.md`, `EULA.md` and `PRIVACY.md`. After download, `重启并更新`; connections drop briefly, configuration and data remain. Do not install packages without checksums or from untrusted sources.
-
-An update proves the file came from that build; it does not prove QQ login, message delivery or long-term stability.
-
-## Do not
-
-- Hot-copy SQLite as a backup while the service runs.
-- Use `docker compose down -v` to upgrade or “clean up”.
-- Delete the whole QQ HOME to fix a small issue.
-- Copy `kernel-selections.json` to another UIN.
-- Publish backups containing tokens, sessions or chat data.

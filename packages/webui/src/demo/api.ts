@@ -36,6 +36,8 @@ import {
     demoSystemSettings,
     demoUi,
 } from './fixtures';
+import type { TutorialText } from './tutorial-lessons';
+import type { TutorialLanguage } from './tutorial-options';
 
 export type DemoScenario = 'setup' | 'ready' | 'offline' | 'failure';
 export type TutorialBaseline = 'clean' | 'detected' | 'ready' | 'offline';
@@ -93,15 +95,15 @@ type DemoState = {
     scenario: DemoScenario;
     failNextMutation: boolean;
     backgroundUrl: string | null;
-    notice: string;
+    notice: TutorialText;
     tutorial: TutorialEvidence;
 };
 
 class DemoRequestError extends Error {
     status: number;
-    notice?: string;
+    notice?: TutorialText;
 
-    constructor(message: string, status: number, notice?: string) {
+    constructor(message: string, status: number, notice?: TutorialText) {
         super(message);
         this.status = status;
         this.notice = notice;
@@ -233,7 +235,7 @@ function parseBackup(body: Body): {
     const backup = object(body.backup);
 
     if (backup.demo !== true || backup.version !== 1 || body.restoreCredentials === true) {
-        throw new Error('Only simulator backups without credential restoration are accepted');
+        throw new Error('Choose a simulator backup and turn off credential restoration');
     }
 
     const config = parseDemoConfig(backup.config);
@@ -297,17 +299,17 @@ async function readDemoRequest(input: RequestInfo | URL, init: RequestInit): Pro
 
     if (url.origin !== origin) {
         throw new DemoRequestError(
-            'DEMO: External URLs are blocked; no request was sent',
+            'DEMO: External URLs are blocked',
             403,
-            `DEMO blocked external request: ${url.origin}`,
+            { zh: `请在模拟器中访问页面：${url.origin}`, en: `External address: ${url.origin}` },
         );
     }
 
     if (!url.pathname.startsWith('/api/')) {
         throw new DemoRequestError(
-            `DEMO: Unsupported URL ${url.pathname}; no network fallback`,
+            `DEMO: Unsupported API path ${url.pathname}`,
             404,
-            `DEMO blocked unsupported URL: ${url.pathname}`,
+            { zh: `未知页面：${url.pathname}`, en: `Unknown page: ${url.pathname}` },
         );
     }
 
@@ -366,7 +368,7 @@ function createDemoState(): DemoState {
             channels: [
                 {
                     id: 'demo-webhook',
-                    name: 'DEMO webhook · no delivery',
+                    name: 'DEMO webhook',
                     type: 'webhook',
                     url: 'https://demo.invalid/webhook',
                     bodyTemplate: '{"text":"DEMO {nickname} {event}"}',
@@ -388,7 +390,7 @@ function createDemoState(): DemoState {
         updatePhase: 'idle',
         logLevel: 'info',
         logs: [
-            demoLog(1, 'Practice only — no QQ, VNC, filesystem or outgoing API traffic'),
+            demoLog(1, 'DEMO: Sample console started'),
             demoLog(2, 'DEMO adapter example: waiting for simulated scan', 'warn'),
         ],
         messages: new Map<number, Body>([
@@ -409,7 +411,7 @@ function createDemoState(): DemoState {
         scenario: 'setup',
         failNextMutation: false,
         backgroundUrl: null,
-        notice: 'DEMO ready. Use only the example credentials.',
+        notice: { zh: '输入示例密码登录。', en: 'Sign in with the sample password.' },
         tutorial: {
             configSaved: false,
             appearanceSaved: false,
@@ -428,6 +430,13 @@ function createDemoState(): DemoState {
 export class DemoApi {
     private state = createDemoState();
     private revision = 0;
+    private readonly chapterLanguage?: TutorialLanguage;
+
+    // An embedded chapter fixes its language. The free-practice API serves
+    // bilingual notices so switching its UI does not reload the consent gate.
+    constructor(chapterLanguage?: TutorialLanguage) {
+        this.chapterLanguage = chapterLanguage;
+    }
 
     get tutorialRevision() {
         return this.revision;
@@ -477,9 +486,7 @@ export class DemoApi {
         }
 
         this.emitState();
-        this.announce(
-            `DEMO tutorial fixture: ${baseline}. Memory only; no real login or risk acceptance.`,
-        );
+        this.announce({ zh: '示例会话已就绪。', en: 'Sample session ready.' });
         return this.state.token;
     }
 
@@ -534,11 +541,6 @@ export class DemoApi {
     get notice() {
         return this.state.notice;
     }
-
-    set notice(notice: string) {
-        this.state.notice = notice;
-    }
-
     reset() {
         this.closeFeeds();
 
@@ -553,7 +555,7 @@ export class DemoApi {
             feeds,
             listeners,
         };
-        this.announce('DEMO reset: all practice writes, files and sessions cleared.');
+        this.announce({ zh: '练习已重置。', en: 'Practice reset.' });
     }
 
     setScenario(scenario: DemoScenario) {
@@ -596,13 +598,22 @@ export class DemoApi {
             this.emitState();
         }
 
-        this.announce(`DEMO scenario: ${scenario}. No real runtime was changed.`);
+        this.announce(
+            scenario === 'failure'
+                ? { zh: '已切换到接口错误场景。', en: 'API failure scenario selected.' }
+                : scenario === 'offline'
+                  ? { zh: '示例账号已离线。', en: 'Sample account is offline.' }
+                  : { zh: '已选中示例账号。', en: 'Sample account selected.' },
+        );
     }
 
     scan() {
         this.state.process.account = { uin: DEMO_UIN, nickname: 'DEMO 小光' };
         this.emitState();
-        this.announce('DEMO scan simulated. 选择内核并连接示例账号；这不证明 QQ 消息投递。');
+        this.announce({
+            zh: `已识别账号 ${DEMO_UIN}。请选择内核并接入。`,
+            en: `Account ${DEMO_UIN} detected. Choose a kernel to attach it.`,
+        });
     }
 
     fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
@@ -685,7 +696,7 @@ export class DemoApi {
 
         if (this.state.scenario === 'failure') {
             return fakeError(
-                'DEMO: Simulated API failure. Choose Ready or Reset in the practice guide.',
+                'DEMO: API request failed. Choose another scenario or reset the simulator.',
                 503,
             );
         }
@@ -693,12 +704,10 @@ export class DemoApi {
         if (method !== 'GET' && this.state.failNextMutation) {
             this.state.failNextMutation = false;
             this.state.tutorial.failedWrite = true;
-            this.addLog('Simulated write failure; no data changed', 'error');
-            this.announce(
-                'DEMO: Write failed intentionally. Retry only after inspecting the result.',
-            );
+            this.addLog('DEMO: Save failed', 'error');
+            this.announce({ zh: '保存失败，请重试。', en: 'Save failed. Try again.' });
             return fakeError(
-                'DEMO: Simulated write failure; nothing changed',
+                'DEMO: Simulated write failure',
                 path.startsWith('/api/kernel/accounts/') ? 500 : 503,
             );
         }
@@ -744,7 +753,7 @@ export class DemoApi {
         }
 
         this.state.token = `demo-session-${++this.state.generation}`;
-        this.announce('DEMO login accepted. This is not a real server session.');
+        this.announce({ zh: '已登录。', en: 'Signed in.' });
         return json({ token: this.state.token, mustChangePassword: this.state.mustChange });
     }
 
@@ -764,23 +773,35 @@ export class DemoApi {
         }
 
         if (path === '/api/agreements' && method === 'GET') {
+            const notice = (zh: string, en: string) =>
+                this.chapterLanguage === 'zh'
+                    ? zh
+                    : this.chapterLanguage === 'en'
+                      ? en
+                      : `${zh}\n\n${en}`;
             return json({
                 version: 'demo-v1',
                 consentRequired: !this.state.consent,
                 documents: [
                     {
                         id: 'eula',
-                        title: 'DEMO 使用练习 / Practice agreement',
+                        title: notice('示例使用说明', 'Sample use notice'),
                         declaredVersion: 'DEMO',
                         effectiveDate: '2026-07-24',
-                        text: '这是模拟练习文本，不是生产协议。\nPractice only. All operations are in browser memory. No QQ connection or delivery, no filesystem writes, no physical desktop. Never enter actual passwords, tokens or account data. Production uses the supplied EULA and LICENSE.',
+                        text: notice(
+                            '用示例账号练习 QQ 会话、机器人连接和日志查看。完成首次设置后，从「QQ 会话」开始。',
+                            'Use the sample account to explore QQ sessions, bot connections, and logs. After setup, start in QQ sessions.',
+                        ),
                     },
                     {
                         id: 'privacy',
-                        title: 'DEMO 隐私提示 / Privacy reminder',
+                        title: notice('示例隐私说明', 'Sample privacy notice'),
                         declaredVersion: 'DEMO',
                         effectiveDate: '2026-07-24',
-                        text: '示例登录密码 DemoOnly!2026；新密码 DemoChanged!2026；2FA 123456。\nUse only these public examples. Nothing is persisted. Reset or refresh clears the simulator.',
+                        text: notice(
+                            `练习数据保存在当前标签页。点「重置」或刷新页面可重新开始。\n\n- 访问密码：\`${DEMO_PASSWORD}\`\n- 新密码：\`${DEMO_NEW_PASSWORD}\`\n- 双重验证码：\`${DEMO_TOTP}\``,
+                            `Practice data stays in this tab. Choose Reset or reload to start over.\n\n- Access password: \`${DEMO_PASSWORD}\`\n- New password: \`${DEMO_NEW_PASSWORD}\`\n- Verification code: \`${DEMO_TOTP}\``,
+                        ),
                     },
                 ],
             });
@@ -809,7 +830,7 @@ export class DemoApi {
                 rules: [
                     {
                         id: 'demo-only',
-                        label: `仅输入示例 / Example only: ${DEMO_NEW_PASSWORD}`,
+                        label: `示例新密码 / Sample new password: ${DEMO_NEW_PASSWORD}`,
                         ok: valid,
                     },
                 ],
@@ -945,7 +966,12 @@ export class DemoApi {
                 error: '',
             };
             this.emitState();
-            this.addLog(`Process ${action}: in-memory simulation only`, 'success');
+            this.addLog(`DEMO: Process ${action} completed`, 'success');
+            this.announce(
+                action === 'unload'
+                    ? { zh: '示例会话已停止。', en: 'Sample session stopped.' }
+                    : { zh: '示例会话已接入。', en: 'Sample session attached.' },
+            );
             return json({ success: true, process: this.state.process });
         }
 
@@ -964,17 +990,15 @@ export class DemoApi {
                 this.state.config = parseDemoConfig(body);
                 this.state.tutorial.configSaved = true;
                 this.emitState();
-                this.addLog(
-                    'Configuration saved to memory; no listener or remote connection opened',
-                    'success',
-                );
+                this.addLog('DEMO: Account configuration saved', 'success');
+                this.announce({ zh: '账号配置已保存。', en: 'Account settings saved.' });
                 return json({
                     config: this.state.config,
                     saved: true,
                     applied: this.state.process.status === 'online',
                     online: this.state.process.status === 'online',
                     errors: [],
-                    message: 'DEMO: Saved in memory. No real transport.',
+                    message: 'DEMO: Account configuration saved.',
                 });
             }
         }
@@ -1090,7 +1114,7 @@ export class DemoApi {
                 applied: true,
                 online: true,
                 errors: [],
-                message: 'DEMO: Source stored in memory only',
+                message: 'DEMO: Update source saved.',
             });
         }
 
@@ -1401,7 +1425,7 @@ export class DemoApi {
         return null;
     }
 
-    private announce(message: string) {
+    private announce(message: TutorialText) {
         this.state.notice = message;
         this.revision++;
         this.state.listeners.forEach((listener) => listener());
@@ -1421,25 +1445,25 @@ export class DemoApi {
                     name: network.name,
                     kind: 'httpServer',
                     status: network.enabled === false ? 'disabled' : 'ok',
-                    detail: 'DEMO listener only — no socket opened',
+                    detail: 'Sample HTTP listener',
                 })),
                 ...this.state.config.networks.httpClients.map((network) => ({
                     name: network.name,
                     kind: 'httpClient',
                     status: network.enabled === false ? 'disabled' : 'ok',
-                    detail: 'DEMO only — no outgoing request',
+                    detail: 'Sample HTTP client',
                 })),
                 ...this.state.config.networks.wsServers.map((network) => ({
                     name: network.name,
                     kind: 'wsServer',
                     status: network.enabled === false ? 'disabled' : 'ok',
-                    detail: 'DEMO listener only — no socket opened',
+                    detail: 'Sample WebSocket listener',
                 })),
                 ...this.state.config.networks.wsClients.map((network) => ({
                     name: network.name,
                     kind: 'wsClient',
                     status: network.enabled === false ? 'disabled' : 'ok',
-                    detail: 'DEMO only — no WebSocket',
+                    detail: 'Sample WebSocket client',
                 })),
             ],
         }));
@@ -1460,7 +1484,6 @@ export class DemoApi {
     private addLog(message: string, level: LogLevel = 'info') {
         const log = demoLog((this.state.logs.at(-1)?.id ?? 0) + 1, message, level);
         this.state.logs = [...this.state.logs.slice(-199), log];
-        this.announce(message);
         this.state.feeds.forEach((feed) => {
             if (feed.path === '/api/logs/stream') {
                 feed.send(log);
@@ -1510,7 +1533,10 @@ export class DemoApi {
                                 dispose?.();
                                 const error = new Error('DEMO: Stream buffer limit reached');
                                 controller.error(error);
-                                this.announce(error.message);
+                                this.announce({
+                                    zh: '事件流缓冲区已满。',
+                                    en: 'Event stream buffer is full.',
+                                });
                                 return;
                             }
 
@@ -1557,7 +1583,10 @@ export class DemoApi {
     }
 
     private unhandled(path: string, method: string) {
-        this.announce(`DEMO unsupported: ${method} ${path}. No network fallback.`);
+        this.announce({
+            zh: `未知接口：${method} ${path}`,
+            en: `Unknown endpoint: ${method} ${path}`,
+        });
         return fakeError(`DEMO: Unsupported endpoint ${method} ${path}`, 404);
     }
 
@@ -1661,8 +1690,8 @@ export class DemoApi {
 
                 this.addLog(
                     text === '#nl'
-                        ? '#nl DEMO reply: account online, adapter simulated; not proof of QQ delivery'
-                        : `DEMO message ${messageId} stored only in memory`,
+                        ? `DEMO: #nl sample reply recorded (message ${messageId})`
+                        : `DEMO: Sample message ${messageId} recorded`,
                     'success',
                 );
                 this.state.feeds.forEach((feed) => {
@@ -1682,7 +1711,10 @@ export class DemoApi {
                         });
                     }
                 });
-                this.announce(`DEMO message ${messageId} stored in memory — not delivered to QQ.`);
+                this.announce({
+                    zh: `已记录示例消息 ${messageId}。`,
+                    en: `Sample message ${messageId} recorded.`,
+                });
                 data = { message_id: messageId };
                 break;
             }
@@ -1691,11 +1723,11 @@ export class DemoApi {
                 return {
                     status: 'failed',
                     retcode: 1404,
-                    message: `DEMO: Action ${action} is not simulated`,
+                    message: `DEMO: Choose another action. ${action} is unavailable in the simulator.`,
                 };
         }
 
-        return { status: 'ok', retcode: 0, data, message: 'DEMO: Simulated result only' };
+        return { status: 'ok', retcode: 0, data, message: 'DEMO: Action completed.' };
     }
 
     private cleanup(body: Body): Response {
@@ -1772,10 +1804,14 @@ export class DemoApi {
             failures: [],
         };
         this.state.storage.lastCleanup = lastCleanup;
-        this.addLog(`DEMO cleanup: ${freedBytes} pretend bytes, no filesystem access`, 'success');
+        this.addLog(`DEMO: Removed ${deletedFiles} sample files (${freedBytes} bytes)`, 'success');
+        this.announce({
+            zh: `已清理 ${deletedFiles} 个示例文件。`,
+            en: `Removed ${deletedFiles} sample files.`,
+        });
         return json({
             success: true,
-            message: 'DEMO: In-memory cleanup only',
+            message: 'DEMO: Cleanup completed.',
             scope: request.scope,
             cleanup: {
                 deletedFiles,

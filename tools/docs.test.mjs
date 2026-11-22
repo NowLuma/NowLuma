@@ -23,6 +23,10 @@ test('tutorial routes accept only the chapter and language allowlists', () => {
         tutorialUrl(DOCS_BASE, chapter, lang),
         `${DOCS_BASE}demo/?tutorial=${chapter}&lang=${lang}&embed=1`,
       );
+      assert.equal(
+        tutorialUrl(DOCS_BASE, chapter, lang, { embedded: false }),
+        `${DOCS_BASE}demo/?tutorial=${chapter}&lang=${lang}`,
+      );
     }
   }
   assert.deepEqual(tutorialForPage('en/logs.md'), { chapter: 'logs', lang: 'en' });
@@ -44,6 +48,15 @@ test('published hash URLs coexist with native VitePress heading anchors', async 
   assert.ok(anchors.has('通知选择opt-in'), 'the published hash remains reachable');
   assert.ok(anchors.has('通知选择-opt-in'), 'new links use the native framework hash');
   assert.ok(!documents.get('en/index.md').anchors.has('title-nowluma-documentation'));
+  for (const [lang, title, current, published] of [
+    ['en', 'Roadmap', 'roadmap', 'planned-and-unverified'],
+    ['zh', '路线图', '路线图', '计划中与未验证'],
+  ]) {
+    const roadmap = documents.get(`${lang}/planned.md`);
+    assert.equal(roadmap.frontmatter.title, title);
+    assert.ok(roadmap.anchors.has(current), `${lang}: ${current}`);
+    assert.ok(roadmap.anchors.has(published), `${lang}: ${published}`);
+  }
   for (const [chapter, steps] of Object.entries(TUTORIAL_SECTION_ANCHORS)) {
     for (const anchors of Object.values(steps)) {
       for (const lang of ['zh', 'en']) {
@@ -87,43 +100,84 @@ test('section requests reject untrusted windows, origins, fields and step IDs', 
 });
 
 test(
-  'real VitePress output preserves base paths, anchors and one safe inline tutorial',
+  'real VitePress output preserves base paths and anchors without loading the simulator',
   { timeout: 180000 },
   async (t) => {
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-vitepress-'));
     t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
     await buildSite({ outDir });
     assert.deepEqual(checkSite({ outDir }), []);
+    const installer = path.join(outDir, 'install.sh');
+    const originalInstaller = fs.readFileSync(installer);
+    fs.rmSync(installer);
+    assert.ok(checkSite({ outDir }).includes('missing hosted deployment file install.sh'));
+    fs.writeFileSync(installer, '<html>Not found</html>');
+    assert.ok(checkSite({ outDir }).includes('hosted deployment file differs from deploy/install.sh'));
+    fs.writeFileSync(installer, originalInstaller);
     assert.ok(
       checkSite({ outDir, withDemo: true }).some((problem) => problem.includes('demo route')),
     );
+
+    const demo = path.join(outDir, 'demo/index.html');
+    fs.mkdirSync(path.dirname(demo));
+    const policies = (forms, connections) =>
+      `<!doctype html><meta http-equiv="Content-Security-Policy" content="${forms}; ${connections}">`;
+    fs.writeFileSync(demo, policies("form-action 'none'", "connect-src 'none'"));
+    assert.deepEqual(checkSite({ outDir, withDemo: true }), []);
+    for (const [forms, connections, problem] of [
+      ["form-action 'self'; form-action 'none'", "connect-src 'none'", "form-action 'none'"],
+      ["form-action 'none'", "connect-src 'self'", "connect-src 'none'"],
+    ]) {
+      fs.writeFileSync(demo, policies(forms, connections));
+      assert.ok(
+        checkSite({ outDir, withDemo: true }).some((message) => message.includes(problem)),
+        problem,
+      );
+    }
 
     const file = path.join(outDir, 'en/first-run.html');
     const original = fs.readFileSync(file, 'utf8');
     const mutations = [
       {
+        html: original.replace('</section>', '<iframe src="about:blank"></iframe></section>'),
+        problem: 'must not load before activation',
+      },
+      {
+        html: original.replace('data-tutorial-expanded="false"', 'data-tutorial-expanded="true"'),
+        problem: 'expected a collapsed tutorial launcher',
+      },
+      {
         html: original.replace(
-          /(<iframe\b[^>]*\bsrc=")[^"]*"/,
-          '$1/demo/?tutorial=first-run&amp;lang=en&amp;embed=1"',
+          'aria-controls="tutorial-simulator-stage"',
+          'aria-controls="missing-stage"',
         ),
-        problem: 'base path',
+        problem: 'accessible load control',
       },
       {
-        html: original.replace(/(<iframe\b[^>]*\bsrc=")[^"]*"/, '$1https://example.invalid/demo/"'),
-        problem: 'tutorial iframe must use exactly',
+        html: original.replace(
+          /(<button\b[^>]*\bdata-tutorial-load[^>]*?) disabled(?=[\s>])/,
+          '$1',
+        ),
+        problem: 'disabled until hydration',
       },
       {
-        html: original.replace(/(<iframe\b[^>]*\bsandbox=")/, '$1allow-top-navigation '),
-        problem: 'unsafe sandbox',
+        html: original.replace(
+          /(<div\b[^>]*\bid="tutorial-simulator-stage"[^>]*?) inert(?=[\s>])/,
+          '$1',
+        ),
+        problem: 'an inert stage',
       },
       {
-        html: original.replace('</iframe>', '</iframe><iframe src="about:blank"></iframe>'),
-        problem: 'expected one tutorial iframe',
+        html: original.replace(
+          /href="[^"]+demo\/\?tutorial=first-run[^"]*"/,
+          'href="https://example.invalid/demo/"',
+        ),
+        problem: 'simulator full-view link',
       },
     ];
     try {
       for (const mutation of mutations) {
-        assert.notEqual(mutation.html, original, 'the regression must modify an actual iframe');
+        assert.notEqual(mutation.html, original, 'the regression must change the actual launcher');
         fs.writeFileSync(file, mutation.html);
         assert.ok(
           checkSite({ outDir }).some((problem) => problem.includes(mutation.problem)),

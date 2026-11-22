@@ -1,74 +1,113 @@
 export const DEMO_JOURNEY = [
     {
         id: 'setup',
-        title: '1 · 首次设置 / First-run setup',
+        title: { zh: '首次设置', en: 'First-run setup' },
         route: '/',
-        control: '访问密码 → 阅读说明 → 设置密码 → 显示效果 → 选择接入内核',
-        description:
-            '用示例密码登录，依次完成四步：阅读并确认说明；两次填写示例新密码；主动选择动效与玻璃材质，点「保存并继续」；最后预览账号内核，没有账号时点「继续」。 / Log in with the example, then complete four stages: notices, password, explicit motion and glass choices, and the account kernel.',
+        control: {
+            zh: '访问密码 → 使用与隐私 → 新密码 → 显示效果 → 选择接入内核',
+            en: 'Access password → Usage and privacy → New password → Display effects → Choose a connection kernel',
+        },
+        description: {
+            zh: '用示例密码登录，依次阅读说明、设置新密码和选择显示效果。查看内核选项后，点「继续」。',
+            en: 'Sign in with the sample password, read the notices, set a new password, and choose display effects. Review the kernel options, then choose Continue.',
+        },
     },
     {
         id: 'desktop',
-        title: '2 · QQ 桌面与扫码 / Mock desktop & scan',
+        title: { zh: 'QQ 桌面与扫码', en: 'Mock desktop and scan' },
         route: '/processes',
-        control: '打开 QQ 桌面 → 模拟扫码',
-        description:
-            '在进程页点「打开 QQ 桌面」，在模拟桌面点「模拟扫码」；也可用引导里的 Open mock desktop。只会识别演示账号 10001，不打开 VNC、不登录 QQ、不发起扫码请求。 / Open the mock desktop and simulate a scan. No VNC, QR login or QQ network is involved.',
+        control: { zh: '打开 QQ 桌面 → 模拟扫码', en: 'Open QQ desktop → Simulate scan' },
+        description: {
+            zh: '点「打开 QQ 桌面」，再点「模拟扫码」。在「QQ 会话」查看示例账号 10001。',
+            en: 'Choose Open QQ desktop, then Simulate scan. Find sample account 10001 in QQ sessions.',
+        },
     },
     {
         id: 'gate',
-        title: '3 · 选择账号内核 / Account kernel',
+        title: { zh: '选择账号内核', en: 'Account kernel' },
         route: '/processes',
-        control: '加载 → 选择接入内核 → 勾选风险确认 → 确认并接入',
-        description:
-            '对进程 4242 点「加载」，选择兼容内核并主动勾选风险确认，再点「确认并接入」。重写内核暂不可用。取消不会接入；卸载后保持停止，刷新不会恢复，只有再次「加载」才接入。 / Load process 4242, select the compat kernel and actively acknowledge its risks. Rewrite is unavailable. Cancel does not attach; unload stays stopped until another explicit load.',
+        control: {
+            zh: '加载 → 选择接入内核 → 勾选风险确认 → 确认并接入',
+            en: 'Load → Choose attachment kernel → Acknowledge risks → Confirm and attach',
+        },
+        description: {
+            zh: '在 PID 4242 的详情中点「加载」，选择兼容内核并确认风险，然后点「确认并接入」。卸载后，点「加载」可重新接入。',
+            en: 'Choose Load for PID 4242, select the compatible kernel, acknowledge the risks, and choose Confirm and attach. To reconnect after unloading, choose Load.',
+        },
     },
     {
         id: 'connection',
-        title: '4 · 账号与连接 / Account & connection',
+        title: { zh: '账号与连接', en: 'Account and connection' },
         route: '/config',
-        control: 'DEMO 小光 → HTTP 接口 → 立即保存',
-        description:
-            '选择账号 10001，再配置「消息行为 / HTTP 接口 / HTTP 推送 / WebSocket 监听 / 反向 WebSocket」。改动自动保存，也可「立即保存」。用「下次写入失败」练习失败后重试；适配器只存在于内存。 / Select account 10001 and edit its adapters. Autosave or 立即保存 writes to memory only; Fail next write exercises a rejected save without opening any socket.',
+        control: {
+            zh: 'DEMO 小光 → HTTP 接口 → 立即保存',
+            en: 'Account 10001 → HTTP API → Save now',
+        },
+        description: {
+            zh: '选中账号 10001，编辑 HTTP 接口后点「立即保存」。要练习处理保存失败，先点「模拟一次保存失败」。',
+            en: 'Select account 10001, edit its HTTP API, and choose Save now. To practise handling an error, select Simulate a failed save first.',
+        },
     },
     {
         id: 'action',
-        title: '5 · #nl / Actions & messages',
+        title: { zh: '接口与消息', en: 'Actions and messages' },
         route: '/debug',
-        control: '接口调用 → send_private_msg → 运行调用',
-        description:
-            '在「接口调用」选账号 10001、send_private_msg、user_id 10002，消息填 #nl，点「运行调用」；用返回的 message_id 调 get_msg。也可练习流式调用与活动筛选。 / Use account 10001, send_private_msg, user 10002 and #nl, then inspect get_msg with the returned message_id. All action and stream results are simulated.',
+        control: {
+            zh: '接口调用 → send_private_msg → 运行调用',
+            en: 'Action tester → send_private_msg → Run action',
+        },
+        description: {
+            zh: '用账号 10001 调用 send_private_msg，填入 user_id 10002 和消息 #nl。再用返回的 message_id 调用 get_msg。',
+            en: 'Run send_private_msg from account 10001 with user_id 10002 and message #nl. Use the returned message_id to run get_msg.',
+        },
     },
     {
         id: 'logs',
-        title: '6 · 日志 / Logs',
+        title: { zh: '日志', en: 'Logs' },
         route: '/logs',
-        control: '日志级别 → 导出完整 TRACE',
-        description:
-            '按级别和关键词筛选记录；可暂停跟随、导出当前视图或完整 DEMO TRACE。开启服务端 TRACE 仍需确认，「清空视图」不删除数据。 / Filter levels and text, pause following, and export current records or the full DEMO TRACE. Server TRACE asks for confirmation; clearing the view does not delete data.',
+        control: { zh: '日志级别 → 导出完整 TRACE', en: 'Log level → Export full TRACE' },
+        description: {
+            zh: '按级别或关键词筛选日志，暂停跟随，或导出当前视图与完整 TRACE。开启服务端 TRACE 时，按提示确认。',
+            en: 'Filter by level or keyword, pause auto-scroll, or export the view or full TRACE. Confirm when enabling server TRACE.',
+        },
     },
     {
         id: 'storage',
-        title: '7 · 存储 / Storage',
+        title: { zh: '存储', en: 'Storage' },
         route: '/settings?tab=storage',
-        control: '存储管理 → 日志保留 → 保存并应用；清理全部日志 → 确认清理',
-        description:
-            '「日志保留」可保存总量上限、保留天数和按账号日志；清理日志或临时数据会先弹出「清理全部日志？」或「清理非活动临时数据？」，再点「确认清理」。账号数据库按分类清理；全部账号清理要求账号离线并输入「清理全部账号」。只有示例计数变化，不读写文件或数据库。 / Save log limits, then confirm log/temporary/account cleanups. All-accounts cleanup needs offline accounts and typing 清理全部账号. Only sample counts change; no file or database is touched.',
+        control: {
+            zh: '日志保留 → 保存并应用；清理日志 → 确认清理',
+            en: 'Log retention → Save and apply; Clean up logs → Confirm cleanup',
+        },
+        description: {
+            zh: '设置日志保留天数，或选择一类数据清理。清理账号数据前先将相关账号下线；清理全部账号时，输入「清理全部账号」。',
+            en: 'Set log retention or choose a category to clean up. Take the affected accounts offline before cleaning their data. For all accounts, enter 清理全部账号.',
+        },
     },
     {
         id: 'settings',
-        title: '8 · 设置 / Settings',
+        title: { zh: '设置', en: 'Settings' },
         route: '/settings?tab=appearance',
-        control: '外观 / 数据与格式 / 账号安全 / 全局配置 / 存储管理 / 通知 / 服务 / 高级 / 开发者 / 关于',
-        description:
-            '十个设置分类使用真实组件。外观中的动效与玻璃材质由你手动选择；2FA 使用 123456，TLS 仅接受 DEMO CERTIFICATE / DEMO PRIVATE KEY。开发者演练只预览，不保存外观、密码或说明确认。 / Explore all ten real settings categories. Effects are manual; 2FA and TLS accept the public examples only. Onboarding replay never saves real preferences or credentials.',
+        control: {
+            zh: '偏好设置 → 外观 / 账号安全 / 服务',
+            en: 'Settings → Appearance / Account security / Service',
+        },
+        description: {
+            zh: '在「外观」选择动效和玻璃材质。在「账号安全」体验双重验证，示例验证码为 123456。',
+            en: 'Choose motion and glass material in Appearance. Try two-factor authentication in Account security with code 123456.',
+        },
     },
     {
         id: 'reset',
-        title: '9 · 重置与刷新 / Reset & refresh',
+        title: { zh: '重置与刷新', en: 'Reset and refresh' },
         route: '/settings?tab=advanced',
-        control: '设置 → 高级 → 重置全部 → 重置；Reset / 重置',
-        description:
-            '顶部「Reset / 重置」或刷新会清空练习数据并回到首次设置。高级页「重置全部」只恢复界面配置。生产控制台的手动显示选择会保存，模拟器仅保留本页内存。 / Reset or reload clears the simulator; Advanced → 重置全部 resets UI preferences only. Production persists manual effects, while this demo keeps them in memory.',
+        control: {
+            zh: '顶部「重置」；偏好设置 → 高级 → 重置全部',
+            en: 'Reset in the banner; Settings → Advanced → Reset all',
+        },
+        description: {
+            zh: '点顶部「重置」或刷新页面可重新开始练习。要恢复界面偏好，在「高级」点「重置全部」。',
+            en: 'Choose Reset in the banner or reload to start over. To restore interface preferences, choose Reset all in Advanced.',
+        },
     },
 ] as const;

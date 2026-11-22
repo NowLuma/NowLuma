@@ -108,7 +108,8 @@ export function applyAppearance(
     a: UiAppearance,
     resolved: 'light' | 'dark',
     presentation: WebuiPresentation | null,
-    lowPerformance = false,
+    lowPerformance: boolean,
+    systemReduce: boolean,
 ): void {
     const root = document.documentElement;
     applyPresentationAttributes(presentation);
@@ -129,7 +130,6 @@ export function applyAppearance(
     // 减弱动效 OR 关闭全部动效 both engage the reduce-motion CSS/Framer layer;
     // 关闭全部动效 additionally sets data-no-motion (kills CSS animations outright
     // and gates Framer entrance fades that reduce-motion leaves on).
-    const systemReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     root.setAttribute(
         'data-reduce-motion',
         a.reduceMotion || a.disableMotion || systemReduce ? '1' : '0',

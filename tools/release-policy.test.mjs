@@ -16,6 +16,14 @@ function job(text, name) {
   return match[1];
 }
 
+/** Keep assertions about conditions and registry commands within their step. */
+function step(text, name) {
+  const heading = `      - name: ${name}\n`;
+  const start = text.indexOf(heading);
+  assert.notEqual(start, -1, `job must define the ${name} step`);
+  return text.slice(start + heading.length).split(/\n {6}- /, 1)[0];
+}
+
 test('no workflow runs fork code with a write token', () => {
   for (const name of names) {
     const text = read(name);
@@ -55,8 +63,7 @@ test('the pull request check runs trusted base code with the title and body as d
 
 test('the release workflow only runs for version tags', () => {
   const release = read('release.yml');
-  assert.match(release, /on:\n {2}push:\n {4}tags: \['v\*'\]/);
-  assert.equal(/branches:/.test(release), false);
+  assert.match(release, /^on:\n {2}push:\n {4}tags: \['v\*'\]\npermissions:/m);
 });
 
 test('a release stays private until every artifact and checksum verifies', () => {
@@ -101,6 +108,58 @@ test('a stable image is promoted to :latest only after the checksums verify', ()
     'publish must verify checksums and promote the digest',
   );
   assert.ok(verified < promoted, 'the mutable tag is promoted only after verification');
+});
+
+test('Docker Hub is optional and receives only the checksum-verified GHCR digest', () => {
+  const release = read('release.yml');
+  const publish = job(release, 'publish');
+  assert.match(publish, /^ {4}environment: dockerhub-release$/m);
+  const config = step(publish, 'Check Docker Hub configuration');
+  assert.match(config, /vars\.DOCKERHUB_USERNAME/);
+  assert.match(config, /DOCKERHUB_TOKEN_CONFIGURED: \$\{\{ secrets\.DOCKERHUB_TOKEN != '' \}\}/);
+  assert.doesNotMatch(release.slice(0, release.indexOf('\n  publish:')), /secrets\.DOCKERHUB_TOKEN/);
+  assert.match(config, /-z "\$DOCKERHUB_USERNAME" && "\$DOCKERHUB_TOKEN_CONFIGURED" == 'false'[\s\S]*?enabled=false/);
+  assert.match(config, /-z "\$DOCKERHUB_USERNAME" \|\| "\$DOCKERHUB_TOKEN_CONFIGURED" == 'false'[\s\S]*?exit 1/);
+  assert.match(publish, /HUB_IMAGE: docker\.io\/wsxyt\/nowluma\n/);
+  const docker = job(release, 'docker');
+  assert.match(docker, /digest: \$\{\{ steps\.build\.outputs\.digest \}\}/);
+  assert.match(docker, /platforms: linux\/amd64/);
+  assert.match(
+    step(publish, 'Resolve the verified GHCR image'),
+    /IMAGE_DIGEST: \$\{\{ needs\.docker\.outputs\.digest \}\}[\s\S]*?cat "\$asset".*"\$IMAGE_DIGEST"/,
+  );
+  const checksums = publish.indexOf('sha256sum --check --strict SHA256SUMS');
+  const digest = publish.indexOf('Resolve the verified GHCR image');
+  const mirrored = publish.indexOf('Mirror and verify the public Docker Hub image');
+  const published = publish.indexOf('Publish the verified release');
+  assert.ok(checksums !== -1 && checksums < digest && digest < mirrored && mirrored < published);
+  const mirror = step(publish, 'Mirror and verify the public Docker Hub image');
+  assert.match(mirror, /if: steps\.hub\.outputs\.enabled == 'true'/);
+  assert.match(mirror, /GHCR_IMAGE: \$\{\{ steps\.verified-image\.outputs\.name \}\}/);
+  assert.match(mirror, /IMAGE_DIGEST: \$\{\{ steps\.verified-image\.outputs\.digest \}\}/);
+  assert.match(
+    mirror,
+    /skopeo copy --all --preserve-digests[^\n]*\\\n\s*"docker:\/\/\$GHCR_IMAGE@\$IMAGE_DIGEST" "docker:\/\/\$HUB_IMAGE:\$RELEASE_VERSION"/,
+  );
+});
+
+test('Docker Hub must be anonymously pullable on linux/amd64 before stable latest moves', () => {
+  const mirror = step(job(read('release.yml'), 'publish'), 'Mirror and verify the public Docker Hub image');
+  assert.match(mirror, /skopeo inspect --no-creds --raw "docker:\/\/\$HUB_IMAGE:\$1" \| sha256sum/);
+  assert.match(
+    mirror,
+    /--override-os linux --override-arch amd64 copy --src-no-creds \\\n\s*"docker:\/\/\$HUB_IMAGE@\$IMAGE_DIGEST" "dir:\$registry\/pull"/,
+  );
+  const verified = mirror.indexOf('verify_tag "$RELEASE_VERSION"');
+  const pull = mirror.indexOf('skopeo --override-os linux --override-arch amd64 copy --src-no-creds');
+  const platform = mirror.indexOf('.os == "linux" and .architecture == "amd64"');
+  const stable = mirror.indexOf('if [[ "$RELEASE_PRERELEASE" == \'false\' ]]; then');
+  assert.ok(verified !== -1 && verified < pull && pull < platform && platform < stable);
+  assert.match(
+    mirror,
+    /if \[\[ "\$RELEASE_PRERELEASE" == 'false' \]\]; then\n\s+skopeo copy --all --preserve-digests[^\n]*\\\n\s*"docker:\/\/\$HUB_IMAGE@\$IMAGE_DIGEST" "docker:\/\/\$HUB_IMAGE:latest"\n\s+verify_tag latest\n\s+fi/,
+  );
+  assert.equal(mirror.split('"docker://$HUB_IMAGE:latest"').length, 2);
 });
 
 test('platform archives retain the runtime updater names and the GPL linking notice', () => {

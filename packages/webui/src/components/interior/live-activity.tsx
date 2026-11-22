@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useIsPresent, useReducedMotionConfig } from 'motion/react';
+import { useT } from '@/i18n';
 
 const SURFACE = { type: 'spring', stiffness: 420, damping: 36, mass: 0.9 } as const;
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const;
@@ -115,11 +116,12 @@ export function LiveActivity({
     activity,
     onDismiss,
     width = 300,
-    dismissLabel = 'Dismiss activity',
-    label = 'Activity',
+    dismissLabel,
+    label,
     className = '',
 }: LiveActivityProps) {
     const reduced = useReducedMotionConfig() === true;
+    const t = useT();
 
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
@@ -245,12 +247,12 @@ export function LiveActivity({
         said.current.add(key);
         setSpoken(
             activity.phase === 'running'
-                ? `${activity.title} started.`
+                ? t(`${activity.title} 已开始。`, `${activity.title} started.`)
                 : activity.phase === 'success'
-                  ? `${activity.title} finished.`
-                  : `${activity.title} failed.`,
+                  ? t(`${activity.title} 已完成。`, `${activity.title} finished.`)
+                  : t(`${activity.title} 失败。`, `${activity.title} failed.`),
         );
-    }, [activity]);
+    }, [activity, t]);
 
     const enter = () => {
         if (leaveTimer.current) {
@@ -277,10 +279,11 @@ export function LiveActivity({
             ? null
             : Math.round(Math.min(1, Math.max(0, activity.progress)) * 100);
 
+    // Keep the size-animated pod paint-only; intermediate sizes need no raster.
     return (
         <div
             role="region"
-            aria-label={label}
+            aria-label={label ?? t('活动', 'Activity')}
             aria-busy={activity?.phase === 'running'}
             aria-hidden={!activity}
             inert={!activity}
@@ -318,7 +321,7 @@ export function LiveActivity({
                         role="group"
                         aria-label={
                             activity.detail
-                                ? `${activity.title}：${activity.detail}`
+                                ? `${activity.title}${t('：', ': ')}${activity.detail}`
                                 : activity.title
                         }
                         tabIndex={0}
@@ -344,7 +347,7 @@ export function LiveActivity({
                                 onDismiss?.();
                             }
                         }}
-                        className="action-feedback-surface pointer-events-auto relative overflow-hidden rounded-[14px] border border-border/80 bg-popover/95 text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.07),0_16px_36px_-18px_rgb(0_0_0/0.5)] backdrop-blur-xl"
+                        className="ui-glass-raised ui-glass-feedback pointer-events-auto relative overflow-hidden rounded-[14px] border text-popover-foreground"
                     >
                         <motion.div
                             ref={compactRef}
@@ -396,7 +399,9 @@ export function LiveActivity({
                                     <button
                                         type="button"
                                         tabIndex={expanded ? 0 : -1}
-                                        aria-label={dismissLabel}
+                                        aria-label={
+                                            dismissLabel ?? t('关闭活动', 'Dismiss activity')
+                                        }
                                         onClick={onDismiss}
                                         className="grid size-11 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >

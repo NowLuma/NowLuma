@@ -2,21 +2,23 @@ import '../index.css';
 import { installDemoIsolation } from './isolation';
 import { parseTutorialOptions } from './tutorial-options';
 import { TUTORIAL_LESSONS, tutorialText } from './tutorial-lessons';
+import { initialLanguage, LocaleProvider, translator, type Language } from '@/i18n';
+import { APP_NAME } from '@/types';
 
 const options = parseTutorialOptions(window.location.search);
 const isolation = installDemoIsolation(options);
 const lesson = options.tutorial ? TUTORIAL_LESSONS[options.tutorial] : undefined;
-document.documentElement.lang = options.lang === 'en' ? 'en' : 'zh-CN';
-
-if (lesson) {
-    document.title = `${tutorialText(lesson.title, options.lang)} · Nowluma`;
-}
+const language = lesson ? options.lang : initialLanguage(window);
+const title = (lang: Language) =>
+    `${lesson ? tutorialText(lesson.title, lang) : translator(lang)('控制台示例', 'Console example')} · ${APP_NAME}`;
+document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
+document.title = title(language);
 
 const root = document.getElementById('root')!;
 
 void (async () => {
     const { DemoApi } = await import('./api');
-    const api = new DemoApi();
+    const api = new DemoApi(lesson ? language : undefined);
     isolation.attach(api);
 
     if (lesson) {
@@ -33,15 +35,23 @@ void (async () => {
         );
     }
 
-    const [{ createRoot }, { DemoApp }, { prepareTargetAppearance }] = await Promise.all([
+    const [{ createRoot }, { DemoApp }, { prepareTargetAppearance }, { appRouter }] = await Promise.all([
         import('react-dom/client'),
         import('./DemoApp'),
         import('@/appearance/runtime'),
+        import('@/router'),
     ]);
     await prepareTargetAppearance();
-    createRoot(root).render(<DemoApp api={api} options={options} />);
+    isolation.setNavigate((route) => appRouter.history.push(route));
+    createRoot(root).render(
+        <LocaleProvider initial={language} fixed={lesson ? language : undefined} title={title}>
+            <DemoApp api={api} options={options} />
+        </LocaleProvider>,
+    );
 })().catch((error: unknown) => {
-    console.error('[Nowluma DEMO] Startup failed', error);
-    root.textContent =
-        'DEMO startup failed. No real API was contacted. Please refresh or inspect the console.';
+    console.error(`[${APP_NAME} DEMO] Startup failed`, error);
+    root.textContent = translator(language)(
+        '示例控制台加载失败。请刷新页面重试。',
+        'The sample console could not load. Refresh the page to try again.',
+    );
 });

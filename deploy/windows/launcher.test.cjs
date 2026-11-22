@@ -5,6 +5,7 @@ const { createHash } = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync, spawn } = require('node:child_process');
+const { createInterface } = require('node:readline');
 
 const exe = path.resolve(process.env.NOWLUMA_TEST_EXE || '_re/releases/windows-exe/Nowluma.exe');
 test(
@@ -87,34 +88,61 @@ test(
       const previous = Buffer.from('FIXTURE: previous program bytes');
       fs.writeFileSync(path.join(root, 'index.mjs'), previous);
       fs.unlinkSync(path.join(root, '.launcher-payload'));
-      const script =
-        '$f=[IO.File]::Open($env:LOCK_TARGET,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::None); Write-Output "locked"; [Console]::ReadLine()|Out-Null; $f.Dispose()';
+      const script = [
+        "$ErrorActionPreference = 'Stop'",
+        '$f = [IO.File]::Open($env:LOCK_TARGET, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)',
+        "try { [Console]::WriteLine('locked'); [Console]::Out.Flush(); [void][Console]::ReadLine() } finally { $f.Dispose() }",
+      ].join('; ');
       lock = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
         env: { ...process.env, LOCK_TARGET: path.join(root, 'node.exe') },
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       lockClosed = new Promise((resolve) => lock.once('close', resolve));
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('Fixture file lock did not start')), 5000);
-        lock.stdout.once('data', () => {
-          clearTimeout(timer);
-          resolve();
-        });
-        lock.once('error', (error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
-        lock.once('close', () => {
-          clearTimeout(timer);
-          reject(new Error('Fixture file lock exited'));
-        });
+      let lockStderr = '';
+      lock.stderr.setEncoding('utf8').on('data', (chunk) => {
+        lockStderr += chunk;
       });
-      assert.throws(() =>
-        execFileSync(exe, ['--self-test', root], { input: '\n', encoding: 'utf8', timeout: 60000 }),
+      const lines = createInterface({ input: lock.stdout });
+      let readinessTimer;
+      try {
+        await new Promise((resolve, reject) => {
+          const fail = (reason) => {
+            const detail = lockStderr.trim();
+            reject(new Error(`Fixture file lock ${reason}${detail ? `: ${detail}` : ''}`));
+          };
+          readinessTimer = setTimeout(() => fail('did not report readiness within 30s'), 30_000);
+          lines.once('line', (line) => {
+            if (line === 'locked') resolve();
+            else fail(`reported unexpected readiness: ${JSON.stringify(line)}`);
+          });
+          lock.once('error', reject);
+          lock.once('close', (code, signal) => fail(`exited before readiness (${signal ?? code})`));
+        });
+      } finally {
+        clearTimeout(readinessTimer);
+        lines.close();
+      }
+      assert.throws(
+        () =>
+          execFileSync(exe, ['--self-test', root], {
+            input: '\n',
+            encoding: 'utf8',
+            timeout: 60000,
+          }),
+        (error) => {
+          assert.equal(error.status, 1, 'Expected the launcher to report an installation failure');
+          assert.match(
+            error.stderr,
+            /\bnode\.exe\b/i,
+            'Expected failure on the locked runtime file',
+          );
+          return true;
+        },
       );
-      lock.stdin.end('\n');
-      await lockClosed;
+      lock.stdin.end();
+      const lockExitCode = await lockClosed;
       lock = undefined;
+      assert.equal(lockExitCode, 0, `Fixture file lock failed: ${lockStderr.trim()}`);
       assert.deepEqual(fs.readFileSync(path.join(root, 'index.mjs')), previous);
       assert.equal(fs.existsSync(path.join(root, '.launcher-payload')), false);
       assert.equal(

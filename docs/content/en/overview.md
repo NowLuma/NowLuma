@@ -6,11 +6,9 @@ tutorial: overview
 
 # Workspace
 
-Find the selected session and next action in the lesson above, then explore the six main routes. Read the state before acting; layout editing is optional.
+Check the selected QQ session and the suggested next action before opening another page.
 
 ![Workspace connection workflow and bottom navigation](/images/tutorials/overview.png)
-
-_Figure: example sessions and runtime readings._
 
 The landing page is `/`. The masthead title comes from the current navigation item and reads `工作台`; the page heading is `从会话，到结果`. It combines the connection workflow, runtime readings and an editable widget grid.
 
@@ -26,8 +24,8 @@ The landing page is `/`. The masthead title comes from the current navigation it
 | Element          | Purpose                                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------------------------ |
 | Page title       | Taken from the current navigation item, e.g. `工作台`                                                        |
-| Connection state | Whether the console session is usable; when connected it reads `服务在线`; not QQ online state               |
-| Theme menu       | Light, dark or follow system; one control, not an old three-icon pill                                        |
+| Connection state | `服务在线` means the browser has a valid console session                                                     |
+| Theme menu       | Choose light, dark or follow system                                                                          |
 | `工作区管理`     | Directly opens the management sheet: reorder/show navigation, open hidden pages, edit layout and see updates |
 | `更多操作` (`⋯`) | Session menu with `展示模式` and `退出登录`; logout is always available                                      |
 
@@ -46,7 +44,7 @@ Desktop and mobile share a floating, labelled dock:
 | 调试工具   | `/debug`     | 测试动作与排查   |
 | 偏好设置   | `/settings`  | 外观、账号与设备 |
 
-This bottom dock is the only primary navigation: there is no collapse button and hover does not push the content. On wide screens, Settings → `外观` → `显示导航说明` controls whether each description is shown; it persists as `sidebarPinned`.
+On wide screens, Settings → `外观` → `显示导航说明` controls whether each description is shown; it persists as `sidebarPinned`.
 
 ### Rearranging navigation
 
@@ -83,7 +81,7 @@ Below it are the `当前 QQ` card and the next-step prompt:
 | `连接说明`         | Everything ready                            | Explains that the console does not auto-reply                  |
 | `查看原因`         | Read/attach/endpoint problem                | Opens the error; failures are not only transient toasts        |
 
-If any read fails, the panel shows the error and `重新检查`; it never treats failure as success.
+If status could not be read, check the error and select `重新检查`.
 
 ## Layout editing
 
@@ -122,7 +120,7 @@ Layout, widget settings and mobile order auto-save. On failure the local state r
 | 账号快捷卡 | No                 | Summary for one UIN                                                     |
 | 通知投递   | No                 | Recent online/offline notification deliveries                           |
 
-Instruments show only real data: a failed read with no cache shows `—`; with cache it says `更新失败，显示上次数据`. There are no invented online counts or FPS metrics.
+When a read fails, an instrument shows `—` if it has no cached value or `更新失败，显示上次数据` beside the last value.
 
 Configurable widgets: `运行动态` (`显示条数`, `显示级别`), `QQ 会话` (sort/filter), `资源用量` (`CPU 使用率` / `内存使用` / `运行进程`), `机器人连接` (sort, `仅显示异常端点`, filter), plus note/link/account content. Link cards accept only http/https. Turning off every `资源用量` metric falls back to showing all instead of an empty card.
 

@@ -118,6 +118,7 @@ export function GlassMaterial() {
         let pointerActive = false;
         let frame = 0;
         let previous = '';
+        let opticsDirty = true;
 
         const update = () => {
             frame = 0;
@@ -146,6 +147,13 @@ export function GlassMaterial() {
             } else {
                 setLight(42, 0, 0, true);
             }
+
+            // Pointer frames only move the glint; the backdrop changes on resize or preference updates.
+            if (!opticsDirty) {
+                return;
+            }
+
+            opticsDirty = false;
 
             const renderer = glassRenderer({
                 userAgent: navigator.userAgent,
@@ -195,6 +203,11 @@ export function GlassMaterial() {
             }
         };
 
+        const scheduleOptics = () => {
+            opticsDirty = true;
+            schedule();
+        };
+
         const trackLight = (event: PointerEvent) => {
             if (
                 event.pointerType === 'touch' ||
@@ -221,9 +234,9 @@ export function GlassMaterial() {
         surface?.addEventListener('pointermove', trackLight, { passive: true });
         surface?.addEventListener('pointerleave', resetLight);
 
-        const resize = new ResizeObserver(schedule);
+        const resize = new ResizeObserver(scheduleOptics);
         resize.observe(element);
-        const preferences = new MutationObserver(schedule);
+        const preferences = new MutationObserver(scheduleOptics);
         preferences.observe(root, {
             attributes: true,
             attributeFilter: [
@@ -235,8 +248,8 @@ export function GlassMaterial() {
                 'data-no-motion',
             ],
         });
-        transparency.addEventListener('change', schedule);
-        contrast.addEventListener('change', schedule);
+        transparency.addEventListener('change', scheduleOptics);
+        contrast.addEventListener('change', scheduleOptics);
         motion.addEventListener('change', schedule);
         update();
 
@@ -250,8 +263,8 @@ export function GlassMaterial() {
             lightOpacity.destroy();
             resize.disconnect();
             preferences.disconnect();
-            transparency.removeEventListener('change', schedule);
-            contrast.removeEventListener('change', schedule);
+            transparency.removeEventListener('change', scheduleOptics);
+            contrast.removeEventListener('change', scheduleOptics);
             motion.removeEventListener('change', schedule);
             surface?.removeEventListener('pointerenter', trackLight);
             surface?.removeEventListener('pointermove', trackLight);

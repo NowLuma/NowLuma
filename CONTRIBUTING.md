@@ -79,7 +79,7 @@ PR 标题必须符合 Conventional Commits，正文必须包含 `## 关联 Issue
 `.github/workflows/ci.yml` 执行类型/静态/测试/发行布局检查，并实际构建、启动和重建 Linux/amd64 Docker 测试容器。
 成功的构建会产生对应平台的 Lite 发行产物和 Windows x64 单文件 exe（当前未签名）。
 Docker smoke 使用全新 HOME，验证进程发现、未确认账号的接入门禁、桌面认证和重建持久化；真实 hook 接入与真实 QQ 登录是 NOT RUN，不能据此声称消息投递或重启免扫码已验证。
-尚未配置 npm、Docker Hub 或跨仓库自动发布；源码中的 SDK/UI/MCP 包可在工作区构建，不能把 npm 示例理解为已经发布的版本。
+SDK/UI/MCP 可在工作区构建，当前未发布到 npm。发行流程可把已验证的 GHCR 镜像摘要同步至 `docker.io/wsxyt/nowluma`。在 `dockerhub-release` 环境限定 `v*` 标签，配置变量 `DOCKERHUB_USERNAME` 和机密 `DOCKERHUB_TOKEN`；令牌只需该镜像仓库的推送权限。两项均未配置时，只发布 GitHub 和 GHCR。
 公开分发遵循 LICENSE（GNU GPLv3，GPL-3.0-only）与 LICENSING.md；GPL 源码可自由使用、修改和分发（含商业用途），无需另行授权。EULA.md 是使用说明，PRIVACY.md 说明数据处理，二者都不构成 GPL 之外的许可条件。
 贡献代码按仓库的 GPL-3.0-only 许可发布；请只提交你有权授权的代码，并在分发时保留许可与版权声明、标注修改。
 根 README 末尾保留唯一的上游项目归属行，`tools/check-identity.mjs` 会从该行推导旧名称并检查全仓库；唯一例外是 `packages/common/src/kernel-display.ts` 中兼容内核的显示名（该内核运行上游提供的原生组件，产品名仍为 Nowluma），检查器只放行这一条由归属行推导出的确切声明；不要在其他文件、文件名、说明文字或拆分字符串中重新引入旧品牌名。

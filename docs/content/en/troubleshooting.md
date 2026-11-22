@@ -6,13 +6,9 @@ tutorial: troubleshooting
 
 # Troubleshooting
 
-The lesson above locates diagnostics and error surfaces. Preserve the original error and change one variable at a time; repeated clicks, deleted data and disabled checks do not establish a fix.
+Identify which layer is failing, capture the original error, and change one thing at a time.
 
 ![Runtime directories and deployment diagnostics](/images/tutorials/deployment-diagnostics.png)
-
-_Figure: sample diagnostics, not evidence that a real account recovered._
-
-Identify the layer first, then open the matching page. Do not “fix” a symptom by deleting data, disabling isolation or fabricating success.
 
 ## Where to look
 
@@ -32,7 +28,7 @@ bash deploy/manage.sh doctor
 bash deploy/manage.sh logs
 ```
 
-For native installs use the startup terminal and `logs/`. An error in the log is not a completed install.
+For native installs, check the startup terminal and `logs/`.
 
 ## Login and console
 
@@ -44,25 +40,25 @@ For native installs use the startup terminal and `logs/`. An error in the log is
 
 ## QQ sessions and account kernel
 
-| Symptom                                    | Cause and action                                                                                                                  |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `未检测到可加载 QQ 主进程`                 | Open and log in to QQ, then refresh; Docker needs `/proc`, `SYS_PTRACE` and matching users                                        |
-| Stuck at `加载中`                          | Native component architecture or permission problem; wait for an error, do not spam clicks                                        |
-| Stuck at `等待连接`                        | Use `刷新管道`; then check ports, permissions and the log                                                                         |
-| Stuck at `等待登录`                        | Complete login inside QQ, then `已登录，检查状态`                                                                                 |
-| Online but no bot messages                 | Check endpoints and tokens in [Bot connections](onebot-config.md)                                                                 |
-| Kernel dialog does not open                | No real UIN recognized; log in to QQ first and choose the account. A PID is never used as an account                              |
-| Asked to confirm again                     | Different UIN, changed identity or new risk version; expected per-account isolation                                               |
-| `重写内核` unavailable                     | Unverified; there is no hidden fallback or fake selection                                                                         |
-| Saved kernel choice but not attached       | Saving is not attaching; press `加载`. With auto-connect enabled, an UIN with a current acknowledgement can attach after QQ login |
-| Local account differs from channel account | Re-check login; the app does not guess the correct one                                                                            |
-| Unload failed                              | Restart QQ as prompted; configuration and QQ data remain                                                                          |
+| Symptom                                    | Cause and action                                                                                     |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `未检测到可加载 QQ 主进程`                 | Open and log in to QQ, then refresh; Docker needs `/proc`, `SYS_PTRACE` and matching users           |
+| Stuck at `加载中`                          | Check native component architecture and permissions once an error appears                            |
+| Stuck at `等待连接`                        | Use `刷新管道`; then check ports, permissions and the log                                            |
+| Stuck at `等待登录`                        | Complete login inside QQ, then `已登录，检查状态`                                                    |
+| Online but no bot messages                 | Check endpoints and tokens in [Bot connections](onebot-config.md)                                    |
+| Kernel dialog does not open                | No real UIN recognized; log in to QQ first, then choose the account                                 |
+| Asked to confirm again                     | Confirm for the current UIN and risk version                                                        |
+| `重写内核` unavailable                     | Use the compatibility kernel; see [Roadmap](planned.md#rewrite-kernel)                               |
+| Saved kernel choice but not attached       | Press `加载`; see [when auto-connect applies](qq-connection.md#saving-is-not-attaching)              |
+| Local account differs from channel account | Check which account is signed in to QQ, then retry                                                   |
+| Unload failed                              | Restart QQ as prompted; configuration and QQ data remain                                             |
 
-Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confirmation. A new account cannot reuse the previous PID’s acknowledgement. A PID explicitly unloaded stays manually stopped; refresh and auto-connect do not attach it again; press `加载` to resume.
+If you unloaded a process, press `加载` to resume it.
 
 ## Desktop
 
-- **Entry missing**: the server did not report an applied same-origin desktop capability (Windows native, an old server, or only a VNC address); do not force it with an external address.
+- **Entry missing**: check [the server's desktop gateway](qq-connection.md#open-qq-desktop) or use the local QQ window on a native install.
 - **Blank/unreachable**: valid console session, onboarding complete, and `/desktop/` plus WebSocket preserved by the proxy.
 - **Authentication fails**: the desktop reuses the console session; no separate VNC password is entered.
 - **QQ does not auto-login**: QQ behaviour. Check the full HOME volume, QQ auto-login setting and server session; see [manual verification](data-backup.md#qq-persistence-and-manual-verification).
@@ -74,14 +70,14 @@ Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confi
 - **`应用失败`**: saved but hot reload failed; read the hover error and log, fix, save again.
 - **Token change dropped bots**: expected; update and reconnect them.
 - **Saved while offline**: shows `已保存，下次连接时应用`; verify after attach.
-- **Multiple accounts**: listener ports must differ; one working account does not prove the others.
+- **Multiple accounts**: assign a distinct port to each listener.
 
 ## Data and storage
 
 - **Disk full**: inspect Storage usage, clean logs or inactive temporary data; never delete QQ HOME.
 - **Database preparing**: wait for migration; failures preserve files and retry. Do not start multiple instances.
 - **Corrupt configuration**: the program reports and preserves it; restore from backup, do not overwrite with defaults.
-- **QR scan required after restart**: files remaining does not mean the server session is valid; verify in QQ.
+- **QR scan required after restart**: complete the verification in QQ.
 - **Accounts missing after upgrade**: volumes/directories mounted, UID consistent, no `down -v`.
 
 ## Pages and appearance
@@ -90,7 +86,7 @@ Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confi
 - **Navigation item missing**: `工作台` and `偏好设置` cannot be hidden; restore others under `工作区管理` → `调整导航`.
 - **Page broken**: append `?safe-mode=1` to disable custom CSS temporarily.
 - **Too much animation**: try `减弱动效` and `关闭全部动效`; the system reduced-motion setting wins.
-- **Still slow in low mode**: low performance only simplifies refraction and displacement; reduce wallpaper/widgets or use a lighter browser. No FPS guarantee.
+- **Still slow in low mode**: try removing the wallpaper, reducing widgets, or using a lighter browser.
 - **Low contrast**: enable high contrast; a low-contrast accent offers a reset.
 
 ## Logs and debug
@@ -98,7 +94,7 @@ Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confi
 - Stream `未连接`: check service/network, press refresh; already-read entries remain.
 - Missing events: clear search, check level filters and auto-scroll.
 - TRACE export fails: TRACE enabled, file exists, disk writable.
-- Debug call fails: keep the error; side-effect actions only run after confirmation and are not retried blindly.
+- **Debug call fails**: record the error. Before retrying a write, verify whether it already took effect.
 
 ## Recovery matrix
 
@@ -111,4 +107,4 @@ Auto-connect, existing-pipe reconnect and CLI startup cannot bypass kernel confi
 | `down -v` / delete volumes      | All program data and QQ HOME               | Irreversible; never for upgrades             |
 | Unload QQ injection             | Current session disconnects                | Re-attachable; config/data remain            |
 
-When unsure: stop, back up, change one thing. Record the actual command, exit status and original error instead of repeating attempts.
+Before using a recovery action that changes data, stop the service and [check your backup](data-backup.md#backup).

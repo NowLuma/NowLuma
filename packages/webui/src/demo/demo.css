@@ -1,144 +1,320 @@
 .demo-shell {
+  --demo-bg: #f5f5f5;
+  --demo-panel: #fff;
+  --demo-ink: #222;
+  --demo-muted: #555;
+  --demo-disabled: #747474;
+  --demo-line: #dedede;
+  --demo-hover: #ececec;
+  --demo-button-text: #fff;
+  --demo-gutter: clamp(8px, 2vw, 24px);
+  height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: var(--foreground);
-  background: var(--background);
+  background: var(--demo-bg);
 }
+
+.dark .demo-shell {
+  --demo-bg: #171717;
+  --demo-panel: #202020;
+  --demo-ink: #f3f3f3;
+  --demo-muted: #bcbcbc;
+  --demo-disabled: #a1a1a1;
+  --demo-line: #424242;
+  --demo-hover: #303030;
+  --demo-button-text: #171717;
+}
+
+.demo-banner,
+.demo-guide,
+.demo-tutorial-guide,
+.demo-link-alert {
+  flex: none;
+  color: var(--demo-ink);
+}
+
 .demo-banner {
-  height: 3.5rem;
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--demo-line);
+  background: var(--demo-panel);
+}
+
+.demo-banner-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in oklab, var(--primary) 12%, var(--background));
-  position: relative;
-  z-index: 70;
+  gap: 8px;
+  width: min(1280px, calc(100% - 2 * var(--demo-gutter)));
+  min-height: 60px;
+  margin-inline: auto;
+  padding-block: 4px;
 }
-.demo-banner-label,
+
+.demo-banner-title,
 .demo-banner-actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 8px;
 }
-.demo-banner-label strong {
-  font-size: 0.85rem;
-  white-space: nowrap;
+
+.demo-banner-title,
+.demo-banner-title > div {
+  min-width: 0;
 }
-.demo-banner-label span {
+
+.demo-banner-title img {
+  flex: none;
+  width: 28px;
+}
+
+.demo-banner-caption {
+  color: var(--demo-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.demo-banner-title h1 {
+  margin: 2px 0 0;
+  font-size: clamp(0.875rem, 2.4vw, 1.125rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.demo-banner-actions {
+  flex: none;
+}
+
+.demo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    scale 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.demo-button svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.75;
+}
+
+.demo-button:disabled {
+  color: var(--demo-disabled);
+  cursor: not-allowed;
+}
+
+.demo-guide-toggle {
+  border-color: var(--demo-line);
+}
+
+.demo-guide-toggle[aria-expanded='true'] {
+  background: var(--demo-hover);
+  color: var(--demo-ink);
+}
+
+.demo-sample-password {
+  align-self: center;
+  flex: none;
+  max-width: calc(100% - 2 * var(--demo-gutter));
+  margin: 6px var(--demo-gutter);
+  padding: 3px 9px;
+  border: 1px solid var(--demo-line);
+  border-radius: 999px;
+  color: var(--demo-muted);
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
+
+.demo-sample-password code {
+  margin-inline-start: 4px;
+  color: var(--demo-ink);
+}
+
+.demo-icon-button {
+  padding-inline: 0;
+}
+
+.demo-primary-button {
+  padding-inline: 16px;
+  background: var(--demo-ink);
+  color: var(--demo-button-text);
+}
+
+.demo-primary-button:disabled {
+  border-color: var(--demo-line);
+  background: var(--demo-bg);
+  color: var(--demo-disabled);
+}
+
+@media (hover: hover) {
+  .demo-button:not(:disabled):hover {
+    background: var(--demo-hover);
+    color: var(--demo-ink);
+  }
+
+  .demo-primary-button:not(:disabled):hover {
+    background: var(--demo-muted);
+    color: var(--demo-button-text);
+  }
+}
+
+.demo-button:focus-visible,
+.demo-steps button:focus-visible,
+.demo-scenarios select:focus-visible {
+  outline: 2px solid var(--demo-ink);
+  outline-offset: 2px;
+}
+
 .demo-console {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  --workspace-viewport-height: calc(100dvh - 3.5rem);
+  overflow: hidden;
+  position: relative;
+  background: var(--background);
 }
+
+.demo-guide,
+.demo-tutorial-guide,
+.demo-link-alert {
+  width: min(1280px, calc(100% - 2 * var(--demo-gutter)));
+  margin: 8px auto;
+  border: 1px solid var(--demo-line);
+  border-radius: 16px;
+  background-color: var(--demo-panel);
+}
+
 .demo-guide {
-  position: fixed;
-  z-index: 65;
-  top: 4.25rem;
-  right: 0.75rem;
-  width: 340px;
-  max-height: calc(100dvh - 5rem);
-  overflow-y: auto;
-  padding: 1.1rem;
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: color-mix(in oklab, var(--background) 95%, transparent);
-  box-shadow: 0 16px 48px #0002;
-  backdrop-filter: blur(16px);
-  font-size: 0.8rem;
-  line-height: 1.55;
+  max-height: min(17rem, 38dvh);
+  overflow: auto;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  scrollbar-color: var(--demo-disabled) transparent;
 }
+
 .demo-guide-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 8px;
 }
-.demo-guide h2 {
-  font-size: 1.2rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
+
+.demo-guide h2,
 .demo-guide h3 {
-  font-size: 0.9rem;
-  font-weight: 650;
-}
-.demo-guide p {
-  margin: 0.65rem 0;
-  color: var(--muted-foreground);
-}
-.demo-steps {
-  display: grid;
-  gap: 0.2rem;
-  margin-top: 0.8rem;
-}
-.demo-steps button {
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.4rem;
-  text-align: left;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-.demo-steps button:hover {
-  background: var(--muted);
-}
-.demo-steps button[aria-current='step'] {
-  background: color-mix(in oklab, var(--primary) 12%, var(--background));
-  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
-  color: var(--primary);
-}
-.demo-steps button:focus-visible,
-.demo-scenarios select:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.demo-step-detail {
-  margin-top: 0.7rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--border);
-}
-.demo-step-detail button {
-  margin: 0.2rem 0.3rem 0.2rem 0;
-}
-.demo-control-label {
-  font-size: 0.7rem;
-}
-.demo-scenarios {
-  border-top: 1px solid var(--border);
-  padding-top: 0.7rem;
-  margin-top: 0.6rem;
-  display: grid;
-  gap: 0.45rem;
-}
-.demo-scenarios label {
-  font-size: 0.7rem;
+  margin: 0;
   font-weight: 600;
 }
+
+.demo-guide h2 {
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.demo-guide h3 {
+  font-size: 0.9375rem;
+}
+
+.demo-guide p {
+  margin: 6px 0;
+  color: var(--demo-muted);
+  overflow-wrap: anywhere;
+}
+
+.demo-steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 4px;
+  scrollbar-width: thin;
+}
+
+.demo-steps button {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--demo-muted);
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    scale 240ms ease-out;
+  cursor: pointer;
+}
+
+.demo-steps button:hover,
+.demo-steps button[aria-current='step'] {
+  background: var(--demo-hover);
+  border-color: var(--demo-line);
+  color: var(--demo-ink);
+}
+
+.demo-step-detail,
+.demo-scenarios {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--demo-line);
+}
+
+.demo-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-scenarios label {
+  font-weight: 600;
+}
+
 .demo-scenarios select {
-  border: 1px solid var(--border);
-  border-radius: 0.45rem;
-  background: var(--background);
-  padding: 0.5rem;
-  color: var(--foreground);
+  min-height: 44px;
+  max-width: 100%;
+  border: 1px solid var(--demo-line);
+  border-radius: 8px;
+  background: var(--demo-panel);
+  padding: 4px 12px;
+  color: var(--demo-ink);
 }
-.demo-guide .demo-progress {
-  font-size: 0.68rem;
-}
+
+.demo-guide .demo-progress,
 .demo-guide .demo-notice {
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  background: var(--muted);
-  color: var(--foreground);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
+
+.demo-guide .demo-notice:not(:empty) {
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--demo-bg);
+  color: var(--demo-ink);
+}
+
 .demo-desktop {
   min-height: 220px;
   display: flex;
@@ -160,158 +336,238 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
+
 .demo-link-alert {
-  position: fixed;
-  z-index: 90;
-  bottom: 1rem;
-  left: 1rem;
-  max-width: calc(100vw - 2rem);
-  padding: 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 0.7rem;
-  background: var(--background);
-  font-size: 0.8rem;
-  box-shadow: 0 8px 24px #0002;
-}
-.demo-tutorial-guide {
   display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  max-height: min(18rem, 40dvh);
-  padding: 0.5rem 0.875rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--background);
-  font-size: 0.8125rem;
-  line-height: 1.45;
-}
-.demo-tutorial-heading {
-  display: flex;
-  flex-shrink: 0;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 8px;
+  margin-block-start: 0;
+  padding: 0 8px 0 16px;
+  font-size: 0.8125rem;
 }
-.demo-tutorial-heading .demo-tutorial-baseline {
-  margin-inline-end: auto;
-}
-.demo-tutorial-heading button {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-.demo-tutorial-guide h2 {
-  font-size: 1rem;
-  font-weight: 650;
-}
-.demo-tutorial-message {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+
+.demo-link-alert p {
+  margin: 0;
   overflow-wrap: anywhere;
 }
-.demo-tutorial-message:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
+
+.demo-tutorial-guide {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  margin-block: 4px;
+  padding: 4px 10px;
 }
-.demo-tutorial-guide p {
-  margin: 0.25rem 0;
+
+.demo-tutorial-meter {
+  min-width: 46px;
+  color: var(--demo-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
-.demo-tutorial-baseline,
-.demo-tutorial-proof {
-  color: var(--muted-foreground);
-  font-size: 0.68rem;
+
+.demo-tutorial-meter strong {
+  color: var(--demo-ink);
+  font-size: 1rem;
 }
-.demo-tutorial-guide progress {
+
+.demo-tutorial-meter progress {
   display: block;
-  flex-shrink: 0;
   width: 100%;
-  height: 0.25rem;
-  margin: 0 0 0.375rem;
-  accent-color: var(--foreground);
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--demo-line);
+  color: var(--demo-ink);
+  accent-color: var(--demo-ink);
 }
+
+.demo-tutorial-meter progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: transparent;
+}
+
+.demo-tutorial-meter progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--demo-ink);
+}
+
+.demo-tutorial-meter progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--demo-ink);
+}
+
+.demo-tutorial-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.demo-tutorial-message:focus-visible {
+  outline: 2px solid var(--demo-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.demo-tutorial-message h2 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.17;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+
+.demo-tutorial-message p {
+  margin: 2px 0 0;
+  color: var(--demo-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .demo-tutorial-actions {
   display: flex;
-  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  justify-content: end;
+  gap: 2px;
 }
-.demo-tutorial-actions button {
-  min-height: 2.75rem;
-  font-size: 0.75rem;
+
+.demo-tutorial-actions .demo-primary-button {
+  padding-inline: 9px;
 }
+
+.demo-tutorial-tool {
+  border-color: var(--demo-line);
+  color: var(--demo-ink);
+}
+
 [data-tutorial-focus] {
-  outline: 3px solid #1680dc !important;
+  outline: 2px solid var(--demo-ink) !important;
   outline-offset: 3px;
   scroll-margin: 1.5rem;
 }
-.demo-tutorial .demo-banner {
-  height: 2.75rem;
-  padding-block: 0.25rem;
-}
-.demo-tutorial .demo-console {
-  position: relative;
-}
-.demo-tutorial .workspace-main > div > [data-radix-scroll-area-viewport] {
-  scroll-padding-block-end: 5.5rem;
-}
-.demo-tutorial [data-tutorial-verified='true'] .demo-tutorial-proof {
-  color: var(--foreground);
-}
-.demo-tutorial-heading button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-@media (max-width: 640px) {
-  .demo-banner {
-    padding: 0.5rem;
-    gap: 0.3rem;
+
+@media (max-width: 680px) {
+  .demo-banner-inner {
+    min-height: 54px;
   }
-  .demo-banner-label span {
+
+  .demo-banner-title img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .demo-guide {
+    max-height: min(13rem, 26dvh);
+    padding-inline: 12px;
+  }
+
+  .demo-tutorial-guide {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 2px 8px;
+    padding-inline: 6px;
+  }
+
+  .demo-tutorial-actions {
+    grid-column: 1 / -1;
+  }
+
+  .demo-tutorial-actions .demo-button {
+    padding-inline: 6px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .demo-banner-title img {
     display: none;
   }
-  .demo-banner-label {
-    gap: 0.25rem;
+
+  .demo-banner-caption {
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
   }
+
   .demo-banner-actions {
-    gap: 0.25rem;
+    gap: 2px;
   }
-  .demo-banner-actions button {
-    font-size: 0.7rem;
-    padding-inline: 0.45rem;
+
+  .demo-wide-label {
+    display: none;
   }
+}
+
+@media (max-height: 520px) {
   .demo-guide {
-    width: calc(100vw - 1rem);
-    right: 0.5rem;
-    top: 4rem;
-    max-height: calc(100dvh - 4.5rem);
+    max-height: 38dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
+
   .demo-tutorial-guide {
-    max-height: min(15rem, 38dvh);
-    padding: 0.375rem 0.5rem;
+    max-height: max(6rem, 38dvh);
+    grid-template-rows: minmax(0, 1fr);
   }
-  .demo-tutorial-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.25rem;
-  }
-  .demo-tutorial-actions button {
-    height: auto;
-    min-width: 0;
-    padding-inline: 0.25rem;
-    white-space: normal;
-    line-height: 1.2;
+
+  .demo-tutorial-message {
+    align-self: stretch;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
+
+@media (max-width: 680px) and (max-height: 520px) {
+  .demo-tutorial-guide {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+@keyframes demo-content-in {
+  from {
+    opacity: 0.6;
+    translate: 0 3px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(html:not([data-reduce-motion='1'], [data-no-motion='1'], [data-webui-target]))
+    :is(.demo-button, .demo-steps button):active:not(:disabled) {
+    scale: 0.97;
+  }
+
+  :where(html:not([data-reduce-motion='1'], [data-no-motion='1'], [data-webui-target]))
+    :is(.demo-guide, .demo-tutorial-guide, .demo-step-detail) {
+    animation: demo-content-in 180ms ease-out both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .demo-guide {
-    backdrop-filter: none;
+  :is(.demo-button, .demo-steps button, .demo-scenarios select) {
+    transition: none;
   }
 }
-.demo-tutorial .demo-banner-label {
-  min-width: 0;
-}
-.demo-tutorial .demo-banner-label strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+@media (forced-colors: active) {
+  .demo-tutorial-meter progress {
+    appearance: auto;
+  }
+
+  .demo-primary-button {
+    border-color: ButtonText;
+  }
+
+  .demo-button:focus-visible,
+  .demo-steps button:focus-visible,
+  .demo-scenarios select:focus-visible,
+  .demo-tutorial-message:focus-visible,
+  [data-tutorial-focus] {
+    outline-color: Highlight !important;
+  }
 }

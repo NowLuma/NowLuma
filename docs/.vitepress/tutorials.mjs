@@ -1,25 +1,31 @@
-export const DOCS_BASE = '/Nowluma/';
+export const DOCS_BASE = '/NowLuma/';
 
-export const CHAPTER_IDS = [
-  'index',
-  'introduction',
-  'install-docker',
-  'install-native',
-  'first-run',
-  'overview',
-  'qq-connection',
-  'onebot-config',
-  'logs',
-  'debug',
-  'settings-console',
-  'settings-runtime',
-  'access-network',
-  'data-backup',
-  'troubleshooting',
-  'demo',
-  'planned',
-  'developing',
+export const CHAPTER_GROUPS = [
+  {
+    title: { zh: '开始使用', en: 'Get started' },
+    chapters: ['index', 'introduction', 'install-docker', 'install-native', 'first-run'],
+  },
+  {
+    title: { zh: '接入与调试', en: 'Connect and debug' },
+    chapters: ['overview', 'qq-connection', 'onebot-config', 'logs', 'debug'],
+  },
+  {
+    title: { zh: '配置与维护', en: 'Configure and maintain' },
+    chapters: [
+      'settings-console',
+      'settings-runtime',
+      'access-network',
+      'data-backup',
+      'troubleshooting',
+    ],
+  },
+  {
+    title: { zh: '学习与参与', en: 'Learn and contribute' },
+    chapters: ['demo', 'planned', 'developing'],
+  },
 ];
+
+export const CHAPTER_IDS = CHAPTER_GROUPS.flatMap(({ chapters }) => chapters);
 
 export const LOCALES = {
   zh: { htmlLang: 'zh-CN', title: 'Nowluma 文档', label: '简体中文' },
@@ -34,14 +40,14 @@ export function tutorialForPage(relativePath, tutorial) {
   return { chapter, lang: match[1] };
 }
 
-export function tutorialUrl(base, chapter, lang) {
+export function tutorialUrl(base, chapter, lang, { embedded = true } = {}) {
   if (!CHAPTER_IDS.includes(chapter) || !Object.hasOwn(LOCALES, lang)) {
     throw new Error('Unknown documentation tutorial or language');
   }
   if (!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(base)) {
     throw new Error('The documentation base must be a local absolute directory');
   }
-  return `${base}demo/?tutorial=${chapter}&lang=${lang}&embed=1`;
+  return `${base}demo/?tutorial=${chapter}&lang=${lang}${embedded ? '&embed=1' : ''}`;
 }
 
 export function tutorialSectionForEvent(event, origin, frameWindow, lesson, sections) {

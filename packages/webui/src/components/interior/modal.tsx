@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { GlassMaterial } from '@/components/ui/glass-material';
+import { useT } from '@/i18n';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -410,7 +412,7 @@ export function Modal({
     description,
     children,
     footer,
-    closeLabel = 'Close dialog',
+    closeLabel,
     showClose = true,
     closeOnEscape = true,
     closeOnBackdrop = true,
@@ -422,7 +424,11 @@ export function Modal({
     className = '',
 }: ModalProps) {
     const reduced = useReducedMotionConfig();
+    const t = useT();
     const [viewport, setViewport] = useState({ top: 0, height: '100%', alignStart: false });
+    // Dense editor dialogs stay matte at every size. Compact dialogs may
+    // refract; GlassMaterial still enforces the measured height/area budget.
+    const optical = maxWidth <= 512;
 
     useEffect(() => {
         if (!open) {
@@ -535,8 +541,9 @@ export function Modal({
                         aria-describedby={description ? descriptionId : undefined}
                         variants={variants.panel}
                         style={{ maxWidth, maxHeight }}
-                        className={`relative flex w-full flex-col overflow-hidden rounded-[14px] border border-border bg-card text-foreground shadow-[0_28px_56px_-24px_rgba(24,22,20,0.45)] outline-none ${className}`}
+                        className={`ui-glass-panel ${optical ? 'ui-glass-overlay' : 'ui-glass-raised'} relative flex w-full flex-col overflow-hidden rounded-[14px] border text-foreground outline-none ${className}`}
                     >
+                        {optical && <GlassMaterial />}
                         <div className="flex shrink-0 items-start gap-3 px-4 pb-3 pt-4">
                             <div className="min-w-0 flex-1">
                                 <h2
@@ -559,7 +566,7 @@ export function Modal({
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    aria-label={closeLabel}
+                                    aria-label={closeLabel ?? t('关闭对话框', 'Close dialog')}
                                     className="-mr-1 -mt-1 grid size-7 shrink-0 place-items-center rounded-[7px] text-muted-foreground outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:bg-primary/[0.06] focus-visible:text-foreground focus-visible:shadow-[inset_0_0_0_1px_var(--ring)]"
                                 >
                                     {CLOSE_ICON}

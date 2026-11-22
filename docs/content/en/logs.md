@@ -6,13 +6,11 @@ tutorial: logs
 
 # Run log
 
-Practise filtering and searching above, then inspect the complete error. Check for account data or tokens before exporting real logs; clearing the view is different from deleting stored logs.
+Filter or search the live log, then read the full error before changing settings.
 
 ![Run log stream with level and search filters](/images/tutorials/logs.png)
 
-_Figure: sample events. Level text and error details matter more than colour._
-
-Path `/logs`. It shows console and access-layer events as they happen. It does not change QQ connections or repair errors automatically.
+Open `运行记录` (`/logs`) to see console and access-layer events.
 
 ## Live stream
 

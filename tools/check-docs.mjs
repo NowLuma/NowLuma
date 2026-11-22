@@ -7,6 +7,7 @@ import {
   CHAPTERS,
   CONTENT_ROOT,
   DOCS_BASE,
+  HOSTED_DEPLOY_FILES,
   LOCALES,
   ROOT,
   readDocuments,
@@ -60,7 +61,7 @@ export async function checkSources({ contentRoot = CONTENT_ROOT } = {}) {
   } catch (error) {
     return [error.message];
   }
-  if (!documents.has('index.md')) problems.push('missing bilingual landing page index.md');
+  if (!documents.has('index.md')) problems.push('missing product homepage index.md');
   for (const lang of Object.keys(LOCALES)) {
     const files = [...documents.keys()].filter((key) => key.startsWith(`${lang}/`));
     if (files.length !== CHAPTERS.length) {
@@ -88,7 +89,7 @@ export async function checkSources({ contentRoot = CONTENT_ROOT } = {}) {
         problems.push(`${key}: missing a chapter illustration under /images/tutorials/`);
       }
     } else if (frontmatter.tutorial !== undefined) {
-      problems.push('index.md: the bilingual landing page must not select a tutorial');
+      problems.push('index.md: the product homepage must not select a tutorial');
     }
     for (const ref of refs) {
       if (ref.image && !ref.alt.trim())
@@ -238,31 +239,49 @@ export function checkHtmlReferences({ html, file, outDir, withDemo = false }) {
 
 function checkTutorial(html, lang, chapter, label) {
   const problems = [];
-  const iframes = [...html.matchAll(/<iframe\b[^>]*>/gi)];
-  if (iframes.length !== 1)
-    return [`${label}: expected one tutorial iframe, found ${iframes.length}`];
-  const iframe = attributes(iframes[0][0]);
-  const expected = tutorialUrl(DOCS_BASE, chapter, lang);
-  if (iframe.src !== expected || Object.hasOwn(iframe, 'srcdoc')) {
-    problems.push(`${label}: tutorial iframe must use exactly ${expected}`);
-  }
-  const sandbox = new Set((iframe.sandbox ?? '').split(/\s+/));
+  if (/<iframe\b/i.test(html)) problems.push(`${label}: tutorial must not load before activation`);
+  const launcher = /<section\b[^>]*\bdata-tutorial="[^"]+"[^>]*>/i.exec(html);
+  const heading = /<h1[\s>]/i.exec(html);
   if (
-    !sandbox.has('allow-scripts') ||
-    !sandbox.has('allow-same-origin') ||
-    [...sandbox].some(
-      (flag) => !['allow-scripts', 'allow-same-origin', 'allow-downloads'].includes(flag),
-    )
+    !launcher ||
+    !heading ||
+    launcher.index > heading.index ||
+    attributes(launcher[0])['data-tutorial'] !== chapter ||
+    attributes(launcher[0])['data-tutorial-expanded'] !== 'false'
   ) {
-    problems.push(`${label}: tutorial iframe has an unsafe sandbox`);
+    problems.push(`${label}: expected a collapsed tutorial launcher above the chapter text`);
   }
-  if (!iframe.title?.trim() || iframe.referrerpolicy !== 'no-referrer') {
-    problems.push(`${label}: tutorial iframe is missing its accessible title or referrer policy`);
+  const toggle = /<button\b[^>]*\sdata-tutorial-load(?=[\s=>])[^>]*>/i.exec(html);
+  const stage = /<div\b[^>]*\bid="tutorial-simulator-stage"[^>]*>/i.exec(html);
+  const glass = /<div\b[^>]*\sdata-tutorial-glass(?=[\s=>])[^>]*>/i.exec(html);
+  const control = toggle && attributes(toggle[0]);
+  if (
+    !control ||
+    control['aria-expanded'] !== 'false' ||
+    !Object.hasOwn(control, 'disabled') ||
+    control['aria-controls'] !== 'tutorial-simulator-stage' ||
+    !stage ||
+    !Object.hasOwn(attributes(stage[0]), 'inert') ||
+    !glass ||
+    Object.hasOwn(attributes(glass[0]), 'inert')
+  ) {
+    problems.push(
+      `${label}: collapsed simulator needs an accessible load control disabled until hydration, an inert stage, and an active glass launcher`,
+    );
   }
-  if (iframes[0].index > html.search(/<h1[\s>]/i))
-    problems.push(`${label}: tutorial must appear above the chapter text`);
-  if (!html.includes('data-tutorial-restart') || !html.includes('data-tutorial-larger')) {
-    problems.push(`${label}: tutorial restart and larger-view controls are required`);
+  const larger = referencesOf(html).find(
+    (ref) => ref.tag === 'a' && Object.hasOwn(ref, 'data-tutorial-larger'),
+  );
+  const expected = tutorialUrl(DOCS_BASE, chapter, lang, { embedded: false });
+  const rel = larger?.rel?.split(/\s+/) ?? [];
+  if (
+    larger?.href !== expected ||
+    !larger['aria-label']?.trim() ||
+    larger.target !== '_blank' ||
+    !rel.includes('noopener') ||
+    !rel.includes('noreferrer')
+  ) {
+    problems.push(`${label}: simulator full-view link must safely open ${expected}`);
   }
   return problems;
 }
@@ -272,6 +291,14 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
   if (!fs.existsSync(outDir))
     return [`${relative(ROOT, outDir)} does not exist; run pnpm docs:build first`];
   const problems = [];
+  for (const name of HOSTED_DEPLOY_FILES) {
+    const file = path.join(outDir, name);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      problems.push(`missing hosted deployment file ${name}`);
+    } else if (!fs.readFileSync(file).equals(fs.readFileSync(path.join(ROOT, 'deploy', name)))) {
+      problems.push(`hosted deployment file differs from deploy/${name}`);
+    }
+  }
   for (const lang of Object.keys(LOCALES)) {
     for (const chapterFile of CHAPTERS) {
       const chapter = chapterFile.replace(/\.md$/, '');
@@ -290,6 +317,14 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
       }
       const h1Count = (html.match(/<h1[\s>]/g) ?? []).length;
       if (h1Count !== 1) problems.push(`${label}: expected one h1, found ${h1Count}`);
+      const refs = referencesOf(html);
+      for (const peer of Object.keys(LOCALES)) {
+        if (peer === lang) continue;
+        const counterpart = `${DOCS_BASE}${peer}/${chapter === 'index' ? '' : `${chapter}.html`}`;
+        if (!refs.some(({ href }) => href === counterpart)) {
+          problems.push(`${label}: missing corresponding ${peer} chapter link`);
+        }
+      }
       problems.push(...checkTutorial(html, lang, chapter, label));
       problems.push(...checkHtmlReferences({ html, file, outDir, withDemo }));
     }
@@ -300,16 +335,13 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
   } else {
     const html = fs.readFileSync(landing, 'utf8');
     if (/<iframe\b/i.test(html)) problems.push('landing page must not embed a tutorial');
-    for (const lang of Object.keys(LOCALES)) {
-      const refs = referencesOf(html);
-      if (
-        !refs.some(
-          (ref) =>
-            ref.href === `${DOCS_BASE}${lang}/index.html` || ref.href === `${DOCS_BASE}${lang}/`,
-        )
-      ) {
-        problems.push(`landing page: missing ${lang} documentation link`);
-      }
+    const links = referencesOf(html).filter((ref) => ref.tag === 'a');
+    if (!links.some(({ href }) => href === `${DOCS_BASE}zh/index.html` || href === `${DOCS_BASE}zh/`)) {
+      problems.push('landing page: missing documentation entry');
+    }
+    if (!idsOf(html).has('downloads')) problems.push('landing page: missing downloads section');
+    if (!links.some(({ href }) => href === 'https://github.com/NowLuma/NowLuma/releases')) {
+      problems.push('landing page: missing GitHub releases link');
     }
     problems.push(...checkHtmlReferences({ html, file: landing, outDir, withDemo }));
   }
@@ -317,8 +349,28 @@ export function checkSite({ outDir = path.join(ROOT, '_site'), withDemo = false 
   if (withDemo) {
     if (!fs.existsSync(demoFile)) {
       problems.push('demo route _site/demo/index.html is missing; build the simulator first');
-    } else if (!/<!doctype html>/i.test(fs.readFileSync(demoFile, 'utf8'))) {
-      problems.push('demo route _site/demo/index.html is not an HTML document');
+    } else {
+      const html = fs.readFileSync(demoFile, 'utf8');
+      if (!/^<!doctype html>/i.test(html)) {
+        problems.push('demo route _site/demo/index.html is not an HTML document');
+      }
+      // The iframe permits form events so React can handle them. The document
+      // itself must still prohibit native form navigation and outbound requests.
+      const policies = [...html.matchAll(/<meta\b[^>]*>/gi)]
+        .map(([tag]) => attributes(tag))
+        .filter((meta) => meta['http-equiv']?.toLowerCase() === 'content-security-policy')
+        .map((meta) => (meta.content ?? '').split(';').map((directive) => directive.trim()));
+      for (const name of ['form-action', 'connect-src']) {
+        const blocked = policies.some((policy) =>
+          /^'none'$/.test(
+            policy
+              .find((directive) => directive.split(/\s+/, 1)[0].toLowerCase() === name)
+              ?.slice(name.length)
+              .trim() ?? '',
+          ),
+        );
+        if (!blocked) problems.push(`demo route CSP must include ${name} 'none'`);
+      }
     }
   }
   return problems;

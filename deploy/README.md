@@ -2,36 +2,32 @@
 
 ## 1. 安装与首次登录
 
-安装向导第一步选择简体中文或 English，然后检查 Docker Engine 和 Compose v2。
-缺少 Docker 时可选择：
-
-- 不需要镜像源：显示 `curl -fsSL https://get.docker.com | bash -s docker`，确认后运行官方安装脚本。
-- 需要镜像源：显示 `bash <(curl -sSL https://linuxmirrors.cn/docker.sh)`，确认后运行第三方安装脚本；镜像与防火墙等选项由你自行选择，本项目不要求关闭防火墙或 SELinux。
-
-执行前的确认回车默认 `y`。已有 Docker 不重新安装、不改镜像设置；缺少 Compose v2 时另外询问插件安装。
-官方手动安装指南：https://docs.docker.com/engine/install/
-
-在源码目录执行：
+预构建安装使用 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)中已发布的 Linux/amd64 版本。在 Linux 终端运行：
 
 ```bash
-bash deploy/install.sh --docker
+bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
 ```
 
-首次可选访问方式、控制台/机器人端口、时区，回车使用默认值。配置保存在私有 `deploy/.env`；已有配置逐字保留。
-安装成功后直接显示本次生成的控制台初始密码与实际地址；已有部署不会重新设置密码。
-需要 sudo 访问 Docker 时，输出的日常命令也会包含 sudo。后续只运行 `manage.sh`，不用编辑 JSON。
-默认 QQ 包固定版本并检查 SHA-256。官方地址不可用时会明确提示使用固定发行镜像，而非静默切换不同版本。
-镜像来源是 `a1515333102/QQ-Releases` 的同名发行资产；校验保证匹配已固定的发行快照，不应把它说成腾讯提供的签名保证。
-高级构建如指定 `QQ_DEB_URL`，必须同时指定该包的 `QQ_DEB_SHA256`，不会把自定义下载失败偷偷回退到默认包。
+先选简体中文或 English，向导再检查 Docker 和 Compose v2。缺少 Docker 时，可选择官方安装脚本或第三方 LinuxMirrors；后者提供镜像源选择。向导显示命令并等待确认。已有 Docker 则沿用当前配置。
+
+选择安装目录（默认 `$HOME/Nowluma`）、已发布的 Docker Hub 版本、访问方式、端口和时区。已知版本时，可在命令末尾加 `--version 版本`。新安装将 Compose 配置和管理脚本放在 `deploy/`，并用其中的 `.env` 记录设置。再次运行会复用原有配置。
+
+首次拉取镜像失败时，向导不会保存新部署；可重新运行并选择已发布的版本。GitHub 发行或 GHCR 标签不代表 Docker Hub 已发布。
+
+向导在容器通过健康检查后打印地址和新生成的初始密码。需要 sudo 访问 Docker 时，输出的管理命令也会带 sudo。
+
+### 从源码构建（可选）
+
+在完整源码目录执行 `bash deploy/install.sh --docker`。此模式构建 `nowluma:local`，不需要已发布的 Nowluma 镜像。
+默认 QQ 包固定版本并校验 SHA-256；官方地址不可用时会提示使用固定镜像。该镜像来自 `a1515333102/QQ-Releases` 的同名发行资产，校验不代表腾讯签名。自定义 `QQ_DEB_URL` 必须同时设置 `QQ_DEB_SHA256`。
+
+### 首次登录
 
 ```bash
 bash deploy/manage.sh logs
 ```
 
-打开控制台 `http://127.0.0.1:5099`，设置自己的控制台密码，然后点 **打开 QQ 桌面**。
-桌面复用控制台认证，不需要额外 VNC 密码。进入后仍在 QQ 窗口扫码，勾选 **QQ 自己的自动登录设置**。
-回到 **QQ 会话** 刷新并加载进程；第一次为该真实 QQ 号接入时，必须主动勾选风险确认并选择 `兼容内核`。`重写内核` 当前显示为 `暂不可用`，不会静默回退。保存内核选择不等于接入，仍需加载或重连。
-不要把“程序启动”“接入成功”“QQ 登录成功”“机器人会自动回复”当成同一件事；首页会分别提示。
+打开向导输出的控制台地址，用初始密码完成[首次设置](https://nowluma.github.io/NowLuma/zh/first-run.html)。点击 **打开 QQ 桌面**，在 QQ 窗口登录并可选启用 QQ 的自动登录。返回 **QQ 会话** 刷新和加载进程；首次接入时选择兼容内核并确认该账号的风险说明。
 
 ### 远程服务器
 
@@ -53,8 +49,8 @@ bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
 ```
 
-`start` 构建并等待健康检查，`restart` 正常结束进程再等待恢复，`stop` 不删除任何数据卷。
-首次构建失败会返回非零状态，并保留原有数据。日志里的错误不是“安装完成”。
+`start` 使用已拉取的版本镜像（源码部署则构建 `nowluma:local`）并等待健康检查。`restart` 正常结束进程并等待恢复，不拉取或构建。`stop` 不删除数据卷。
+拉取失败返回状态码 `3`；启动失败也返回非零。两者都保留已有数据，不算安装成功。
 
 ## 3. 数据与自动登录
 
@@ -73,11 +69,7 @@ QQ 和程序固定运行于 UID/GID **1000**，使用相同 HOME 和 XDG 环境�
 机器 ID 在 HOME 中首次生成，容器重建后继续复用；主机名固定为 `nowluma`。
 XDG 运行目录是临时的 `/tmp/nowluma-runtime`，不要持久化陈旧进程锁或套接字。
 
-停止时先让程序关闭数据库和连接，再让 QQ 正常退出；超时才结束残留进程。
-本地凭据不会在每次启动时生成、删除或由程序代替 QQ 重新登录。
-
-**保留本地状态能避免部署导致的新环境，不保证 QQ 服务端永远认可会话。**
-本项目不另存 QQ 密码，不伪造签名或设备令牌；会话过期或验证要求仍由 QQ 自己处理。
+停止时先关闭程序的数据库和连接，再让 QQ 正常退出。重启后沿用原 QQ HOME；如 QQ 要求重新验证，请打开 QQ 桌面完成验证。
 
 ## 4. 健康检查和注入权限
 
@@ -180,7 +172,8 @@ CI 可以验证目录/设置标记、机器 ID、进程发现与未确认账号�
 ## 8. 升级、备份、卸载
 
 - 先停服务再备份四个卷，避免复制正在写入的 SQLite/WAL。
-- 升级源代码后运行 `start`，Docker 复用原卷。
+- 镜像部署：确认新标签发布后，只修改 `deploy/.env` 的 `NOWLUMA_IMAGE` 版本（保留 `docker.io/wsxyt/nowluma:` 前缀），然后执行 `bash deploy/manage.sh update` 拉取并启动。拉取失败时可改回原标签。
+- 源码部署：更新源码后运行 `start`。两种方式均复用原卷，普通启动不会改变部署模式。
 - 原生升级保留 `config/`、`data/`、`logs/`；QQ 的目录不搬动。
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。
 - 后台 VNC 凭据保存在 QQ HOME 卷的私有 `.vnc/password`；浏览器和安装向导不需要读取它，勿公开导出。
@@ -197,7 +190,7 @@ bash launcher.sh
 bash deploy/install.sh --native --directory /发行包目录
 ```
 
-`deploy/install.sh` 只在源码仓库里，不随 Lite 发行包分发。原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
+Lite 包自身不含 `deploy/install.sh`。原生方式不自动安装 QQ 或修改你的用户目录。自己打开桌面 QQ 登录，再在首页按步骤连接。
 完整发行包的 Node 基线以 `check-node-version.cjs` 为准；不要用低版本 Node 绕过安全检查。
 
 ### Windows 单文件 exe
@@ -224,6 +217,8 @@ node tools/check-release-layout.mjs dist
 node --test deploy/docker/healthcheck.test.cjs
 docker compose -f deploy/docker-compose.yml config --quiet
 ```
+
+`pnpm docs:build:all` 从 `deploy/` 复制安装脚本、管理脚本和 Compose 配置到 Pages 根目录。站点检查会逐一核对发布文件。
 
 CI 另外实际构建 Linux/amd64 Docker 镜像、启动官方 QQ/桌面/程序，并验证全新 HOME 下的进程发现、未确认账号不会自动接入、桌面认证、停止/重启/重建时完整 HOME 和程序配置保留。真实 hook 接入与真实 QQ 登录在该 smoke 中是 NOT RUN；历史 CI 通过记录不构成本次账号验收。
 arm64 下载和原生产物有相应构建输入，未实际验证前不得把它标为已测试的平台。
