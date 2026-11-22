@@ -21,13 +21,17 @@ _图：控制台示例入口。真实部署的初始密码从安装输出获取�
 
 ## 安装向导
 
-使用预构建镜像时，请从 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)选一个已发布的 Linux/amd64 版本。[GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)提供发行文件与校验值。在 Linux 终端运行：
+[预发行版 `2.5.0-rc.2`](https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.2) 已在 Ubuntu amd64 上验证：镜像可匿名拉取，首次安装后控制台可访问，重跑向导会保留部署配置。在 Linux 终端运行以下命令，无需在向导中再选版本：
 
 ```bash
-bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
+curl -qfsSL --proto '=https' --proto-redir '=https' \
+  https://nowluma.github.io/NowLuma/install.sh -o nowluma-install.sh &&
+  test -s nowluma-install.sh && bash nowluma-install.sh --version 2.5.0-rc.2
 ```
 
-先选语言。向导检查 Docker 后，请选择安装目录（默认 `$HOME/Nowluma`）和镜像版本。已知版本时，可在命令末尾加 `--version 版本`。
+安装其他版本时，把 `--version` 的值换成 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)上已发布的 Linux/amd64 版本。省略 `--version` 时，新安装会提示输入具体版本。
+
+先选语言。向导检查 Docker 后，请选择安装目录（默认 `$HOME/Nowluma`）。
 
 向导中的设置与默认值：
 

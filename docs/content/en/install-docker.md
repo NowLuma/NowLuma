@@ -21,13 +21,17 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Installer
 
-For a prebuilt install, choose a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags). The [GitHub release page](https://github.com/NowLuma/NowLuma/releases) lists release files and checksums. Run this in a Linux terminal:
+The [`2.5.0-rc.2` prerelease](https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.2) was verified on Ubuntu amd64: the image pulls anonymously, the console is reachable after installation, and rerunning the wizard preserves the deployment settings. Run the command below in a Linux terminal to skip the version prompt:
 
 ```bash
-bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
+curl -qfsSL --proto '=https' --proto-redir '=https' \
+  https://nowluma.github.io/NowLuma/install.sh -o nowluma-install.sh &&
+  test -s nowluma-install.sh && bash nowluma-install.sh --version 2.5.0-rc.2
 ```
 
-Select a language first. After the Docker check, choose an installation directory (default `$HOME/Nowluma`) and an image version. If you know the version, append `--version VERSION` to the command.
+To install another version, replace the `--version` value with a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags). Without `--version`, the wizard prompts for a specific version on new installations.
+
+Select a language first. After the Docker check, choose an installation directory (default `$HOME/Nowluma`).
 
 The wizard uses these setup defaults:
 
