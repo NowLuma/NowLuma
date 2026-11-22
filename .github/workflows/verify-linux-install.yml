@@ -1,0 +1,147 @@
+name: Isolated Linux installer acceptance
+on:
+  push:
+    branches: [verify/linux-install-ddc3f95]
+permissions:
+  contents: read
+env:
+  CANDIDATE: ddc3f95813228a99bb6d43396166fa673c76f8cb
+  PAGES: https://nowluma.github.io/NowLuma
+  HUB_IMAGE: docker.io/nowluma/nowluma:2.5.0-rc.1
+  RELEASE_DIGEST: sha256:b2ca438e80c9c0853dfdebf7ac5c33a2dce034d8a73d05e9d65e090293b2c186
+jobs:
+  source:
+    name: Source installer on Linux/amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ env.CANDIDATE }}
+          persist-credentials: false
+      - name: Build and start from the English installer
+        shell: bash
+        run: |
+          umask 077
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(uname -s)/$(uname -m)" = Linux/x86_64
+          test ! -e deploy/.env
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=nowluma)"
+          docker version --format 'Docker Engine {{.Server.Version}} ({{.Server.Os}}/{{.Server.Arch}})'
+          docker compose version
+          docker info --format '{{json .RegistryConfig.Mirrors}}' > "$RUNNER_TEMP/registry-before"
+          log=$(mktemp)
+          trap 'rm -f -- "$log"' EXIT
+          if ! printf '%s\n' 2 '' '' '' '' '' | bash deploy/install.sh --docker > "$log" 2>&1; then
+            awk '!/credentials|[Pp]assword|密码/' "$log" | tail -n 75 >&2
+            exit 1
+          fi
+          grep -Fq 'Language / 语言' "$log"
+          grep -Fq 'Docker detected; keeping its existing configuration and mirrors.' "$log"
+          grep -Fq 'Nowluma is running.' "$log"
+          grep -Eq '^Initial console password: [a-f0-9]{16}$' "$log"
+          grep -qx 'NOWLUMA_LANG=en' deploy/.env
+          grep -qx 'TZ=UTC' deploy/.env
+          grep -qx 'BIND_ADDRESS=127.0.0.1' deploy/.env
+          test "$(stat -c %a deploy/.env)" = 600
+          id=$(docker compose -f deploy/docker-compose.yml ps -q nowluma)
+          test "$(docker inspect --format '{{.Config.Image}} {{.State.Health.Status}}' "$id")" = 'nowluma:local healthy'
+          curl -q -fsS --max-time 10 -o /dev/null http://127.0.0.1:5099/robots.txt
+          bash deploy/manage.sh doctor
+          cp deploy/.env "$RUNNER_TEMP/source-settings"
+          printf '%s\n' 'English setup: initial credentials detected without logging their values; local image healthy and WebUI reached over loopback.'
+      - name: Reopen in Chinese without replacing settings or mirrors
+        shell: bash
+        run: |
+          umask 077
+          log=$(mktemp)
+          trap 'rm -f -- "$log"' EXIT
+          if ! printf '%s\n' 1 | bash deploy/install.sh --docker > "$log" 2>&1; then
+            awk '!/credentials|[Pp]assword|密码/' "$log" | tail -n 75 >&2
+            exit 1
+          fi
+          grep -Fq '已检测到 Docker，保留已有 Docker 和镜像源设置。' "$log"
+          grep -Fq '使用已有部署配置。' "$log"
+          grep -Fq 'Nowluma 已启动。' "$log"
+          cmp deploy/.env "$RUNNER_TEMP/source-settings"
+          docker info --format '{{json .RegistryConfig.Mirrors}}' | cmp - "$RUNNER_TEMP/registry-before"
+          curl -q -fsS --max-time 10 -o /dev/null http://127.0.0.1:5099/robots.txt
+          bash deploy/manage.sh stop
+          printf '%s\n' 'Chinese rerun: existing settings and Docker mirror configuration unchanged; service healthy before clean stop.'
+  public:
+    name: Public Pages assets and anonymous Docker Hub pull
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ env.CANDIDATE }}
+          persist-credentials: false
+      - name: Check the three public deployment files against the candidate
+        id: pages
+        shell: bash
+        run: |
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          failed=0
+          for asset in install.sh manage.sh docker-compose.yml; do
+            if status=$(curl -q -sS --proto '=https' --proto-redir '=https' -L --max-time 20 -o "$dir/$asset" -w '%{http_code}' "$PAGES/$asset"); then
+              printf 'Pages %s: HTTP %s\n' "$asset" "$status"
+              if [[ "$status" == 200 ]] && cmp -s "deploy/$asset" "$dir/$asset"; then
+                (cd "$dir" && sha256sum "$asset")
+              else
+                failed=1
+              fi
+            else
+              failed=1
+            fi
+          done
+          exit "$failed"
+      - name: Pull Docker Hub image anonymously and compare the manifest digest
+        id: hub
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          mkdir "$dir/docker"
+          export DOCKER_CONFIG="$dir/docker"
+          unset DOCKER_AUTH_CONFIG
+          mirrors=$(docker info --format '{{json .RegistryConfig.Mirrors}}')
+          printf 'Docker registry mirrors: %s\n' "$mirrors"
+          [[ "$mirrors" == '[]' || "$mirrors" == null ]]
+          if status=$(curl -q -sS --max-time 20 -o /dev/null -w '%{http_code}' 'https://hub.docker.com/v2/namespaces/nowluma/repositories/nowluma/tags/2.5.0-rc.1'); then
+            printf 'Docker Hub public tag API: HTTP %s\n' "$status"
+          fi
+          timeout 240 docker pull --platform linux/amd64 "$HUB_IMAGE"
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$HUB_IMAGE")" = linux/amd64
+          token=$(curl -q -fsS --max-time 20 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:nowluma/nowluma:pull' | jq -er '.token')
+          curl -q -fsS --max-time 30 -o "$dir/manifest" \
+            -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+            'https://registry-1.docker.io/v2/nowluma/nowluma/manifests/2.5.0-rc.1'
+          read -r sha _ < <(sha256sum "$dir/manifest")
+          printf 'Docker Hub manifest: sha256:%s\n' "$sha"
+          test "sha256:$sha" = "$RELEASE_DIGEST"
+      - name: Run the documented one-line installer and check health
+        if: steps.pages.outcome == 'success' && steps.hub.outcome == 'success'
+        shell: bash
+        run: |
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          mkdir "$dir/docker"
+          export DOCKER_CONFIG="$dir/docker"
+          unset DOCKER_AUTH_CONFIG
+          cmd=$(grep "^bash -c .* nowluma-install$" deploy/README.md)
+          if ! printf '%s\n' 2 "$dir/installed" '' '' '' '' '' | bash -c "$cmd --version 2.5.0-rc.1" > "$dir/install.log" 2>&1; then
+            awk '!/credentials|[Pp]assword|密码/' "$dir/install.log" | tail -n 75 >&2
+            exit 1
+          fi
+          grep -Fq 'Nowluma is running.' "$dir/install.log"
+          grep -qx "NOWLUMA_IMAGE=$HUB_IMAGE" "$dir/installed/deploy/.env"
+          for asset in manage.sh docker-compose.yml; do
+            cmp "deploy/$asset" "$dir/installed/deploy/$asset"
+          done
+          curl -q -fsS --max-time 10 -o /dev/null http://127.0.0.1:5099/robots.txt
+          bash "$dir/installed/deploy/manage.sh" stop
