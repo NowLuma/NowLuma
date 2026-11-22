@@ -5,10 +5,10 @@ on:
 permissions:
   contents: read
 env:
-  CANDIDATE: ddc3f95813228a99bb6d43396166fa673c76f8cb
+  CANDIDATE: a8c349cf8cf05c8088ef2991da3cc109c2fed175
   PAGES: https://nowluma.github.io/NowLuma
-  HUB_IMAGE: docker.io/nowluma/nowluma:2.5.0-rc.1
-  RELEASE_DIGEST: sha256:b2ca438e80c9c0853dfdebf7ac5c33a2dce034d8a73d05e9d65e090293b2c186
+  HUB_IMAGE: docker.io/wsxyt/nowluma:2.5.0-rc.2
+  RELEASE_VERSION: 2.5.0-rc.2
 jobs:
   source:
     name: Source installer on Linux/amd64
@@ -110,19 +110,31 @@ jobs:
           mirrors=$(docker info --format '{{json .RegistryConfig.Mirrors}}')
           printf 'Docker registry mirrors: %s\n' "$mirrors"
           [[ "$mirrors" == '[]' || "$mirrors" == null ]]
-          if status=$(curl -q -sS --max-time 20 -o /dev/null -w '%{http_code}' 'https://hub.docker.com/v2/namespaces/nowluma/repositories/nowluma/tags/2.5.0-rc.1'); then
+          if status=$(curl -q -sS --max-time 20 -o /dev/null -w '%{http_code}' "https://hub.docker.com/v2/namespaces/wsxyt/repositories/nowluma/tags/$RELEASE_VERSION"); then
             printf 'Docker Hub public tag API: HTTP %s\n' "$status"
           fi
           timeout 240 docker pull --platform linux/amd64 "$HUB_IMAGE"
           test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$HUB_IMAGE")" = linux/amd64
-          token=$(curl -q -fsS --max-time 20 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:nowluma/nowluma:pull' | jq -er '.token')
+          release="https://github.com/NowLuma/NowLuma/releases/download/v$RELEASE_VERSION"
+          asset="nowluma-ghcr-linux-x64-$RELEASE_VERSION.txt"
+          for file in "$asset" SHA256SUMS; do
+            curl -q -fsSL --proto '=https' --proto-redir '=https' --max-time 30 -o "$dir/$file" "$release/$file"
+          done
+          checksum=$(awk -v asset="$asset" '$2 == asset {print $1}' "$dir/SHA256SUMS")
+          [[ "$checksum" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  %s\n' "$checksum" "$dir/$asset" | sha256sum --check --strict
+          expected_image=$(awk '$1 == "image:" && NF == 2 {print $2}' "$dir/$asset")
+          expected_digest=$(awk '$1 == "digest:" && NF == 2 {print $2}' "$dir/$asset")
+          test "$expected_image" = "ghcr.io/nowluma/nowluma:$RELEASE_VERSION"
+          [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          token=$(curl -q -fsS --max-time 20 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:wsxyt/nowluma:pull' | jq -er '.token')
           curl -q -fsS --max-time 30 -o "$dir/manifest" \
             -H "Authorization: Bearer $token" \
             -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
-            'https://registry-1.docker.io/v2/nowluma/nowluma/manifests/2.5.0-rc.1'
+            "https://registry-1.docker.io/v2/wsxyt/nowluma/manifests/$RELEASE_VERSION"
           read -r sha _ < <(sha256sum "$dir/manifest")
           printf 'Docker Hub manifest: sha256:%s\n' "$sha"
-          test "sha256:$sha" = "$RELEASE_DIGEST"
+          test "sha256:$sha" = "$expected_digest"
       - name: Run the documented one-line installer and check health
         if: steps.pages.outcome == 'success' && steps.hub.outcome == 'success'
         shell: bash
@@ -133,15 +145,37 @@ jobs:
           mkdir "$dir/docker"
           export DOCKER_CONFIG="$dir/docker"
           unset DOCKER_AUTH_CONFIG
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=nowluma)"
+          # Remove only the image pulled by this job; the installer must fetch it itself.
+          docker image rm "$HUB_IMAGE" >/dev/null
           cmd=$(grep "^bash -c .* nowluma-install$" deploy/README.md)
-          if ! printf '%s\n' 2 "$dir/installed" '' '' '' '' '' | bash -c "$cmd --version 2.5.0-rc.1" > "$dir/install.log" 2>&1; then
+          if ! printf '%s\n' 2 "$dir/installed" '' '' '' '' '' | bash -c "$cmd --version $RELEASE_VERSION" > "$dir/install.log" 2>&1; then
             awk '!/credentials|[Pp]assword|密码/' "$dir/install.log" | tail -n 75 >&2
             exit 1
           fi
+          deployment="$dir/installed/deploy"
+          settings="$deployment/.env"
           grep -Fq 'Nowluma is running.' "$dir/install.log"
-          grep -qx "NOWLUMA_IMAGE=$HUB_IMAGE" "$dir/installed/deploy/.env"
+          grep -qx "NOWLUMA_IMAGE=$HUB_IMAGE" "$settings"
+          grep -qx 'BIND_ADDRESS=127.0.0.1' "$settings"
+          test "$(stat -c %a "$settings")" = 600
           for asset in manage.sh docker-compose.yml; do
-            cmp "deploy/$asset" "$dir/installed/deploy/$asset"
+            cmp "deploy/$asset" "$deployment/$asset"
           done
-          curl -q -fsS --max-time 10 -o /dev/null http://127.0.0.1:5099/robots.txt
-          bash "$dir/installed/deploy/manage.sh" stop
+          assert_healthy() {
+            local container
+            container=$(docker compose -f "$deployment/docker-compose.yml" ps -q nowluma)
+            test "$(docker inspect --format '{{.Config.Image}} {{.State.Health.Status}}' "$container")" = "$HUB_IMAGE healthy"
+            curl -q -fsS --max-time 10 -o /dev/null http://127.0.0.1:5099/robots.txt
+          }
+          assert_healthy
+          cp "$settings" "$dir/settings-before"
+          if ! printf '%s\n' 1 "$dir/installed" | bash -c "$cmd --version $RELEASE_VERSION" > "$dir/reinstall.log" 2>&1; then
+            awk '!/credentials|[Pp]assword|密码/' "$dir/reinstall.log" | tail -n 75 >&2
+            exit 1
+          fi
+          grep -Fq '使用已有部署配置。' "$dir/reinstall.log"
+          cmp "$settings" "$dir/settings-before"
+          assert_healthy
+          bash "$deployment/manage.sh" stop
+          printf '%s\n' 'Public installer and Chinese rerun: expected image healthy, loopback reachable, settings unchanged.'
