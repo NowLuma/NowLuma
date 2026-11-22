@@ -1,0 +1,58 @@
+name: Verify the public short installer
+on:
+  push:
+    branches: [verify/public-short-install]
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CANDIDATE: b5c7b990fb6702fbf6ab27df8fe5da90e03b5c99
+      PAGES: https://nowluma.github.io/NowLuma
+      EXPECTED: docker.io/wsxyt/nowluma@sha256:c570909375d534b0b43fe6b38b8da80a39b715a0ad9cd6c674cbf4ca17640e46
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ env.CANDIDATE }}
+          persist-credentials: false
+      - name: Run the public command and verify the pinned deployment
+        shell: bash
+        run: |
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          export DOCKER_CONFIG="$dir/docker"
+          mkdir "$DOCKER_CONFIG"
+          unset DOCKER_AUTH_CONFIG
+          for asset in install.sh manage.sh docker-compose.yml; do
+            curl -qfsSL --proto '=https' --max-time 20 "$PAGES/$asset" -o "$dir/$asset"
+            cmp "deploy/$asset" "$dir/$asset"
+          done
+          cmd=$(grep '^bash <(curl ' deploy/README.md)
+          test -n "$cmd"
+          install() {
+            local log=$1
+            shift
+            if ! printf '%s\n' "$@" | bash -c "$cmd" > "$log" 2>&1; then
+              grep -Ei 'error|failed|proxyconnect|unexpected|permission|invalid' "$log" | grep -Eiv 'password|credentials|token' >&2 || true
+              return 1
+            fi
+          }
+          check() {
+            local container
+            container=$(docker compose -f "$dir/installed/deploy/docker-compose.yml" ps -q nowluma)
+            test "$(docker inspect --format '{{.Config.Image}} {{.State.Health.Status}}' "$container")" = "$EXPECTED healthy"
+            curl -qfsS --max-time 10 http://127.0.0.1:5099/robots.txt -o /dev/null
+          }
+          install "$dir/first.log" 2 "$dir/installed" '' '' '' '' ''
+          settings="$dir/installed/deploy/.env"
+          grep -Fxq "NOWLUMA_IMAGE=$EXPECTED" "$settings"
+          check
+          cp "$settings" "$dir/previous.env"
+          install "$dir/rerun.log" 2 "$dir/installed"
+          cmp "$settings" "$dir/previous.env"
+          check
+          bash "$dir/installed/deploy/manage.sh" stop
+          printf '%s\n' 'Public short command installed the latest image by digest; rerun preserved configuration and loopback health.'
