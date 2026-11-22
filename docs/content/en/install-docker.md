@@ -21,7 +21,7 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Installer
 
-For a prebuilt install, choose a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/nowluma/nowluma/tags). The [GitHub release page](https://github.com/NowLuma/NowLuma/releases) lists release files and checksums. Run this in a Linux terminal:
+For a prebuilt install, choose a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags). The [GitHub release page](https://github.com/NowLuma/NowLuma/releases) lists release files and checksums. Run this in a Linux terminal:
 
 ```bash
 bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
@@ -121,7 +121,7 @@ A reverse proxy must preserve `/desktop/`, the real Host, WebSocket upgrade head
 ## Upgrade and removal
 
 1. Stop and back up all four volumes to avoid copying live SQLite/WAL.
-2. For an image deployment, verify the new tag, change only `NOWLUMA_IMAGE` in `deploy/.env` to the new versioned `docker.io/nowluma/nowluma` image, and run `bash deploy/manage.sh update`. For a source deployment, update the checkout and run `bash deploy/manage.sh start`. Both reuse the existing volumes.
+2. For an image deployment, verify the new tag, change only `NOWLUMA_IMAGE` in `deploy/.env` to the new versioned `docker.io/wsxyt/nowluma` image, and run `bash deploy/manage.sh update`. For a source deployment, update the checkout and run `bash deploy/manage.sh start`. Both reuse the existing volumes.
 3. Do not use `down -v` to upgrade.
 4. Confirm backups before deleting anything; normal `stop` keeps data.
 

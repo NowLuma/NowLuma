@@ -21,7 +21,7 @@ _图：控制台示例入口。真实部署的初始密码从安装输出获取�
 
 ## 安装向导
 
-使用预构建镜像时，请从 [Docker Hub 标签页](https://hub.docker.com/r/nowluma/nowluma/tags)选一个已发布的 Linux/amd64 版本。[GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)提供发行文件与校验值。在 Linux 终端运行：
+使用预构建镜像时，请从 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)选一个已发布的 Linux/amd64 版本。[GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)提供发行文件与校验值。在 Linux 终端运行：
 
 ```bash
 bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
@@ -121,7 +121,7 @@ QQ 与程序固定以 UID/GID 1000 运行，共用 HOME 和 XDG 环境。机器 
 ## 升级与卸载
 
 1. 先停服务，再备份四个卷，避免复制正在写入的 SQLite/WAL。
-2. 镜像部署：确认新标签已发布，只修改 `deploy/.env` 中 `NOWLUMA_IMAGE` 的 `docker.io/nowluma/nowluma` 版本，再运行 `bash deploy/manage.sh update`。源码部署：更新源码并运行 `bash deploy/manage.sh start`。两种方式都复用原卷。
+2. 镜像部署：确认新标签已发布，只修改 `deploy/.env` 中 `NOWLUMA_IMAGE` 的 `docker.io/wsxyt/nowluma` 版本，再运行 `bash deploy/manage.sh update`。源码部署：更新源码并运行 `bash deploy/manage.sh start`。两种方式都复用原卷。
 3. 不要用 `down -v` 升级。
 4. 彻底删除前确认备份；普通 `stop` 不删除数据。
 

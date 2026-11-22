@@ -6,6 +6,8 @@ MODE=published
 MODE_SELECTED=0
 VERSION=''
 ASSET_BASE=https://nowluma.github.io/NowLuma
+HUB_REPOSITORY=wsxyt/nowluma
+HUB_IMAGE="docker.io/$HUB_REPOSITORY"
 RELEASE_DIR="$SCRIPT_DIR/../dist"
 LANGUAGE=''
 TEMPORARY=''
@@ -216,7 +218,7 @@ if [[ $MODE_SELECTED == 1 && -n $image ]]; then
     fail '此目录已保存镜像版本。--docker 不会把现有镜像部署切换为源码构建。' 'This deployment has a saved image. --docker will not switch an existing image deployment to a source build.'
 fi
 if [[ -f .env ]]; then
-    if [[ -n $VERSION && $image != "docker.io/nowluma/nowluma:$VERSION" ]]; then
+    if [[ -n $VERSION && $image != "$HUB_IMAGE:$VERSION" ]]; then
         fail '已有设置不会被覆盖。请使用已保存的版本或按升级说明操作。' 'Existing settings will not be overwritten. Use the saved version or follow the upgrade instructions.'
     fi
     if [[ -z $image && $MODE == published ]]; then
@@ -224,8 +226,7 @@ if [[ -f .env ]]; then
     fi
 elif [[ $MODE == published ]]; then
     if [[ -z $VERSION ]]; then
-        msg 'Docker Hub 镜像标签：https://hub.docker.com/r/nowluma/nowluma/tags' \
-            'Docker Hub image tags: https://hub.docker.com/r/nowluma/nowluma/tags'
+        msg 'Docker Hub 镜像标签：%s' 'Docker Hub image tags: %s' "https://hub.docker.com/r/$HUB_REPOSITORY/tags"
         while true; do
             prompt '请输入已发布的镜像版本（没有默认版本）：' \
                 'Enter a published image version (no default):' ''
@@ -234,7 +235,7 @@ elif [[ $MODE == published ]]; then
             msg '请输入具体版本标签，不使用 latest。' 'Enter a specific version tag, not latest.' >&2
         done
     fi
-    image="docker.io/nowluma/nowluma:$VERSION"
+    image="$HUB_IMAGE:$VERSION"
 elif [[ -n $VERSION ]]; then
     fail '此目录是已有源码部署。请省略 --version 以保留源码模式。' 'This is an existing source deployment. Omit --version to keep source mode.'
 fi

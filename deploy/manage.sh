@@ -16,7 +16,7 @@ command -v docker >/dev/null 2>&1 || { msg '请先运行 Linux 安装向导。' 
 docker compose version >/dev/null 2>&1 || { msg '需要 Docker Compose v2。' 'Docker Compose v2 is required.' >&2; exit 1; }
 # Only the persisted image selects published mode; ambient variables must not switch modes.
 image=$(read_env NOWLUMA_IMAGE)
-tag=${image#docker.io/nowluma/nowluma:}
+tag=${image#docker.io/wsxyt/nowluma:}
 if [[ -n $image ]] && [[ $tag == "$image" || ! $tag =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ || ${#tag} -gt 128 ]]; then
     msg 'deploy/.env 中的 NOWLUMA_IMAGE 必须是带版本标签的官方 Docker Hub 镜像。' 'NOWLUMA_IMAGE in deploy/.env must be a versioned official Docker Hub image.' >&2
     exit 1

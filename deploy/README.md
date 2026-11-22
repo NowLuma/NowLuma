@@ -2,7 +2,7 @@
 
 ## 1. 安装与首次登录
 
-预构建安装使用 [Docker Hub 标签页](https://hub.docker.com/r/nowluma/nowluma/tags)中已发布的 Linux/amd64 版本。在 Linux 终端运行：
+预构建安装使用 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)中已发布的 Linux/amd64 版本。在 Linux 终端运行：
 
 ```bash
 bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
@@ -172,7 +172,7 @@ CI 可以验证目录/设置标记、机器 ID、进程发现与未确认账号�
 ## 8. 升级、备份、卸载
 
 - 先停服务再备份四个卷，避免复制正在写入的 SQLite/WAL。
-- 镜像部署：确认新标签发布后，只修改 `deploy/.env` 的 `NOWLUMA_IMAGE` 版本（保留 `docker.io/nowluma/nowluma:` 前缀），然后执行 `bash deploy/manage.sh update` 拉取并启动。拉取失败时可改回原标签。
+- 镜像部署：确认新标签发布后，只修改 `deploy/.env` 的 `NOWLUMA_IMAGE` 版本（保留 `docker.io/wsxyt/nowluma:` 前缀），然后执行 `bash deploy/manage.sh update` 拉取并启动。拉取失败时可改回原标签。
 - 源码部署：更新源码后运行 `start`。两种方式均复用原卷，普通启动不会改变部署模式。
 - 原生升级保留 `config/`、`data/`、`logs/`；QQ 的目录不搬动。
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。

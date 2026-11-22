@@ -9,7 +9,7 @@ const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' 
 const posix = (value) =>
   value.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
 const source = __dirname;
-const image = 'docker.io/nowluma/nowluma:2.5.0-rc.1'; // Fixture tag; makes no claim about the registry.
+const image = 'docker.io/wsxyt/nowluma:2.5.0-rc.1'; // Fixture tag; makes no claim about the registry.
 function fixture(options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nowluma-install-test-'));
   const deploy = path.join(root, 'checkout with spaces', 'deploy');
@@ -432,7 +432,7 @@ test('a failed first pull leaves the directory ready to retry with another versi
     const result = f.cloud(`2\n${posix(target)}\n\n\n\n\n\n`, ['--version', '2.5.0-rc.1']);
     assert.equal(result.status, 3);
     assert.match(result.stderr, /manifest unknown/);
-    assert.match(result.stderr, /Could not pull docker\.io\/nowluma\/nowluma:2\.5\.0-rc\.1/);
+    assert.match(result.stderr, /Could not pull docker\.io\/wsxyt\/nowluma:2\.5\.0-rc\.1/);
     assert.doesNotMatch(result.stdout, /Nowluma is running/);
     assert.doesNotMatch(result.calls, /--build| up | down /);
     assert.deepEqual(fs.readdirSync(target), []);
@@ -442,7 +442,7 @@ test('a failed first pull leaves the directory ready to retry with another versi
     assert.equal(retry.status, 0, retry.stderr + retry.stdout);
     assert.equal(retry.calls.match(/ pull nowluma/g)?.length, 1);
     assert.match(retry.calls, / pull nowluma[\s\S]* up -d --no-build --pull never --wait/);
-    assert.match(fs.readFileSync(path.join(target, 'deploy', '.env'), 'utf8'), /NOWLUMA_IMAGE=docker\.io\/nowluma\/nowluma:2\.5\.0-rc\.2\n/);
+    assert.match(fs.readFileSync(path.join(target, 'deploy', '.env'), 'utf8'), /NOWLUMA_IMAGE=docker\.io\/wsxyt\/nowluma:2\.5\.0-rc\.2\n/);
   }));
 
 test('a new directory cannot replace another Nowluma deployment on the same daemon', () =>

@@ -120,7 +120,7 @@ test('Docker Hub is optional and receives only the checksum-verified GHCR digest
   assert.doesNotMatch(release.slice(0, release.indexOf('\n  publish:')), /secrets\.DOCKERHUB_TOKEN/);
   assert.match(config, /-z "\$DOCKERHUB_USERNAME" && "\$DOCKERHUB_TOKEN_CONFIGURED" == 'false'[\s\S]*?enabled=false/);
   assert.match(config, /-z "\$DOCKERHUB_USERNAME" \|\| "\$DOCKERHUB_TOKEN_CONFIGURED" == 'false'[\s\S]*?exit 1/);
-  assert.match(publish, /HUB_IMAGE: docker\.io\/nowluma\/nowluma\n/);
+  assert.match(publish, /HUB_IMAGE: docker\.io\/wsxyt\/nowluma\n/);
   const docker = job(release, 'docker');
   assert.match(docker, /digest: \$\{\{ steps\.build\.outputs\.digest \}\}/);
   assert.match(docker, /platforms: linux\/amd64/);

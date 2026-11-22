@@ -98,7 +98,7 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   GitHub 发行仍是草稿时就已可见；稳定版的 `:latest` 只在 `publish` 作业校验完
   `SHA256SUMS` 之后才移动。
 - Linux 包、Windows 产物与容器镜像都通过 `actions/attest-build-provenance` 生成构建来源证明。
-- Docker Hub 是可选镜像源：配置凭据后，发布作业把同一摘要推送到 `docker.io/nowluma/nowluma:<version>`，并验证可匿名拉取 Linux/amd64 镜像。预发布版本不会更新任何仓库的 `:latest`。
+- Docker Hub 是可选镜像源：配置凭据后，发布作业把同一摘要推送到 `docker.io/wsxyt/nowluma:<version>`，并验证可匿名拉取 Linux/amd64 镜像。预发布版本不会更新任何仓库的 `:latest`。
 - 不发布 npm 包。发行说明取自 `CHANGELOG.md` 的对应版本小节。
 - Windows exe 没有代码签名，发行说明与文档都不应声称已签名。
 - 归档重新打开后会校验 `release.json`、`LICENSE`、`LICENSING.md`、`EULA.md` 与 `PRIVACY.md`；更新包不能缺少这些文件。
@@ -109,7 +109,7 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   与 `packages: write` 会被仓库策略降级。工作流本身已按作业最小化权限。
 - 首次推送镜像后，在 Packages 中把 `nowluma` 容器包设为 public（或按需限制访问）。
   版本化 tag 在发行草稿阶段即可见，`:latest` 要等 `publish` 校验通过后才更新。
-- 如需发布官方 Docker Hub 镜像，在 `NowLuma/NowLuma` 创建 `dockerhub-release` 环境，将部署范围限制为 `v*` 标签。设置 Actions 环境变量 `DOCKERHUB_USERNAME` 和具有目标仓库写权限的环境密钥 `DOCKERHUB_TOKEN`，并确保 Docker Hub 仓库公开。两项都不配置时跳过 Hub；只配置一项会阻止发行。只有对应版本的匿名拉取验证通过后，才把它列为安装向导可用版本。
+- 如需发布官方 Docker Hub 镜像，在 `NowLuma/NowLuma` 创建 `dockerhub-release` 环境，将部署范围限制为 `v*` 标签。设置 Actions 环境变量 `DOCKERHUB_USERNAME` 和具有 `wsxyt/nowluma` 推送权限的环境密钥 `DOCKERHUB_TOKEN`，并确保 Docker Hub 仓库公开。两项都不配置时跳过 Hub；只配置一项会阻止发行。只有对应版本的匿名拉取验证通过后，才把它列为安装向导可用版本。
 - 保护 `main`：要求 `Nowluma PR / pr-check`、`Nowluma CI / verify`、
   `Nowluma CI / docker`、`Nowluma CI / windows` 通过。
 - 保护 `v*` tag，只有维护者能创建；发行作业不会移动已存在的 tag。

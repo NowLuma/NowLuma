@@ -206,7 +206,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       RELEASE_VERSION: ${{ needs.draft.outputs.version }}
       RELEASE_PRERELEASE: ${{ needs.draft.outputs.prerelease }}
-      HUB_IMAGE: docker.io/nowluma/nowluma
+      HUB_IMAGE: docker.io/wsxyt/nowluma
     steps:
       - name: Check Docker Hub configuration
         id: hub
