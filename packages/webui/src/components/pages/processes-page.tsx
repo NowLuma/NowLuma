@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { HookProcessInfo } from '@/types';
 import { useAppState } from '@/contexts/AppStateContext';
 import { useLayout } from '@/contexts/LayoutContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useLocale, useT } from '@/i18n';
 import '@/styles/console-pages.css';
 
@@ -80,7 +81,8 @@ export function ProcessesPage() {
     const [selectedPid, setSelectedPid] = useState<number | null>(() =>
         processList.length === 1 ? processList[0]!.pid : null,
     );
-    const reduced = useReducedMotionConfig();
+    const { performance, presentation } = useTheme();
+    const reduced = useReducedMotionConfig() || performance.low || presentation !== null;
     useEffect(() => {
         if (selectedPid === null && processList.length === 1) {
             setSelectedPid(processList[0]!.pid);
@@ -177,7 +179,10 @@ export function ProcessesPage() {
             >
                 {resources.processList.ready ? (
                     resources.processList.error && processList.length === 0 ? (
-                        <div role="alert" className="cp-empty-state text-destructive">
+                        <div
+                            role="alert"
+                            className="cp-empty-state ui-glass-raised text-destructive"
+                        >
                             <AlertCircle className="size-8 opacity-70" strokeWidth={1.5} />
                             <p className="text-sm">
                                 {t(
@@ -190,7 +195,7 @@ export function ProcessesPage() {
                             </Button>
                         </div>
                     ) : processList.length === 0 ? (
-                        <div className="cp-empty-state text-muted-foreground">
+                        <div className="cp-empty-state ui-glass-raised text-muted-foreground">
                             <Cpu className="size-8 opacity-40" strokeWidth={1.5} />
                             <p className="text-sm">
                                 {t('未检测到可加载 QQ 主进程', 'No eligible QQ process detected')}
@@ -325,7 +330,7 @@ export function ProcessesPage() {
                             ) : (
                                 <section
                                     aria-label={t('进程详情', 'Process details')}
-                                    className="cp-panel cp-empty-state text-muted-foreground"
+                                    className="cp-empty-state ui-glass-raised text-muted-foreground"
                                 >
                                     <Cpu className="size-8 opacity-40" strokeWidth={1.5} />
                                     <h2 className="text-base font-medium text-foreground">
@@ -411,7 +416,7 @@ function ProcessDetail({
         <section
             aria-label={t('进程详情', 'Process details')}
             data-tutorial-control="process-detail"
-            className="cp-panel cp-process-detail ui-glass-raised"
+            className="cp-panel cp-process-detail cp-fade ui-glass-raised ui-glass-panel"
         >
             <div className="cp-toolbar">
                 <div className="flex min-w-0 items-center gap-3">
@@ -502,7 +507,7 @@ function ProcessDetail({
                       )}
             </p>
 
-            <dl className="cp-facts">
+            <dl className="cp-facts ui-glass-field">
                 <div className="cp-fact-row">
                     <dt>{t('进程', 'Process')}</dt>
                     <dd className="break-all">{proc.name}</dd>

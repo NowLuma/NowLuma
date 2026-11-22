@@ -538,13 +538,15 @@ html[data-contrast='high'] .workspace-paper-pattern {
 }
 
 .workspace-connection-workflow {
+  position: relative;
   overflow: hidden;
   border-width: 1px;
-  border-radius: calc(var(--radius) + 0.875rem);
+  border-radius: 24px;
   background-clip: padding-box;
 }
 
 .workspace-connection-story {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
@@ -589,7 +591,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-workflow-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 2fr);
+  grid-template-columns: minmax(196px, 0.78fr) minmax(0, 2fr);
 }
 
 .workspace-workflow-session {
@@ -623,7 +625,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-workflow-next {
   min-width: 0;
-  padding: 24px;
+  padding: 24px 28px;
 }
 
 .workspace-workflow-message,
@@ -647,9 +649,9 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-workflow-title {
   font-size: 1.5rem;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
@@ -663,7 +665,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-workflow-actions {
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin-top: 24px;
   padding-left: 40px;
 }
@@ -728,8 +730,9 @@ html[data-contrast='high'] .workspace-paper-pattern {
   gap: 8px;
   height: 100%;
   min-width: 0;
-  border-left: 1px solid var(--border);
-  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 14px 16px;
 }
 
 .workspace-instrument dl {
@@ -783,17 +786,18 @@ html[data-contrast='high'] .workspace-paper-pattern {
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  border-radius: calc(var(--radius) + 0.625rem);
+  border-radius: 22px;
 }
 
 .workspace-panel-heading {
   flex-direction: row;
   flex-shrink: 0;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
   min-height: 64px;
-  padding: 10px 20px;
+  padding: 12px 24px;
 }
 
 .workspace-panel-heading h4 {
@@ -1072,14 +1076,14 @@ html[data-contrast='high'] .workspace-paper-pattern {
 }
 
 .workspace-auth-form {
-  padding-block: 24px;
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 40px);
 }
 
 .workspace-auth-heading h1,
 .workspace-onboarding-heading h1 {
-  margin-top: 10px;
-  font-size: 1.875rem;
-  font-weight: 500;
+  font-size: clamp(1.5rem, 3.3vw, 2rem);
+  font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1.2;
   text-wrap: balance;
@@ -1173,14 +1177,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 }
 
 .workspace-onboarding-heading {
-  margin-bottom: 24px;
-}
-
-.workspace-onboarding-document [role='group'] {
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  box-shadow: none;
+  margin-bottom: 18px;
 }
 
 .workspace-agreement-reading {
@@ -1363,9 +1360,8 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-instrument {
-    border-left: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 12px 0;
+    border-radius: 14px;
+    padding: 12px 14px;
   }
 
   .workspace-panel-heading {
@@ -1384,22 +1380,23 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-auth-masthead {
-    min-height: 76px;
+    min-height: 64px;
   }
 
   .workspace-auth-content,
   .workspace-auth-content-wide {
     grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
+    gap: 20px;
     max-width: 640px;
-    padding: 24px 24px 48px;
+    padding: 16px max(16px, env(safe-area-inset-right)) 32px
+      max(16px, env(safe-area-inset-left));
   }
 
   .workspace-auth-identity {
     display: grid;
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 68px minmax(0, 1fr);
     align-items: center;
-    gap: 20px;
+    gap: 16px;
     max-width: none;
   }
 
@@ -1412,12 +1409,12 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-auth-statement {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
   }
 
   .workspace-auth-form {
-    border-top: 1px solid var(--border);
-    padding-top: 28px;
+    border-radius: 18px;
+    padding: 20px;
   }
 
   .workspace-auth-effects {
@@ -1429,15 +1426,15 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-onboarding-layout {
-    padding: 8px 24px max(16px, env(safe-area-inset-bottom));
+    padding: 8px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
   }
 
   .workspace-onboarding-heading {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   .workspace-onboarding-heading h1 {
-    margin-top: 8px;
     font-size: 24px;
   }
 }
@@ -1456,8 +1453,8 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-onboarding-identity,
-  .workspace-onboarding-heading .workspace-eyebrow,
-  .workspace-onboarding-document [data-wizard-step-label] {
+  .workspace-onboarding-document [data-wizard-step-label],
+  .workspace-onboarding-intro {
     display: none;
   }
 
@@ -1476,7 +1473,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-onboarding-feedback {
-    --onboarding-feedback-limit: 4rem;
+    --onboarding-feedback-limit: min(3.5rem, 13cqh);
   }
 }
 
@@ -1498,24 +1495,26 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger) {
+    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action) {
     transition:
       scale 420ms linear(0, 0.42 13%, 0.82 29%, 1.05 48%, 0.99 76%, 1),
-      color 150ms;
+      color 150ms,
+      background-color 150ms;
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger):active {
+    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action):active:not(:disabled) {
     scale: 0.96;
     transition-duration: 110ms;
   }
 }
 
 html[data-low-performance='1']
-  :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger) {
+  :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action) {
   transition:
     scale 180ms ease-out,
-    color 150ms;
+    color 150ms,
+    background-color 150ms;
 }
 
 html[data-reduce-motion='1'] :is(.workspace-shell, .workspace-auth-shell) *,
@@ -1533,7 +1532,7 @@ html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {
 
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock)
+    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock, .workspace-overview-tools, .workspace-workflow-actions)
     .ui-glass-material::after {
     transition:
       opacity 420ms ease-out,
@@ -1541,7 +1540,7 @@ html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock):is(
+    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock, .workspace-overview-tools .ui-glass, .workspace-workflow-actions .ui-glass):is(
       :hover,
       :focus-within
     )
@@ -1551,13 +1550,13 @@ html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock):active
+    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock, .workspace-overview-tools .ui-glass, .workspace-workflow-actions .ui-glass):active
     > .ui-glass-material::after {
     translate: 2px 0;
   }
 
   html[data-low-performance='1']
-    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock)
+    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock, .workspace-overview-tools, .workspace-workflow-actions)
     .ui-glass-material::after {
     transition-duration: 180ms;
   }

@@ -51,7 +51,7 @@ void (async () => {
 })().catch((error: unknown) => {
     console.error(`[${APP_NAME} DEMO] Startup failed`, error);
     root.textContent = translator(language)(
-        '示例控制台加载失败。未连接真实接口；请刷新或查看浏览器控制台。',
-        'The sample console could not load. No real API was contacted. Refresh or inspect the browser console.',
+        '示例控制台加载失败。请刷新页面重试。',
+        'The sample console could not load. Refresh the page to try again.',
     );
 });

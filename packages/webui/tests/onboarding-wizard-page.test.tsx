@@ -75,7 +75,6 @@ describe('OnboardingWizardPage document workspace', () => {
         );
         expect(html).toContain('workspace-onboarding-document');
         expect(html).toContain('workspace-auth-artwork');
-        expect(html).toContain('完成首次使用设置');
         expect(html).toContain('aria-label="首次使用设置步骤"');
         expect(html).toContain('aria-current="step"');
         expect(html).toContain('阅读使用说明');
@@ -109,7 +108,6 @@ describe('OnboardingWizardPage document workspace', () => {
             </LocaleProvider>,
         );
         expect(html).toContain('切换到简体中文');
-        expect(html).toContain('Complete first-time setup');
         expect(html).toContain('I have read the Usage Notice and Privacy Notice');
         expect(html).toContain('说明正文保持为主要阅读内容。');
         expect(html).toContain('Version 1.0 · Effective 2026-06-19');

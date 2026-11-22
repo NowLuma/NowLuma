@@ -24,7 +24,7 @@ Nowluma runs on your machine. It finds an already-running QQ client, attaches th
 
 <span id="what-it-does-not-do" class="legacy-heading-anchor" aria-hidden="true"></span>
 
-Sign in and complete any QR scan or verification in QQ. For Nowluma itself, use the access password from [First run](first-run.md#login). Nowluma leaves the QQ user directory in place and does not store your QQ password or generate device tokens.
+Sign in and complete any QR scan or verification in QQ. Open the Nowluma console with the access password from [First run](first-run.md#login).
 
 ## Three kinds of save result
 

@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotionConfig } from 'motion/react';
+import { useT } from '@/i18n';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 const EXIT_EASE = [0.4, 0, 1, 1] as const;
@@ -183,6 +184,7 @@ export function WizardSteps({
     spacious = false,
     fill = false,
 }: WizardStepsProps) {
+    const t = useT();
     const wizard = useWizard({
         total: steps.length,
         index,
@@ -264,7 +266,12 @@ export function WizardSteps({
         return null;
     }
 
-    const position = `Step ${at + 1} of ${total}: ${step.label}`;
+    const stepPosition = (stepIndex: number, stepLabel: string) =>
+        t(
+            `第 ${stepIndex + 1} 步，共 ${total} 步：${stepLabel}`,
+            `Step ${stepIndex + 1} of ${total}: ${stepLabel}`,
+        );
+    const position = stepPosition(at, step.label);
     const navigation = {
         back: () => {
             intent.current = 'panel';
@@ -365,7 +372,7 @@ export function WizardSteps({
                                     data-current={here ? 'true' : undefined}
                                     tabIndex={here ? 0 : -1}
                                     aria-current={here ? 'step' : undefined}
-                                    aria-label={`Step ${stepIndex + 1} of ${total}: ${candidate.label}`}
+                                    aria-label={stepPosition(stepIndex, candidate.label)}
                                     onKeyDown={onStepKeyDown}
                                     onClick={() => {
                                         if (here) {
@@ -382,7 +389,7 @@ export function WizardSteps({
                             ) : (
                                 <span>
                                     <span className="sr-only">
-                                        {`Step ${stepIndex + 1} of ${total}: ${candidate.label}`}
+                                        {stepPosition(stepIndex, candidate.label)}
                                     </span>
                                     {tile}
                                 </span>
@@ -411,10 +418,8 @@ export function WizardSteps({
                 role="group"
                 aria-label={position}
                 style={{ height: fill ? undefined : height }}
-                className={`${fill ? 'min-h-0 flex-1' : ''} relative overflow-hidden border border-border bg-card outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-ring ${
-                    spacious
-                        ? 'rounded-[24px] shadow-[0_0_0_1px_rgb(255_255_255/0.02),0_18px_50px_rgb(0_0_0/0.12)]'
-                        : 'rounded-[11px] shadow-sm'
+                className={`${fill ? 'min-h-0 flex-1' : ''} ui-glass-raised ui-glass-panel relative overflow-hidden border outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-ring ${
+                    spacious ? 'rounded-[20px]' : 'rounded-[11px]'
                 }`}
             >
                 <AnimatePresence initial={false} custom={direction} mode="wait">

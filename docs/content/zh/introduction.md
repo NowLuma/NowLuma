@@ -24,7 +24,7 @@ Nowluma 是运行在你设备上的 QQ 接入程序。它找到已经运行的 Q
 
 <span id="它不做什么" class="legacy-heading-anchor" aria-hidden="true"></span>
 
-登录、扫码和验证都在 QQ 窗口完成。Nowluma 控制台使用[首次启动](first-run.md#登录)中的访问密码。Nowluma 不移动 QQ 用户目录、不保存 QQ 密码，也不生成设备令牌。
+在 QQ 窗口完成登录、扫码和验证。进入 Nowluma 控制台时，使用[首次启动](first-run.md#登录)中的访问密码。
 
 ## 三种不同的保存结果
 

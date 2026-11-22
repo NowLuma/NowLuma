@@ -33,4 +33,4 @@ tutorial: demo
 
 ## 转到自己的控制台 {#与真实控制台的区别}
 
-模拟器只在内存中保存改动，不向 QQ 或机器人发请求。实际部署时，按[首次启动](first-run.md)登录 Nowluma，再到 [QQ 会话](qq-connection.md)接入已在 QQ 登录的账号。[接入机器人](onebot-config.md)后，检查端点状态和机器人程序的日志。
+点「重置」或刷新页面可从头练习。部署自己的控制台时，按[首次启动](first-run.md)完成设置，再到 [QQ 会话](qq-connection.md)接入账号。[配置机器人连接](onebot-config.md)后，查看端点状态和机器人日志。

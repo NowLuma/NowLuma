@@ -30,7 +30,11 @@ vi.mock('@/contexts/LayoutContext', () => ({
     useLayout: () => ({ pages: { processesSort: 'pid' }, setPages: vi.fn() }),
 }));
 vi.mock('@/contexts/ThemeContext', () => ({
-    useTheme: () => ({ appearance: { disableMotion: true } }),
+    useTheme: () => ({
+        appearance: { disableMotion: true },
+        performance: { low: false },
+        presentation: null,
+    }),
 }));
 vi.mock('@/components/confirm-dialog', () => ({ ConfirmDialog: () => null }));
 

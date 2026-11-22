@@ -278,12 +278,6 @@ export function MessageComposer({ accounts }: { accounts: QQInfo[] }) {
                             : ''}
                     </span>
                 </div>
-                <p className="text-xs leading-relaxed text-warning">
-                    {t(
-                        '发送会真实作用于此账号和目标，不是模拟预览。',
-                        'Sending uses the selected account and recipient. This is not a preview.',
-                    )}
-                </p>
 
                 <fieldset
                     disabled={sending}

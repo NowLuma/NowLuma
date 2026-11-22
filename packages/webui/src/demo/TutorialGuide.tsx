@@ -99,7 +99,11 @@ export function TutorialGuide({
 
         focusNewStep.current = false;
 
-        message.current?.focus({ preventScroll: true });
+        const region = message.current;
+        if (region) {
+            region.scrollTop = 0;
+            region.focus({ preventScroll: true });
+        }
     }, [index, complete, open]);
 
     const selectStep = (next: number) => {
@@ -188,7 +192,7 @@ export function TutorialGuide({
                 aria-describedby={complete ? undefined : 'tutorial-hint'}
                 data-tutorial-complete={complete ? 'true' : undefined}
                 role={complete ? 'status' : undefined}
-                tabIndex={-1}
+                tabIndex={0}
             >
                 <h2 id="tutorial-objective">
                     {complete ? t('本章练习已完成', 'Chapter complete') : tutorialText(step.title, language)}
@@ -247,7 +251,7 @@ export function TutorialGuide({
                         >
                             {verified && !reading && <Check aria-hidden="true" />}
                             {reading
-                                ? t('我已理解，继续', 'I understand, continue')
+                                ? t('继续', 'Continue')
                                 : last
                                   ? t('完成', 'Finish')
                                   : t('下一步', 'Next')}

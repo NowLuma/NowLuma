@@ -407,7 +407,7 @@ describe('chapter baselines and genuine state proof', () => {
         api.reset();
     });
 
-    it('keeps operational Continue disabled at login and exposes acknowledgement only on reading steps', () => {
+    it('gates operational progression but allows reading steps to continue', () => {
         const api = new DemoApi();
         const props = {
             api,
@@ -420,11 +420,12 @@ describe('chapter baselines and genuine state proof', () => {
         );
         expect(operational).toMatch(/disabled=""[^>]*data-tutorial-continue="true"/);
         expect(operational).toContain('data-tutorial-step="login"');
-        expect(operational).not.toContain('I understand, continue');
         const reading = renderToStaticMarkup(
             <TutorialGuide {...props} lesson={TUTORIAL_LESSONS['install-native']} />,
         );
-        expect(reading).toContain('I understand, continue');
+        expect(reading).toMatch(
+            /<button\b(?![^>]*\sdisabled="")[^>]*\bdata-tutorial-continue="true"[^>]*>/,
+        );
         expect(reading).not.toContain('data-tutorial-proof=');
         api.reset();
     });

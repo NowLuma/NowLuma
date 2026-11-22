@@ -176,12 +176,12 @@ export function KernelOnboardingStep({ replay }: { replay: boolean }) {
                 <p className="text-sm leading-relaxed text-muted-foreground">
                     {replay
                         ? t(
-                              '本次演练只预览，不会保存账号选择或接入 QQ。',
-                              'This rehearsal only previews the options. It does not save an account choice or connect to QQ.',
+                              '查看首次接入时可选的内核。',
+                              'Review the kernel choices for a first connection.',
                           )
                         : t(
-                              '每个 QQ 账号分别选择，保存只记录内核偏好；接入仍需按流程手动确认。',
-                              'Choose a kernel separately for each QQ account. Saving records the preference; attachment still requires explicit confirmation.',
+                              '为每个 QQ 账号选择接入内核。',
+                              'Choose a connection kernel for each QQ account.',
                           )}
                 </p>
             </header>

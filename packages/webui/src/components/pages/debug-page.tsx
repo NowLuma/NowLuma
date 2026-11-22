@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/i18n';
 import { Activity, Library, Send, Terminal } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Tabs } from '@/components/ui/tabs';
 import { GlassSurface } from '@/components/ui/glass-material';
 import { ActionTester } from '@/components/debug/action-tester';
@@ -85,9 +84,9 @@ export function DebugPage() {
                             t('加载开发者工具失败', 'Could not load developer tools')}
                     </div>
                 )}
-                <GlassSurface className="cp-category-chrome">
+                <GlassSurface className="cp-category-chrome" data-ui-surface="chrome">
                     <Tabs
-                        className="border-0"
+                        className="cp-debug-modes border-0"
                         aria-label={t('调试工具', 'Debug tools')}
                         value={tab}
                         onChange={(next) => {
@@ -142,7 +141,7 @@ export function DebugPage() {
                             aria-label={t('接口调用', 'Action tester')}
                             hidden={tab !== 'tester'}
                             inert={tab !== 'tester'}
-                            className={cn('min-w-0', tab === 'tester' && 'cp-fade')}
+                            className="cp-debug-editor"
                         >
                             <ActionTester
                                 accounts={accounts}
@@ -156,7 +155,7 @@ export function DebugPage() {
                             aria-label={t('发送消息', 'Send message')}
                             hidden={tab !== 'compose'}
                             inert={tab !== 'compose'}
-                            className={cn('min-w-0', tab === 'compose' && 'cp-fade')}
+                            className="cp-debug-editor"
                         >
                             <MessageComposer accounts={accounts} />
                         </div>
@@ -165,7 +164,7 @@ export function DebugPage() {
                             aria-label={t('活动记录', 'Activity')}
                             hidden={tab !== 'activity'}
                             inert={tab !== 'activity'}
-                            className={cn('min-w-0', tab === 'activity' && 'cp-fade')}
+                            className="cp-debug-feed cp-matte ui-glass-raised"
                         >
                             <LiveActivity />
                         </div>
@@ -175,7 +174,7 @@ export function DebugPage() {
                                 aria-label={t('接口库', 'API reference')}
                                 hidden={tab !== 'api'}
                                 inert={tab !== 'api'}
-                                className={cn('min-w-0', tab === 'api' && 'cp-fade')}
+                                className="cp-debug-feed cp-matte ui-glass-raised"
                             >
                                 <ApiBrowser
                                     docs={docs}

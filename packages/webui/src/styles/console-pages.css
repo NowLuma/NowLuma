@@ -1,5 +1,6 @@
 /* Page-owned composition. Theme, material and motion preferences remain shared. */
 .cp-page {
+  --cp-panel-inset: clamp(0.75rem, 2vw, 1.25rem);
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -66,6 +67,11 @@
   overflow-wrap: anywhere;
 }
 
+.cp-matte {
+  min-width: 0;
+  padding-block: 0.875rem;
+}
+
 .cp-empty-state {
   display: flex;
   min-width: 0;
@@ -75,6 +81,7 @@
   justify-content: center;
   gap: 0.75rem;
   padding-block: 2rem;
+  overflow-wrap: anywhere;
 }
 
 .cp-process-detail {
@@ -85,7 +92,13 @@
 
 .cp-facts {
   min-width: 0;
-  border-top: 1px solid var(--border);
+  padding-inline: 0.75rem;
+  border-width: 1px;
+  border-radius: var(--radius);
+}
+
+.cp-fact-row:last-child {
+  border-bottom: 0;
 }
 
 .cp-fact-row {
@@ -130,6 +143,11 @@
 
 .cp-process-list,
 .cp-process-detail,
+.cp-empty-state,
+.cp-matte,
+.cp-connection-card,
+.cp-settings-nav,
+.cp-debug-editor :is(.cp-debug-context, .cp-debug-section),
 .cp-settings-rows {
   border-width: 1px;
   border-radius: calc(var(--radius) + 0.625rem);
@@ -140,8 +158,12 @@
 }
 
 .cp-process-detail,
+.cp-empty-state,
+.cp-matte,
+.cp-connection-card,
+.cp-debug-editor :is(.cp-debug-context, .cp-debug-section),
 .cp-settings-rows {
-  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
+  padding-inline: var(--cp-panel-inset);
 }
 
 .cp-process-detail {
@@ -184,7 +206,7 @@
 }
 
 .cp-row[aria-current='true'] {
-  background: color-mix(in oklab, var(--primary) 5%, var(--card));
+  background: color-mix(in oklab, var(--primary) 10%, var(--card));
 }
 
 .cp-process-indicator {
@@ -238,6 +260,43 @@
   color: var(--foreground);
 }
 
+/* A static fill and edge mark selection without a shared-layout layer. */
+.cp-mode-item {
+  border-block-end: 2px solid transparent;
+  border-radius: var(--radius);
+  transition:
+    color 150ms ease-out,
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.cp-mode-item:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+.cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
+  border-block-end-color: currentColor;
+  color: var(--foreground);
+  background: var(--accent);
+}
+
+:where(html:not([data-webui-target])) .cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
+  border-block-end-color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 9%, var(--card));
+  box-shadow: var(--glass-inset);
+}
+
+.cp-debug-modes [role='tab'] {
+  border-radius: var(--radius);
+}
+
+:where(html:not([data-webui-target])) .cp-debug-modes [aria-selected='true'] {
+  background: color-mix(in oklab, var(--primary) 9%, var(--card));
+  color: var(--foreground);
+  box-shadow: var(--glass-inset);
+}
+
 .cp-selection {
   position: absolute;
   inset: auto 8px 0;
@@ -261,10 +320,6 @@
   align-items: center;
   gap: 0.75rem 1rem;
   padding: 1rem 0;
-}
-
-.cp-tablerow + .cp-tablerow {
-  border-top: 1px solid var(--border);
 }
 
 .cp-tablerow-identity {
@@ -314,10 +369,37 @@
 }
 
 .cp-adapter-table {
-  border-block: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
+}
+
+.cp-connection-card:focus-within {
+  border-color: var(--ring);
 }
 
 /* Settings keep a single document column at every width. */
+
+.cp-settings-nav {
+  min-width: 0;
+  padding: 0.375rem;
+}
+
+.cp-settings-nav-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.cp-settings-nav-item[aria-current='page'] {
+  font-weight: 600;
+}
 
 .cp-settings-group {
   display: flex;
@@ -334,6 +416,10 @@
 
 .cp-settings-rows {
   min-width: 0;
+}
+
+.cp-settings-rows.ui-glass-raised {
+  padding-block: 0.25rem;
 }
 
 .cp-settings-content .ui-card {
@@ -382,31 +468,38 @@
   --glass-raised-opacity: 100%;
 }
 
-.cp-log-levels {
+.cp-log-filter {
   display: flex;
+  width: fit-content;
   min-width: 0;
+  max-width: 100%;
   flex-wrap: wrap;
   gap: 0.125rem;
+  padding: 0.1875rem;
+  border-width: 1px;
+  border-radius: var(--radius);
 }
 
 .cp-level-toggle {
   min-height: 44px;
   border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: var(--radius);
   padding-inline: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: color 150ms ease-out;
+  transition:
+    color 150ms ease-out,
+    background-color 150ms ease-out;
 }
 
 .cp-level-toggle[aria-pressed='true'] {
   border-bottom-color: currentColor;
 }
 
-.cp-level-toggle[aria-pressed='false'] {
-  opacity: 0.65;
+:where(html:not([data-webui-target])) .cp-level-toggle:is(:hover:not(:disabled), [aria-pressed='true']) {
+  background-color: color-mix(in oklab, var(--accent) 70%, var(--card));
 }
 
 .cp-level-toggle:disabled {
@@ -418,9 +511,17 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 1.5rem;
-  padding-block: 1.25rem;
-  border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
+  margin-block-start: 0.75rem;
+}
+
+.cp-log-options > section + section {
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 0.75rem;
+}
+
+.cp-log-content .cp-empty-state {
+  margin-block-start: 0.75rem;
 }
 
 .cp-log-columns {
@@ -462,25 +563,34 @@
 
 .cp-debug-context {
   grid-column: 1 / -1;
-  min-width: 0;
-  padding-block: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
 }
 
-.cp-debug-workbench > section {
+.cp-debug-editor :is(.cp-debug-context, .cp-debug-section) {
   min-width: 0;
-  padding: 0;
+  padding-block: 0.875rem;
+  background-color: var(--card);
 }
 
-.cp-debug-workbench > .cp-debug-section {
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
+:where(html:not([data-webui-target])) .cp-debug-editor :is(.cp-debug-context, .cp-debug-section) {
+  border-color: var(--glass-rim);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+}
+
+:where(html:not([data-webui-target])) .cp-debug-editor .cp-debug-context {
+  background-color: color-mix(in oklab, var(--input) var(--glass-field-tint), var(--card));
+  box-shadow: var(--glass-inset);
+}
+
+.cp-debug-feed .cp-empty-state {
+  background-color: var(--background);
 }
 
 .cp-preview {
   min-width: 0;
-  padding-block: 0.75rem;
-  border-block: 1px solid var(--border);
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--background);
   overflow-wrap: anywhere;
 }
 
@@ -555,6 +665,14 @@
   outline-offset: 3px;
 }
 
+/* The process list clips row fills, and the category lists scroll on narrow
+   screens. Keep their keyboard outlines inside the interactive hit areas. */
+.cp-process-row:focus-visible,
+.cp-category-chrome [role='tab']:focus-visible,
+.cp-log-filter button:focus-visible {
+  outline-offset: -3px;
+}
+
 :is(.cp-page, .cp-dialog) .ui-segmented span:not(.sr-only) {
   display: flex;
   min-height: 44px;
@@ -609,8 +727,7 @@
   .cp-adapter-table-head {
     display: grid;
     gap: 1rem;
-    padding-block: 0.75rem;
-    border-bottom: 1px solid var(--border);
+    padding: 0.5rem calc(1px + var(--cp-panel-inset));
     color: var(--muted-foreground);
     font-size: 0.75rem;
   }
@@ -670,7 +787,6 @@
     background-color 150ms ease-out;
 }
 
-
 @keyframes cp-fade-in {
   from {
     opacity: 0;
@@ -681,26 +797,32 @@
 }
 
 .cp-fade {
-  animation: cp-fade-in 280ms ease-out both;
+  animation: cp-fade-in 180ms ease-out;
 }
 
-html[data-reduce-motion='1'] .cp-action-row > button > svg,
-html[data-no-motion='1'] .cp-action-row > button > svg,
-html[data-reduce-motion='1'] :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-level-toggle, .cp-log-row),
-html[data-no-motion='1'] :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-level-toggle, .cp-log-row) {
+/* Keep the hierarchy legible without optical work on document surfaces. */
+html[data-low-performance='1'] .cp-page {
+  --glass-raised-opacity: 100%;
+  --glass-shadow: var(--shadow-card);
+  --glass-elevation: var(--shadow-card);
+}
+
+html[data-webui-target] .cp-page .ui-glass-panel {
+  box-shadow: var(--shadow-card);
+}
+
+html[data-webui-target] :is(.cp-facts, .cp-log-filter) {
+  background-color: var(--card);
+}
+
+html:is([data-reduce-motion='1'], [data-no-motion='1'], [data-low-performance='1'], [data-webui-target])
+  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
   animation: none;
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cp-action-row > button > svg,
-  .cp-fade,
-  .cp-row,
-  .cp-catnav-item,
-  .cp-acct-chip,
-  .cp-control,
-  .cp-level-toggle,
-  .cp-log-row {
+  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
     animation: none;
     transition: none;
   }

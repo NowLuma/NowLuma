@@ -45,6 +45,13 @@ vi.mock('@/contexts/AppStateContext', () => ({
 vi.mock('@/contexts/LayoutContext', () => ({
     useLayout: () => ({ pages: { processesSort: state.sort }, setPages: vi.fn() }),
 }));
+
+vi.mock('@/contexts/ThemeContext', () => ({
+    useTheme: () => ({
+        performance: { low: false },
+        presentation: null,
+    }),
+}));
 const process = (pid: number, name: string): HookProcessInfo => ({
     pid,
     name,

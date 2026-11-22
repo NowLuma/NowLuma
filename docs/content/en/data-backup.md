@@ -86,7 +86,7 @@ If QQ's server expires the session or requests verification, complete it in QQ. 
 
 ## Updater
 
-`关于` checks for and installs updates. Sources are auto, GitHub direct or a specified mirror; auto tries GitHub first, then candidates. Reachability is not download speed.
+`关于` checks for and installs updates. Choose a mirror, GitHub directly, or auto. Auto tries GitHub first, then the other sources in order.
 
 Release assets:
 

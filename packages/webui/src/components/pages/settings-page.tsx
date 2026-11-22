@@ -1,5 +1,3 @@
-import { useId } from 'react';
-import { motion, useReducedMotionConfig } from 'motion/react';
 import {
     Bell,
     Bug,
@@ -24,7 +22,6 @@ import { NotificationsPanel } from '@/components/settings/notifications-panel';
 import { StoragePanel } from '@/components/settings/storage-panel';
 import { SystemPanel } from '@/components/settings/system-panel';
 import { useT } from '@/i18n';
-import { cn } from '@/lib/utils';
 import { settingsRoute, type SettingsTab } from '@/router';
 import '@/styles/console-pages.css';
 
@@ -106,13 +103,12 @@ export function SettingsNav({
     onChange: (tab: SettingsTab) => void;
 }) {
     const t = useT();
-    const id = useId();
-    const reduced = useReducedMotionConfig();
 
     return (
         <nav
             aria-label={t('设置导航', 'Settings navigation')}
-            className="min-w-0 lg:border-r lg:border-border lg:pr-5"
+            className="cp-settings-nav ui-glass-raised"
+            data-ui-surface="chrome"
         >
             <div className="grid min-w-0 grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
                 {TABS.map((item) => {
@@ -124,23 +120,8 @@ export function SettingsNav({
                             type="button"
                             onClick={() => onChange(item.key)}
                             aria-current={active ? 'page' : undefined}
-                            className={cn(
-                                'relative flex min-h-11 min-w-0 items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50',
-                                active ? 'font-semibold text-foreground' : 'text-muted-foreground',
-                            )}
+                            className="cp-settings-nav-item cp-mode-item"
                         >
-                            {active && (
-                                <motion.span
-                                    aria-hidden="true"
-                                    layoutId={reduced ? undefined : `settings-category-${id}`}
-                                    className="absolute inset-y-2 left-0 w-0.5 bg-foreground"
-                                    transition={
-                                        reduced
-                                            ? { duration: 0 }
-                                            : { duration: 0.42, ease: [0.16, 1, 0.3, 1] }
-                                    }
-                                />
-                            )}
                             <Icon aria-hidden="true" className="size-4 shrink-0" />
                             <span className="min-w-0 break-words">{t(...item.label)}</span>
                         </button>

@@ -261,10 +261,10 @@ export function LoginPage({
             ) : (
                 <>
                     <LoginBrand
-                        title={t('进入工作台', 'Sign in to the workspace')}
+                        title={t('登录工作台', 'Sign in to the workspace')}
                         subtitle={t(
-                            '管理 QQ 会话与机器人连接。',
-                            'Manage QQ sessions and bot connections.',
+                            '管理 QQ 会话和机器人连接',
+                            'Manage QQ sessions and bot connections',
                         )}
                     />
                     <form onSubmit={handlePasswordSubmit} className="mt-8 flex flex-col gap-3.5">
@@ -290,12 +290,12 @@ export function LoginPage({
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoFocus={autoFocusPassword}
                                 autoComplete="current-password"
-                                className="h-12 bg-background pl-10 pr-12 text-base"
+                                className="h-12 pl-10 pr-12 text-base"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPwd((v) => !v)}
-                                className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label={
                                     showPwd
                                         ? t('隐藏密码', 'Hide password')
@@ -341,10 +341,8 @@ export function LoginPage({
 }
 
 function LoginBrand({ title, subtitle }: { title: string; subtitle: string }) {
-    const t = useT();
     return (
         <div className="workspace-auth-heading">
-            <p className="workspace-eyebrow">{t('安全访问', 'Secure access')}</p>
             <h1>{title}</h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
         </div>
@@ -387,7 +385,7 @@ function LoginShell({
                     <div className="workspace-auth-artwork">
                         <LineField animated={!reduce && !lowCost && !managedBy} />
                         <div className="workspace-auth-artwork-caption">
-                            <span>{t('01 — 连接，从这里开始', '01 — Connect from here')}</span>
+                            <span>{t('Nowluma 控制台', 'Nowluma console')}</span>
                             <span aria-hidden="true" className="workspace-line-key">
                                 <i />
                                 <i />
@@ -401,9 +399,7 @@ function LoginShell({
                             {t('QQ 连接控制台', 'QQ connection console')}
                         </p>
                         <p className="workspace-auth-statement">
-                            {t('连接有序，', 'Keep connections organized.')}
-                            <br />
-                            {t('结果清晰。', 'See results clearly.')}
+                            {t('查看运行状态与连接', 'Monitor activity and connections')}
                         </p>
                     </div>
                 </aside>
@@ -419,7 +415,10 @@ function LoginShell({
                     }
                     className={cn('workspace-auth-document', wide ? 'max-w-2xl' : 'max-w-md')}
                 >
-                    <section className="workspace-auth-form" aria-label={t('登录', 'Sign in')}>
+                    <section
+                        className="workspace-auth-form ui-glass-raised ui-glass-panel border"
+                        aria-label={t('登录', 'Sign in')}
+                    >
                         {children}
                     </section>
                 </motion.div>

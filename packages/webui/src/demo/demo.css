@@ -105,7 +105,11 @@
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    scale 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .demo-button svg {
@@ -126,6 +130,25 @@
 
 .demo-guide-toggle[aria-expanded='true'] {
   background: var(--demo-hover);
+  color: var(--demo-ink);
+}
+
+.demo-sample-password {
+  align-self: center;
+  flex: none;
+  max-width: calc(100% - 2 * var(--demo-gutter));
+  margin: 6px var(--demo-gutter);
+  padding: 3px 9px;
+  border: 1px solid var(--demo-line);
+  border-radius: 999px;
+  color: var(--demo-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.demo-sample-password code {
+  margin-inline-start: 4px;
   color: var(--demo-ink);
 }
 
@@ -178,8 +201,8 @@
   width: min(1280px, calc(100% - 2 * var(--demo-gutter)));
   margin: 8px auto;
   border: 1px solid var(--demo-line);
-  border-radius: 12px;
-  background: var(--demo-panel);
+  border-radius: 16px;
+  background-color: var(--demo-panel);
 }
 
 .demo-guide {
@@ -237,6 +260,11 @@
   border-radius: 8px;
   color: var(--demo-muted);
   text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    scale 240ms ease-out;
   cursor: pointer;
 }
 
@@ -436,6 +464,11 @@
     height: 24px;
   }
 
+  .demo-guide {
+    max-height: min(13rem, 26dvh);
+    padding-inline: 12px;
+  }
+
   .demo-tutorial-guide {
     grid-template-columns: max-content minmax(0, 1fr);
     gap: 2px 8px;
@@ -472,15 +505,51 @@
 }
 
 @media (max-height: 520px) {
-  .demo-tutorial-guide {
+  .demo-guide {
     max-height: 38dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .demo-tutorial-guide {
+    max-height: max(6rem, 38dvh);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .demo-tutorial-message {
+    align-self: stretch;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
 }
 
+@media (max-width: 680px) and (max-height: 520px) {
+  .demo-tutorial-guide {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+@keyframes demo-content-in {
+  from {
+    opacity: 0.6;
+    translate: 0 3px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(html:not([data-reduce-motion='1'], [data-no-motion='1'], [data-webui-target]))
+    :is(.demo-button, .demo-steps button):active:not(:disabled) {
+    scale: 0.97;
+  }
+
+  :where(html:not([data-reduce-motion='1'], [data-no-motion='1'], [data-webui-target]))
+    :is(.demo-guide, .demo-tutorial-guide, .demo-step-detail) {
+    animation: demo-content-in 180ms ease-out both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .demo-button {
+  :is(.demo-button, .demo-steps button, .demo-scenarios select) {
     transition: none;
   }
 }

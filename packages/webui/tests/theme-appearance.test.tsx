@@ -187,8 +187,32 @@ describe('ThemeProvider manual preferences and replay ownership', () => {
         tree = render();
         expect(tree.props.value.appearance).toEqual(saved);
         expect(tree.props.value.performance).toEqual({ mode: 'high', low: false });
-        expect(tree.props.children.props.reducedMotion).toBe('user');
-        expect(mocks.applyAppearance).toHaveBeenLastCalledWith(saved, 'light', null, false);
+        expect(tree.props.children.props.reducedMotion).toBe('never');
+        expect(mocks.applyAppearance).toHaveBeenLastCalledWith(saved, 'light', null, false, false);
+    });
+
+    it('applies live system motion changes without saving them as console preferences', async () => {
+        const media = Object.assign(new EventTarget(), { matches: false });
+        const matchMedia = window.matchMedia;
+        vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
+            query === '(prefers-reduced-motion: reduce)'
+                ? (media as MediaQueryList)
+                : matchMedia(query),
+        );
+        const saved = (await ready()).savedAppearance;
+        vi.mocked(setItem).mockClear();
+
+        for (const matches of [true, false]) {
+            media.matches = matches;
+            media.dispatchEvent(Object.assign(new Event('change'), { matches }));
+            const tree = render();
+            expect(tree.props.children.props.reducedMotion).toBe(matches ? 'always' : 'never');
+            expect(tree.props.value.savedAppearance).toEqual(saved);
+        }
+
+        await vi.advanceTimersByTimeAsync(800);
+        expect(posts()).toHaveLength(0);
+        expect(setItem).not.toHaveBeenCalled();
     });
 
     it('preserves authenticated custom CSS and unrelated server preferences on explicit first-run save', async () => {

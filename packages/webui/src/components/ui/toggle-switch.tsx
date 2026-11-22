@@ -37,7 +37,7 @@ export function ToggleSwitch({
             <span
                 aria-hidden="true"
                 className={cn(
-                    'relative flex h-6 w-11 items-center rounded-full transition-colors',
+                    'ui-toggle-track relative flex h-6 w-11 items-center rounded-full transition-colors',
                     value ? 'bg-primary' : 'bg-foreground/20',
                 )}
             >

@@ -38,6 +38,7 @@ import {
     writeCache,
 } from '@/appearance/persistence';
 import { runThemeReveal, trackRevealOrigin } from '@/appearance/reveal';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { translator, useLocale } from '@/i18n';
 
 // Re-export the appearance surface so consumers keep importing it from the
@@ -172,6 +173,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     );
     const performanceMode = normalizePerformanceMode(effectiveAppearance.performanceMode);
     const lowPerformance = performanceModeLow(performanceMode);
+    const systemReduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+    const reducedMotion =
+        effectiveAppearance.reduceMotion || effectiveAppearance.disableMotion || systemReduceMotion;
     const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
     const [ready, setReady] = useState(false);
     const saveTimer = useRef<number | undefined>(undefined);
@@ -294,8 +298,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // application doesn't flash. The pre-mount flash is handled by the inline
     // bootstrap script in index.html.
     useLayoutEffect(() => {
-        applyAppearance(effectiveAppearance, resolved, presentation, lowPerformance);
-    }, [effectiveAppearance, resolved, presentation, lowPerformance]);
+        applyAppearance(
+            effectiveAppearance,
+            resolved,
+            presentation,
+            lowPerformance,
+            systemReduceMotion,
+        );
+    }, [effectiveAppearance, resolved, presentation, lowPerformance, systemReduceMotion]);
     useLayoutEffect(() => {
         applyBackgroundLayer(effectiveAppearance);
     }, [effectiveAppearance]);
@@ -550,13 +560,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     return (
         <ThemeContext.Provider value={value}>
-            <MotionConfig
-                reducedMotion={
-                    effectiveAppearance.reduceMotion || effectiveAppearance.disableMotion
-                        ? 'always'
-                        : 'user'
-                }
-            >
+            <MotionConfig reducedMotion={reducedMotion ? 'always' : 'never'}>
                 {children}
             </MotionConfig>
         </ThemeContext.Provider>

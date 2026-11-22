@@ -124,7 +124,7 @@ export function OnboardingWizardPage({
         if (stepId === 'agreements') {
             return {
                 id: stepId,
-                label: t('阅读使用说明', 'Read the usage notices'),
+                label: t('使用与隐私', 'Usage and privacy'),
                 canSkip: false,
                 hideAdvance: true,
                 hideBack: true,
@@ -215,22 +215,16 @@ export function OnboardingWizardPage({
                         <LineField animated={!reduced} />
                         <div className="workspace-auth-artwork-caption">
                             <span>{APP_NAME}</span>
-                            <span>{t('开始连接', 'Start connecting')}</span>
+                            <span>{t('控制台设置', 'Console setup')}</span>
                         </div>
                     </div>
-                    <p className="workspace-eyebrow mt-6">{t('从这里开始', 'Start here')}</p>
                     <p className="workspace-auth-statement">
-                        {t('连接之前，', 'Before you connect,')}
-                        <br />
-                        {t('准备就绪。', 'get set up.')}
+                        {t('先完成设置，再接入 QQ', 'Set up the console before attaching QQ')}
                     </p>
                 </aside>
                 <main className="workspace-onboarding-document">
                     <header className="workspace-onboarding-heading">
-                        <p className="workspace-eyebrow">
-                            {t(`欢迎使用 ${APP_NAME}`, `Welcome to ${APP_NAME}`)}
-                        </p>
-                        <h1>{t('完成首次使用设置', 'Complete first-time setup')}</h1>
+                        <h1>{t('首次设置', 'First-time setup')}</h1>
                     </header>
                     <div ref={feedbackHostRef} className="workspace-onboarding-feedback" />
                     <WizardSteps
@@ -310,13 +304,10 @@ function AgreementStep({
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
-                        {t('阅读使用说明', 'Read the usage notices')}
+                        {t('阅读使用说明与隐私说明', 'Read the Usage Notice and Privacy Notice')}
                     </h2>
                     <p className="mt-0.5 max-w-2xl text-pretty text-xs leading-relaxed text-muted-foreground sm:mt-1 sm:text-sm">
-                        {t(
-                            '阅读后确认，即可继续设置。',
-                            'Read and acknowledge the notices to continue setup.',
-                        )}
+                        {t('查看两份说明后确认继续。', 'Read both notices, then confirm to continue.')}
                     </p>
                 </div>
             </div>
@@ -378,7 +369,7 @@ function AgreementStep({
                 onClick={() => setAgreed((current) => !current)}
                 aria-pressed={agreed}
                 className={cn(
-                    'flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
+                    'ui-glass-field flex min-h-11 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/40 sm:min-h-12 sm:px-4 sm:py-3',
                     agreed
                         ? 'border-primary/60 bg-primary/5'
                         : 'border-border hover:border-primary/40 hover:bg-accent/40',

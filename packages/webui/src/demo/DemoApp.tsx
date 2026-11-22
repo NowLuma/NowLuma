@@ -4,6 +4,7 @@ import App from '@/App';
 import { BRAND_LOGO_URL } from '@/brand';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/interior/modal';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { createApiClient } from '@/lib/api';
 import { appRouter } from '@/router';
 import { translator, useLocale } from '@/i18n';
@@ -23,16 +24,14 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
     const embedded =
         lesson && options?.embed && typeof window !== 'undefined' && window.parent !== window;
     const [epoch, setEpoch] = useState(0);
-    const [guideOpen, setGuideOpen] = useState(true);
+    const compactGuide = useMediaQuery('(max-width: 680px), (max-height: 640px)');
+    const [guideOverride, setGuideOverride] = useState<boolean | null>(null);
+    const guideOpen = guideOverride ?? (Boolean(lesson) || !compactGuide);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [selectedStep, setSelectedStep] = useState(0);
     const [noticeKind, setNoticeKind] = useState<'blocked-link' | 'fail-next-write' | null>(null);
     const guideToggle = useRef<HTMLButtonElement>(null);
-    const notice = useSyncExternalStore(
-        api.subscribe,
-        () => api.notice,
-        () => api.notice,
-    );
+    useSyncExternalStore(api.subscribe, () => api.tutorialRevision, () => api.tutorialRevision);
     const client = useMemo(() => {
         // The production API client/parser runs unchanged over the fake transport.
         const client = createApiClient({ onUnauthorized: () => setEpoch((value) => value + 1) });
@@ -95,17 +94,17 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
         setSelectedStep(0);
         setNoticeKind(null);
         setDesktopOpen(false);
-        setGuideOpen(true);
+        setGuideOverride(null);
     };
 
     const closeGuide = () => {
-        setGuideOpen(false);
+        setGuideOverride(false);
         guideToggle.current?.focus();
     };
 
     const navigate = (route: string) => {
         appRouter.history.push(route);
-        setGuideOpen(false);
+        setGuideOverride(false);
         requestAnimationFrame(() => {
             const main = document.querySelector<HTMLElement>('main');
             main?.setAttribute('tabindex', '-1');
@@ -119,13 +118,13 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
     const noticeText =
         noticeKind === 'blocked-link'
             ? t(
-                  '模拟器已阻止打开外部或不支持的链接。',
-                  'The simulator blocked an external or unsupported link.',
+                  '请在模拟器中打开控制台页面。',
+                  'Choose a console page in the simulator.',
               )
-            : noticeKind === 'fail-next-write'
+            : noticeKind === 'fail-next-write' && api.failNextMutation
               ? t(
-                    '下一次非认证写入会失败，示例数据不会改变。检查结果后可重试。',
-                    'The next non-authentication write will fail without changing the sample data. Inspect the result before retrying.',
+                    '已安排一次保存失败。保存任一设置即可查看反馈。',
+                    'Save a setting to see a simulated failure.',
                 )
               : null;
 
@@ -151,7 +150,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                             ref={guideToggle}
                             type="button"
                             className="demo-button demo-guide-toggle"
-                            onClick={() => setGuideOpen((open) => !open)}
+                            onClick={() => setGuideOverride(!guideOpen)}
                             data-demo-guide-toggle="true"
                             aria-expanded={guideOpen}
                             aria-controls={guideOpen ? 'demo-guide' : undefined}
@@ -175,6 +174,11 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                     </div>
                 </div>
             </header>
+            {!lesson && !guideOpen && !summary.authenticated && (
+                <p className="demo-sample-password">
+                    {t('示例密码', 'Sample password')} <code>{api.examplePassword}</code>
+                </p>
+            )}
             {lesson && (
                 <TutorialGuide
                     key={epoch}
@@ -188,12 +192,12 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
             {!lesson && guideOpen && (
                 <aside
                     id="demo-guide"
-                    className="demo-guide"
-                    aria-label={t('操作引导', 'Console guide')}
+                    className="demo-guide ui-glass-raised"
+                    aria-label={t('练习任务', 'Practice tasks')}
                 >
                     <div className="demo-guide-heading">
                         <div>
-                            <h2>{t('操作引导', 'Console guide')}</h2>
+                            <h2>{t('练习任务', 'Practice tasks')}</h2>
                         </div>
                         <button
                             type="button"
@@ -217,7 +221,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                             </button>
                         ))}
                     </nav>
-                    <section className="demo-step-detail" aria-labelledby="demo-step-title">
+                    <section key={step.id} className="demo-step-detail" aria-labelledby="demo-step-title">
                         <h3 id="demo-step-title">{tutorialText(step.title, language)}</h3>
                         <p>{tutorialText(step.description, language)}</p>
                         {step.id === 'setup' && (
@@ -251,7 +255,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                         )}
                     </section>
                     <div className="demo-scenarios">
-                        <label htmlFor="demo-scenario">{t('情景', 'Scenario')}</label>
+                        <label htmlFor="demo-scenario">{t('练习场景', 'Practice scenario')}</label>
                         <select
                             id="demo-scenario"
                             value={api.scenario}
@@ -274,13 +278,13 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                                 setNoticeKind('fail-next-write');
                             }}
                         >
-                            {t('下次写入失败', 'Fail next write')}
+                            {t('模拟一次保存失败', 'Simulate a failed save')}
                         </button>
                     </div>
                     <p className="demo-progress">
                         {t('会话：', 'Session: ')}
                         {summary.authenticated
-                            ? t('示例登录', 'Example login')
+                            ? t('已登录', 'Signed in')
                             : t('未登录', 'Signed out')}{' '}
                         ·{' '}
                         {summary.online
@@ -297,7 +301,7 @@ export function DemoApp({ api, options }: { api: DemoApi; options?: TutorialOpti
                         )}
                     </p>
                     <p className="demo-notice" role="status">
-                        {noticeText ?? notice}
+                        {noticeText ?? tutorialText(api.notice, language)}
                     </p>
                 </aside>
             )}

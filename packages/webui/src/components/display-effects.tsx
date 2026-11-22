@@ -102,8 +102,8 @@ export function DisplayEffectsControls({
             <SettingRow
                 label={t('玻璃材质', 'Glass material')}
                 hint={t(
-                    '完整玻璃折射背景；磨砂玻璃渲染更轻。',
-                    'Full glass refracts the background. Frosted glass is lighter to render.',
+                    '完整玻璃呈现背景折射，磨砂玻璃渲染更轻。',
+                    'Full glass adds refraction on supported browsers. Frosted glass is lighter.',
                 )}
             >
                 <Segmented<PerformanceMode | ''>
@@ -135,7 +135,7 @@ function DisplayEffectsPreview() {
         <figure
             aria-label={t('显示效果预览', 'Display effects preview')}
             data-tutorial-control="effect-preview"
-            className="relative my-3 overflow-hidden rounded-[4px] border border-border bg-card p-5 sm:p-6"
+            className="ui-glass-raised relative my-3 overflow-hidden rounded-xl border p-4 sm:p-6"
         >
             <div
                 aria-hidden="true"
@@ -147,11 +147,8 @@ function DisplayEffectsPreview() {
                 }}
             />
             <div className="relative">
-                <p className="text-xs text-muted-foreground">
-                    {t('今日工作区', 'Today’s workspace')}
-                </p>
-                <p className="mt-2 text-sm font-medium">
-                    {t('安静的纸面，清晰的内容。', 'A quiet canvas for clear content.')}
+                <p className="text-sm font-medium">
+                    {t('试试两种玻璃材质', 'Compare the two glass materials')}
                 </p>
                 <div className="mt-5 flex min-h-14 flex-wrap items-center gap-4">
                     <Button

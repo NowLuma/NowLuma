@@ -1,6 +1,6 @@
 ---
 title: Practice demo
-description: 'The /demo/ environment in the documentation site: learn the workspace using guided example data without connecting a real QQ account.'
+description: Practise signing in, managing QQ sessions, connecting bots, and using the debug tools with sample data.
 tutorial: demo
 ---
 
@@ -33,4 +33,4 @@ Both use the console interface with sample data. The first-run lesson starts at 
 
 ## Moving to your own console {#differences-from-the-real-console}
 
-The simulator keeps changes in memory and sends no requests to QQ or a bot. For your own deployment, follow [First run](first-run.md) to sign into Nowluma, then [QQ sessions](qq-connection.md) to attach the account you signed into in QQ. Confirm the endpoint and check your bot's logs after [connecting it](onebot-config.md).
+Choose Reset or reload to start over. To set up your own console, follow [First run](first-run.md), then attach your account in [QQ sessions](qq-connection.md). After [configuring your bot connection](onebot-config.md), check the endpoint status and your bot’s logs.

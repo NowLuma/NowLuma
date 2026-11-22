@@ -46,7 +46,11 @@ vi.mock('motion/react', async (original) => ({
 }));
 vi.mock('@/lib/api', () => ({ useApi: () => state.api }));
 vi.mock('@/contexts/ThemeContext', () => ({
-    useTheme: () => ({ formatClock: (time: string) => time }),
+    useTheme: () => ({
+        formatClock: (time: string) => time,
+        performance: { low: false },
+        presentation: null,
+    }),
 }));
 vi.mock('@/contexts/ActionFeedbackContext', () => ({
     useActionFeedback: () => ({

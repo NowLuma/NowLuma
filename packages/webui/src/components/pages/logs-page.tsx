@@ -1,7 +1,6 @@
 import {
     useCallback,
     useEffect,
-    useId,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -182,11 +181,10 @@ export function LogsPage() {
     const t = useT();
     const api = useApi();
     const { runAction } = useActionFeedback();
-    const { formatClock } = useTheme();
-    const reduced = useReducedMotionConfig();
+    const { formatClock, performance, presentation } = useTheme();
+    const reduced = useReducedMotionConfig() || performance.low || presentation !== null;
     const { pages, setPages } = useLayout();
     const prefs = pages.logs;
-    const presetId = useId();
     const traceWarnings = useMemo(() => traceConfirmationWarnings(t), [t]);
 
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -760,7 +758,7 @@ export function LogsPage() {
                             <div
                                 role="group"
                                 aria-label={t('日志级别', 'Log levels')}
-                                className="cp-log-levels"
+                                className="cp-log-filter ui-glass-field"
                             >
                                 {LEVELS.map((level) => (
                                     <button
@@ -784,7 +782,7 @@ export function LogsPage() {
                             <div
                                 role="group"
                                 aria-label={t('视图预设', 'View presets')}
-                                className="flex flex-wrap"
+                                className="cp-log-filter ui-glass-field"
                             >
                                 {LOG_PRESETS.map((preset) => {
                                     const active = prefs.preset === preset.id;
@@ -795,27 +793,8 @@ export function LogsPage() {
                                             onClick={() => applyPreset(preset)}
                                             aria-pressed={active}
                                             title={t(...preset.hint)}
-                                            className="cp-catnav-item px-3 text-xs"
+                                            className="cp-catnav-item cp-mode-item px-3 text-xs"
                                         >
-                                            {active && (
-                                                <motion.span
-                                                    aria-hidden="true"
-                                                    layoutId={
-                                                        reduced
-                                                            ? undefined
-                                                            : `logs-preset-${presetId}`
-                                                    }
-                                                    className="cp-selection"
-                                                    transition={
-                                                        reduced
-                                                            ? { duration: 0 }
-                                                            : {
-                                                                  duration: 0.42,
-                                                                  ease: [0.16, 1, 0.3, 1],
-                                                              }
-                                                    }
-                                                />
-                                            )}
                                             <span className="relative">{t(...preset.label)}</span>
                                         </button>
                                     );
@@ -894,7 +873,7 @@ export function LogsPage() {
                             transition={{ duration: reduced ? 0 : 0.32, ease: [0.16, 1, 0.3, 1] }}
                             className="overflow-hidden"
                         >
-                            <div className="cp-log-options">
+                            <div className="cp-log-options cp-matte ui-glass-raised">
                                 <section className="flex min-w-0 flex-col gap-2">
                                     <h3 className="text-sm font-semibold">
                                         {t('服务端日志级别', 'Server log level')}
@@ -940,7 +919,7 @@ export function LogsPage() {
                                                         '服务端日志级别',
                                                         'Server log level',
                                                     )}
-                                                    className="cp-log-levels"
+                                                    className="cp-log-filter ui-glass-field"
                                                 >
                                                     {LEVELS.map((level) => (
                                                         <button
@@ -1105,7 +1084,7 @@ export function LogsPage() {
                                 {logsError && logs.length === 0 ? (
                                     <div
                                         role="alert"
-                                        className="cp-empty-state font-sans text-destructive"
+                                        className="cp-empty-state ui-glass-raised font-sans text-destructive"
                                     >
                                         <TriangleAlert className="size-7" />
                                         <p className="break-words">{logsError}</p>
@@ -1118,7 +1097,7 @@ export function LogsPage() {
                                         </Button>
                                     </div>
                                 ) : filtered.length === 0 ? (
-                                    <div className="cp-empty-state font-sans text-muted-foreground">
+                                    <div className="cp-empty-state ui-glass-raised font-sans text-muted-foreground">
                                         {logs.length === 0 ? (
                                             <>
                                                 <Inbox className="size-7" />

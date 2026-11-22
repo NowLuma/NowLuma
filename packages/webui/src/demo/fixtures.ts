@@ -58,7 +58,7 @@ export const demoActions: DebugActionDoc[] = [
         name: 'send_private_msg',
         aliases: [],
         category: '消息',
-        summary: 'DEMO: Write a message to memory, never QQ',
+        summary: 'DEMO: Send a sample direct message',
         readOnly: false,
         returns: '{ message_id }',
         params: [
@@ -79,7 +79,7 @@ export const demoActions: DebugActionDoc[] = [
             name,
             aliases: [],
             category: '消息',
-            summary: 'DEMO: Compose group/forward messages in memory only',
+            summary: 'DEMO: Send a sample group or forwarded message',
             readOnly: false,
             returns: '{ message_id }',
             params: [

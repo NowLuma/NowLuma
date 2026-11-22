@@ -190,7 +190,7 @@ describe('DEMO API guided journey using the production client', () => {
         expect(await client.qqList()).toEqual([{ uin: DEMO_UIN, nickname: 'DEMO 小光' }]);
         expect((await client.connections())[0].adapters[0]).toMatchObject({
             status: 'ok',
-            detail: expect.stringContaining('no socket'),
+            kind: 'httpServer',
         });
     });
 
@@ -279,7 +279,6 @@ describe('DEMO API guided journey using the production client', () => {
         expect(
             (await client.debug.invoke(DEMO_UIN, 'get_msg', { message_id: 101 })).data,
         ).toMatchObject({ message: '#nl' });
-        expect((await client.logs.list()).at(-1)?.message).toContain('not proof of QQ delivery');
         expect(await client.debug.invoke(DEMO_UIN, 'unknown-action', {})).toMatchObject({
             status: 'failed',
             retcode: 1404,
@@ -313,21 +312,22 @@ describe('DEMO API guided journey using the production client', () => {
                 message: [{ type: 'text', data: { text: '#nl' } }],
             });
         }
-
-        expect((await client.logs.list()).at(-1)?.message).toContain('#nl DEMO reply');
     });
 
     it('surfaces a failed write without mutation, allows retry, and exposes API failure', async () => {
         await ready();
         const original = await client.config.get(DEMO_UIN);
         const changed = structuredClone(original);
-        changed.statusCommand.enabled = false;
+        changed.statusCommand.enabled = !original.statusCommand.enabled;
         api.failNextMutation = true;
-        await expect(client.config.save(DEMO_UIN, changed)).rejects.toThrow('nothing changed');
+        await expect(client.config.save(DEMO_UIN, changed)).rejects.toMatchObject({ status: 503 });
         expect(await client.config.get(DEMO_UIN)).toEqual(original);
         expect((await client.config.save(DEMO_UIN, changed)).saved).toBe(true);
+        expect((await client.config.get(DEMO_UIN)).statusCommand.enabled).toBe(
+            changed.statusCommand.enabled,
+        );
         api.setScenario('failure');
-        await expect(client.system()).rejects.toThrow('Simulated API failure');
+        await expect(client.system()).rejects.toMatchObject({ status: 503 });
         api.setScenario('ready');
         expect((await client.system()).hostname).toContain('DEMO');
     });
@@ -469,12 +469,12 @@ describe('DEMO API guided journey using the production client', () => {
         const backup = await client.systemSettings.exportBackup(true);
         expect(backup.demo).toBe(true);
         expect(JSON.stringify(backup)).not.toContain(DEMO_NEW_PASSWORD);
-        await expect(client.systemSettings.importBackup(backup, true)).rejects.toThrow(
-            'without credential restoration',
-        );
+        await expect(client.systemSettings.importBackup(backup, true)).rejects.toMatchObject({
+            status: 400,
+        });
         await expect(
             client.systemSettings.importBackup({ version: 1, app: 'nowluma' }, false),
-        ).rejects.toThrow('Only simulator backups');
+        ).rejects.toMatchObject({ status: 400 });
         await expect(
             client.systemSettings.importBackup({ ...backup, ui: {} }, false),
         ).rejects.toThrow('Incomplete backup');
@@ -522,13 +522,12 @@ describe('DEMO API guided journey using the production client', () => {
     });
 
     it('discards requests still parsing when reset replaces the state', async () => {
-        const resetNotice = 'DEMO reset: all practice writes, files and sessions cleared.';
-
         const assertDiscarded = async (send: () => Promise<Response>) => {
             const listener = vi.fn();
             const unsubscribe = api.subscribe(listener);
             const pending = send();
             api.reset();
+            const resetNotice = api.notice;
             await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
             expect(api.summary.authenticated).toBe(false);
             expect(api.notice).toBe(resetNotice);

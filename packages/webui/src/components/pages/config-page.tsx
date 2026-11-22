@@ -7,9 +7,8 @@
 // are debounced (500 ms). The editor surface reports unsaved state, save
 // results and load errors in place.
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useT, type Translate } from '@/i18n';
-import { motion, useReducedMotionConfig } from 'motion/react';
 import { Check, Loader2, MousePointerClick, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollableTabList } from '@/components/ui/tabs';
@@ -343,7 +342,10 @@ export function ConfigPage() {
 
                                         <div
                                             key={`${selectedUin}-${activeTab}`}
-                                            className="cp-fade cp-config-body"
+                                            className={cn(
+                                                'cp-config-body',
+                                                activeTab === 'general' && 'cp-fade',
+                                            )}
                                             id={`config-panel-${activeTab}`}
                                             role="tabpanel"
                                             aria-labelledby={`config-tab-${activeTab}`}
@@ -463,7 +465,7 @@ function EditorBar({
 }: EditorBarProps) {
     const t = useT();
     return (
-        <div className="cp-toolbar cp-editorbar">
+        <div className="cp-toolbar cp-editorbar cp-matte ui-glass-raised">
             <div className="min-w-0">
                 <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
                 <code className="mt-0.5 block font-mono text-xs text-muted-foreground tabular-nums">
@@ -541,8 +543,6 @@ interface TabStripProps {
 
 function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
     const t = useT();
-    const id = useId();
-    const reduced = useReducedMotionConfig();
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const moveTab = (from: number, direction: 1 | -1 | 'home' | 'end') => {
@@ -564,7 +564,7 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
     };
 
     return (
-        <GlassSurface className="cp-category-chrome">
+        <GlassSurface className="cp-category-chrome" data-ui-surface="chrome">
             <ScrollableTabList
                 activeValue={activeTab}
                 role="tablist"
@@ -607,26 +607,8 @@ function TabStrip({ activeTab, onChange, counts }: TabStripProps) {
                                     moveTab(index, 'end');
                                 }
                             }}
-                            className={cn(
-                                'cp-catnav-item whitespace-nowrap',
-                                'focus-visible:ring-[3px] focus-visible:ring-ring/40',
-                                active
-                                    ? 'text-foreground'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            )}
+                            className="cp-catnav-item cp-mode-item whitespace-nowrap"
                         >
-                            {active && (
-                                <motion.span
-                                    aria-hidden="true"
-                                    layoutId={reduced ? undefined : `config-category-${id}`}
-                                    className="cp-selection"
-                                    transition={
-                                        reduced
-                                            ? { duration: 0 }
-                                            : { duration: 0.42, ease: [0.16, 1, 0.3, 1] }
-                                    }
-                                />
-                            )}
                             <span className="relative">{label}</span>
                             {count != null && (
                                 <span className="relative font-mono text-xs text-muted-foreground tabular-nums">
@@ -732,7 +714,7 @@ function NetworkTabView({
 
     if (list.length === 0) {
         return (
-            <div className="cp-empty-state text-muted-foreground">
+            <div className="cp-empty-state ui-glass-raised text-muted-foreground">
                 <p className="text-sm">
                     {t(`还没有${tab.title(t)}连接`, `No ${tab.title(t)} connections yet`)}
                 </p>
@@ -766,18 +748,22 @@ function NetworkTabView({
                 {list.map((item, idx) => {
                     const duplicate = !!item.name && (nameCounts.get(item.name) ?? 0) > 1;
                     return (
-                        <AdapterRow
+                        <div
                             key={`${item.name}-${idx}`}
-                            item={item}
-                            summary={summarize(item, t)}
-                            duplicateName={duplicate}
-                            busy={busy}
-                            liveStatus={statusByName.get(item.name)}
-                            onToggleEnabled={(v) => onToggleEnabled(idx, v)}
-                            onEdit={() => onEdit(idx)}
-                            onCopy={() => void copyEndpoint(item)}
-                            onDelete={() => onDelete(idx)}
-                        />
+                            className="cp-connection-card ui-glass-raised"
+                        >
+                            <AdapterRow
+                                item={item}
+                                summary={summarize(item, t)}
+                                duplicateName={duplicate}
+                                busy={busy}
+                                liveStatus={statusByName.get(item.name)}
+                                onToggleEnabled={(v) => onToggleEnabled(idx, v)}
+                                onEdit={() => onEdit(idx)}
+                                onCopy={() => void copyEndpoint(item)}
+                                onDelete={() => onDelete(idx)}
+                            />
+                        </div>
                     );
                 })}
             </div>
@@ -790,7 +776,7 @@ function NetworkTabView({
 function EmptyState() {
     const t = useT();
     return (
-        <div className="cp-empty-state text-muted-foreground">
+        <div className="cp-empty-state ui-glass-raised text-muted-foreground">
             <MousePointerClick className="size-8 opacity-40" strokeWidth={1.5} />
             <p className="text-sm">
                 {t(
@@ -811,7 +797,7 @@ function EmptyState() {
 function ConfigLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
     const t = useT();
     return (
-        <div className="cp-empty-state text-muted-foreground">
+        <div className="cp-empty-state ui-glass-raised">
             <p role="alert" className="max-w-xl break-words text-sm text-destructive">
                 {message}
             </p>
