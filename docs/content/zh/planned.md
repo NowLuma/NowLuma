@@ -24,7 +24,7 @@ tutorial: planned
 
 ## 发行与更新
 
-验证 Docker Hub 指定版本的 Linux/amd64 镜像可公开拉取后，再把该版本列入[安装指南](install-docker.md)。发行文件与校验值见 [GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)。
+[Docker 安装指南](install-docker.md#安装向导)使用已通过 Linux/amd64 匿名拉取验证的公开镜像。发行文件与校验值见 [GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)。
 
 <span id="文档站点" class="legacy-heading-anchor" aria-hidden="true"></span>
 

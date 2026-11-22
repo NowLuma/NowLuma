@@ -24,7 +24,7 @@ The rewrite is not shipped. Use the compatibility kernel for current deployments
 
 ## Releases and updates
 
-Verify public Linux/amd64 pulls of the versioned images before listing them in the [installer guide](install-docker.md). Download release files and checksums from the [GitHub release page](https://github.com/NowLuma/NowLuma/releases).
+The [Docker install guide](install-docker.md#installer) uses the public image verified for anonymous Linux/amd64 pulls. Download release files and checksums from the [GitHub release page](https://github.com/NowLuma/NowLuma/releases).
 
 <span id="documentation-site" class="legacy-heading-anchor" aria-hidden="true"></span>
 

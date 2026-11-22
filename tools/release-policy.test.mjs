@@ -143,7 +143,7 @@ test('Docker Hub is optional and receives only the checksum-verified GHCR digest
   );
 });
 
-test('Docker Hub must be anonymously pullable on linux/amd64 before stable latest moves', () => {
+test('Docker Hub must be anonymously pullable on linux/amd64 before latest moves', () => {
   const mirror = step(job(read('release.yml'), 'publish'), 'Mirror and verify the public Docker Hub image');
   assert.match(mirror, /skopeo inspect --no-creds --raw "docker:\/\/\$HUB_IMAGE:\$1" \| sha256sum/);
   assert.match(
@@ -153,11 +153,12 @@ test('Docker Hub must be anonymously pullable on linux/amd64 before stable lates
   const verified = mirror.indexOf('verify_tag "$RELEASE_VERSION"');
   const pull = mirror.indexOf('skopeo --override-os linux --override-arch amd64 copy --src-no-creds');
   const platform = mirror.indexOf('.os == "linux" and .architecture == "amd64"');
-  const stable = mirror.indexOf('if [[ "$RELEASE_PRERELEASE" == \'false\' ]]; then');
-  assert.ok(verified !== -1 && verified < pull && pull < platform && platform < stable);
+  const latest = mirror.indexOf('"docker://$HUB_IMAGE:latest"');
+  assert.ok(verified !== -1 && verified < pull && pull < platform && platform < latest);
+  assert.doesNotMatch(mirror, /RELEASE_PRERELEASE/);
   assert.match(
     mirror,
-    /if \[\[ "\$RELEASE_PRERELEASE" == 'false' \]\]; then\n\s+skopeo copy --all --preserve-digests[^\n]*\\\n\s*"docker:\/\/\$HUB_IMAGE@\$IMAGE_DIGEST" "docker:\/\/\$HUB_IMAGE:latest"\n\s+verify_tag latest\n\s+fi/,
+    /skopeo copy --all --preserve-digests[^\n]*\\\n\s*"docker:\/\/\$HUB_IMAGE@\$IMAGE_DIGEST" "docker:\/\/\$HUB_IMAGE:latest"\n\s+verify_tag latest/,
   );
   assert.equal(mirror.split('"docker://$HUB_IMAGE:latest"').length, 2);
 });

@@ -21,13 +21,13 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Installer
 
-For a prebuilt install, choose a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags). The [GitHub release page](https://github.com/NowLuma/NowLuma/releases) lists release files and checksums. Run this in a Linux terminal:
+The installer defaults to the most recently verified Linux/amd64 Docker Hub image, which may be a prerelease. Run this in Bash on Linux:
 
 ```bash
-bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-Select a language first. After the Docker check, choose an installation directory (default `$HOME/Nowluma`) and an image version. If you know the version, append `--version VERSION` to the command.
+Choose a language and an installation directory (default `$HOME/Nowluma`). No version prompt is needed: on the first install, the wizard pins the digest pulled from `wsxyt/nowluma:latest`. Reruns reuse that digest. To install a particular version, append `--version VERSION` using a [Docker Hub tag](https://hub.docker.com/r/wsxyt/nowluma/tags).
 
 The wizard uses these setup defaults:
 
@@ -44,7 +44,7 @@ Press Enter to accept a default. Use three different ports. The wizard reuses an
 
 The wizard uses the existing Docker and registry mirror settings. If Docker is missing, choose the official installer or the third-party LinuxMirrors installer to select a mirror. The wizard shows the command and asks before running it.
 
-If the first image pull fails, the wizard does not save the new deployment. Run it again with an available version. If your target version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
+If the first pull fails, the wizard does not save the new deployment. For `proxyconnect` errors, check whether the Docker daemon can reach its configured proxy. If the desired version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
 
 After startup, the wizard prints the console address and, for a new deployment, the initial password.
 

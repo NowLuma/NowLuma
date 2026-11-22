@@ -14,7 +14,7 @@ git commit -m "chore(release): 2.5.0"
 ```
 
 - 版本必须是规范 SemVer（`2.5.0`、`2.5.0-rc.1`）。发行 tag 与容器 tag 都无法表示
-  `+build` 元数据，带 `+` 的版本会在版本门禁被拒绝。带 `-` 的预发布版本不会覆盖 `latest`。
+  `+build` 元数据，带 `+` 的版本会在版本门禁被拒绝。
 - `CHANGELOG.md` 必须有与版本完全一致的 `## 2.5.0` 小节，内容就是发行说明；缺失或为空时
   版本门禁会失败。
 - 全部 `packages/*/package.json` 必须与根版本一致，部分 bump 会被拒绝。
@@ -74,7 +74,7 @@ git push origin refs/tags/v2.5.0
 | `linux`   | 构建 `dist/`、打包 `Nowluma-v<version>-linux-x64-lite.tar.gz`、生成构建来源证明、上传到草稿                                                              |
 | `windows` | 类型检查、构建、`tools/build-windows-exe.mjs`、运行打包后的 `deploy/windows/launcher.test.cjs`、上传 exe 与 `build.json`                                 |
 | `docker`  | 构建 `linux/amd64` 镜像，只推送版本 tag `ghcr.io/<owner>/<repo>:<version>`，生成镜像来源证明，上传镜像摘要                                               |
-| `publish` | 下载并重新校验草稿产物；如已配置 Docker Hub，将已校验的 GHCR 摘要镜像到 Hub 并验证匿名拉取；仅稳定版更新 `:latest`；最后公开发行 |
+| `publish` | 下载并重新校验草稿产物；配置 Docker Hub 时验证镜像并更新 Hub 的 `:latest`；仅稳定版更新 GHCR 的 `:latest`；最后公开发行 |
 
 `gates` 失败时草稿保持私有，也不会推送镜像；之后的作业失败时草稿仍保持私有，但已推送的
 版本化镜像 tag 可能已经可见。
@@ -98,7 +98,7 @@ hook 接入与真实 QQ 登录在该 smoke 中是 **NOT RUN**；历史 CI 通过
   GitHub 发行仍是草稿时就已可见；稳定版的 `:latest` 只在 `publish` 作业校验完
   `SHA256SUMS` 之后才移动。
 - Linux 包、Windows 产物与容器镜像都通过 `actions/attest-build-provenance` 生成构建来源证明。
-- Docker Hub 是可选镜像源：配置凭据后，发布作业把同一摘要推送到 `docker.io/wsxyt/nowluma:<version>`，并验证可匿名拉取 Linux/amd64 镜像。预发布版本不会更新任何仓库的 `:latest`。
+- Docker Hub 是可选镜像源：配置凭据后，发布作业把同一摘要推送到 `docker.io/wsxyt/nowluma:<version>`，并验证可匿名拉取 Linux/amd64 镜像。通过验证后更新 Docker Hub 的 `:latest`（包括预发布版）；向导首次安装固定拉到的摘要，重跑不会自动切换版本。
 - 不发布 npm 包。发行说明取自 `CHANGELOG.md` 的对应版本小节。
 - Windows exe 没有代码签名，发行说明与文档都不应声称已签名。
 - 归档重新打开后会校验 `release.json`、`LICENSE`、`LICENSING.md`、`EULA.md` 与 `PRIVACY.md`；更新包不能缺少这些文件。

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# Parse the entire script before executing any part of a streamed download.
+{
 set -euo pipefail
 umask 077
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+case ${BASH_SOURCE[0]} in
+    /dev/fd/*|/proc/self/fd/*) SCRIPT_DIR=$PWD ;;
+    *) SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" ;;
+esac
 MODE=published
 MODE_SELECTED=0
 VERSION=''
@@ -76,7 +81,7 @@ while [[ $# -gt 0 ]]; do
         --directory) [[ $# -ge 2 ]] || { echo '--directory requires a path' >&2; exit 2; }; RELEASE_DIR=$2; shift 2 ;;
         --lang) [[ $# -ge 2 && $2 =~ ^(zh|en)$ ]] || { echo '--lang zh|en' >&2; exit 2; }; LANGUAGE=$2; shift 2 ;;
         -h|--help) printf '%s\n' 'Nowluma: bash install.sh [--version VERSION | --docker | --native --directory PATH] [--lang zh|en]' \
-            '--docker builds from this source checkout. The default mode uses a versioned Docker Hub release.'; exit 0 ;;
+            '--docker builds from this source checkout. New image installs default to the published latest image and pin its digest.'; exit 0 ;;
         *) printf 'Unknown option: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
@@ -225,17 +230,7 @@ if [[ -f .env ]]; then
         fail '已有 .env 没有 NOWLUMA_IMAGE；请填写已发布的版本，不会重建配置。' 'Existing .env has no NOWLUMA_IMAGE. Set it to a published version; settings will not be regenerated.'
     fi
 elif [[ $MODE == published ]]; then
-    if [[ -z $VERSION ]]; then
-        msg 'Docker Hub 镜像标签：%s' 'Docker Hub image tags: %s' "https://hub.docker.com/r/$HUB_REPOSITORY/tags"
-        while true; do
-            prompt '请输入已发布的镜像版本（没有默认版本）：' \
-                'Enter a published image version (no default):' ''
-            VERSION=${ANSWER#v}
-            valid_version "$VERSION" && break
-            msg '请输入具体版本标签，不使用 latest。' 'Enter a specific version tag, not latest.' >&2
-        done
-    fi
-    image="$HUB_IMAGE:$VERSION"
+    image="$HUB_IMAGE:${VERSION:-latest}"
 elif [[ -n $VERSION ]]; then
     fail '此目录是已有源码部署。请省略 --version 以保留源码模式。' 'This is an existing source deployment. Omit --version to keep source mode.'
 fi
@@ -260,6 +255,19 @@ if [[ ! -f .env ]]; then
     timezone=UTC; [[ $LANGUAGE != zh ]] || timezone=Asia/Shanghai
     prompt '时区：' 'Timezone:' "$timezone"; timezone=$ANSWER
     [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ && $timezone != *..* ]] || fail '时区无效。' 'Invalid timezone.'
+    if [[ $image == "$HUB_IMAGE:latest" ]]; then
+        msg '正在拉取 %s……' 'Pulling %s…' "$image"
+        if ! pulled=$("${DOCKER[@]}" pull "$image"); then
+            printf '%s\n' "$pulled" >&2
+            msg '无法拉取镜像。请检查 Docker 服务的网络和代理设置。' \
+                'Image pull failed. Check the Docker daemon network and proxy settings.' >&2
+            exit 3
+        fi
+        digest=$(awk '/^Digest: sha256:[0-9a-f]+$/ {print $2}' <<< "$pulled")
+        [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] ||
+            fail 'Docker 没有返回唯一的镜像摘要，未保存部署。' 'Docker did not return a single image digest; deployment was not saved.'
+        image="$HUB_IMAGE@$digest"
+    fi
     ENV_TEMP=$(mktemp "$SCRIPT_DIR/.env.XXXXXXXX")
     {
         printf '%s\n' "NOWLUMA_LANG=$LANGUAGE" "BIND_ADDRESS=$bind_address" "WEBUI_PORT=$webui_port" \
@@ -292,7 +300,7 @@ if [[ -n $STAGED_DEPLOY ]]; then
         fail '下载的部署文件无效，未启动 Nowluma。' 'Downloaded deployment files are invalid; Nowluma was not started.'
     fi
     # Keep failed pulls out of the final directory so the next run can choose another tag.
-    run_manage pull
+    if [[ $image != "$HUB_IMAGE@"* ]]; then run_manage pull; fi
     mv -T -- "$STAGED_DEPLOY" "$install_dir/deploy" ||
         fail '无法保存部署文件，未启动 Nowluma。' 'Could not save deployment files; Nowluma was not started.'
     STAGED_DEPLOY=''
@@ -339,3 +347,4 @@ if [[ $bind_address == 127.0.0.1 ]]; then
     msg '远程服务器：在自己电脑执行以下 SSH 命令，再打开本机控制台地址。' 'Remote server: run this SSH command on your computer, then open the local console URL.'
     printf 'ssh -L %s:127.0.0.1:%s USER@SERVER\n' "$webui_port" "$webui_port"
 fi
+}
