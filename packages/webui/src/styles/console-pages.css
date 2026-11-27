@@ -155,6 +155,8 @@
 
 .cp-process-list {
   padding-inline: clamp(0.625rem, 2vw, 1rem);
+  /* Keep row hover/current fills inside the raised panel's rounded edge. */
+  overflow: clip;
 }
 
 .cp-process-detail,
@@ -344,6 +346,7 @@
 }
 
 .cp-config-body,
+.cp-debug-editor,
 .cp-adapter-table {
   min-width: 0;
 }
@@ -466,6 +469,12 @@
   border-width: 1px;
   border-radius: calc(var(--radius) + 0.625rem);
   --glass-raised-opacity: 100%;
+}
+
+/* The clear action is a ghost button; keep the whole tool group on the same
+   capsule edge as the adjacent glass controls. */
+.cp-log-tool {
+  border-radius: 999px;
 }
 
 .cp-log-filter {
@@ -701,6 +710,9 @@
   }
 
   .cp-log-columns {
+    /* Cancel the sticky bar's inset (padding + 1px border) so the column
+       labels share the log rows' inline measure and column starts. */
+    margin-inline: calc(-1px - clamp(0.5rem, 2vw, 0.875rem));
     padding: 0.375rem;
     color: var(--muted-foreground);
     font-family: var(--font-mono);

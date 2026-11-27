@@ -503,7 +503,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 .workspace-overview {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
 .workspace-overview-heading,
@@ -518,9 +518,9 @@ html[data-contrast='high'] .workspace-paper-pattern {
 }
 
 .workspace-display-title {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   line-height: 1.2;
 }
 
@@ -531,10 +531,10 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-eyebrow {
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  line-height: 1.5;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
 }
 
 .workspace-connection-workflow {
@@ -550,10 +550,13 @@ html[data-contrast='high'] .workspace-paper-pattern {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 36%, transparent);
   padding: 16px 24px;
   color: var(--muted-foreground);
-  font-size: 12px;
-  gap: 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  gap: 16px;
 }
 
 .workspace-connection-story li {
@@ -565,18 +568,21 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-connection-story li[aria-current='step'] {
   color: var(--foreground);
+  font-weight: 500;
 }
 
 .workspace-stage-number {
   display: grid;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 50%;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .workspace-connection-story li[aria-current='step'] .workspace-stage-number {
@@ -611,6 +617,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
   overflow: hidden;
   font-size: 1rem;
   font-weight: 500;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -618,7 +625,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 .workspace-focused-session-meta {
   margin-top: 4px;
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -659,8 +666,8 @@ html[data-contrast='high'] .workspace-paper-pattern {
   max-width: 60ch;
   margin-top: 8px;
   color: var(--muted-foreground);
-  font-size: 0.8125rem;
-  line-height: 1.65;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 .workspace-workflow-actions {
@@ -692,7 +699,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
 .workspace-live-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -700,6 +707,8 @@ html[data-contrast='high'] .workspace-paper-pattern {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
 }
 
 .workspace-inline-link {
@@ -741,30 +750,35 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 .workspace-instrument-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   color: var(--muted-foreground);
   font-size: 0.6875rem;
-  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.workspace-instrument-label > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .workspace-instrument-value {
   overflow: hidden;
   font-variant-numeric: tabular-nums;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 1.25rem;
   font-weight: 500;
-  line-height: 1.15;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .workspace-instrument-note {
   overflow: hidden;
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--muted-foreground);
-  font-size: 0.625rem;
-  line-height: 1.4;
+  font-size: 0.6875rem;
+  line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -801,14 +815,16 @@ html[data-contrast='high'] .workspace-paper-pattern {
 }
 
 .workspace-panel-heading h4 {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .workspace-panel-description {
   margin-top: 4px;
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .workspace-account-connections {
@@ -850,13 +866,14 @@ html[data-contrast='high'] .workspace-paper-pattern {
 .workspace-endpoint-kind {
   color: var(--muted-foreground);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
+  font-size: 0.6875rem;
+  line-height: 1.4;
 }
 
 .workspace-endpoint-detail,
 .workspace-endpoint-error {
-  margin-top: 5px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: 0.75rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -875,13 +892,16 @@ html[data-contrast='high'] .workspace-paper-pattern {
   padding: 3px 8px;
   font-size: 10px;
   font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .workspace-widget-empty-note {
   border-bottom: 1px solid var(--border);
   padding: 12px 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 0.75rem;
+  line-height: 1.6;
 }
 
 .workspace-host-panels {
@@ -921,7 +941,8 @@ html[data-contrast='high'] .workspace-paper-pattern {
   align-items: center;
   gap: 5px;
   color: var(--muted-foreground);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
+  line-height: 1.4;
 }
 
 .workspace-session-status > span {
@@ -1284,7 +1305,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   .workspace-overview {
-    gap: 20px;
+    gap: 24px;
   }
 
   .workspace-display-title {
@@ -1297,18 +1318,18 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
   .workspace-connection-story {
     padding: 14px 16px;
-    gap: 8px;
-    font-size: 11px;
+    gap: 12px;
+    font-size: 0.75rem;
   }
 
   .workspace-connection-story li {
-    gap: 6px;
+    gap: 8px;
   }
 
   .workspace-stage-number {
-    width: 22px;
-    height: 22px;
-    font-size: 9px;
+    width: 24px;
+    height: 24px;
+    font-size: 0.625rem;
   }
 
   .workspace-workflow-layout {
@@ -1436,6 +1457,23 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
   .workspace-onboarding-heading h1 {
     font-size: 24px;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 620px) {
+  .workspace-auth-identity {
+    display: none;
+  }
+}
+
+/* At phone width the three step columns are narrower than most English
+   labels. Keep the row, but put each marker above its label so the copy
+   wraps on its own column instead of squeezing the marker or overflowing. */
+@media (max-width: 479px) {
+  .workspace-connection-story li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 
