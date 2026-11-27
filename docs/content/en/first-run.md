@@ -59,7 +59,7 @@ This is an acknowledgement that you read the notices, not consent to an extra co
 
 - Under **Set a new access password**, enter the new password in both **New password** and **Confirm new password**. The current password is the one you just used to sign in; you do not enter it again.
 - Use at least 10 characters, including lowercase, uppercase and a special character, with no spaces.
-- **Save and continue** invalidates other sessions. Choose your display effects and the account kernel next.
+- **Save and continue** invalidates other sessions. This browser receives a rotated session and continues to display effects and choose the account kernel.
 - Reopening the wizard under developer settings is a rehearsal. **Finish rehearsal** does not change the password or notice record.
 
 ### Display effects
@@ -115,6 +115,6 @@ Read the startup log for the new initial password and complete first-run setup. 
 | Action                 | Stored in                          | Restart?                  |
 | ---------------------- | ---------------------------------- | ------------------------- |
 | Notice acknowledgement | Server config                      | No                        |
-| Password change        | scrypt hash in `config/webui.json` | No; other sessions expire |
+| Password change        | scrypt hash in `config/webui.json` | No; other sessions expire and this browser receives a rotated session |
 | Enable/disable 2FA     | `config/webui.json`                | No                        |
 | Log out                | Current browser session only       | No                        |

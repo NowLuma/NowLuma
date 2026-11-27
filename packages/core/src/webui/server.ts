@@ -602,14 +602,23 @@ export async function initWebUI(
             return c.json({ success: false, message: '密码修改失败' }, 400);
         }
 
-        // Invalidate every session, including the current one. If the old
-        // password was compromised, the attacker may already hold the current
-        // token; rotating credentials must rotate sessions too.
+        // Revoke the old token and every other session, then continue the
+        // already-authenticated browser with a fresh token. The caller just
+        // proved the old password (and any active second factor), so forcing
+        // this browser through a second login would make the first-run wizard
+        // unable to advance to its next authenticated step.
         sessionTokens.clear();
+        const nextToken = randomBytes(32).toString('hex');
+        sessionTokens.set(nextToken, {
+            expiresAt: Date.now() + TOKEN_TTL_MS,
+            mustChangePassword: false,
+        });
         clearAvatarSessionCookie(c, listener.tlsEnabled === true);
         clearDesktopSessionCookie(c, listener.tlsEnabled === true);
-        log.info('password updated; all sessions invalidated');
-        return c.json({ success: true, requireRelogin: true });
+        setAvatarSessionCookie(c, nextToken, listener.tlsEnabled === true);
+        setDesktopSessionCookie(c, nextToken, listener.tlsEnabled === true);
+        log.info('password updated; previous session and all other sessions invalidated');
+        return c.json({ success: true, requireRelogin: false, token: nextToken });
     });
 
     const totpDisabledInDev = () => auth.isDevMode();

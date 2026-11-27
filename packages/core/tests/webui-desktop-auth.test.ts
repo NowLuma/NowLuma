@@ -58,10 +58,10 @@ function call(route: string, token = '', body?: unknown, cookie = '') {
 }
 
 function desktopCookie(response: Response) {
-    return response.headers
+    const cookies = response.headers
         .getSetCookie()
-        .find((value) => value.startsWith('nowluma_desktop_session='))!
-        .split(';', 1)[0]!;
+        .filter((value) => value.startsWith('nowluma_desktop_session='));
+    return cookies.at(-1)!.split(';', 1)[0]!;
 }
 
 describe('desktop uses the actual WebUI authorization gates', () => {
@@ -106,16 +106,19 @@ describe('desktop uses the actual WebUI authorization gates', () => {
         const cookie = desktopCookie(login);
         expect((await call('/desktop/', '', undefined, cookie)).status).toBe(401);
         expect((await call('/api/desktop/session', token, {})).status).toBe(403);
-        expect(
-            (
-                await call('/api/auth/change-password', token, {
-                    oldPassword: password,
-                    newPassword: 'Changed!Password123',
-                })
-            ).status,
-        ).toBe(200);
+        const rotation = await call('/api/auth/change-password', token, {
+            oldPassword: password,
+            newPassword: 'Changed!Password123',
+        });
+        expect(rotation.status).toBe(200);
+        const rotated = (await rotation.json()) as {
+            success: boolean;
+            requireRelogin: boolean;
+            token: string;
+        };
+        expect(rotated).toMatchObject({ success: true, requireRelogin: false });
+        expect(rotated.token).not.toBe(token);
         expect((await call('/desktop/', '', undefined, cookie)).status).toBe(401);
-        const next = await call('/api/login', '', { password: 'Changed!Password123' });
-        expect((await call('/desktop/', '', undefined, desktopCookie(next))).status).toBe(200);
+        expect((await call('/desktop/', '', undefined, desktopCookie(rotation))).status).toBe(200);
     });
 });

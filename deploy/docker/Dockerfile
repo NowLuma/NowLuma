@@ -17,6 +17,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates curl xvfb x11-utils x11vnc novnc \
         openbox dbus-x11 ffmpeg tini procps util-linux \
+        fontconfig fonts-noto-cjk fonts-noto-color-emoji \
+    && fc-cache -f \
+    && test -n "$(fc-list -f '%{file}\n' ':charset=4E2D')" \
+    && test -n "$(fc-list -f '%{file}\n' ':charset=1F600')" \
     && rm -rf /var/lib/apt/lists/*
 RUN set -eu; \
     case "$TARGETARCH" in \

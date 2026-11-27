@@ -716,12 +716,36 @@ class HttpApiClient implements ApiClient {
     }
 
     async changePassword(oldPassword: string, newPassword: string): Promise<ChangePasswordResult> {
+        const token = this.currentToken;
+
         try {
-            const data = await this.postJson<{ success?: boolean; message?: string }>(
-                '/api/auth/change-password',
-                { oldPassword, newPassword },
-            );
-            return { success: !!data.success, message: data.message };
+            const data = await this.postJson<{
+                success?: boolean;
+                message?: string;
+                token?: string;
+            }>('/api/auth/change-password', { oldPassword, newPassword });
+
+            if (data.success !== true) {
+                return { success: false, message: data.message };
+            }
+
+            if (typeof data.token !== 'string' || data.token.length === 0) {
+                return {
+                    success: false,
+                    message: '密码已修改，但服务端未返回有效会话，请重新登录',
+                };
+            }
+
+            if (this.currentToken !== token) {
+                return {
+                    success: false,
+                    message: '密码已修改，但登录状态已变化，请确认当前会话',
+                };
+            }
+
+            // Only the session that initiated this request may adopt its replacement.
+            this.setToken(data.token);
+            return { success: true, message: data.message, token: data.token };
         } catch (e) {
             if (e instanceof ApiError) {
                 return { success: false, message: e.message };

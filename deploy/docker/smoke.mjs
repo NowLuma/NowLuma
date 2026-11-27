@@ -154,6 +154,28 @@ async function checkDesktopAndKernelGate() {
   assert.equal(system.deployment.vncPort, 0);
   assert.equal(system.deployment.vncUrl, '/desktop/');
   docker('exec', '--user', '1000:1000', name, 'node', '/usr/local/lib/nowluma-healthcheck.cjs');
+  const cjkFont = docker(
+    'exec',
+    '--user',
+    '1000:1000',
+    name,
+    'fc-list',
+    '-f',
+    '%{file}\n',
+    ':charset=4E2D',
+  );
+  const emojiFont = docker(
+    'exec',
+    '--user',
+    '1000:1000',
+    name,
+    'fc-list',
+    '-f',
+    '%{file}\n',
+    ':charset=1F600',
+  );
+  assert.ok(cjkFont, 'No installed font covers U+4E2D');
+  assert.ok(emojiFont, 'No installed font covers U+1F600');
   await checkAuthenticatedDesktop();
   for (let attempt = 0; attempt < 60; attempt++) {
     const { list } = await api('/api/processes');

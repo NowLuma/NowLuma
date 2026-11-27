@@ -1,6 +1,9 @@
 import crypto, { createHash } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
 import net from 'node:net';
 import type { AddressInfo, Socket } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import tls from 'node:tls';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -374,6 +377,26 @@ function track(client: WebSocketClient) {
 }
 
 async function listenPlain(): Promise<{ port: number; nextSocket: () => Promise<Socket> }> {
+    const { address, nextSocket } = await listenSocket({ port: 0, host: '127.0.0.1' });
+    return { port: (address as AddressInfo).port, nextSocket };
+}
+
+async function listenIpc(): Promise<{ socketPath: string; nextSocket: () => Promise<Socket> }> {
+    // HTTP inspection can replace malformed TCP responses. IPC preserves the
+    // exact bytes while exercising the real client, parser and socket lifecycle.
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'nowluma-ws-'));
+    closers.push(() => rm(directory, { recursive: true, force: true }));
+    const socketPath =
+        process.platform === 'win32'
+            ? `\\\\.\\pipe\\${path.basename(directory)}`
+            : path.join(directory, 'socket');
+    const { nextSocket } = await listenSocket({ path: socketPath });
+    return { socketPath, nextSocket };
+}
+
+async function listenSocket(
+    options: net.ListenOptions,
+): Promise<{ address: AddressInfo | string; nextSocket: () => Promise<Socket> }> {
     const sockets = new Set<Socket>();
     const queued: Socket[] = [];
     const waiters: Array<(socket: Socket) => void> = [];
@@ -390,12 +413,12 @@ async function listenPlain(): Promise<{ port: number; nextSocket: () => Promise<
     await new Promise<void>((resolve, reject) => {
         const onError = (err: Error) => reject(err);
         server.once('error', onError);
-        server.listen(0, '127.0.0.1', () => {
+        server.listen(options, () => {
             server.off('error', onError);
             resolve();
         });
     });
-    const port = (server.address() as AddressInfo).port;
+    const address = server.address()!;
     closers.push(() => {
         for (const socket of sockets) {
             socket.destroy();
@@ -406,7 +429,7 @@ async function listenPlain(): Promise<{ port: number; nextSocket: () => Promise<
         });
     });
     return {
-        port,
+        address,
         nextSocket: () => {
             const socket = queued.shift();
 
@@ -695,10 +718,11 @@ describe('WebSocketClient', () => {
     });
 
     it('keeps CONNECTING while the response is incomplete and aborts once it exceeds 16384 bytes', async () => {
-        const { port, nextSocket } = await listenPlain();
-        const client = createClient(`ws://127.0.0.1:${port}`);
+        const { socketPath, nextSocket } = await listenIpc();
+        const client = createClient('ws://127.0.0.1', { socketOptions: { path: socketPath } });
         const events = track(client);
         const socket = await nextSocket();
+        await readRequest(socket);
         await writeAndTick(socket, Buffer.alloc(16384, 0x58));
         expect(client.readyState).toBe(0);
         expect(events.errors).toEqual([]);
@@ -774,8 +798,8 @@ describe('WebSocketClient', () => {
             message: 'WebSocket handshake failed: Unexpected Sec-WebSocket-Protocol',
         },
     ])('aborts the handshake on $name', async ({ respond, message }) => {
-        const { port, nextSocket } = await listenPlain();
-        const client = createClient(`ws://127.0.0.1:${port}`);
+        const { socketPath, nextSocket } = await listenIpc();
+        const client = createClient('ws://127.0.0.1', { socketOptions: { path: socketPath } });
         const events = track(client);
         const socket = await nextSocket();
         const req = await readRequest(socket);

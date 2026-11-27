@@ -96,7 +96,7 @@ These are UI preferences, auto-saved and immediate.
 
 There is one local `admin` account. The password is stored as a scrypt hash in `config/webui.json`, never in plaintext.
 
-- `访问密码` → `修改密码`: requires the current password and a matching new password; other sessions expire immediately.
+- `访问密码` → `修改密码`: requires the current password and a matching new password; other sessions expire immediately, while the browser that completed the change continues with a rotated session.
 - `退出登录`: clears the current browser session only.
 - Password recovery: see [First run](first-run.md#forgot-password-or-lost-2fa).
 

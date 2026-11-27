@@ -849,7 +849,9 @@ export class DemoApi {
 
             this.state.password = DEMO_NEW_PASSWORD;
             this.state.mustChange = false;
-            return json({ success: true });
+            this.state.token = `demo-session-${++this.state.generation}`;
+            this.closeFeeds();
+            return json({ success: true, requireRelogin: false, token: this.state.token });
         }
 
         return null;

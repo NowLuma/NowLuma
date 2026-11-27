@@ -66,7 +66,12 @@ export type TotpBeginResult =
 export type TotpConfirmResult =
     { success: true; recoveryCodes: string[] } | { success: false; message: string };
 
-export type ChangePasswordResult = { success: boolean; message?: string };
+export type ChangePasswordResult = {
+    success: boolean;
+    message?: string;
+    /** A rotated session for the browser that completed the password change. */
+    token?: string;
+};
 
 export interface AgreementDoc {
     id: 'eula' | 'privacy';

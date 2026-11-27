@@ -84,7 +84,7 @@ Docker desktop is served under `/desktop/`:
 ## Tokens, passwords and sessions
 
 - Sessions live in the browser; `退出登录` clears the current browser token.
-- Changing the access password immediately invalidates other sessions.
+- Changing the access password immediately invalidates other sessions; the browser that completed the change receives a rotated session and does not need to sign in again.
 - For [link sign-in](first-run.md#link-login), keep the URL private: it contains the access password.
 - With 2FA enabled, a one-time code or recovery code is also required; recovery codes are shown once.
 
