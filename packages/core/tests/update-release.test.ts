@@ -82,7 +82,7 @@ describe('existing GitHub release pages', () => {
                 : new Response(latest),
         );
         vi.stubGlobal('fetch', fetchMock);
-        expect(await fetchRelease(undefined, direct)).toMatchObject({
+        expect(await fetchRelease('stable', direct)).toMatchObject({
             fromPage: true,
             data: { tag_name: 'v2.0.1' },
         });
@@ -92,39 +92,23 @@ describe('existing GitHub release pages', () => {
         ]);
     });
 
-    it('waits for a valid mirror page after fast invalid responses and cancels other requests', async () => {
-        let finish!: (response: Response) => void;
-        const pending = new Promise<Response>((resolve) => {
-            finish = resolve;
-        });
-        const fetchMock = vi.fn<typeof fetch>(async (url) => {
-            if (String(url).startsWith('https://working.example/')) {
-                return pending;
-            }
-
-            return new Response('HTML challenge');
-        });
-        vi.stubGlobal('fetch', fetchMock);
-        const result = fetchRelease('2.0.1', {
-            ...direct,
-            mode: 'auto',
-            mirrors: ['https://bad.example', 'https://working.example'],
-        });
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-        finish(new Response(row));
-        expect(await result).toMatchObject({
-            fromPage: true,
-            data: { assets: [{ name, digest }] },
-        });
-        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-            'https://api.github.com/repos/NowLuma/NowLuma/releases/tags/v2.0.1',
-            'https://github.com/NowLuma/NowLuma/releases/expanded_assets/v2.0.1',
-            'https://bad.example/https://github.com/NowLuma/NowLuma/releases/expanded_assets/v2.0.1',
-            'https://working.example/https://github.com/NowLuma/NowLuma/releases/expanded_assets/v2.0.1',
-        ]);
-        expect(fetchMock.mock.calls.slice(1).every(([, options]) => options?.signal?.aborted)).toBe(
-            true,
+    it('does not authorize a download with a mirror-supplied checksum', async () => {
+        const fetchMock = vi.fn<typeof fetch>(async (input) =>
+            String(input).startsWith('https://files.example/')
+                ? new Response(row)
+                : new Response('unavailable', { status: 503 }),
         );
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(
+            fetchRelease(
+                { version: '2.0.1' },
+                { mode: 'mirror', mirror: 'https://files.example', mirrors: [] },
+            ),
+        ).rejects.toThrow('无法从 GitHub 获取官方更新校验信息');
+        expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).host)).toEqual([
+            'api.github.com',
+            'github.com',
+        ]);
     });
 
     it('keeps direct release lookup when the pinned download mirror cannot serve pages', async () => {
@@ -135,7 +119,7 @@ describe('existing GitHub release pages', () => {
         );
         vi.stubGlobal('fetch', fetchMock);
         expect(
-            await fetchRelease(undefined, {
+            await fetchRelease('stable', {
                 ...direct,
                 mode: 'mirror',
                 mirror: 'https://files.example',
@@ -143,11 +127,33 @@ describe('existing GitHub release pages', () => {
         ).toMatchObject({ data: { tag_name: 'v2.0.1' } });
     });
 
+    it('can discover the next RC from the public feed when the API is rate-limited', async () => {
+        const feed = [
+            'https://other.example/NowLuma/NowLuma/releases/tag/v9.0.0',
+            'https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.9',
+            'https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.10',
+        ]
+            .map((href) => `<entry><link rel="alternate" href="${href}"/></entry>`)
+            .join('');
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url) =>
+                String(url).endsWith('/releases.atom')
+                    ? new Response(`<feed>${feed}</feed>`)
+                    : new Response(null, { status: 403 }),
+            ),
+        );
+        expect(await fetchRelease('preview', direct)).toMatchObject({
+            fromPage: true,
+            data: { tag_name: 'v2.5.0-rc.10' },
+        });
+    });
+
     it('rejects oversized release responses', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(async () => new Response('x'.repeat(1024 * 1024 + 1))),
         );
-        await expect(fetchRelease(undefined, direct)).rejects.toThrow('发布信息过大');
+        await expect(fetchRelease('stable', direct)).rejects.toThrow('发布信息过大');
     });
 });

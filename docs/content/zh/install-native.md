@@ -6,7 +6,7 @@ tutorial: install-native
 
 # 原生安装
 
-从 [GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)下载对应系统的发行文件，对照 `SHA256SUMS` 核对 SHA-256。
+Linux Lite 完全在终端安装，不需要浏览器或手动下载；Windows 使用发行页的单文件 EXE，并对照 `SHA256SUMS` 核对 SHA-256。
 
 ![原生启动后使用的控制台登录页](/images/tutorials/login.png)
 
@@ -22,11 +22,28 @@ tutorial: install-native
 - Node.js `24.22.1`（24.x）或 `>=26.12.1`；有随包 Node 时优先使用随包版本。
 - 已安装并可登录桌面 QQ。
 
-启动：
+终端安装步骤：在一个新的空目录中下载、校验并解压，避免覆盖已有安装的数据。
 
 ```bash
-bash launcher.sh
+(
+  set -euo pipefail
+  version=2.5.1
+  archive="Nowluma-v$version-linux-x64-lite.tar.gz"
+  base="https://github.com/NowLuma/NowLuma/releases/download/v$version"
+  mkdir -m 700 -- "$HOME/Nowluma-$version"
+  cd -- "$HOME/Nowluma-$version"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/$archive"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/SHA256SUMS"
+  awk -v name="$archive" '$2 == name' SHA256SUMS | sha256sum --check --strict
+  tar -xzf "$archive"
+  exec bash launcher.sh
+)
 ```
+
+- 校验失败时不要解压或运行；重新下载后再试。没有 `sha256sum` 的发行版可用 `shasum -a 256 -c`。
+- 镜像站可以转发发行包，但安装与升级的校验值必须能从官方 GitHub 发行页的 `SHA256SUMS`（或官方发行元数据）获得；只信镜像自己提供的校验值不足以证明来源。
+- 不要在原安装目录上就地解压覆盖。升级时先停止旧实例，再把 `config/`、`data/`、`logs/` 复制到新目录；QQ 数据仍留在 QQ 自己的目录。
+- 启动器也可使用同目录的可执行 `node`；完整发行包的 Node 基线以 `check-node-version.cjs` 为准。
 
 从源码目录安装到指定发行目录：
 

@@ -3,7 +3,7 @@ import { compareVersions, parseVersion } from '@nowluma/common/semver';
 import { createLogger } from '@nowluma/common/logger';
 import { createSingleFlightCache } from '@nowluma/common/single-flight-cache';
 import type { UpdateSourceConfig } from '@nowluma/common/update-source';
-import { fetchRelease } from './release';
+import { fetchRelease, releaseChannel } from './release';
 import { readUpdateSource } from './sources';
 
 const log = createLogger('Update');
@@ -15,7 +15,7 @@ const NOTES_MAX = 4_000; // cap the release-body we hand back to the client
 export interface UpdateCheckResult {
     /** The running build's version (no `v` prefix). */
     current: string;
-    /** Latest stable release version, or null when the check did not complete. */
+    /** Latest published version on the running build's channel, or null on failure. */
     latest: string | null;
     /** True only when `latest` is strictly newer than `current`. */
     hasUpdate: boolean;
@@ -72,10 +72,9 @@ async function fetchLatest(
     };
 
     try {
-        // `/releases/latest` already excludes drafts and prereleases, so this is
-        // stable-channel by construction.
+        const channel = releaseChannel(current);
         const { data: rel } = await fetchRelease(
-            undefined,
+            channel,
             source,
             `Nowluma/${current}`,
             FETCH_TIMEOUT_MS,
@@ -94,7 +93,14 @@ async function fetchLatest(
 
         const latest = tag.startsWith('v') ? tag.slice(1) : tag;
 
-        if (!parseVersion(latest)) {
+        const parsed = parseVersion(latest);
+
+        if (
+            !parsed ||
+            ('draft' in rel && rel.draft === true) ||
+            (channel === 'stable' &&
+                (parsed.prerelease.length > 0 || ('prerelease' in rel && rel.prerelease === true)))
+        ) {
             return { ...base, error: 'invalid release version' };
         }
 

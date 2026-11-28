@@ -17,6 +17,7 @@ const SYMBOL = /[!-/:-@[-`{-~]/;
 export type PasswordRule = {
     id: string;
     label: string;
+    optional?: boolean;
     test: (value: string) => boolean;
 };
 
@@ -122,7 +123,8 @@ export function usePasswordStrength(
                   : Math.max(1, Math.floor((passed / rules.length) * max));
 
         const label = strengthLabels[score];
-        const unmet = evaluated.filter((r) => !r.met);
+        const unmet = evaluated.filter((rule) => !rule.met && !rule.optional);
+        const suggestions = evaluated.filter((rule) => !rule.met && rule.optional);
 
         const announcement =
             value.length === 0
@@ -140,6 +142,12 @@ export function usePasswordStrength(
                                   `仍需满足：${unmet.map((r) => r.label).join('、')}。`,
                                   `Still required: ${unmet.map((r) => r.label).join(', ')}.`,
                               ),
+                      suggestions.length
+                          ? t(
+                                `强度建议：${suggestions.map((rule) => rule.label).join('、')}。`,
+                                `Strength tips: ${suggestions.map((rule) => rule.label).join(', ')}.`,
+                            )
+                          : '',
                   ]
                       .filter(Boolean)
                       .join(' ');
@@ -336,7 +344,12 @@ export function PasswordStrength({
                                             rule.met ? 'text-foreground' : 'text-muted-foreground'
                                         }`}
                                     >
-                                        {rule.label}
+                                        {rule.optional
+                                            ? t(
+                                                  `${rule.label}（建议）`,
+                                                  `${rule.label} (recommended)`,
+                                              )
+                                            : rule.label}
                                     </span>
                                     <span className="sr-only">
                                         {rule.met ? t('已满足', 'Met') : t('未满足', 'Not met')}

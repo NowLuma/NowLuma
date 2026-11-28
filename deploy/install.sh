@@ -12,7 +12,6 @@ MODE_SELECTED=0
 VERSION=''
 ASSET_BASE=https://nowluma.github.io/NowLuma
 HUB_REPOSITORY=wsxyt/nowluma
-HUB_IMAGE="docker.io/$HUB_REPOSITORY"
 RELEASE_DIR="$SCRIPT_DIR/../dist"
 LANGUAGE=''
 TEMPORARY=''
@@ -35,7 +34,7 @@ prompt() {
 }
 confirm() {
     while true; do
-        prompt "$1" "$2" y
+        prompt "$1" "$2" "${3:-y}"
         case "$ANSWER" in y|Y|yes|YES) return 0 ;; n|N|no|NO) return 1 ;; esac
         msg '请输入 y 或 n。' 'Enter y or n.' >&2
     done
@@ -223,14 +222,14 @@ if [[ $MODE_SELECTED == 1 && -n $image ]]; then
     fail '此目录已保存镜像版本。--docker 不会把现有镜像部署切换为源码构建。' 'This deployment has a saved image. --docker will not switch an existing image deployment to a source build.'
 fi
 if [[ -f .env ]]; then
-    if [[ -n $VERSION && $image != "$HUB_IMAGE:$VERSION" ]]; then
+    if [[ -n $VERSION && ${image#docker.io/} != "$HUB_REPOSITORY:$VERSION" ]]; then
         fail '已有设置不会被覆盖。请使用已保存的版本或按升级说明操作。' 'Existing settings will not be overwritten. Use the saved version or follow the upgrade instructions.'
     fi
     if [[ -z $image && $MODE == published ]]; then
         fail '已有 .env 没有 NOWLUMA_IMAGE；请填写已发布的版本，不会重建配置。' 'Existing .env has no NOWLUMA_IMAGE. Set it to a published version; settings will not be regenerated.'
     fi
 elif [[ $MODE == published ]]; then
-    image="$HUB_IMAGE:${VERSION:-latest}"
+    image="$HUB_REPOSITORY:${VERSION:-latest}"
 elif [[ -n $VERSION ]]; then
     fail '此目录是已有源码部署。请省略 --version 以保留源码模式。' 'This is an existing source deployment. Omit --version to keep source mode.'
 fi
@@ -242,9 +241,19 @@ read_port() {
     done
 }
 if [[ ! -f .env ]]; then
-    prompt '访问方式：1. 仅本机/SSH（推荐）  2. 局域网' 'Access: 1. Localhost/SSH (recommended)  2. LAN' 1
-    case "$ANSWER" in 1) bind_address=127.0.0.1 ;; 2) bind_address=0.0.0.0 ;; *) fail '访问方式必须为 1 或 2。' 'Access must be 1 or 2.' ;; esac
-    [[ $bind_address != 0.0.0.0 ]] || msg '局域网 HTTP 未加密；远程访问建议使用 SSH 或 HTTPS。' 'LAN HTTP is unencrypted; use SSH or HTTPS for remote access.'
+    prompt '访问方式：1. 仅本机/SSH（推荐）  2. 局域网  3. 公网控制台' \
+        'Access: 1. Localhost/SSH (recommended)  2. LAN  3. Public console' 1
+    console_bind=''
+    case "$ANSWER" in
+        1) bind_address=127.0.0.1 ;;
+        2) bind_address=0.0.0.0
+           msg '局域网 HTTP 未加密；远程访问建议使用 SSH 或 HTTPS。' 'LAN HTTP is unencrypted; use SSH or HTTPS for remote access.' ;;
+        3) msg '公网会暴露管理入口。明文 HTTP 不能保护密码或会话；请使用 HTTPS、限制防火墙来源并开启双重验证。机器人端口仍仅限本机。' \
+               'Public access exposes the management console. HTTP does not protect passwords or sessions. Use HTTPS, restrict firewall sources and enable 2FA. Bot ports stay on loopback.'
+           confirm '确认将控制台端口发布到所有接口？' 'Publish the console port on all interfaces?' n || cancel
+           bind_address=127.0.0.1; console_bind=0.0.0.0 ;;
+        *) fail '访问方式必须为 1、2 或 3。' 'Access must be 1, 2 or 3.' ;;
+    esac
     while true; do
         read_port '控制台与 QQ 桌面端口：' 'Console and QQ desktop port:' 5099; webui_port=$ANSWER
         read_port '机器人 HTTP 接口端口：' 'Bot HTTP endpoint port:' 3000; http_port=$ANSWER
@@ -255,23 +264,26 @@ if [[ ! -f .env ]]; then
     timezone=UTC; [[ $LANGUAGE != zh ]] || timezone=Asia/Shanghai
     prompt '时区：' 'Timezone:' "$timezone"; timezone=$ANSWER
     [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ && $timezone != *..* ]] || fail '时区无效。' 'Invalid timezone.'
-    if [[ $image == "$HUB_IMAGE:latest" ]]; then
+    if [[ $image == "$HUB_REPOSITORY:latest" ]]; then
         msg '正在拉取 %s……' 'Pulling %s…' "$image"
-        if ! pulled=$("${DOCKER[@]}" pull "$image"); then
-            printf '%s\n' "$pulled" >&2
+        if ! "${DOCKER[@]}" pull "$image"; then
             msg '无法拉取镜像。请检查 Docker 服务的网络和代理设置。' \
                 'Image pull failed. Check the Docker daemon network and proxy settings.' >&2
             exit 3
         fi
-        digest=$(awk '/^Digest: sha256:[0-9a-f]+$/ {print $2}' <<< "$pulled")
+        # Leave the pull attached to the terminal. A local image can also have
+        # digests for other repositories; those must not select our deployment.
+        digest=$("${DOCKER[@]}" image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image" |
+            awk -F@ -v repo="$HUB_REPOSITORY" '$1 == repo || $1 == "docker.io/" repo {print $2}' | sort -u)
         [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] ||
             fail 'Docker 没有返回唯一的镜像摘要，未保存部署。' 'Docker did not return a single image digest; deployment was not saved.'
-        image="$HUB_IMAGE@$digest"
+        image="$HUB_REPOSITORY@$digest"
     fi
     ENV_TEMP=$(mktemp "$SCRIPT_DIR/.env.XXXXXXXX")
     {
         printf '%s\n' "NOWLUMA_LANG=$LANGUAGE" "BIND_ADDRESS=$bind_address" "WEBUI_PORT=$webui_port" \
             "ONEBOT_HTTP_PORT=$http_port" "ONEBOT_WS_PORT=$ws_port" "TZ=$timezone"
+        if [[ -n $console_bind ]]; then printf '%s\n' "WEBUI_BIND_ADDRESS=$console_bind"; fi
         if [[ -n $image ]]; then printf '%s\n' "NOWLUMA_IMAGE=$image"; fi
     } > "$ENV_TEMP"
     # Publish the complete file atomically without overwriting an existing .env.
@@ -281,13 +293,9 @@ if [[ ! -f .env ]]; then
 else
     msg '使用已有部署配置。' 'Using the existing deployment settings.'
     bind_address=$(read_env BIND_ADDRESS); bind_address=${bind_address:-127.0.0.1}
+    console_bind=$(read_env WEBUI_BIND_ADDRESS)
     webui_port=$(read_env WEBUI_PORT); webui_port=${webui_port:-5099}
 fi
-
-run_manage() {
-    if [[ $SUDO_MANAGE == 1 ]]; then sudo env NOWLUMA_LANG="$LANGUAGE" bash "$SCRIPT_DIR/manage.sh" "$@"
-    else NOWLUMA_LANG="$LANGUAGE" bash "$SCRIPT_DIR/manage.sh" "$@"; fi
-}
 
 if [[ -n $STAGED_DEPLOY ]]; then
     msg '正在下载部署文件……' 'Downloading deployment files…'
@@ -299,10 +307,28 @@ if [[ -n $STAGED_DEPLOY ]]; then
         ! NOWLUMA_IMAGE="$image" "${DOCKER[@]}" compose -f "$SCRIPT_DIR/docker-compose.yml" config --quiet; then
         fail '下载的部署文件无效，未启动 Nowluma。' 'Downloaded deployment files are invalid; Nowluma was not started.'
     fi
+fi
+
+manager="$SCRIPT_DIR/manage.sh"
+if ! grep -Fxq '# Nowluma management CLI' "$manager"; then
+    # Keep the old file for rollback; the CLI can operate on its directory.
+    [[ -n $TEMPORARY ]] || TEMPORARY=$(mktemp -d)
+    manager="$TEMPORARY/manage.sh"
+    download "$ASSET_BASE/manage.sh" "$manager" && bash -n "$manager" &&
+        grep -Fxq '# Nowluma management CLI' "$manager" ||
+        fail '未取得新版管理命令，原部署未被修改。' 'Could not obtain the new manager; the existing deployment was not changed.'
+fi
+privilege=user; [[ $SUDO_MANAGE == 0 ]] || privilege=sudo
+run_manage() {
+    NOWLUMA_LANG="$LANGUAGE" bash "$manager" --deployment "$SCRIPT_DIR" "$privilege" "$@"
+}
+
+if [[ -n $STAGED_DEPLOY ]]; then
     # Keep failed pulls out of the final directory so the next run can choose another tag.
-    if [[ $image != "$HUB_IMAGE@"* ]]; then run_manage pull; fi
+    if [[ $image != "$HUB_REPOSITORY@"* ]]; then run_manage pull; fi
     mv -T -- "$STAGED_DEPLOY" "$install_dir/deploy" ||
         fail '无法保存部署文件，未启动 Nowluma。' 'Could not save deployment files; Nowluma was not started.'
+    [[ $manager != "$STAGED_DEPLOY/manage.sh" ]] || manager="$install_dir/deploy/manage.sh"
     STAGED_DEPLOY=''
     SCRIPT_DIR="$install_dir/deploy"
     cd "$SCRIPT_DIR"
@@ -324,6 +350,27 @@ else
     fi
     exit "$status"
 fi
+
+# Install the same manager for CLI use without embedding a user's writable
+# deployment path in a system-wide executable. Registration is per user.
+if [[ $(id -u) == 0 ]]; then bin_dir=${NOWLUMA_BIN_DIR:-/usr/local/bin}
+else bin_dir=${NOWLUMA_BIN_DIR:-$HOME/.local/bin}; fi
+[[ $bin_dir == /* && $SCRIPT_DIR != *$'\n'* ]] || fail '管理命令目录必须是绝对路径，部署路径不能含换行。' 'Use an absolute CLI directory and a deployment path without newlines.'
+[[ -d $bin_dir ]] || install -d -m 0755 -- "$bin_dir"
+cli="$bin_dir/nowluma"
+if [[ -e $cli || -L $cli ]]; then
+    [[ -f $cli && ! -L $cli ]] && grep -Fxq '# Nowluma management CLI' "$cli" ||
+        fail '已有同名命令，不会覆盖。可用 NOWLUMA_BIN_DIR 选择其他目录。' 'An unrelated nowluma command already exists. Choose another directory with NOWLUMA_BIN_DIR.'
+fi
+install -T -m 0755 -- "$manager" "$cli"
+registration_dir="${XDG_CONFIG_HOME:-$HOME/.config}/nowluma"
+mkdir -p -- "$registration_dir"
+[[ ! -L $registration_dir/deployment && ( ! -e $registration_dir/deployment || -f $registration_dir/deployment ) ]] ||
+    fail '管理命令配置不是普通文件。' 'The CLI registration is not a regular file.'
+ENV_TEMP=$(mktemp "$registration_dir/.deployment.XXXXXXXX")
+printf '%s\n%s\n' "$SCRIPT_DIR" "$privilege" > "$ENV_TEMP"
+mv -fT -- "$ENV_TEMP" "$registration_dir/deployment"
+ENV_TEMP=''
 compose() { NOWLUMA_IMAGE=${image:-nowluma:local} "${DOCKER[@]}" compose -f "$SCRIPT_DIR/docker-compose.yml" "$@"; }
 initial_password=$(compose logs --no-color --since "$started_at" nowluma 2>/dev/null | sed -n 's/.*initial credentials: user=admin password=\([a-f0-9]\{16\}\).*/\1/p' | tail -1) || initial_password=''
 msg '\nNowluma 已启动。' '\nNowluma is running.'
@@ -332,18 +379,22 @@ else msg '控制台密码保持不变；首次凭据可在 manage.sh logs 中查
 published_port=$(compose port nowluma 5099 2>/dev/null | head -1 | awk -F: '{print $NF}') || published_port=''
 [[ ! $published_port =~ ^[1-9][0-9]{0,4}$ ]] || webui_port=$published_port
 host=127.0.0.1
-if [[ $bind_address == 0.0.0.0 ]]; then host=$(hostname -I 2>/dev/null | awk '{print $1}') || host=''; host=${host:-SERVER_IP}; fi
+if [[ ${console_bind:-$bind_address} == 0.0.0.0 ]]; then host=$(hostname -I 2>/dev/null | awk '{print $1}') || host=''; host=${host:-SERVER_IP}; fi
 [[ $host != *:* ]] || host="[$host]"
 msg '控制台地址：http://%s:%s' 'Console: http://%s:%s' "$host" "$webui_port"
 msg '登录控制台后完成首次设置，点“打开 QQ 桌面”扫码，不需要额外 VNC 密码。' 'Complete console setup, then click “Open QQ desktop” and scan. No extra VNC password is required.'
 msg '在 QQ 设置中勾选自动登录。服务重启会保留相同 QQ 用户目录。' 'Enable automatic login in QQ. Restarts reuse the same QQ HOME.'
 msg '安装目录：%s' 'Installation directory: %s' "$(dirname "$SCRIPT_DIR")"
-msg '日常命令（在安装目录执行）：' 'Daily commands (from the installation directory):'
-prefix=''; [[ $SUDO_MANAGE == 0 ]] || prefix='sudo '
-for action in start stop restart logs doctor; do
-    printf '%sbash deploy/manage.sh %s\n' "$prefix" "$action"
-done
-if [[ $bind_address == 127.0.0.1 ]]; then
+if [[ :$PATH: != *":$bin_dir:"* ]]; then
+    msg '将命令目录加入当前终端 PATH：' 'Add the command directory to this shell’s PATH:'
+    printf 'export PATH=%q:"$PATH"\n' "$bin_dir"
+fi
+msg '管理面板：nowluma。也可直接运行 nowluma doctor、nowluma logs 或 nowluma restart。' \
+    'Management menu: nowluma. Or run nowluma doctor, nowluma logs or nowluma restart.'
+if [[ ${console_bind:-} == 0.0.0.0 ]]; then
+    msg '远程登录前请先配置 HTTPS 和防火墙。上面的宿主机地址不一定可从公网抵达。' \
+        'Configure HTTPS and the firewall before signing in remotely. The host address above may not be publicly routable.'
+elif [[ $bind_address == 127.0.0.1 ]]; then
     msg '远程服务器：在自己电脑执行以下 SSH 命令，再打开本机控制台地址。' 'Remote server: run this SSH command on your computer, then open the local console URL.'
     printf 'ssh -L %s:127.0.0.1:%s USER@SERVER\n' "$webui_port" "$webui_port"
 fi

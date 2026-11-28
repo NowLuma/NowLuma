@@ -28,15 +28,17 @@ For a complete backup, copy both Nowluma's data and QQ's user environment. The t
 Stop the service before copying so SQLite/WAL is not being written:
 
 ```bash
-bash deploy/manage.sh stop
+nowluma stop
 ```
+
+On an older install without `nowluma`, use `bash deploy/manage.sh stop`.
 
 For Docker, back up all four volumes; for native installs copy `config/`, `data/`, `logs/`, and QQ's user directory if you need login state. Encrypt backups and restrict access: they may contain tokens, sessions and chat data.
 
 Start again:
 
 ```bash
-bash deploy/manage.sh start
+nowluma start
 ```
 
 A backup is not a chat export. Restore the database into the same layout; do not hot-copy a single database file into a running service.
@@ -71,15 +73,16 @@ Docker must keep the **complete** HOME volume, not just `login.db`. The app uses
 Verify:
 
 1. Log in inside QQ and enable QQ's own auto-login.
-2. `bash deploy/manage.sh restart`.
+2. `nowluma restart`.
 3. Open the QQ desktop and see whether QQ restored the session; do not rely only on the console health badge.
-4. Run `stop` and `start`, or recreate the container, and confirm the volume is still used.
+4. Run `nowluma stop` and `nowluma start`, or recreate the container, and confirm the volume is still used.
 
 If QQ's server expires the session or requests verification, complete it in QQ. Keep native QQ directories in their original locations when upgrading.
 
 ## Upgrade
 
-- Docker: stop, back up, update source/image, then `start` to reuse the volumes. `docker compose down -v` deletes the named data volumes and QQ HOME.
+- Docker: stop and back up, then `nowluma update` to reapply the saved image, or `nowluma update 2.5.1` to switch to an explicit version; for a source deployment update the checkout and run `nowluma start`. All reuse the existing volumes. `docker compose down -v` deletes the named data volumes and QQ HOME.
+- On an older install without `nowluma`, keep using the matching `bash deploy/manage.sh` commands, or rerun the installer and select the existing directory.
 - Native: replace program files in the release directory, keeping `config/`, `data/`, `logs/` and the QQ directory.
 - The program migrates database schemas itself. During migration the UI may mark accounts unavailable or migrating; do not start duplicate instances.
 - After upgrading, check accounts, connections, kernel choices and appearance. Kernel choices persist per UIN, but an account identity change still requires a new acknowledgement.
@@ -87,6 +90,10 @@ If QQ's server expires the session or requests verification, complete it in QQ. 
 ## Updater
 
 `关于` checks for and installs updates. Choose a mirror, GitHub directly, or auto. Auto tries GitHub first, then the other sources in order.
+
+Channels compare by SemVer: a prerelease runtime can find and download later prereleases (for example rc.2 → rc.10) and stable releases; a stable runtime accepts stable releases only. Download and restart still require your explicit confirmation; Docker deployments apply the saved or an explicit version with `nowluma update`. An already-published rc.2 cannot retroactively gain new code, but it can see and download stable 2.5.1 once that release is published.
+
+A mirror may deliver the archive, but the install and upgrade digest must be obtainable from the official GitHub release `SHA256SUMS` (or official release metadata); a mirror's own checksum alone does not establish provenance. Do not install packages without checksums or from untrusted sources.
 
 Release assets:
 

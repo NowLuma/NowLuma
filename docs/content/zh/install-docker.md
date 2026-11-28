@@ -1,6 +1,6 @@
 ---
 title: Docker 安装（Linux）
-description: 在 Linux 上用安装向导部署 Nowluma：访问方式、端口、时区、数据卷、日常命令、桌面、升级与验证现状。
+description: 在 Linux 终端安装 Nowluma：nowluma 命令、访问方式、公网模式、端口、数据卷、桌面、升级与验证现状。
 tutorial: install-docker
 ---
 
@@ -12,7 +12,7 @@ tutorial: install-docker
 
 _图：控制台示例入口。真实部署的初始密码从安装输出获取。_
 
-适合长期运行的 Linux 服务器或 NAS。安装向导会检查 Docker Engine 与 Compose v2，生成私有配置并启动容器。
+适合长期运行的 Linux 服务器或 NAS。安装与日常管理都可以完全在终端完成，不需要浏览器下载。安装向导会检查 Docker Engine 与 Compose v2，生成私有配置并启动容器。
 
 ## 准备
 
@@ -21,38 +21,44 @@ _图：控制台示例入口。真实部署的初始密码从安装输出获取�
 
 ## 安装向导
 
-默认安装 Docker Hub 上最新通过发布验证的 Linux/amd64 镜像（可能是预发行版）。在 Linux 的 Bash 终端运行：
+在 Linux 的 Bash 终端运行：
 
 ```bash
 bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-先选语言，再选择安装目录（默认 `$HOME/Nowluma`）。无需选择版本：首次安装把 `wsxyt/nowluma:latest` 解析为固定镜像摘要，重跑复用该摘要。需要指定版本时，在命令末尾加 `--version 版本`，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
+先选语言，再选择安装目录（默认 `$HOME/Nowluma`）。向导会检查 Docker 与 Compose v2，缺少时可在确认后运行官方安装脚本或第三方 LinuxMirrors；已有 Docker 与镜像源设置保持不变。安装向导本身不需要 root shell；只有安装或访问 Docker 的命令会按提示使用 sudo。
+
+无需选择版本：首次安装把 `wsxyt/nowluma:latest` 解析为固定镜像摘要并写入 `deploy/.env`，重跑不会自动切换。`wsxyt/nowluma` 的拉取使用 Docker daemon 已配置的镜像源。需要指定版本时，在命令末尾加 `--version 2.5.1` 这样的版本标签，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
 
 向导中的设置与默认值：
 
-| 提示                      | 说明                                   |
-| ------------------------- | -------------------------------------- |
-| 语言                      | `1. 简体中文` 或 `2. English`          |
-| 访问方式                  | `1. 仅本机/SSH（推荐）` 或 `2. 局域网` |
-| 控制台与 QQ 桌面端口      | 默认 `5099`                            |
-| 机器人 HTTP 接口端口      | 默认 `3000`                            |
-| 机器人 WebSocket 接口端口 | 默认 `3001`                            |
-| 时区                      | 例如 `Asia/Shanghai`                   |
+| 提示                      | 说明                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| 语言                      | `1. 简体中文` 或 `2. English`                        |
+| 访问方式                  | 本机/SSH（推荐，默认）、局域网或公网；公网需再次确认 |
+| 控制台与 QQ 桌面端口      | 默认 `5099`                                          |
+| 机器人 HTTP 接口端口      | 默认 `3000`                                          |
+| 机器人 WebSocket 接口端口 | 默认 `3001`                                          |
+| 时区                      | 例如 `Asia/Shanghai`                                 |
 
-按回车使用默认值，三个端口需不同。已有 `deploy/.env` 会原样复用。
+按回车使用默认值，三个端口需不同。已有 `deploy/.env` 会原样复用，不会覆盖端口、访问方式或已保存的镜像版本。
 
-向导沿用现有 Docker 和镜像源。缺少 Docker 时，可选择官方安装脚本，或使用第三方 LinuxMirrors 选择镜像源；向导显示命令后等待确认。
+公网模式默认不选：向导会说明风险并要求显式确认。它只把控制台端口发布到公网，桌面通过同一控制台的 `/desktop/` 访问；OneBot 端口与后台 VNC 仍保持回环。使用前必须准备好 HTTPS 与防火墙，并建议开启双重验证。只需要自己远程访问时，优先用 SSH 隧道，见[访问方式与网络](access-network.md)。
 
 如果首次拉取失败，向导不会保存新部署。遇到 `proxyconnect`，先检查部署机的 Docker daemon 代理是否可达。如果目标版本没有 Docker Hub 镜像，可从完整源码目录运行 `bash deploy/install.sh --docker`。
 
 安装成功后，终端会显示控制台地址；新部署还会显示初始密码。
 
+安装向导同时为当前用户注册 `nowluma` 命令；非 root 且无法写入系统路径时，把 `~/.local/bin` 加入 `PATH`。如果该目录不可用或已有同名命令，可用 `NOWLUMA_BIN_DIR` 指定其他目录后重跑向导。
+
 ## 首次进入
 
 ```bash
-bash deploy/manage.sh logs
+nowluma logs
 ```
+
+旧安装没有 `nowluma` 命令时，改用 `bash deploy/manage.sh logs`。
 
 打开 `http://127.0.0.1:5099`，用初始密码登录，按[首次启动](first-run.md)完成说明阅读和改密。然后：
 
@@ -67,21 +73,26 @@ bash deploy/manage.sh logs
 ## 日常命令
 
 ```bash
-bash deploy/manage.sh start
-bash deploy/manage.sh stop
-bash deploy/manage.sh restart
-bash deploy/manage.sh logs
-bash deploy/manage.sh doctor
+nowluma
 ```
 
-- `start` 使用本地已有的指定镜像（源码部署则构建），并等待健康检查。
-- `restart` 正常结束进程再等待恢复，不拉取或构建镜像。
-- `stop` 不删除任何数据卷。
-- `doctor` 检查容器、进程、端口与目录。
+不带参数运行会显示数字菜单，也可以直接给子命令：
+
+| 命令              | 作用                                                                    |
+| ----------------- | ----------------------------------------------------------------------- |
+| `nowluma start`   | 用已保存的镜像启动并等待健康检查（源码部署则构建）                      |
+| `nowluma stop`    | 停止服务，不删除任何数据卷                                              |
+| `nowluma restart` | 正常结束进程并等待恢复，不拉取或构建                                    |
+| `nowluma logs`    | 跟踪容器日志                                                            |
+| `nowluma doctor`  | 检查容器、进程、端口与目录                                              |
+| `nowluma pull`    | 只拉取 `deploy/.env` 中已保存的镜像                                     |
+| `nowluma update`  | 重新应用已保存的镜像；`nowluma update 2.5.1` 拉取并切换到显式指定版本   |
+
+`nowluma` 按当前用户的部署注册表找到安装目录，可以在任意目录执行。旧安装（例如没有新 CLI 的 rc.2 部署）继续使用 `bash deploy/manage.sh start`（同样支持 `stop`、`restart`、`logs`、`doctor`、`pull`、`update`）；重跑安装命令并选择原安装目录后可获得 `nowluma`，已有 `.env` 与数据卷保持不变。
 
 ## 端口与网络
 
-默认只发布到宿主机回环地址。远程服务器推荐在自己的电脑建立隧道：
+默认只发布到宿主机回环地址，适合本机访问或 SSH 隧道。远程服务器推荐在自己的电脑建立隧道：
 
 ```bash
 ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
@@ -89,9 +100,9 @@ ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
 
 保持隧道窗口打开，再访问本机 `http://127.0.0.1:5099`。
 
-如果明确选择局域网访问，安装向导会绑定 `0.0.0.0` 并提示 HTTP 未加密。此时应配置 HTTPS 或只允许可信网络访问；不要把管理界面和桌面直接暴露到公网。详见[访问方式与网络](access-network.md)。
+安装时也可以选择局域网：向导绑定 `0.0.0.0` 并提示 HTTP 未加密。公网模式必须显式确认，且只发布控制台；桌面经同一控制台的 `/desktop/` 使用，OneBot 的 3000/3001 与后台 VNC 不会随公网模式公开。无论哪种方式，公网入口都必须有 HTTPS 和防火墙，不要把管理界面直接暴露到公网。详见[访问方式与网络](access-network.md)。
 
-机器人端口 3000/3001 是否对机器人程序开放，取决于 Compose 的发布地址；每个端点仍需自己的访问令牌，控制台密码不能替代。
+机器人端口是否对机器人程序开放，取决于 Compose 的发布地址；公网模式下它们仍在回环，远程机器人需要自己的隧道或受控网络。每个端点仍需独立的访问令牌，控制台密码不能替代。
 
 ## 数据卷
 
@@ -121,25 +132,27 @@ QQ 与程序固定以 UID/GID 1000 运行，共用 HOME 和 XDG 环境。机器 
 ## 升级与卸载
 
 1. 先停服务，再备份四个卷，避免复制正在写入的 SQLite/WAL。
-2. 镜像部署：确认新标签已发布，只修改 `deploy/.env` 中 `NOWLUMA_IMAGE` 的 `docker.io/wsxyt/nowluma` 版本，再运行 `bash deploy/manage.sh update`。源码部署：更新源码并运行 `bash deploy/manage.sh start`。两种方式都复用原卷。
-3. 不要用 `down -v` 升级。
-4. 彻底删除前确认备份；普通 `stop` 不删除数据。
+2. 镜像部署：`nowluma update` 只重新应用 `deploy/.env` 中已保存的镜像；如果保存的是摘要，会继续保持固定，不会自动升级。要切换版本，显式运行 `nowluma update 2.5.1`；新版本未通过启动检查时 `.env` 仍保留原版本，运行 `nowluma start` 恢复。也可以先改 `deploy/.env` 中 `NOWLUMA_IMAGE` 的版本再运行 `nowluma update`。源码部署：更新源码后运行 `nowluma start`。两种方式都复用原卷。
+3. 没有 `nowluma` 的旧安装：先重跑安装命令并选择原安装目录，再运行 `nowluma update 2.5.1`；也可以继续用 `bash deploy/manage.sh update`。
+4. 不要用 `down -v` 升级。
+5. 彻底删除前确认备份；普通 `stop` 不删除数据。
 
 ## 检查运行状态 {#自动化验证现状}
 
-运行 `bash deploy/manage.sh doctor` 检查部署，或在 `logs` 中查看启动失败的原因。平台验收进度见[路线图](planned.md#平台)。
+运行 `nowluma doctor` 检查部署，或在 `nowluma logs` 中查看启动失败的原因；旧安装用 `bash deploy/manage.sh doctor|logs`。平台验收进度见[路线图](planned.md#平台)。
 
 ## 排障
 
-| 现象               | 检查                                                                |
-| ------------------ | ------------------------------------------------------------------- |
-| 镜像拉取失败       | 确认版本标签、架构与镜像仓库访问                                    |
-| 控制台打不开       | 容器健康、端口冲突、隧道或局域网发布地址                            |
-| 桌面打不开         | 控制台会话、首次改密/说明确认、反向代理的 Host 与 WebSocket         |
-| 没有 QQ 进程       | 查看 Xvfb 与 QQ 启动日志                                            |
-| 无法接入           | 原生组件与架构、`SYS_PTRACE`、QQ 与程序用户是否一致                 |
-| 重启后自动登录消失 | `nowluma_qq-home` 是否复用、HOME/XDG 是否被覆盖、是否用了 `down -v` |
-| 文件都在但仍要扫码 | QQ 服务端会话失效；需要在 QQ 窗口验证                               |
-| 配置损坏           | 按错误中的路径找到原文件，从备份恢复                                 |
+| 现象                 | 检查                                                                                |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| 镜像拉取失败         | 确认版本标签、架构、镜像仓库访问与 daemon 镜像源                                    |
+| 控制台打不开         | 容器健康、端口冲突、隧道或局域网发布地址                                            |
+| 桌面打不开           | 控制台会话、首次改密/说明确认、反向代理的 Host 与 WebSocket                         |
+| 没有 QQ 进程         | 查看 Xvfb 与 QQ 启动日志                                                            |
+| 无法接入             | 原生组件与架构、`SYS_PTRACE`、QQ 与程序用户是否一致                                 |
+| 重启后自动登录消失   | `nowluma_qq-home` 是否复用、HOME/XDG 是否被覆盖、是否用了 `down -v`                 |
+| 文件都在但仍要扫码   | QQ 服务端会话失效；需要在 QQ 窗口验证                                               |
+| 配置损坏             | 按错误中的路径找到原文件，从备份恢复                                                 |
+| `nowluma` 命令不存在 | 旧安装或未注册；重跑安装命令选择原目录，或改用 `bash deploy/manage.sh`；非 root 安装时检查 `~/.local/bin` 是否在 `PATH` |
 
 更多入口见[排障与失败恢复](troubleshooting.md)。

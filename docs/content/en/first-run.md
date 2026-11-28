@@ -18,7 +18,7 @@ Setup shows progress and errors next to the step you’re completing.
 
 The centre shows a **Starting…** screen with skeleton placeholders while the app checks the local session and backend.
 
-If it never leaves this screen: confirm the service is running (`bash deploy/manage.sh logs` in Docker), the port is free, and a reverse proxy preserves `/api/`. See [Troubleshooting](troubleshooting.md).
+If it never leaves this screen: confirm the service is running (`nowluma logs` in Docker; `bash deploy/manage.sh logs` on older installs), the port is free, and a reverse proxy preserves `/api/`. See [Troubleshooting](troubleshooting.md).
 
 ## Login
 
@@ -58,7 +58,7 @@ This is an acknowledgement that you read the notices, not consent to an extra co
 ### Setting the access password
 
 - Under **Set a new access password**, enter the new password in both **New password** and **Confirm new password**. The current password is the one you just used to sign in; you do not enter it again.
-- Use at least 10 characters, including lowercase, uppercase and a special character, with no spaces.
+- Choose a different password with at least 10 characters and no whitespace. Uppercase, lowercase and symbols are strength suggestions. You can save when the two entries match, even if not every suggestion is green.
 - **Save and continue** invalidates other sessions. This browser receives a rotated session and continues to display effects and choose the account kernel.
 - Reopening the wizard under developer settings is a rehearsal. **Finish rehearsal** does not change the password or notice record.
 
@@ -84,7 +84,7 @@ There is one local account and no email recovery. Reset only when you genuinely 
 For **Docker installations**, configuration lives in a named volume, not the repository's `config/` directory. Stop the service from its installation directory, then mount the same volume with the original Compose configuration and retain the authentication file:
 
 ```bash
-bash deploy/manage.sh stop
+nowluma stop
 docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no-deps \
   --user 1000:1000 --entrypoint bash nowluma -lc '
     set -eu
@@ -94,9 +94,11 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no
     test ! -e "$backup"
     mv -- webui.json "$backup"
   '
-bash deploy/manage.sh start
-bash deploy/manage.sh logs
+nowluma start
+nowluma logs
 ```
+
+On an older install without the `nowluma` command, use the matching `bash deploy/manage.sh` commands instead of `nowluma stop`, `nowluma start` and `nowluma logs`.
 
 For a **native runtime**, stop Nowluma with Ctrl+C. In the actual runtime directory containing `index.mjs`, rename `config/webui.json` to an unused backup name, then start normally. The Windows executable's runtime is under `%LOCALAPPDATA%\Nowluma`; do not edit an unused copy in Downloads.
 

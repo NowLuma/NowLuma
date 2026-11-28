@@ -46,7 +46,7 @@ import {
     createDesktopGateway,
     setDesktopSessionCookie,
 } from './desktop';
-import { evaluatePasswordRules, isStrongPassword, WebuiAuth } from './auth';
+import { evaluatePasswordRules, isAcceptablePassword, WebuiAuth } from './auth';
 import { completeWebuiLogin, invalidateOtherSessions } from './webui-login';
 import {
     beginTotpEnrollment,
@@ -558,7 +558,7 @@ export async function initWebUI(
         }
 
         const pwd = typeof body.password === 'string' ? body.password : '';
-        return c.json({ rules: evaluatePasswordRules(pwd), valid: isStrongPassword(pwd) });
+        return c.json({ rules: evaluatePasswordRules(pwd), valid: isAcceptablePassword(pwd) });
     });
 
     app.post('/api/auth/change-password', async (c) => {
@@ -577,7 +577,7 @@ export async function initWebUI(
             return c.json({ success: false, message: '当前密码不正确' }, 401);
         }
 
-        if (!isStrongPassword(newPassword)) {
+        if (!isAcceptablePassword(newPassword)) {
             return c.json(
                 {
                     success: false,

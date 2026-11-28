@@ -28,8 +28,8 @@ Choose a reading path below or select **Load simulator** above to get familiar w
 | ------------------------------------------- | --------------------------------------------------------- |
 | [Nowluma documentation](index.md)           | Reading paths and chapter directory                       |
 | [What Nowluma is](introduction.md)          | Components, connection states, save results and licensing |
-| [Docker install (Linux)](install-docker.md) | Installer, ports, volumes and daily commands              |
-| [Native install](install-native.md)         | Linux Lite, Windows launcher and running from source      |
+| [Docker install (Linux)](install-docker.md) | Terminal install, `nowluma` commands, ports and volumes    |
+| [Native install](install-native.md)         | Linux Lite terminal install, Windows launcher and source   |
 | [First run](first-run.md)                   | Sign in, finish setup and choose an account kernel        |
 
 ### Connect and debug

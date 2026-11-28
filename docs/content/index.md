@@ -24,11 +24,21 @@ features:
 
 ## 下载与安装 {#downloads}
 
-- [Windows x64](/zh/install-native.html#windows)：下载内置运行环境的单文件 EXE（未签名）。
-- [Linux x64](/zh/install-native.html#linux-lite)：解压 Lite 包，运行 `bash launcher.sh`。
-- [Linux Docker（amd64）](/zh/install-docker.html)：用安装向导检查 Docker 和 Compose v2，配置端口并启动。
+Linux 不需要浏览器下载：在终端运行命令即可。Windows 使用发行页的单文件 EXE。
 
-从 [GitHub 发行页](https://github.com/NowLuma/NowLuma/releases) 获取发行文件与 `SHA256SUMS`。
+- **Linux Docker（amd64，推荐）**：在 Bash 终端运行安装向导。向导检查 Docker 与 Compose v2，默认只发布到本机回环；公网模式必须显式选择并确认风险。
+- [Linux x64 Lite](/zh/install-native.html#linux-lite)：在终端下载并核对 `SHA256SUMS`，解压后运行 `bash launcher.sh`。
+- [Windows x64](/zh/install-native.html#windows)：从发行页下载内置运行环境的单文件 EXE（未签名）。
+
+Linux Docker 安装命令：
+
+```bash
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
+```
+
+Docker 安装完成后用 `nowluma` 管理服务：直接运行显示数字菜单，也可用 `nowluma start`、`stop`、`restart`、`logs`、`doctor`、`pull`、`update`。旧安装可继续使用 `bash deploy/manage.sh`。
+
+Windows 发行文件、Linux Lite 包与校验值都发布在 [GitHub 发行页](https://github.com/NowLuma/NowLuma/releases)。
 
 ## 先试用，再部署
 

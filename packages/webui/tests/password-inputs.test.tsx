@@ -77,6 +77,7 @@ describe('passwordRequirementHint', () => {
     const rules = [
         { id: 'length', label: '长度不少于 10 位', ok: false },
         { id: 'upper', label: '包含大写字母', ok: true },
+        { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false, optional: true },
     ];
 
     it('hides unmet-rule copy while the animated list is open', () => {

@@ -2,19 +2,23 @@
 
 ## 1. 安装与首次登录
 
-预构建安装默认使用 Docker Hub 上最新通过发布验证的 Linux/amd64 镜像（可能是预发行版）。在 Linux 的 Bash 终端运行：
+Linux 安装完全在终端完成，不需要浏览器下载。在 Linux 的 Bash 终端运行：
 
 ```bash
 bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-先选简体中文或 English，向导再检查 Docker 和 Compose v2。缺少 Docker 时，可选择官方安装脚本或第三方 LinuxMirrors；后者提供镜像源选择。向导显示命令并等待确认。已有 Docker 则沿用当前配置。
+先选简体中文或 English，向导再检查 Docker 和 Compose v2。缺少 Docker 时，可选择官方安装脚本或第三方 LinuxMirrors；后者提供镜像源选择。向导显示命令并等待确认。已有 Docker 则沿用当前配置和镜像源。
 
-选择安装目录（默认 `$HOME/Nowluma`）、访问方式、端口和时区。不用手选版本。新部署把 `latest` 解析为固定摘要并记录到 `deploy/.env`，重跑不会切换版本。需要指定版本时，在命令末尾加 `--version 版本`，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
+选择安装目录（默认 `$HOME/Nowluma`）、访问方式、端口和时区。不用手选版本：新部署把 `wsxyt/nowluma:latest` 解析为固定镜像摘要并写入 `deploy/.env`，重跑不会切换版本；镜像拉取走 Docker daemon 已配置的镜像源。需要指定版本时，在命令末尾加 `--version 2.5.1` 这样的标签，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
+
+访问方式默认是「仅本机/SSH」。也可以选择局域网，或显式选择公网模式：公网模式会再次说明风险并要求确认，默认不选；它只发布控制台端口，桌面经同源 `/desktop/` 随控制台可达，OneBot 端口与后台 VNC 保持回环。公网入口必须自行准备 HTTPS 与防火墙。
 
 首次拉取镜像失败时，向导不会保存新部署。若报错包含 `proxyconnect`，请检查部署机的 Docker daemon 代理设置；更换镜像版本不会绕开代理。
 
-向导在容器通过健康检查后打印地址和新生成的初始密码。需要 sudo 访问 Docker 时，输出的管理命令也会带 sudo。
+向导在容器通过健康检查后打印地址和新生成的初始密码。若 Docker 访问需要 sudo，已注册的 `nowluma` 命令会自行调用 `sudo docker`，无需用 sudo 启动管理面板。
+
+向导还会为当前用户注册 `nowluma` 命令；非 root 且无法写入系统路径时，需要把 `~/.local/bin` 加入 `PATH`；目录不可用或已有同名命令时，可用 `NOWLUMA_BIN_DIR` 指定其他目录。向导本身不需要 root shell，只有 Docker 相关命令按需提权。
 
 ### 从源码构建（可选）
 
@@ -24,8 +28,10 @@ bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh |
 ### 首次登录
 
 ```bash
-bash deploy/manage.sh logs
+nowluma logs
 ```
+
+旧安装没有 `nowluma` 命令时，改用 `bash deploy/manage.sh logs`。
 
 打开向导输出的控制台地址，用初始密码完成[首次设置](https://nowluma.github.io/NowLuma/zh/first-run.html)。点击 **打开 QQ 桌面**，在 QQ 窗口登录并可选启用 QQ 的自动登录。返回 **QQ 会话** 刷新和加载进程；首次接入时选择兼容内核并确认该账号的风险说明。
 
@@ -37,9 +43,28 @@ bash deploy/manage.sh logs
 ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 用户名@服务器地址
 ```
 
-保持隧道窗口打开，再访问本机控制台。安装向导也能显式选择局域网访问；不要直接把管理界面和明文 VNC 暴露到公网。
+保持隧道窗口打开，再访问本机控制台。安装向导也能显式选择局域网访问；公网模式必须确认，且只发布控制台（桌面经同源 `/desktop/` 随控制台可达）。无论哪种方式，都不要把管理界面和后台 VNC 直接暴露到公网；OneBot 端口需要远程访问时，用隧道或受控网络单独发布。
 
 ## 2. 日常命令
+
+安装向导为当前用户注册 `nowluma`，可在任意目录执行：
+
+```bash
+nowluma                     # 数字菜单
+nowluma start               # 启动并等待健康检查
+nowluma stop                # 停止，保留数据卷
+nowluma restart             # 重启并等待恢复，不拉取或构建
+nowluma logs                # 跟踪日志
+nowluma doctor              # 部署诊断
+nowluma pull                # 拉取已保存的镜像
+nowluma update              # 重新应用已保存的镜像
+nowluma update 2.5.1        # 拉取并切换到显式版本
+```
+
+不带参数运行 `nowluma` 会显示数字菜单。`start` 使用已拉取的版本镜像（源码部署则构建 `nowluma:local`）并等待健康检查。`restart` 正常结束进程并等待恢复，不拉取或构建。`stop` 不删除数据卷。
+`update` 只重新应用 `deploy/.env` 中保存的镜像；保存的是摘要时继续固定，不会自动升级。拉取失败返回状态码 `3`；启动失败也返回非零。两者都保留已有数据，不算安装成功。
+
+旧安装没有 `nowluma` 时，继续在安装目录使用：
 
 ```bash
 bash deploy/manage.sh start
@@ -47,10 +72,11 @@ bash deploy/manage.sh stop
 bash deploy/manage.sh restart
 bash deploy/manage.sh logs
 bash deploy/manage.sh doctor
+bash deploy/manage.sh pull
+bash deploy/manage.sh update
 ```
 
-`start` 使用已拉取的版本镜像（源码部署则构建 `nowluma:local`）并等待健康检查。`restart` 正常结束进程并等待恢复，不拉取或构建。`stop` 不删除数据卷。
-拉取失败返回状态码 `3`；启动失败也返回非零。两者都保留已有数据，不算安装成功。
+重跑安装命令并选择原安装目录即可获得 `nowluma`，已有 `.env` 与卷保持不变。
 
 ## 3. 数据与自动登录
 
@@ -125,9 +151,10 @@ location /desktop/ {
 ## 6. 机器人连接
 
 默认 HTTP/WS 端口为 3000/3001；安装时选择其他端口后，工厂监听与宿主发布端口一致，控制台复制的端点地址使用实际监听端口。
+默认只发布到宿主回环；公网模式只公开控制台，不会一并公开这两个端口，远程机器人仍需隧道或受控网络单独发布。
 客户端分别连接 `http://地址:HTTP端口/`、`ws://地址:WS端口/`。
 Docker 的工厂监听会绑定容器网卡，宿主侧是否开放由 Compose 的发布地址决定。
-默认只在宿主回环发布。每个接入端点仍需要独立访问令牌；控制台密码不能代替 OneBot 令牌。
+每个接入端点仍需要独立访问令牌；控制台密码不能代替 OneBot 令牌。
 
 在控制台「机器人连接」选择账号后，可新建/编辑/启停四种连接。复制按钮只复制端点地址，不带凭据或查询参数。
 反向 WebSocket 要填写机器人程序提供的地址，不是控制台或 VNC 地址。
@@ -140,9 +167,11 @@ Docker 的工厂监听会绑定容器网卡，宿主侧是否开放由 Compose �
 先运行：
 
 ```bash
-bash deploy/manage.sh doctor
-bash deploy/manage.sh logs
+nowluma doctor
+nowluma logs
 ```
+
+旧安装没有 `nowluma` 时，用 `bash deploy/manage.sh doctor` 和 `bash deploy/manage.sh logs`。
 
 控制台「偏好设置 → 服务」显示工作目录、HOME、配置/消息/日志/默认 QQ 目录与是否可写，并能复制不含凭据的诊断。
 
@@ -163,17 +192,19 @@ bash deploy/manage.sh logs
 第一次完成扫码并勾选 QQ 自动登录后：
 
 ```bash
-bash deploy/manage.sh restart
+nowluma restart
 ```
 
-在桌面确认 QQ 是否自动恢复，不要只看控制台的健康状态。再执行 `stop`、`start` 验证容器重建。
+在桌面确认 QQ 是否自动恢复，不要只看控制台的健康状态。再执行 `nowluma stop`、`nowluma start` 验证容器重建。旧安装用对应的 `bash deploy/manage.sh` 命令。
 CI 可以验证目录/设置标记、机器 ID、进程发现与未确认账号的接入门禁，但没有你的账号扫码，不会假报“真实 QQ 账号免扫码已验证”。最新 smoke 使用全新 HOME，真实 hook 接入与真实 QQ 登录是 NOT RUN。
 
 ## 8. 升级、备份、卸载
 
-- 先停服务再备份四个卷，避免复制正在写入的 SQLite/WAL。
-- 镜像部署：确认新标签发布后，只修改 `deploy/.env` 的 `NOWLUMA_IMAGE` 版本（保留 `docker.io/wsxyt/nowluma:` 前缀），然后执行 `bash deploy/manage.sh update` 拉取并启动。拉取失败时可改回原标签。
-- 源码部署：更新源码后运行 `start`。两种方式均复用原卷，普通启动不会改变部署模式。
+- 先 `nowluma stop`，再备份四个卷，避免复制正在写入的 SQLite/WAL。
+- 镜像部署：`nowluma update` 只重新应用 `deploy/.env` 中已保存的镜像；保存为摘要时保持固定，不会自动升级。要切换版本，显式运行 `nowluma update 2.5.1`；新版本未通过启动检查时 `.env` 仍保留原版本，运行 `nowluma start` 恢复。也可以先改 `NOWLUMA_IMAGE` 的版本（保留 `docker.io/wsxyt/nowluma:` 前缀）再运行 `nowluma update`。
+- 应用内更新按 SemVer 比较：预发行运行时可以发现并下载后续预发行版（例如 rc.2 → rc.10）与稳定版；稳定版运行时只接受稳定版。下载与重启仍需显式确认。已经发布的 rc.2 不会追溯获得新代码，但能在 2.5.1 正式发布后看到该稳定版。
+- 没有 `nowluma` 的旧安装：重跑安装命令并选择原安装目录，再运行 `nowluma update 2.5.1`；也可以继续用 `bash deploy/manage.sh update`。
+- 源码部署：更新源码后运行 `nowluma start`。以上方式均复用原卷，普通启动不会改变部署模式。
 - 原生升级保留 `config/`、`data/`、`logs/`；QQ 的目录不搬动。
 - 不要用 `down -v` 升级。彻底删除所有数据前请自行确认备份；普通 `stop` 不删除卷。
 - 后台 VNC 凭据保存在 QQ HOME 卷的私有 `.vnc/password`；浏览器和安装向导不需要读取它，勿公开导出。
@@ -182,11 +213,29 @@ CI 可以验证目录/设置标记、机器 ID、进程发现与未确认账号�
 
 ### Linux Lite
 
-使用 Linux 发行包，并安装支持的 Node；启动器也可使用同目录的可执行 `node`。
+使用 Linux 发行包，并安装支持的 Node；启动器也可使用同目录的可执行 `node`。安装全程可在终端完成，不需要浏览器下载。在一个新的空目录中下载、校验并解压，避免覆盖已有安装的数据：
 
 ```bash
-bash launcher.sh
-# 或从源码目录指定已有发行包
+(
+  set -euo pipefail
+  version=2.5.1
+  archive="Nowluma-v$version-linux-x64-lite.tar.gz"
+  base="https://github.com/NowLuma/NowLuma/releases/download/v$version"
+  mkdir -m 700 -- "$HOME/Nowluma-$version"
+  cd -- "$HOME/Nowluma-$version"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/$archive"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/SHA256SUMS"
+  awk -v name="$archive" '$2 == name' SHA256SUMS | sha256sum --check --strict
+  tar -xzf "$archive"
+  exec bash launcher.sh
+)
+```
+
+校验失败时不要解压或运行。镜像站可以转发发行包，但校验值必须能从官方 GitHub 发行页的 `SHA256SUMS` 获得；只信镜像自己提供的校验值不足以证明来源。升级时先停止旧实例，再把 `config/`、`data/`、`logs/` 复制到新目录；不要在原目录就地覆盖。没有 `sha256sum` 的发行版可用 `shasum -a 256 -c`。
+
+也可以从源码目录指定已有发行包：
+
+```bash
 bash deploy/install.sh --native --directory /发行包目录
 ```
 

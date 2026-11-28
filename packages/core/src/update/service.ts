@@ -5,6 +5,7 @@ import { createLogger } from '@nowluma/common/logger';
 import { parseVersion } from '@nowluma/common/semver';
 import { downloadUpdate } from './download';
 import { exists, MANIFEST_FILE, readManifest, updateDirectory } from './files';
+import { releaseChannel } from './release';
 
 const log = createLogger('Update');
 
@@ -78,8 +79,10 @@ export async function createUpdateService(
 
             const parsed = parseVersion(version);
 
-            if (!parsed || parsed.prerelease.length || parsed.compare(current) <= 0) {
-                throw new Error('请选择更新的正式版本');
+            const stable = releaseChannel(current) === 'stable';
+
+            if (!parsed || (stable && parsed.prerelease.length) || parsed.compare(current) <= 0) {
+                throw new Error(stable ? '请选择更新的正式版本' : '请选择高于当前版本的发行版');
             }
 
             state = { phase: 'downloading', version: parsed.raw };

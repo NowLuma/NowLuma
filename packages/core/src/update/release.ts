@@ -53,6 +53,25 @@ function attribute(tag: string, name: string): string | undefined {
         .replaceAll('&quot;', '"');
 }
 
+export function releaseChannel(current: string): 'stable' | 'preview' {
+    return parseVersion(current)?.prerelease.length ? 'preview' : 'stable';
+}
+
+function versionFromTagUrl(href: string) {
+    const relative = href.startsWith(`${GITHUB_ORIGIN}/`) ? href.slice(GITHUB_ORIGIN.length) : href;
+    const prefix = `${RELEASE_PATH}/tag/v`;
+
+    if (!relative.startsWith(prefix)) {
+        return null;
+    }
+
+    try {
+        return parseVersion(decodeURIComponent(relative.slice(prefix.length)));
+    } catch {
+        return null;
+    }
+}
+
 export function parseLatestReleasePage(html: string) {
     const meta = html
         .match(/<meta\b[^>]*>/gi)
@@ -63,15 +82,9 @@ export function parseLatestReleasePage(html: string) {
         throw new Error('发布页面缺少版本信息');
     }
 
-    const url = new URL(canonical, GITHUB_ORIGIN);
-    const tagPrefix = `${RELEASE_PATH}/tag/`;
-    // GitHub emits the canonical repository spelling even via a redirect.
-    const tag = url.pathname.startsWith(tagPrefix) ? url.pathname.slice(tagPrefix.length) : '';
-    const decoded = tag && !tag.includes('/') ? decodeURIComponent(tag) : undefined;
-    const version = decoded?.startsWith('v') ? decoded.slice(1) : undefined;
-    const parsed = parseVersion(version);
+    const parsed = versionFromTagUrl(canonical);
 
-    if (url.origin !== GITHUB_ORIGIN || !parsed || parsed.prerelease.length) {
+    if (!parsed || parsed.prerelease.length) {
         throw new Error('发布页面不是 Nowluma 正式版本');
     }
 
@@ -122,54 +135,132 @@ export function parseReleaseAssetsPage(html: string, version: string) {
     return { tag_name: `v${version}`, assets };
 }
 
+type RankedRelease = { version: NonNullable<ReturnType<typeof parseVersion>>; data: object };
+
+// GitHub orders releases by date, not SemVer (rc.10 > rc.9, final > rc).
+function newestPublished(releases: unknown[], best?: RankedRelease): RankedRelease | undefined {
+    for (const item of releases) {
+        if (
+            !item ||
+            typeof item !== 'object' ||
+            !('tag_name' in item) ||
+            typeof item.tag_name !== 'string' ||
+            ('draft' in item && item.draft === true) ||
+            ('published_at' in item && item.published_at === null)
+        ) {
+            continue;
+        }
+
+        const version = parseVersion(item.tag_name.trim().replace(/^v/, ''));
+
+        if (version && (!best || version.compare(best.version) > 0)) {
+            best = { version, data: item };
+        }
+    }
+
+    return best;
+}
+
+function previewFromFeed(xml: string) {
+    const entries = [];
+
+    for (const [, entry] of xml.matchAll(/<entry\b[^>]*>([\s\S]*?)<\/entry>/gi)) {
+        const alternate = entry
+            .match(/<link\b[^>]*>/gi)
+            ?.find((link) => attribute(link, 'rel') === 'alternate');
+        const version = alternate && versionFromTagUrl(attribute(alternate, 'href') ?? '');
+
+        if (version) {
+            entries.push({
+                tag_name: `v${version.raw}`,
+                html_url: `${RELEASE_ROOT}/tag/v${version.raw}`,
+            });
+        }
+    }
+
+    const newest = newestPublished(entries);
+
+    if (!newest) {
+        throw new Error('发行订阅中没有有效的公开版本');
+    }
+
+    return newest.data;
+}
+
 export interface ReleaseResult {
     data: unknown;
     fromPage: boolean;
 }
 
 export async function fetchRelease(
-    version: string | undefined,
+    query: 'stable' | 'preview' | { version: string },
     source: UpdateSourceConfig,
     userAgent = 'Nowluma',
     timeoutMs = 8_000,
 ): Promise<ReleaseResult> {
-    const apiUrl = `${RELEASE_API_ROOT}/${version ? `tags/v${version}` : 'latest'}`;
+    const version = typeof query === 'object' ? query.version : undefined;
     let primaryError: unknown;
 
     try {
-        const response = await fetch(apiUrl, {
-            headers: {
-                Accept: 'application/vnd.github+json',
-                'User-Agent': userAgent,
-                'X-GitHub-Api-Version': '2022-11-28',
-            },
-            signal: AbortSignal.timeout(timeoutMs),
-        });
-
-        if (!response.ok) {
-            await response.body?.cancel();
-            throw new Error(`GitHub ${response.status}`);
-        }
-
-        return {
-            data: JSON.parse(await readText(response, 256 * 1024)) as unknown,
-            fromPage: false,
+        const signal = AbortSignal.timeout(timeoutMs);
+        const headers = {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': userAgent,
+            'X-GitHub-Api-Version': '2022-11-28',
         };
+        let best: RankedRelease | undefined;
+
+        for (let page = 1; ; page++) {
+            const url =
+                query === 'preview'
+                    ? `${RELEASE_API_ROOT}?per_page=30&page=${page}`
+                    : `${RELEASE_API_ROOT}/${version ? `tags/v${version}` : 'latest'}`;
+            const response = await fetch(url, { headers, signal });
+
+            if (!response.ok) {
+                await response.body?.cancel();
+                throw new Error(`GitHub ${response.status}`);
+            }
+
+            const data: unknown = JSON.parse(
+                await readText(response, query === 'preview' ? 2 * 1024 * 1024 : 256 * 1024),
+            );
+
+            if (query !== 'preview') {
+                return { data, fromPage: false };
+            }
+
+            if (!Array.isArray(data)) {
+                throw new Error('GitHub 返回了无效的发行列表');
+            }
+
+            best = newestPublished(data, best);
+
+            if (!response.headers.get('link')?.includes('rel="next"')) {
+                if (!best) {
+                    throw new Error('没有可用的公开发行版本');
+                }
+
+                return { data: best.data, fromPage: false };
+            }
+        }
     } catch (error) {
         primaryError = error;
     }
 
     const originalUrl = version
         ? `${RELEASE_ROOT}/expanded_assets/v${version}`
-        : `${RELEASE_ROOT}/latest`;
+        : query === 'preview'
+          ? `${RELEASE_ROOT}.atom`
+          : `${RELEASE_ROOT}/latest`;
     const controller = new AbortController();
 
     try {
-        // Only a parsed release page can win. Fast errors and HTML interstitials
-        // cannot cancel a slower working source.
-        // Download proxies often only support assets. Always retain GitHub's
-        // release page for version/digest lookup, even with a pinned download mirror.
-        const urls = [...new Set([originalUrl, ...sourceUrls(originalUrl, source)])];
+        // Mirrors may advertise available versions and deliver archive bytes.
+        // Only GitHub may supply the digest used to authorize those bytes.
+        const urls = version
+            ? [originalUrl]
+            : [...new Set([originalUrl, ...sourceUrls(originalUrl, source)])];
         const data = await Promise.any(
             urls.map(async (url) => {
                 const response = await fetch(url, {
@@ -184,7 +275,9 @@ export async function fetchRelease(
                 const html = await readText(response, 1024 * 1024);
                 return version
                     ? parseReleaseAssetsPage(html, version)
-                    : parseLatestReleasePage(html);
+                    : query === 'preview'
+                      ? previewFromFeed(html)
+                      : parseLatestReleasePage(html);
             }),
         );
         return { data, fromPage: true };
@@ -195,7 +288,10 @@ export async function fetchRelease(
             .map((failure: unknown) =>
                 failure instanceof Error ? failure.message : String(failure),
             );
-        throw new Error(`${[...new Set(details)].join('；')}；请在更新来源中检测或指定可用镜像`);
+        const hint = version
+            ? '无法从 GitHub 获取官方更新校验信息'
+            : '请在更新来源中检测或指定可用镜像';
+        throw new Error(`${[...new Set(details)].join('；')}；${hint}`);
     } finally {
         controller.abort();
     }

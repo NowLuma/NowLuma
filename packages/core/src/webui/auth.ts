@@ -51,25 +51,29 @@ export interface WebuiAuthState {
 export interface PasswordRule {
     id: string;
     label: string;
+    optional?: boolean;
     test: (pwd: string) => boolean;
 }
 
 export const PASSWORD_RULES: PasswordRule[] = [
     { id: 'length', label: '长度不少于 10 位', test: (p) => p.length >= 10 },
-    { id: 'lower', label: '包含小写字母', test: (p) => /[a-z]/.test(p) },
-    { id: 'upper', label: '包含大写字母', test: (p) => /[A-Z]/.test(p) },
-    { id: 'special', label: '包含特殊符号 (!@#$%…)', test: (p) => /[^A-Za-z0-9\s]/.test(p) },
+    { id: 'lower', label: '包含小写字母', optional: true, test: (p) => /[a-z]/.test(p) },
+    { id: 'upper', label: '包含大写字母', optional: true, test: (p) => /[A-Z]/.test(p) },
+    {
+        id: 'special',
+        label: '包含特殊符号 (!@#$%…)',
+        optional: true,
+        test: (p) => /[^A-Za-z0-9\s]/.test(p),
+    },
     { id: 'no-space', label: '不包含空格', test: (p) => !/\s/.test(p) && p.length > 0 },
 ];
 
-export function evaluatePasswordRules(
-    password: string,
-): { id: string; label: string; ok: boolean }[] {
-    return PASSWORD_RULES.map((r) => ({ id: r.id, label: r.label, ok: r.test(password) }));
+export function evaluatePasswordRules(password: string) {
+    return PASSWORD_RULES.map(({ test, ...rule }) => ({ ...rule, ok: test(password) }));
 }
 
-export function isStrongPassword(password: string): boolean {
-    return PASSWORD_RULES.every((r) => r.test(password));
+export function isAcceptablePassword(password: string): boolean {
+    return PASSWORD_RULES.every((rule) => rule.optional || rule.test(password));
 }
 
 function hashPassword(password: string, salt: Buffer): Buffer {
@@ -349,7 +353,7 @@ export class WebuiAuth {
             throw new Error('开发模式 (NOWLUMA_DEV_MODE=1) 已禁用密码修改');
         }
 
-        if (!isStrongPassword(newPassword)) {
+        if (!isAcceptablePassword(newPassword)) {
             throw new Error('密码不符合强度要求');
         }
 

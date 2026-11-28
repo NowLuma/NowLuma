@@ -1,7 +1,7 @@
 {
   "license": "GPL-3.0-only",
   "name": "@nowluma/core",
-  "version": "2.5.0-rc.2",
+  "version": "2.5.1",
   "description": "Nowluma core - NTQQ packet sniffer with Node.js native addon",
   "private": true,
   "type": "module",

@@ -18,7 +18,7 @@ tutorial: first-run
 
 页面中央显示「初始化中…」和骨架占位，表示正在检查本地会话与后端状态。
 
-如果一直停在这里：确认服务已启动（Docker 用 `bash deploy/manage.sh logs`），端口没有被占用，反向代理保留了 `/api/`。见[排障与失败恢复](troubleshooting.md)。
+如果一直停在这里：确认服务已启动（Docker 用 `nowluma logs`，旧安装用 `bash deploy/manage.sh logs`），端口没有被占用，反向代理保留了 `/api/`。见[排障与失败恢复](troubleshooting.md)。
 
 ## 登录
 
@@ -61,7 +61,7 @@ tutorial: first-run
 
 - 标题「设置新的访问密码」，说明「设置用于打开控制台的密码。」。
 - 刚登录成功的密码就是当前密码，页面不会再要你输入一次；只需填写「新密码」和「确认新密码」两次。
-- 规则以页面为准：不少于 10 位，包含小写字母、大写字母、特殊符号，且不包含空格。
+- 新密码至少 10 位，不能含空白字符，也不能与当前密码相同。大小写和特殊符号是强度建议，不必全部变绿；两次输入一致即可保存。
 - 「保存并继续」成功后，其他设备上的旧会话立即失效；当前浏览器会自动使用轮换后的新会话，接着选择显示效果和账号内核，再进入工作台。
 - 从偏好设置的「开发者 → 重新进入」进入时是演练模式，按钮变成「完成演练」，不会保存输入，也不会修改真实密码或说明确认记录。
 
@@ -87,7 +87,7 @@ tutorial: first-run
 **Docker 安装**的配置在命名卷中，不是仓库根目录的 `config/`。在安装目录停止服务，再用原 Compose 配置挂载同一个卷，保留原认证文件：
 
 ```bash
-bash deploy/manage.sh stop
+nowluma stop
 docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no-deps \
   --user 1000:1000 --entrypoint bash nowluma -lc '
     set -eu
@@ -97,9 +97,11 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml run --rm --no
     test ! -e "$backup"
     mv -- webui.json "$backup"
   '
-bash deploy/manage.sh start
-bash deploy/manage.sh logs
+nowluma start
+nowluma logs
 ```
+
+旧安装没有 `nowluma` 命令时，把上面的 `nowluma stop`、`nowluma start`、`nowluma logs` 换成对应的 `bash deploy/manage.sh` 命令。
 
 **原生运行**请先用 Ctrl+C 停止 Nowluma，在实际运行目录（含 `index.mjs`）中把 `config/webui.json` 改为一个尚不存在的备份名称，再按原方式启动。Windows exe 的运行目录在 `%LOCALAPPDATA%\Nowluma`；不要改下载目录里未使用的副本。
 

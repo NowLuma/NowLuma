@@ -30,7 +30,7 @@ export type UpdateStatus = { current: string } & (
 export interface UpdateInfo {
     /** The running build's version (no `v` prefix). */
     current: string;
-    /** Latest stable release version, or null if the check did not complete. */
+    /** Latest published version on the running build's channel, or null on failure. */
     latest: string | null;
     /** True only when `latest` is strictly newer than `current`. */
     hasUpdate: boolean;

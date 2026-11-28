@@ -31,6 +31,7 @@ function mockFetch(impl: (...args: Parameters<typeof fetch>) => ReturnType<typeo
 }
 
 beforeEach(() => {
+    running.version = '0.0.0';
     delete process.env.NOWLUMA_UPDATE_CHECK;
     globalThis.fetch = vi.fn(async () => {
         throw new Error('unexpected fetch');
@@ -47,7 +48,12 @@ afterEach(() => {
     }
 });
 
-vi.mock('@nowluma/common/version', () => ({ APP_VERSION: '0.0.0' }));
+const running = vi.hoisted(() => ({ version: '0.0.0' }));
+vi.mock('@nowluma/common/version', () => ({
+    get APP_VERSION() {
+        return running.version;
+    },
+}));
 
 describe('getUpdateInfo', () => {
     it.each(['0', 'false', 'off', 'no', 'FALSE', ' Off ', 'No'] as const)(
@@ -110,6 +116,40 @@ describe('getUpdateInfo', () => {
         },
     );
 
+    it.each([
+        ['2.5.0-rc.2', 'v2.5.0-rc.10', true],
+        ['2.5.0-rc.10', 'v2.5.0-rc.10', false],
+        ['2.5.0-rc.10', 'v2.5.0', true],
+    ] as const)(
+        'selects the highest published version for %s, including suffix changes',
+        async (current, tag, hasUpdate) => {
+            running.version = current;
+            mockFetch(async (url) => {
+                const page = new URL(String(url));
+                expect(page.pathname).toBe('/repos/NowLuma/NowLuma/releases');
+
+                if (page.searchParams.get('page') === '1') {
+                    return Response.json(
+                        [{ tag_name: 'v2.5.0-rc.9' }, { tag_name: 'v8.0.0', draft: true }],
+                        {
+                            headers: {
+                                Link: '<https://api.github.com/repos/NowLuma/NowLuma/releases?page=2>; rel="next"',
+                            },
+                        },
+                    );
+                }
+
+                return Response.json([{ tag_name: tag, body: 'release notes' }]);
+            });
+            expect(await getUpdateInfo(true)).toMatchObject({
+                current,
+                latest: tag.slice(1),
+                hasUpdate,
+                notes: 'release notes',
+            });
+        },
+    );
+
     it('GETs the latest stable release with the GitHub API headers', async () => {
         const fetchMock = mockFetch(async () => jsonResponse({ tag_name: 'v1.2.3' }));
         await getUpdateInfo(true);
@@ -156,11 +196,19 @@ describe('getUpdateInfo', () => {
         const same = await getUpdateInfo(true);
         expect(same.latest).toBe('0.0.0');
         expect(same.hasUpdate).toBe(false);
+    });
 
-        mockFetch(async () => jsonResponse({ tag_name: 'v0.0.0-rc.1' }));
-        const older = await getUpdateInfo(true);
-        expect(older.latest).toBe('0.0.0-rc.1');
-        expect(older.hasUpdate).toBe(false);
+    it.each([
+        { tag_name: 'v2.5.1-rc.1' },
+        { tag_name: 'v2.5.1', prerelease: true },
+        { tag_name: 'v2.5.1', draft: true },
+    ])('does not offer an unpublished or pre-release build as a stable update', async (release) => {
+        mockFetch(async () => jsonResponse(release));
+        expect(await getUpdateInfo(true)).toMatchObject({
+            latest: null,
+            hasUpdate: false,
+            error: 'invalid release version',
+        });
     });
 
     it('treats a missing body / html_url / published_at as null', async () => {

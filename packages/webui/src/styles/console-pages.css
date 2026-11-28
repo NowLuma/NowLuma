@@ -283,7 +283,8 @@
   background: var(--accent);
 }
 
-:where(html:not([data-webui-target])) .cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
+:where(html:not([data-webui-target]))
+  .cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
   border-block-end-color: var(--primary);
   background: color-mix(in oklab, var(--primary) 9%, var(--card));
   box-shadow: var(--glass-inset);
@@ -507,7 +508,8 @@
   border-bottom-color: currentColor;
 }
 
-:where(html:not([data-webui-target])) .cp-level-toggle:is(:hover:not(:disabled), [aria-pressed='true']) {
+:where(html:not([data-webui-target]))
+  .cp-level-toggle:is(:hover:not(:disabled), [aria-pressed='true']) {
   background-color: color-mix(in oklab, var(--accent) 70%, var(--card));
 }
 
@@ -668,7 +670,6 @@
   min-height: 44px;
 }
 
-
 :is(.cp-page, .cp-dialog) :where(button, input, textarea, [tabindex='0']):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
@@ -827,14 +828,41 @@ html[data-webui-target] :is(.cp-facts, .cp-log-filter) {
   background-color: var(--card);
 }
 
-html:is([data-reduce-motion='1'], [data-no-motion='1'], [data-low-performance='1'], [data-webui-target])
-  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
+html:is(
+    [data-reduce-motion='1'],
+    [data-no-motion='1'],
+    [data-low-performance='1'],
+    [data-webui-target]
+  )
+  :is(
+    .cp-fade,
+    .cp-row,
+    .cp-catnav-item,
+    .cp-acct-chip,
+    .cp-control,
+    .cp-mode-item,
+    .cp-level-toggle,
+    .cp-log-row,
+    .cp-debug-modes [role='tab'],
+    .cp-action-row > button > svg
+  ) {
   animation: none;
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
+  :is(
+    .cp-fade,
+    .cp-row,
+    .cp-catnav-item,
+    .cp-acct-chip,
+    .cp-control,
+    .cp-mode-item,
+    .cp-level-toggle,
+    .cp-log-row,
+    .cp-debug-modes [role='tab'],
+    .cp-action-row > button > svg
+  ) {
     animation: none;
     transition: none;
   }

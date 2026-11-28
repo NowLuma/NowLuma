@@ -106,9 +106,18 @@ describe('desktop uses the actual WebUI authorization gates', () => {
         const cookie = desktopCookie(login);
         expect((await call('/desktop/', '', undefined, cookie)).status).toBe(401);
         expect((await call('/api/desktop/session', token, {})).status).toBe(403);
+        const newPassword = 'lowercase7';
+        const check = await call('/api/auth/check-strength', token, { password: newPassword });
+        expect(await check.json()).toMatchObject({
+            valid: true,
+            rules: expect.arrayContaining([
+                expect.objectContaining({ id: 'upper', ok: false, optional: true }),
+                expect.objectContaining({ id: 'special', ok: false, optional: true }),
+            ]),
+        });
         const rotation = await call('/api/auth/change-password', token, {
             oldPassword: password,
-            newPassword: 'Changed!Password123',
+            newPassword,
         });
         expect(rotation.status).toBe(200);
         const rotated = (await rotation.json()) as {

@@ -333,7 +333,7 @@ export interface ApiClient {
 
     // ---- update check ----
     update: {
-        /** Advisory check for a newer stable release. Read-only — never downloads. */
+        /** Advisory check on the running build's release channel. Never downloads. */
         check(force?: boolean): Promise<UpdateInfo>;
         status(): Promise<UpdateStatus>;
         sources(): Promise<{ config: UpdateSourceConfig }>;

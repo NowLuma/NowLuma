@@ -1596,6 +1596,7 @@
             "labels": [
                 "仅本机/SSH",
                 "局域网",
+                "公网控制台",
                 "时区"
             ],
             "status": "implemented",
@@ -1634,6 +1635,52 @@
                 "install-docker.md",
                 "troubleshooting.md",
                 "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-nowluma-cli",
+            "group": "部署",
+            "labels": [
+                "nowluma",
+                "nowluma start",
+                "nowluma stop",
+                "nowluma restart",
+                "nowluma logs",
+                "nowluma doctor",
+                "nowluma pull",
+                "nowluma update 2.5.1"
+            ],
+            "status": "unverified",
+            "pages": [
+                "install-docker.md",
+                "troubleshooting.md",
+                "data-backup.md"
+            ]
+        },
+        {
+            "id": "deploy-public-mode",
+            "group": "网络",
+            "labels": [
+                "公网模式",
+                "只发布控制台"
+            ],
+            "status": "unverified",
+            "pages": [
+                "install-docker.md",
+                "access-network.md"
+            ]
+        },
+        {
+            "id": "deploy-lite-terminal",
+            "group": "部署",
+            "labels": [
+                "SHA256SUMS",
+                "sha256sum --check --strict",
+                "launcher.sh"
+            ],
+            "status": "unverified",
+            "pages": [
+                "install-native.md"
             ]
         },
         {

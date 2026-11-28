@@ -17,14 +17,15 @@ import { defaultTranslate, translator, useLocale, useT, type Translate } from '@
 export interface PasswordRule {
     id: string;
     label: string;
+    optional?: boolean;
     ok: boolean;
 }
 
 const EMPTY_RULES: readonly PasswordRule[] = [
     { id: 'length', label: '长度不少于 10 位', ok: false },
-    { id: 'lower', label: '包含小写字母', ok: false },
-    { id: 'upper', label: '包含大写字母', ok: false },
-    { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false },
+    { id: 'lower', label: '包含小写字母', ok: false, optional: true },
+    { id: 'upper', label: '包含大写字母', ok: false, optional: true },
+    { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false, optional: true },
     { id: 'no-space', label: '不包含空格', ok: false },
 ];
 const STRENGTH_LABELS = ['未输入', '很弱', '较弱', '一般', '良好', '强'] as const;
@@ -80,10 +81,10 @@ export function passwordRequirementHint(
         return null;
     }
 
-    const unmet = options.rules.filter((rule) => !rule.ok);
+    const unmet = options.rules.filter((rule) => !rule.ok && !rule.optional);
 
     if (unmet.length === 0) {
-        return t('密码尚未满足全部要求', 'The password does not yet meet all requirements');
+        return t('密码未通过服务器校验', 'The server did not accept this password');
     }
 
     const labels = unmet.map((rule) => localizeRuleLabel(rule, t)).join(t('、', ', '));
@@ -185,6 +186,7 @@ export function ChangePasswordForm({
             displayedRules.map((rule) => ({
                 id: rule.id,
                 label: rule.label,
+                optional: rule.optional,
                 test: () => rule.ok,
             })),
         [displayedRules],

@@ -28,8 +28,8 @@ tutorial: index
 | ----------------------------------------- | -------------------------------- |
 | [Nowluma 中文文档](index.md)              | 阅读路线与章节目录               |
 | [Nowluma 是什么](introduction.md)         | 组成部分、连接状态、保存与许可   |
-| [Docker 安装（Linux）](install-docker.md) | 安装向导、端口、数据卷与日常命令 |
-| [原生安装](install-native.md)             | Linux Lite、Windows 启动器与源码 |
+| [Docker 安装（Linux）](install-docker.md) | 终端安装、`nowluma` 命令、端口与数据卷 |
+| [原生安装](install-native.md)             | Linux Lite 终端安装、Windows 启动器与源码 |
 | [首次启动](first-run.md)                  | 登录、首次设置与选择账号内核     |
 
 ### 接入与调试

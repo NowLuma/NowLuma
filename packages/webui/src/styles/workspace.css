@@ -209,8 +209,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
   width: 100%;
   max-width: 1280px;
   margin-inline: auto;
-  padding: 28px max(24px, env(safe-area-inset-right)) 32px
-    max(24px, env(safe-area-inset-left));
+  padding: 28px max(24px, env(safe-area-inset-right)) 32px max(24px, env(safe-area-inset-left));
 }
 
 .workspace-route {
@@ -1409,8 +1408,7 @@ html[data-contrast='high'] .workspace-paper-pattern {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
     max-width: 640px;
-    padding: 16px max(16px, env(safe-area-inset-right)) 32px
-      max(16px, env(safe-area-inset-left));
+    padding: 16px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left));
   }
 
   .workspace-auth-identity {
@@ -1533,7 +1531,13 @@ html[data-contrast='high'] .workspace-paper-pattern {
 
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action) {
+    :is(
+      .workspace-dock-link,
+      .workspace-theme-trigger,
+      .workspace-more-trigger,
+      .workspace-overview-tools .ui-glass-action,
+      .workspace-workflow-actions .ui-glass-action
+    ) {
     transition:
       scale 420ms linear(0, 0.42 13%, 0.82 29%, 1.05 48%, 0.99 76%, 1),
       color 150ms,
@@ -1541,14 +1545,26 @@ html[data-contrast='high'] .workspace-paper-pattern {
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action):active:not(:disabled) {
+    :is(
+      .workspace-dock-link,
+      .workspace-theme-trigger,
+      .workspace-more-trigger,
+      .workspace-overview-tools .ui-glass-action,
+      .workspace-workflow-actions .ui-glass-action
+    ):active:not(:disabled) {
     scale: 0.96;
     transition-duration: 110ms;
   }
 }
 
 html[data-low-performance='1']
-  :is(.workspace-dock-link, .workspace-theme-trigger, .workspace-more-trigger, .workspace-overview-tools .ui-glass-action, .workspace-workflow-actions .ui-glass-action) {
+  :is(
+    .workspace-dock-link,
+    .workspace-theme-trigger,
+    .workspace-more-trigger,
+    .workspace-overview-tools .ui-glass-action,
+    .workspace-workflow-actions .ui-glass-action
+  ) {
   transition:
     scale 180ms ease-out,
     color 150ms,
@@ -1570,7 +1586,13 @@ html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {
 
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock, .workspace-overview-tools, .workspace-workflow-actions)
+    :is(
+      .workspace-masthead,
+      .workspace-auth-effects,
+      .workspace-dock,
+      .workspace-overview-tools,
+      .workspace-workflow-actions
+    )
     .ui-glass-material::after {
     transition:
       opacity 420ms ease-out,
@@ -1578,23 +1600,38 @@ html[data-no-motion='1'] :is(.workspace-shell, .workspace-auth-shell) * {
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock, .workspace-overview-tools .ui-glass, .workspace-workflow-actions .ui-glass):is(
-      :hover,
-      :focus-within
-    )
+    :is(
+      .workspace-masthead .ui-glass,
+      .workspace-auth-effects .ui-glass,
+      .workspace-dock,
+      .workspace-overview-tools .ui-glass,
+      .workspace-workflow-actions .ui-glass
+    ):is(:hover, :focus-within)
     > .ui-glass-material::after {
     translate: 6px 0;
     opacity: 1;
   }
 
   html:not([data-reduce-motion='1']):not([data-no-motion='1']):not([data-webui-target])
-    :is(.workspace-masthead .ui-glass, .workspace-auth-effects .ui-glass, .workspace-dock, .workspace-overview-tools .ui-glass, .workspace-workflow-actions .ui-glass):active
+    :is(
+      .workspace-masthead .ui-glass,
+      .workspace-auth-effects .ui-glass,
+      .workspace-dock,
+      .workspace-overview-tools .ui-glass,
+      .workspace-workflow-actions .ui-glass
+    ):active
     > .ui-glass-material::after {
     translate: 2px 0;
   }
 
   html[data-low-performance='1']
-    :is(.workspace-masthead, .workspace-auth-effects, .workspace-dock, .workspace-overview-tools, .workspace-workflow-actions)
+    :is(
+      .workspace-masthead,
+      .workspace-auth-effects,
+      .workspace-dock,
+      .workspace-overview-tools,
+      .workspace-workflow-actions
+    )
     .ui-glass-material::after {
     transition-duration: 180ms;
   }
