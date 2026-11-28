@@ -21,17 +21,13 @@ _图：控制台示例入口。真实部署的初始密码从安装输出获取�
 
 ## 安装向导
 
-[预发行版 `2.5.0-rc.2`](https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.2) 已在 Ubuntu amd64 上验证：镜像可匿名拉取，首次安装后控制台可访问，重跑向导会保留部署配置。在 Linux 终端运行以下命令，无需在向导中再选版本：
+默认安装 Docker Hub 上最新通过发布验证的 Linux/amd64 镜像（可能是预发行版）。在 Linux 的 Bash 终端运行：
 
 ```bash
-curl -qfsSL --proto '=https' --proto-redir '=https' \
-  https://nowluma.github.io/NowLuma/install.sh -o nowluma-install.sh &&
-  test -s nowluma-install.sh && bash nowluma-install.sh --version 2.5.0-rc.2
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-安装其他版本时，把 `--version` 的值换成 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)上已发布的 Linux/amd64 版本。省略 `--version` 时，新安装会提示输入具体版本。
-
-先选语言。向导检查 Docker 后，请选择安装目录（默认 `$HOME/Nowluma`）。
+先选语言，再选择安装目录（默认 `$HOME/Nowluma`）。无需选择版本：首次安装把 `wsxyt/nowluma:latest` 解析为固定镜像摘要，重跑复用该摘要。需要指定版本时，在命令末尾加 `--version 版本`，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
 
 向导中的设置与默认值：
 
@@ -48,7 +44,7 @@ curl -qfsSL --proto '=https' --proto-redir '=https' \
 
 向导沿用现有 Docker 和镜像源。缺少 Docker 时，可选择官方安装脚本，或使用第三方 LinuxMirrors 选择镜像源；向导显示命令后等待确认。
 
-如果首次拉取镜像失败，向导不会保存新部署，可以重新运行并选择已发布的版本。如果目标版本没有 Docker Hub 镜像，可从完整源码目录运行 `bash deploy/install.sh --docker`。
+如果首次拉取失败，向导不会保存新部署。遇到 `proxyconnect`，先检查部署机的 Docker daemon 代理是否可达。如果目标版本没有 Docker Hub 镜像，可从完整源码目录运行 `bash deploy/install.sh --docker`。
 
 安装成功后，终端会显示控制台地址；新部署还会显示初始密码。
 

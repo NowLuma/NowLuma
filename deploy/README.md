@@ -2,17 +2,17 @@
 
 ## 1. 安装与首次登录
 
-预构建安装使用 [Docker Hub 标签页](https://hub.docker.com/r/wsxyt/nowluma/tags)中已发布的 Linux/amd64 版本。在 Linux 终端运行：
+预构建安装默认使用 Docker Hub 上最新通过发布验证的 Linux/amd64 镜像（可能是预发行版）。在 Linux 的 Bash 终端运行：
 
 ```bash
-bash -c 'set -e; tmp=$(mktemp); trap "rm -f -- \"\$tmp\"" EXIT; curl -q --proto "=https" --proto-redir "=https" -fsSL -o "$tmp" https://nowluma.github.io/NowLuma/install.sh; test -s "$tmp"; bash "$tmp" "$@"' nowluma-install
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
 先选简体中文或 English，向导再检查 Docker 和 Compose v2。缺少 Docker 时，可选择官方安装脚本或第三方 LinuxMirrors；后者提供镜像源选择。向导显示命令并等待确认。已有 Docker 则沿用当前配置。
 
-选择安装目录（默认 `$HOME/Nowluma`）、已发布的 Docker Hub 版本、访问方式、端口和时区。已知版本时，可在命令末尾加 `--version 版本`。新安装将 Compose 配置和管理脚本放在 `deploy/`，并用其中的 `.env` 记录设置。再次运行会复用原有配置。
+选择安装目录（默认 `$HOME/Nowluma`）、访问方式、端口和时区。不用手选版本。新部署把 `latest` 解析为固定摘要并记录到 `deploy/.env`，重跑不会切换版本。需要指定版本时，在命令末尾加 `--version 版本`，标签见 [Docker Hub](https://hub.docker.com/r/wsxyt/nowluma/tags)。
 
-首次拉取镜像失败时，向导不会保存新部署；可重新运行并选择已发布的版本。GitHub 发行或 GHCR 标签不代表 Docker Hub 已发布。
+首次拉取镜像失败时，向导不会保存新部署。若报错包含 `proxyconnect`，请检查部署机的 Docker daemon 代理设置；更换镜像版本不会绕开代理。
 
 向导在容器通过健康检查后打印地址和新生成的初始密码。需要 sudo 访问 Docker 时，输出的管理命令也会带 sudo。
 

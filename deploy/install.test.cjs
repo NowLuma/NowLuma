@@ -76,6 +76,10 @@ if [[ $1 == compose && $2 == -f ]]; then
   if [[ $* == *' -f - up '* ]]; then cat >> "$TEST_LOG"; fi
 fi
 if [[ $* == *' pull '* && $FAIL_PULL == 1 ]]; then echo 'manifest unknown' >&2; exit 1; fi
+if [[ $1 == pull && $2 == docker.io/wsxyt/nowluma:latest ]]; then
+  if [[ $FAIL_PULL == 1 ]]; then echo 'proxyconnect tcp: no route to host' >&2; exit 1; fi
+  if [[ $PULL_DIGEST != '' ]]; then printf 'Digest: %s\\n' "$PULL_DIGEST"; fi
+fi
 if [[ $* == *' up '* && $FAIL_START == 1 ]]; then exit 1; fi
 if [[ $* == *' logs '* && $* != *--follow* && $NO_INITIAL != 1 ]]; then echo 'initial credentials: user=admin password=0123456789abcdef'; fi
 if [[ $* == *' port '* ]]; then
@@ -95,14 +99,14 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-[[ -n $output ]] || exit 1
 case "$url" in
   https://get.docker.com|https://linuxmirrors.cn/docker.sh)
     printf '%s\\n' 'echo "ran Docker installer" >> "$TEST_LOG"' 'rm -f -- "$DOCKER_MISSING"' > "$output"
     if [[ $FAIL_DOCKER_DOWNLOAD == 1 ]]; then exit 18; fi ;;
   https://nowluma.github.io/NowLuma/install.sh|https://nowluma.github.io/NowLuma/manage.sh|https://nowluma.github.io/NowLuma/docker-compose.yml)
     file=\${url##*/}
-    cp -- "$HOSTED/$file" "$output"
+    if [[ $file == "$FAIL_ASSET" && -z $output ]]; then head -n 100 "$HOSTED/$file"; exit 18; fi
+    if [[ -z $output ]]; then cat "$HOSTED/$file"; else cp -- "$HOSTED/$file" "$output"; fi
     if [[ $file == "$FAIL_ASSET" ]]; then exit 18; fi ;;
   *) exit 1 ;;
 esac`,
@@ -138,6 +142,7 @@ source "$installer" "$@"
     FAIL_PULL: options.failPull ? '1' : '0',
     FAIL_DOCKER_DOWNLOAD: options.failDockerDownload ? '1' : '0',
     FAIL_ASSET: options.failAsset ?? '',
+    PULL_DIGEST: options.pullDigest ?? `sha256:${'a'.repeat(64)}`,
     HOSTED: posix(hosted),
     DOCKER_HOST: options.dockerHost ?? '',
     DOCKER_CONTEXT: '',
@@ -383,38 +388,61 @@ test('declining startup of a stopped system daemon leaves it stopped', () =>
 
 function documentedCommand() {
   const readme = fs.readFileSync(path.join(source, 'README.md'), 'utf8');
-  return readme.match(/^bash -c 'set -e;.+ nowluma-install$/m)[0];
+  return readme.match(/^bash <\(curl .+\/install\.sh .+\)$/m)[0];
 }
 
-test('the documented HTTPS command launches from a temp file and fetches only deployment files', () =>
+test('the documented short command pins latest and reuses the pin without asking for a version', () =>
   using({}, (f) => {
     const target = path.join(f.root, 'downloaded install');
-    const result = f.runBash(['-c', documentedCommand()], `2\n${posix(target)}\nlatest\nv2.5.0-rc.1\n\n\n\n\n\n`);
+    const result = f.runBash(['-c', documentedCommand()], `2\n${posix(target)}\n\n\n\n\n\n`);
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.match(result.stderr, /^\s*Nowluma — 1\. 简体中文 {2}2\. English/);
-    assert.match(result.stderr, /specific version tag, not latest/);
     const directory = path.join(target, 'deploy');
     assert.deepEqual(fs.readdirSync(directory).sort(), ['.env', 'docker-compose.yml', 'manage.sh']);
     const settings = path.join(directory, '.env');
-    assert.ok(fs.readFileSync(settings, 'utf8').includes(`NOWLUMA_IMAGE=${image}\n`));
+    const pinned = `docker.io/wsxyt/nowluma@${f.env.PULL_DIGEST}`;
+    const before = fs.readFileSync(settings, 'utf8');
+    assert.match(before, /^NOWLUMA_IMAGE=docker\.io\/wsxyt\/nowluma@sha256:[a-f0-9]{64}$/m);
+    assert.ok(before.includes(`NOWLUMA_IMAGE=${pinned}\n`));
     if (process.platform !== 'win32') assert.equal(fs.statSync(settings).mode & 0o777, 0o600);
     assert.deepEqual(
       [...result.calls.matchAll(/^curl .*?(https:\/\/\S+)/gm)].map((match) => match[1]),
       ['install.sh', 'docker-compose.yml', 'manage.sh'].map((file) => `https://nowluma.github.io/NowLuma/${file}`),
     );
-    assert.ok(result.calls.includes(`image ${image}\n`));
-    assert.match(result.calls, / pull nowluma[\s\S]* up -d --no-build --pull never --wait/);
+    assert.match(result.calls, /^docker pull docker\.io\/wsxyt\/nowluma:latest$/m);
+    assert.ok(result.calls.includes(`image ${pinned}\n`));
+    assert.match(result.calls, / up -d --no-build --pull never --wait/);
+    assert.doesNotMatch(result.calls, /compose .* pull /);
+    f.env.PULL_DIGEST = `sha256:${'b'.repeat(64)}`;
+    const rerun = f.cloud(`2\n${posix(target)}\n`);
+    assert.equal(rerun.status, 0, rerun.stderr + rerun.stdout);
+    assert.doesNotMatch(rerun.calls, /docker pull .*:latest/);
+    assert.ok(rerun.calls.includes(`image ${pinned}\n`));
+    assert.equal(fs.readFileSync(settings, 'utf8'), before);
     assert.doesNotMatch(result.calls, /codeload|--build|down -v|apt-get|systemctl/);
   }));
 
 test('the documented command does not execute a partial installer transfer', () =>
   using({ failAsset: 'install.sh' }, (f) => {
     const result = f.runBash(['-c', documentedCommand()], '2\n');
-    assert.equal(result.status, 18);
+    assert.notEqual(result.status, 0);
     assert.match(result.calls, /curl .*https:\/\/nowluma\.github\.io\/NowLuma\/install\.sh/);
     assert.doesNotMatch(result.calls, /docker |manage\.sh/);
     assert.doesNotMatch(result.stderr, /Language/);
   }));
+
+test('a default image pull failure or missing digest never saves a deployment', () => {
+  for (const options of [{ failPull: true }, { pullDigest: '' }]) {
+    using(options, (f) => {
+      const target = path.join(f.root, 'failed default install');
+      const result = f.cloud(`2\n${posix(target)}\n\n\n\n\n\n`);
+      assert.equal(result.status, options.failPull ? 3 : 1);
+      assert.match(result.stderr, options.failPull ? /proxyconnect.*no route to host|daemon network and proxy/ : /single image digest/);
+      assert.deepEqual(fs.readdirSync(target), []);
+      assert.doesNotMatch(result.calls, / up |compose .* pull /);
+    });
+  }
+});
 
 test('an incomplete bundle is not committed or started', () =>
   using({ failAsset: 'manage.sh' }, (f) => {

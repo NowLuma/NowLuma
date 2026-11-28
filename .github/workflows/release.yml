@@ -192,7 +192,7 @@ jobs:
   # The GitHub release stays private until every asset is in the draft and its
   # SHA256SUMS verifies against a fresh download. The versioned GHCR image is
   # already visible; publish the verified digest to Docker Hub if configured.
-  # Only stable releases promote the mutable :latest tags.
+  # Docker Hub latest follows verified releases; GHCR latest remains stable-only.
   publish:
     needs: [draft, linux, windows, docker]
     runs-on: ubuntu-latest
@@ -317,11 +317,9 @@ jobs:
           fi
           echo "::notice::Verified public linux/amd64 image $HUB_IMAGE:$RELEASE_VERSION ($IMAGE_DIGEST)."
 
-          if [[ "$RELEASE_PRERELEASE" == 'false' ]]; then
-            skopeo copy --all --preserve-digests --authfile "$authfile" \
-              "docker://$HUB_IMAGE@$IMAGE_DIGEST" "docker://$HUB_IMAGE:latest"
-            verify_tag latest
-          fi
+          skopeo copy --all --preserve-digests --authfile "$authfile" \
+            "docker://$HUB_IMAGE@$IMAGE_DIGEST" "docker://$HUB_IMAGE:latest"
+          verify_tag latest
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: needs.draft.outputs.prerelease == 'false'
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0

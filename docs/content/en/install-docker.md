@@ -21,17 +21,13 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Installer
 
-The [`2.5.0-rc.2` prerelease](https://github.com/NowLuma/NowLuma/releases/tag/v2.5.0-rc.2) was verified on Ubuntu amd64: the image pulls anonymously, the console is reachable after installation, and rerunning the wizard preserves the deployment settings. Run the command below in a Linux terminal to skip the version prompt:
+The installer defaults to the most recently verified Linux/amd64 Docker Hub image, which may be a prerelease. Run this in Bash on Linux:
 
 ```bash
-curl -qfsSL --proto '=https' --proto-redir '=https' \
-  https://nowluma.github.io/NowLuma/install.sh -o nowluma-install.sh &&
-  test -s nowluma-install.sh && bash nowluma-install.sh --version 2.5.0-rc.2
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-To install another version, replace the `--version` value with a published Linux/amd64 version from the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags). Without `--version`, the wizard prompts for a specific version on new installations.
-
-Select a language first. After the Docker check, choose an installation directory (default `$HOME/Nowluma`).
+Choose a language and an installation directory (default `$HOME/Nowluma`). No version prompt is needed: on the first install, the wizard pins the digest pulled from `wsxyt/nowluma:latest`. Reruns reuse that digest. To install a particular version, append `--version VERSION` using a [Docker Hub tag](https://hub.docker.com/r/wsxyt/nowluma/tags).
 
 The wizard uses these setup defaults:
 
@@ -48,7 +44,7 @@ Press Enter to accept a default. Use three different ports. The wizard reuses an
 
 The wizard uses the existing Docker and registry mirror settings. If Docker is missing, choose the official installer or the third-party LinuxMirrors installer to select a mirror. The wizard shows the command and asks before running it.
 
-If the first image pull fails, the wizard does not save the new deployment. Run it again with an available version. If your target version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
+If the first pull fails, the wizard does not save the new deployment. For `proxyconnect` errors, check whether the Docker daemon can reach its configured proxy. If the desired version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
 
 After startup, the wizard prints the console address and, for a new deployment, the initial password.
 
