@@ -41,6 +41,13 @@ describe('staged updates', () => {
         },
     );
 
+    it('preserves a manually upgraded install when an older staged release remains', async () => {
+        await releaseFixture(root, '3.0.0', 'win32-x64', 'old.mjs');
+        await expect(applyPendingUpdate(root)).resolves.toBeNull();
+        expect(await exists(staging)).toBe(false);
+        expect(await fs.readFile(path.join(root, 'index.mjs'), 'utf8')).toBe('3.0.0');
+    });
+
     it('accepts prerelease identifiers and build metadata in manifests', async () => {
         const payload = path.join(staging, 'pending/payload');
         const manifest = await readManifest(payload);

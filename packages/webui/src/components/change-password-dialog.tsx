@@ -30,8 +30,8 @@ export function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePa
             onClose={() => onOpenChange(false)}
             title={t('修改访问密码', 'Change access password')}
             description={t(
-                '设置一个全新的强密码后，其它会话将被立即下线，需要重新登录。',
-                'After you set a new strong password, all other sessions will be signed out immediately and must sign in again.',
+                '设置一个全新的强密码后，其它会话将被立即下线；当前浏览器会继续使用轮换后的会话。',
+                'After you set a new strong password, all other sessions are signed out; this browser continues with a rotated session.',
             )}
             closeLabel={t('关闭修改密码弹窗', 'Close change password dialog')}
         >

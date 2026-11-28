@@ -1,6 +1,6 @@
 ---
 title: Docker install (Linux)
-description: 'Deploy Nowluma on Linux with the installer: access mode, ports, timezone, volumes, daily commands, desktop, upgrades and verification status.'
+description: 'Install Nowluma on Linux from a terminal: nowluma commands, access modes, public mode, ports, volumes, desktop, upgrades and verification status.'
 tutorial: install-docker
 ---
 
@@ -12,7 +12,7 @@ Deploy Nowluma on a Linux server or NAS. The lesson above lets you practise sign
 
 _Figure: example console entry. Obtain the real deployment's initial password from its installer output._
 
-For a long-running Linux server or NAS. The installer checks Docker Engine and Compose v2, writes private configuration and starts the container.
+For a long-running Linux server or NAS. Installation and daily management work entirely from a terminal; no browser download is needed. The installer checks Docker Engine and Compose v2, writes private configuration and starts the container.
 
 ## Requirements
 
@@ -21,38 +21,44 @@ For a long-running Linux server or NAS. The installer checks Docker Engine and C
 
 ## Installer
 
-The installer defaults to the most recently verified Linux/amd64 Docker Hub image, which may be a prerelease. Run this in Bash on Linux:
+Run this in Bash on Linux:
 
 ```bash
 bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-Choose a language and an installation directory (default `$HOME/Nowluma`). No version prompt is needed: on the first install, the wizard pins the digest pulled from `wsxyt/nowluma:latest`. Reruns reuse that digest. To install a particular version, append `--version VERSION` using a [Docker Hub tag](https://hub.docker.com/r/wsxyt/nowluma/tags).
+Choose a language and an installation directory (default `$HOME/Nowluma`). The wizard checks Docker and Compose v2; if either is missing you can approve the official installer or the third-party LinuxMirrors script. Existing Docker and mirror settings are left unchanged. The wizard itself needs no root shell; only Docker installation or access commands are elevated with sudo when prompted.
+
+No version prompt is needed: on the first install, the wizard resolves `wsxyt/nowluma:latest` to a fixed image digest and writes it to `deploy/.env`; reruns do not switch it. Pulls of `wsxyt/nowluma` use the Docker daemon's configured mirrors. To install a particular version, append a version tag such as `--version 2.5.1`; see the [Docker Hub tags](https://hub.docker.com/r/wsxyt/nowluma/tags).
 
 The wizard uses these setup defaults:
 
-| Prompt                      | Meaning                                |
-| --------------------------- | -------------------------------------- |
-| Language                    | `1. 简体中文` or `2. English`          |
-| Access                      | `1. Localhost/SSH (recommended)` or `2. LAN` |
-| Console and QQ desktop port | Default `5099`                         |
-| Bot HTTP port               | Default `3000`                         |
-| Bot WebSocket port          | Default `3001`                         |
-| Timezone                    | For example `Asia/Shanghai`            |
+| Prompt                      | Meaning                                                     |
+| --------------------------- | ----------------------------------------------------------- |
+| Language                    | `1. 简体中文` or `2. English`                               |
+| Access                      | Localhost/SSH (recommended, default), LAN, or public        |
+| Console and QQ desktop port | Default `5099`                                              |
+| Bot HTTP port               | Default `3000`                                              |
+| Bot WebSocket port          | Default `3001`                                              |
+| Timezone                    | For example `Asia/Shanghai`                                 |
 
-Press Enter to accept a default. Use three different ports. The wizard reuses an existing `deploy/.env` as-is.
+Press Enter to accept a default. Use three different ports. An existing `deploy/.env` is reused as-is; ports, access mode and the saved image are not overwritten.
 
-The wizard uses the existing Docker and registry mirror settings. If Docker is missing, choose the official installer or the third-party LinuxMirrors installer to select a mirror. The wizard shows the command and asks before running it.
+Public mode is off by default: the wizard explains the risk and requires explicit confirmation. It publishes only the console port; the desktop is reached through that console's `/desktop/` path, while bot ports and the backend VNC stay on loopback. Prepare HTTPS and a firewall before using it, and enable 2FA. For your own remote access, prefer an SSH tunnel; see [Access and network](access-network.md).
 
 If the first pull fails, the wizard does not save the new deployment. For `proxyconnect` errors, check whether the Docker daemon can reach its configured proxy. If the desired version has no Docker Hub image, run `bash deploy/install.sh --docker` from a complete source checkout.
 
 After startup, the wizard prints the console address and, for a new deployment, the initial password.
 
+It also registers the `nowluma` command for the current user; without root or write access to system paths, add `~/.local/bin` to `PATH`. If that directory is unavailable or an unrelated command already uses the name, rerun the wizard with `NOWLUMA_BIN_DIR` set to another directory.
+
 ## First entry
 
 ```bash
-bash deploy/manage.sh logs
+nowluma logs
 ```
+
+For an older install without the `nowluma` command, use `bash deploy/manage.sh logs`.
 
 Open `http://127.0.0.1:5099`, log in with the initial password and complete [First run](first-run.md). Then:
 
@@ -67,21 +73,26 @@ The desktop reuses the current console session; no extra VNC password is needed.
 ## Daily commands
 
 ```bash
-bash deploy/manage.sh start
-bash deploy/manage.sh stop
-bash deploy/manage.sh restart
-bash deploy/manage.sh logs
-bash deploy/manage.sh doctor
+nowluma
 ```
 
-- `start` uses the saved, locally available image (or builds an existing source deployment) and waits for health.
-- `restart` stops gracefully and waits for recovery without pulling or building.
-- `stop` deletes no volumes.
-- `doctor` checks the container, processes, ports and directories.
+With no arguments it shows a numeric menu; subcommands can also be given directly:
+
+| Command           | Effect                                                                   |
+| ----------------- | ------------------------------------------------------------------------ |
+| `nowluma start`   | Start the saved image (or build a source deployment) and wait for health  |
+| `nowluma stop`    | Stop the service without deleting any volume                             |
+| `nowluma restart` | Stop gracefully and wait for recovery without pulling or building        |
+| `nowluma logs`    | Follow the container log                                                 |
+| `nowluma doctor`  | Check the container, processes, ports and directories                    |
+| `nowluma pull`    | Pull only the image saved in `deploy/.env`                               |
+| `nowluma update`  | Reapply the saved image; `nowluma update 2.5.1` pulls an explicit version |
+
+`nowluma` finds the installation directory through the current user's deployment registration, so it works from any directory. Older installs (for example an rc.2 deployment without the new CLI) keep using `bash deploy/manage.sh start` (also `stop`, `restart`, `logs`, `doctor`, `pull` and `update`); rerun the installer and select the existing installation directory to gain `nowluma` without changing `.env` or volumes.
 
 ## Ports and network
 
-Only host loopback is published by default. For a remote server, create a tunnel from your computer:
+Only host loopback is published by default, which suits local access or an SSH tunnel. For a remote server, create a tunnel from your computer:
 
 ```bash
 ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 user@server
@@ -89,9 +100,9 @@ ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 user@server
 
 Keep it open, then visit `http://127.0.0.1:5099`.
 
-If you explicitly choose LAN access, the installer binds `0.0.0.0` and warns that HTTP is unencrypted. Configure HTTPS or restrict access to trusted networks; never expose the console and desktop directly to the internet. See [Access and network](access-network.md).
+LAN access is available at install time: the wizard binds `0.0.0.0` and warns that HTTP is unencrypted. Public mode requires explicit confirmation and publishes only the console; the desktop is reached through that console's `/desktop/`, and OneBot ports 3000/3001 plus the backend VNC are not made public with it. Either way, a public entry needs HTTPS and a firewall; never expose the console directly. See [Access and network](access-network.md).
 
-Whether bot ports 3000/3001 are reachable depends on Compose publishing. Every endpoint still needs its own token; the console password is not a substitute.
+Whether bot ports are reachable depends on Compose publishing; in public mode they stay on loopback, so a remote bot needs its own tunnel or controlled network. Every endpoint still needs its own token; the console password is not a substitute.
 
 ## Volumes
 
@@ -121,25 +132,27 @@ A reverse proxy must preserve `/desktop/`, the real Host, WebSocket upgrade head
 ## Upgrade and removal
 
 1. Stop and back up all four volumes to avoid copying live SQLite/WAL.
-2. For an image deployment, verify the new tag, change only `NOWLUMA_IMAGE` in `deploy/.env` to the new versioned `docker.io/wsxyt/nowluma` image, and run `bash deploy/manage.sh update`. For a source deployment, update the checkout and run `bash deploy/manage.sh start`. Both reuse the existing volumes.
-3. Do not use `down -v` to upgrade.
-4. Confirm backups before deleting anything; normal `stop` keeps data.
+2. For an image deployment, `nowluma update` only reapplies the image saved in `deploy/.env`; a saved digest stays pinned and does not upgrade itself. To switch versions, run `nowluma update 2.5.1` explicitly; if the new version fails its startup check, `.env` still selects the old image, so `nowluma start` restores it. You can also change the version in `NOWLUMA_IMAGE` first and run `nowluma update`. For a source deployment, update the checkout and run `nowluma start`. Both reuse the existing volumes.
+3. For an older install without `nowluma`, rerun the installer and select the existing installation directory, then run `nowluma update 2.5.1`; `bash deploy/manage.sh update` keeps working as well.
+4. Do not use `down -v` to upgrade.
+5. Confirm backups before deleting anything; normal `stop` keeps data.
 
 ## Check the deployment {#verification-status}
 
-Run `bash deploy/manage.sh doctor` to check the running deployment, or use `logs` to diagnose a startup failure. See the [roadmap](planned.md#platforms) for platform coverage.
+Run `nowluma doctor` to check the deployment, or `nowluma logs` to diagnose a startup failure; older installs use `bash deploy/manage.sh doctor|logs`. See the [roadmap](planned.md#platforms) for platform coverage.
 
 ## Troubleshooting
 
-| Symptom                       | Check                                                           |
-| ----------------------------- | --------------------------------------------------------------- |
-| Image pull fails             | Verify the versioned tag, platform and registry access          |
-| Console unreachable           | Container health, port conflict, tunnel or LAN publish address  |
-| Desktop unreachable           | Console session, onboarding, proxy Host and WebSocket           |
-| No QQ process                 | Check the Xvfb and QQ startup logs                              |
-| Cannot attach                 | Native component/architecture, `SYS_PTRACE`, matching users     |
-| Auto-login lost after restart | `nowluma_qq-home` reused, HOME/XDG not overridden, no `down -v` |
-| Files exist but QR required   | QQ server session expired; verify inside QQ                     |
-| Corrupt configuration         | Find the file named in the error and restore it from a backup    |
+| Symptom                       | Check                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| Image pull fails              | Versioned tag, platform, registry access and the daemon's mirrors                             |
+| Console unreachable           | Container health, port conflict, tunnel or LAN publish address                                |
+| Desktop unreachable           | Console session, onboarding, proxy Host and WebSocket                                         |
+| No QQ process                 | Check the Xvfb and QQ startup logs                                                            |
+| Cannot attach                 | Native component/architecture, `SYS_PTRACE`, matching users                                   |
+| Auto-login lost after restart | `nowluma_qq-home` reused, HOME/XDG not overridden, no `down -v`                               |
+| Files exist but QR required   | QQ server session expired; verify inside QQ                                                   |
+| Corrupt configuration         | Find the file named in the error and restore it from a backup                                  |
+| `nowluma` not found           | Older or unregistered install; rerun the installer with the existing directory, or use `bash deploy/manage.sh`; for non-root installs check that `~/.local/bin` is on `PATH` |
 
 More entry points: [Troubleshooting](troubleshooting.md).

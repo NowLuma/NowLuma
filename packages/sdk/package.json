@@ -3,7 +3,7 @@
   "author": {
     "name": "Nowluma contributors"
   },
-  "version": "2.5.0-rc.2",
+  "version": "2.5.1",
   "description": "TypeScript SDK for Nowluma OneBot HTTP and WebSocket transports",
   "keywords": [
     "nowluma",

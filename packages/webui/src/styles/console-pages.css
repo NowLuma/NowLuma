@@ -155,6 +155,8 @@
 
 .cp-process-list {
   padding-inline: clamp(0.625rem, 2vw, 1rem);
+  /* Keep row hover/current fills inside the raised panel's rounded edge. */
+  overflow: clip;
 }
 
 .cp-process-detail,
@@ -281,7 +283,8 @@
   background: var(--accent);
 }
 
-:where(html:not([data-webui-target])) .cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
+:where(html:not([data-webui-target]))
+  .cp-mode-item:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) {
   border-block-end-color: var(--primary);
   background: color-mix(in oklab, var(--primary) 9%, var(--card));
   box-shadow: var(--glass-inset);
@@ -344,6 +347,7 @@
 }
 
 .cp-config-body,
+.cp-debug-editor,
 .cp-adapter-table {
   min-width: 0;
 }
@@ -468,6 +472,12 @@
   --glass-raised-opacity: 100%;
 }
 
+/* The clear action is a ghost button; keep the whole tool group on the same
+   capsule edge as the adjacent glass controls. */
+.cp-log-tool {
+  border-radius: 999px;
+}
+
 .cp-log-filter {
   display: flex;
   width: fit-content;
@@ -498,7 +508,8 @@
   border-bottom-color: currentColor;
 }
 
-:where(html:not([data-webui-target])) .cp-level-toggle:is(:hover:not(:disabled), [aria-pressed='true']) {
+:where(html:not([data-webui-target]))
+  .cp-level-toggle:is(:hover:not(:disabled), [aria-pressed='true']) {
   background-color: color-mix(in oklab, var(--accent) 70%, var(--card));
 }
 
@@ -659,7 +670,6 @@
   min-height: 44px;
 }
 
-
 :is(.cp-page, .cp-dialog) :where(button, input, textarea, [tabindex='0']):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
@@ -701,6 +711,9 @@
   }
 
   .cp-log-columns {
+    /* Cancel the sticky bar's inset (padding + 1px border) so the column
+       labels share the log rows' inline measure and column starts. */
+    margin-inline: calc(-1px - clamp(0.5rem, 2vw, 0.875rem));
     padding: 0.375rem;
     color: var(--muted-foreground);
     font-family: var(--font-mono);
@@ -815,14 +828,41 @@ html[data-webui-target] :is(.cp-facts, .cp-log-filter) {
   background-color: var(--card);
 }
 
-html:is([data-reduce-motion='1'], [data-no-motion='1'], [data-low-performance='1'], [data-webui-target])
-  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
+html:is(
+    [data-reduce-motion='1'],
+    [data-no-motion='1'],
+    [data-low-performance='1'],
+    [data-webui-target]
+  )
+  :is(
+    .cp-fade,
+    .cp-row,
+    .cp-catnav-item,
+    .cp-acct-chip,
+    .cp-control,
+    .cp-mode-item,
+    .cp-level-toggle,
+    .cp-log-row,
+    .cp-debug-modes [role='tab'],
+    .cp-action-row > button > svg
+  ) {
   animation: none;
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.cp-fade, .cp-row, .cp-catnav-item, .cp-acct-chip, .cp-control, .cp-mode-item, .cp-level-toggle, .cp-log-row, .cp-debug-modes [role='tab'], .cp-action-row > button > svg) {
+  :is(
+    .cp-fade,
+    .cp-row,
+    .cp-catnav-item,
+    .cp-acct-chip,
+    .cp-control,
+    .cp-mode-item,
+    .cp-level-toggle,
+    .cp-log-row,
+    .cp-debug-modes [role='tab'],
+    .cp-action-row > button > svg
+  ) {
     animation: none;
     transition: none;
   }

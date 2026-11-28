@@ -14,13 +14,13 @@ The console listens locally by default. Use an SSH tunnel for individual access,
 
 ## Three entry modes
 
-| Entry                   | Suitable for                      | Key point                                             |
-| ----------------------- | --------------------------------- | ----------------------------------------------------- |
-| `http://127.0.0.1:5099` | Same machine                      | Default bind is `127.0.0.1`                           |
-| SSH tunnel              | Remote server                     | Only a local port is opened; traffic goes through SSH |
-| LAN / reverse proxy     | Trusted network or existing HTTPS | Strong access password; public entry requires TLS     |
+| Entry                   | Suitable for                      | Key point                                                |
+| ----------------------- | --------------------------------- | -------------------------------------------------------- |
+| `http://127.0.0.1:5099` | Same machine                      | Default bind is `127.0.0.1`                              |
+| SSH tunnel              | Remote server                     | Only a local port is opened; traffic goes through SSH    |
+| LAN / reverse proxy     | Trusted network or existing HTTPS | Strong access password; public entry needs TLS + firewall |
 
-The installer's `1. 仅本机/SSH（推荐）` sets `127.0.0.1`; `2. 局域网` sets `0.0.0.0` and warns that HTTP is unencrypted.
+The installer defaults to **Localhost/SSH (recommended)**, which sets `127.0.0.1`. **LAN** sets `0.0.0.0` and warns that HTTP is unencrypted. Public mode requires an explicit choice and a second confirmation, and publishes only the console port (the desktop is reachable through its same-origin `/desktop/`); OneBot ports and the backend VNC stay on loopback.
 
 ## SSH tunnel
 
@@ -28,13 +28,14 @@ The installer's `1. 仅本机/SSH（推荐）` sets `127.0.0.1`; `2. 局域网` 
 ssh -L 5099:127.0.0.1:5099 -L 3001:127.0.0.1:3001 user@server
 ```
 
-Keep the window open and visit `http://127.0.0.1:5099`. Forward bot ports only as needed; do not publish 5099 publicly.
+Keep the window open and visit `http://127.0.0.1:5099`. Forward bot ports only as needed; do not publish 5099 directly. For a public entry, use public mode together with HTTPS and a firewall.
 
 ## LAN
 
 - Change the bind address under Settings → `服务` → `服务监听`, or choose LAN during install.
 - Restrict access to trusted networks with a firewall.
 - Plain HTTP on a LAN can expose passwords and sessions; use TLS or keep access inside SSH.
+- Public mode publishes only the console port; the desktop is reachable through the same-origin `/desktop/`, while the backend VNC and bot ports stay on loopback. A remote bot still needs an SSH tunnel or controlled network; do not expose 3000/3001 just for convenience.
 - Restart Nowluma after changing the listener.
 
 ## Reverse proxy
@@ -84,7 +85,7 @@ Docker desktop is served under `/desktop/`:
 ## Tokens, passwords and sessions
 
 - Sessions live in the browser; `退出登录` clears the current browser token.
-- Changing the access password immediately invalidates other sessions.
+- Changing the access password immediately invalidates other sessions; the browser that completed the change receives a rotated session and does not need to sign in again.
 - For [link sign-in](first-run.md#link-login), keep the URL private: it contains the access password.
 - With 2FA enabled, a one-time code or recovery code is also required; recovery codes are shown once.
 

@@ -63,6 +63,8 @@ Bot endpoint: `正常`, `注意`, `异常`, `应用失败`, `未启用`. `应用
 | [Linux Lite](install-native.md#linux-lite) | Linux x64, Node.js `24.22.1` (24.x) or `>=26.12.1` |
 | [Windows x64](install-native.md#windows)   | Unsigned launcher with Node 24 and .NET            |
 
+Both Linux methods install entirely from a terminal with no browser download. A Docker deployment is managed with the `nowluma` command; older installs can keep using `bash deploy/manage.sh`.
+
 ## Data locations
 
 | Content                                                       | Native           | Docker volume                       |

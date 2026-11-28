@@ -4,15 +4,28 @@ import { createHash } from 'node:crypto';
 import { constants, existsSync } from 'node:fs';
 import os from 'node:os';
 import { RELEASE_DOCUMENTS } from '@nowluma/common/release-assets';
-import { parseVersion } from '@nowluma/common/semver';
+import { compareVersions, parseVersion } from '@nowluma/common/semver';
 
 export const MANIFEST_FILE = 'release.json';
+
+async function checkStagingDirectory(directory: string): Promise<void> {
+    const stat = await lstat(directory);
+
+    if (
+        !stat.isDirectory() ||
+        (process.getuid && (stat.uid !== process.getuid() || (stat.mode & 0o022) !== 0))
+    ) {
+        throw new Error(`更新目录不安全，已保留原文件: ${directory}`);
+    }
+}
 
 export async function updateDirectory(root: string, temporaryRoot = os.tmpdir()): Promise<string> {
     const local = path.join(root, 'tmp', 'update');
 
     // A locally staged update must remain discoverable if system tmp becomes available again.
     if (existsSync(local)) {
+        await checkStagingDirectory(path.dirname(local));
+        await checkStagingDirectory(local);
         return local;
     }
 
@@ -20,7 +33,8 @@ export async function updateDirectory(root: string, temporaryRoot = os.tmpdir())
     const directory = path.join(temporaryRoot, `nowluma-update-${identity}`);
 
     try {
-        await mkdir(directory, { recursive: true });
+        await mkdir(directory, { recursive: true, mode: 0o700 });
+        await checkStagingDirectory(directory);
         await access(directory, constants.W_OK);
         return directory;
     } catch (error) {
@@ -32,7 +46,10 @@ export async function updateDirectory(root: string, temporaryRoot = os.tmpdir())
             throw error;
         }
 
-        await mkdir(local, { recursive: true });
+        await mkdir(path.dirname(local), { recursive: true, mode: 0o700 });
+        await checkStagingDirectory(path.dirname(local));
+        await mkdir(local, { recursive: true, mode: 0o700 });
+        await checkStagingDirectory(local);
         return local;
     }
 }
@@ -211,6 +228,13 @@ export async function applyPendingUpdate(root: string): Promise<string | null> {
 
     if (next.target !== current.target) {
         throw new Error('更新包平台不匹配');
+    }
+
+    if (compareVersions(next.version, current.version) <= 0) {
+        // A manual installation may have overtaken this pending download.
+        // Discard only the staging area and let the installed version start.
+        await rm(directory, { recursive: true });
+        return null;
     }
 
     await checkEntryTypes(payload, next.entries);

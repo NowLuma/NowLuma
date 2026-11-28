@@ -82,6 +82,7 @@ target startup, theme ownership, host messaging or scoped styles.
 - Password change flows use floating labels and inline validation consistently.
 - Password strength details appear only while the new-password field has focus
   and leave with the same motion language when focus moves away.
+  Case and symbol checks are strength suggestions, not conditions for saving.
 - The first-run wizard keeps agreement text as the primary reading surface and
   aligns each step's actions inside one responsive footer. Settings includes a
   visible developer page for safely replaying this wizard and exercising the

@@ -24,14 +24,15 @@ Identify which layer is failing, capture the original error, and change one thin
 Run first:
 
 ```bash
-bash deploy/manage.sh doctor
-bash deploy/manage.sh logs
+nowluma doctor
+nowluma logs
 ```
 
-For native installs, check the startup terminal and `logs/`.
+On an older install without `nowluma`, use `bash deploy/manage.sh doctor` and `bash deploy/manage.sh logs`. For native installs, check the startup terminal and `logs/`.
 
 ## Login and console
 
+- **`nowluma` not found**: older or unregistered install. Rerun the installer with the existing directory, or keep using `bash deploy/manage.sh`; for non-root installs add `~/.local/bin` to `PATH`, or rerun the wizard with `NOWLUMA_BIN_DIR` set to another directory.
 - **Stuck at `初始化中…`**: service not running, port conflict, or `/api/` rewritten by a proxy.
 - **`登录失败`**: use the console access password, not the QQ password; if 2FA is on, supply the code or recovery code.
 - **`协议状态加载失败`**: notice state cannot be confirmed and entry is refused. Check `/api/agreements`, proxy rewrites and server time, then `重新加载`.
@@ -79,6 +80,7 @@ If you unloaded a process, press `加载` to resume it.
 - **Corrupt configuration**: the program reports and preserves it; restore from backup, do not overwrite with defaults.
 - **QR scan required after restart**: complete the verification in QQ.
 - **Accounts missing after upgrade**: volumes/directories mounted, UID consistent, no `down -v`.
+- **Still on the old version after updating**: `nowluma update` only reapplies the saved image; switch versions explicitly with `nowluma update 2.5.1`. If the new version fails to start, `.env` keeps the old image; run `nowluma start` to restore it and check `nowluma logs`.
 
 ## Pages and appearance
 

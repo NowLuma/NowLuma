@@ -28,15 +28,17 @@ tutorial: data-backup
 停服务后再复制，避免 SQLite 与 WAL 正在写入：
 
 ```bash
-bash deploy/manage.sh stop
+nowluma stop
 ```
+
+旧安装没有 `nowluma` 命令时，用 `bash deploy/manage.sh stop`。
 
 Docker 至少备份四个卷；原生方式复制 `config/`、`data/`、`logs/`，以及 QQ 自己的用户目录（如果需要保留登录状态）。备份应加密并限制访问，因为里面可能包含令牌、会话和聊天数据。
 
 再启动：
 
 ```bash
-bash deploy/manage.sh start
+nowluma start
 ```
 
 备份不是导出聊天记录：消息库是运行数据，恢复时按原目录放回；不要把单个数据库文件热拷贝到正在运行的服务上。
@@ -71,15 +73,16 @@ Docker 必须保留**完整** HOME 卷，而不只是 `login.db`。程序固定 
 验证步骤：
 
 1. 在 QQ 窗口完成扫码，勾选 QQ 自己的自动登录设置。
-2. `bash deploy/manage.sh restart`。
+2. `nowluma restart`。
 3. 打开 QQ 桌面，确认 QQ 是否自动恢复登录；不要只看控制台健康状态。
-4. 再 `stop`、`start`，或重新创建容器，确认卷仍被复用。
+4. 再 `nowluma stop`、`nowluma start`，或重新创建容器，确认卷仍被复用。
 
 如果 QQ 服务端让会话过期或要求验证，请在 QQ 窗口操作。升级时把原生 QQ 的用户目录保留在原位。
 
 ## 升级
 
-- Docker：先停服务并备份，再更新源码或镜像，用 `start` 复用现有卷。`docker compose down -v` 会删除命名数据卷和 QQ HOME。
+- Docker：先停服务并备份，再用 `nowluma update` 重新应用已保存镜像，或用 `nowluma update 2.5.1` 切换到显式版本；源码部署更新源码后运行 `nowluma start`。它们都复用现有卷。`docker compose down -v` 会删除命名数据卷和 QQ HOME。
+- 旧安装没有 `nowluma` 时，继续使用对应的 `bash deploy/manage.sh` 命令，或重跑安装命令并选择原安装目录。
 - 原生：替换发行目录中的程序文件，保留 `config/`、`data/`、`logs/` 与 QQ 目录。
 - 数据库结构升级由程序自行迁移；迁移期间界面会显示账号不可用或后台迁移状态，不要重复启动多个实例。
 - 升级后检查账号、连接、内核选择与外观是否仍在；内核选择按 UIN 保留，但账号变化仍要重新确认。
@@ -87,6 +90,10 @@ Docker 必须保留**完整** HOME 卷，而不只是 `login.db`。程序固定 
 ## 更新器
 
 「关于」提供检查与安装更新。更新来源可选自动、GitHub 直连或指定镜像；自动模式先试 GitHub，再按候选顺序切换。
+
+更新通道按 SemVer 比较：预发行运行时可以发现并下载后续预发行版（例如 rc.2 → rc.10）与稳定版；稳定版运行时只接受稳定版。下载与重启仍需你显式确认；Docker 部署用 `nowluma update` 应用已保存版本或显式版本。已经发布的 rc.2 不会追溯获得新代码，但能在 2.5.1 正式发布后看到并下载该稳定版。
+
+镜像站可以转发发行包，但安装与升级的校验值必须能从官方 GitHub 发行页的 `SHA256SUMS`（或官方发行元数据）获得；只信镜像自己提供的校验值不足以证明来源。没有校验值或来源不明的包不要安装。
 
 发行资产：
 

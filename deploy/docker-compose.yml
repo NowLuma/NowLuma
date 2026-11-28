@@ -5,9 +5,9 @@ services:
     image: ${NOWLUMA_IMAGE:-nowluma:local}
     hostname: nowluma
     restart: unless-stopped
-    # Publish locally by default; the installer can explicitly opt into LAN access.
+    # Public mode can publish only the console while keeping bot ports on loopback.
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${WEBUI_PORT:-5099}:5099"
+      - "${WEBUI_BIND_ADDRESS:-${BIND_ADDRESS:-127.0.0.1}}:${WEBUI_PORT:-5099}:5099"
       - "${BIND_ADDRESS:-127.0.0.1}:${ONEBOT_HTTP_PORT:-3000}:${ONEBOT_HTTP_PORT:-3000}"
       - "${BIND_ADDRESS:-127.0.0.1}:${ONEBOT_WS_PORT:-3001}:${ONEBOT_WS_PORT:-3001}"
     environment:

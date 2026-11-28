@@ -6,7 +6,7 @@ tutorial: install-native
 
 # Native install
 
-Download the release for your system and compare its SHA-256 with `SHA256SUMS` on the [release page](https://github.com/NowLuma/NowLuma/releases).
+Linux Lite installs entirely from a terminal with no browser or manual download. Windows uses the single-file EXE from the release page, checked against `SHA256SUMS`.
 
 ![Console login page used after native startup](/images/tutorials/login.png)
 
@@ -22,11 +22,28 @@ Requirements:
 - Node.js `24.22.1` (24.x) or `>=26.12.1`; a bundled Node is preferred.
 - A working desktop QQ installation.
 
-Start:
+Terminal install: download, verify and extract in a fresh empty directory so existing installation data is not overwritten.
 
 ```bash
-bash launcher.sh
+(
+  set -euo pipefail
+  version=2.5.1
+  archive="Nowluma-v$version-linux-x64-lite.tar.gz"
+  base="https://github.com/NowLuma/NowLuma/releases/download/v$version"
+  mkdir -m 700 -- "$HOME/Nowluma-$version"
+  cd -- "$HOME/Nowluma-$version"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/$archive"
+  curl -qfsSL --proto =https --proto-redir =https -O "$base/SHA256SUMS"
+  awk -v name="$archive" '$2 == name' SHA256SUMS | sha256sum --check --strict
+  tar -xzf "$archive"
+  exec bash launcher.sh
+)
 ```
+
+- If verification fails, do not extract or run it; download again. Systems without `sha256sum` can use `shasum -a 256 -c`.
+- A mirror may deliver the archive, but the install and upgrade digest must be obtainable from the official GitHub release `SHA256SUMS` (or official release metadata); a mirror's own checksum alone does not establish provenance.
+- Do not extract over an existing installation in place. To upgrade, stop the old instance first, then copy `config/`, `data/` and `logs/` into the new directory; QQ keeps its own data in its user directory.
+- The launcher can also use an executable `node` in the same directory; the Node baseline for a full release is defined by `check-node-version.cjs`.
 
 Install from a source checkout into a release directory:
 

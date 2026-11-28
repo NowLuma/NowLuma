@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm } from 'node:fs/promises';
+import { access, chmod, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +27,15 @@ describe('update staging directory', () => {
         expect(await updateDirectory(path.join(root, 'app'), root)).toBe(directory);
         expect(await updateDirectory(path.join(root, 'other'), root)).not.toBe(directory);
     });
+
+    it.skipIf(process.platform === 'win32')(
+        'refuses a writable shared staging directory',
+        async () => {
+            const directory = await updateDirectory(root, root);
+            await chmod(directory, 0o777);
+            await expect(updateDirectory(root, root)).rejects.toThrow('更新目录不安全');
+        },
+    );
 
     it('uses local tmp when system tmp is not writable and keeps it discoverable', async () => {
         vi.mocked(access).mockRejectedValueOnce(

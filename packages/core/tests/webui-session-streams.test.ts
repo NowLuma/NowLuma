@@ -316,7 +316,18 @@ describe('WebUI session stream revocation', () => {
                     oldPassword: PASSWORD,
                     newPassword: 'Changed!Password123',
                 });
-                expect(await response.json()).toEqual({ success: true, requireRelogin: true });
+                const rotated = (await response.json()) as {
+                    success: boolean;
+                    requireRelogin: boolean;
+                    token: string;
+                };
+                expect(rotated).toMatchObject({
+                    success: true,
+                    requireRelogin: false,
+                });
+                expect(rotated.token).not.toBe(tokenB);
+                expect((await call('/api/status', rotated.token)).status).toBe(200);
+                expect((await call('/api/status', tokenB)).status).toBe(401);
             } else if (revocation === 'TOTP confirmation') {
                 await enableTotp(tokenB);
             } else {

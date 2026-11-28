@@ -46,9 +46,10 @@ async function setup() {
         message: undefined,
         currentVersion: undefined,
     });
-    expect(await client.changePassword(DEMO_PASSWORD, DEMO_NEW_PASSWORD)).toEqual({
+    expect(await client.changePassword(DEMO_PASSWORD, DEMO_NEW_PASSWORD)).toMatchObject({
         success: true,
         message: undefined,
+        token: expect.any(String),
     });
 }
 

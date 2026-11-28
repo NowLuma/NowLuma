@@ -24,7 +24,7 @@ async function releaseAsset(
     source: UpdateSourceConfig,
 ): Promise<ReleaseAsset> {
     const name = assetName(version, target);
-    const { data: release, fromPage } = await fetchRelease(version, source);
+    const { data: release, fromPage } = await fetchRelease({ version }, source);
 
     if (
         !release ||

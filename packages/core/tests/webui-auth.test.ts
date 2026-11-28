@@ -5,8 +5,7 @@ import path from 'node:path';
 import {
     evaluatePasswordRules,
     isDevAuthMode,
-    isStrongPassword,
-    PASSWORD_RULES,
+    isAcceptablePassword,
     prepareWebuiAuthStateForRestore,
     WebuiAuth,
 } from '../src/webui/auth';
@@ -55,92 +54,31 @@ afterEach(() => {
     }
 });
 
-describe('PASSWORD_RULES / evaluatePasswordRules / isStrongPassword', () => {
-    it('exposes the five published rule ids and labels in order', () => {
-        expect(PASSWORD_RULES.map((rule) => ({ id: rule.id, label: rule.label }))).toEqual([
-            { id: 'length', label: '长度不少于 10 位' },
-            { id: 'lower', label: '包含小写字母' },
-            { id: 'upper', label: '包含大写字母' },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)' },
-            { id: 'no-space', label: '不包含空格' },
-        ]);
+describe('password acceptance and strength', () => {
+    it.each([
+        ['Abcdefghi!', true],
+        ['lowercase7', true],
+        ['ABCDEFGHI!', true],
+        ['Abcdefgh!', false],
+        ['Abcdefgh i', false],
+        ['', false],
+    ] as const)('checks only the minimum requirements for %j', (password, expected) => {
+        expect(isAcceptablePassword(password)).toBe(expected);
+        const rules = evaluatePasswordRules(password);
+        expect(rules.filter((rule) => !rule.optional).every((rule) => rule.ok)).toBe(expected);
     });
 
-    it('marks every rule ok for a 10-character mixed password with a symbol', () => {
-        expect(evaluatePasswordRules('Abcdefghi!')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: true },
-            { id: 'lower', label: '包含小写字母', ok: true },
-            { id: 'upper', label: '包含大写字母', ok: true },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: true },
-            { id: 'no-space', label: '不包含空格', ok: true },
+    it('continues scoring uppercase and symbols when neither is needed to save', () => {
+        const rules = evaluatePasswordRules('lowercase7');
+        expect(rules.filter((rule) => !rule.ok).map((rule) => rule.id)).toEqual([
+            'upper',
+            'special',
         ]);
-        expect(isStrongPassword('Abcdefghi!')).toBe(true);
-    });
-
-    it('fails only length when the password is 9 characters', () => {
-        expect(evaluatePasswordRules('Abcdefgh!')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: false },
-            { id: 'lower', label: '包含小写字母', ok: true },
-            { id: 'upper', label: '包含大写字母', ok: true },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: true },
-            { id: 'no-space', label: '不包含空格', ok: true },
+        expect(rules.filter((rule) => rule.optional).map((rule) => rule.id)).toEqual([
+            'lower',
+            'upper',
+            'special',
         ]);
-        expect(isStrongPassword('Abcdefgh!')).toBe(false);
-    });
-
-    it('fails only lower when every letter is uppercase', () => {
-        expect(evaluatePasswordRules('ABCDEFGHI!')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: true },
-            { id: 'lower', label: '包含小写字母', ok: false },
-            { id: 'upper', label: '包含大写字母', ok: true },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: true },
-            { id: 'no-space', label: '不包含空格', ok: true },
-        ]);
-        expect(isStrongPassword('ABCDEFGHI!')).toBe(false);
-    });
-
-    it('fails only upper when every letter is lowercase', () => {
-        expect(evaluatePasswordRules('abcdefghi!')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: true },
-            { id: 'lower', label: '包含小写字母', ok: true },
-            { id: 'upper', label: '包含大写字母', ok: false },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: true },
-            { id: 'no-space', label: '不包含空格', ok: true },
-        ]);
-        expect(isStrongPassword('abcdefghi!')).toBe(false);
-    });
-
-    it('fails only special when the password is letters and digits', () => {
-        expect(evaluatePasswordRules('Abcdefgh12')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: true },
-            { id: 'lower', label: '包含小写字母', ok: true },
-            { id: 'upper', label: '包含大写字母', ok: true },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false },
-            { id: 'no-space', label: '不包含空格', ok: true },
-        ]);
-        expect(isStrongPassword('Abcdefgh12')).toBe(false);
-    });
-
-    it('fails special and no-space when the only extra character is a space', () => {
-        expect(evaluatePasswordRules('Abcdefgh i')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: true },
-            { id: 'lower', label: '包含小写字母', ok: true },
-            { id: 'upper', label: '包含大写字母', ok: true },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false },
-            { id: 'no-space', label: '不包含空格', ok: false },
-        ]);
-        expect(isStrongPassword('Abcdefgh i')).toBe(false);
-    });
-
-    it('fails every rule for an empty string, including no-space', () => {
-        expect(evaluatePasswordRules('')).toEqual([
-            { id: 'length', label: '长度不少于 10 位', ok: false },
-            { id: 'lower', label: '包含小写字母', ok: false },
-            { id: 'upper', label: '包含大写字母', ok: false },
-            { id: 'special', label: '包含特殊符号 (!@#$%…)', ok: false },
-            { id: 'no-space', label: '不包含空格', ok: false },
-        ]);
-        expect(isStrongPassword('')).toBe(false);
     });
 });
 

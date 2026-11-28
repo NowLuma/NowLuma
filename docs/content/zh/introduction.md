@@ -59,9 +59,11 @@ QQ 进程：`可加载`、`加载中`、`等待连接`、`等待登录`、`已�
 
 | 安装方式                                   | 要求                                               |
 | ------------------------------------------ | -------------------------------------------------- |
-| [Linux Docker](install-docker.md)          | Linux amd64、Docker Engine 与 Compose v2           |
+| [Linux Docker](install-docker.md)          | Linux amd64、Docker Engine 与 Compose v2，终端安装 |
 | [Linux Lite](install-native.md#linux-lite) | Linux x64，Node.js `24.22.1`（24.x）或 `>=26.12.1` |
 | [Windows x64](install-native.md#windows)   | 内置 Node 24 与 .NET 的未签名启动器                |
+
+Linux 的 Docker 与 Lite 安装都能完全在终端完成，不需要浏览器下载；Docker 部署安装后由 `nowluma` 命令管理，旧安装仍可用 `bash deploy/manage.sh`。
 
 ## 数据位置
 

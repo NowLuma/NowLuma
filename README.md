@@ -6,21 +6,25 @@
 
 连接 QQ 客户端，提供 OneBot v11 接口，在一个浏览器控制台里管理账号、连接、日志和桌面。
 
-[下载发行包](https://github.com/NowLuma/NowLuma/releases) · [中文文档](https://nowluma.github.io/NowLuma/zh/) · [English docs](https://nowluma.github.io/NowLuma/en/) · [部署指南](deploy/README.md) · [参与开发](CONTRIBUTING.md)
+[GitHub 发行页](https://github.com/NowLuma/NowLuma/releases) · [中文文档](https://nowluma.github.io/NowLuma/zh/) · [English docs](https://nowluma.github.io/NowLuma/en/) · [部署指南](deploy/README.md) · [参与开发](CONTRIBUTING.md)
 
 ## 开始使用
 
-| 环境         | 安装方式                               | 运行要求                                      |
-| ------------ | -------------------------------------- | --------------------------------------------- |
-| Windows x64  | 双击 `Nowluma.exe`，在浏览器进入控制台 | 已内置运行环境，无需安装 Node、.NET 或 Docker |
-| Linux x64    | 解压 Lite 包，运行 `bash launcher.sh`  | Node.js `24.22.1`（24.x）或 `>=26.12.1`       |
-| Linux Docker | [运行安装向导](https://nowluma.github.io/NowLuma/zh/install-docker.html) | Docker Engine 与 Compose v2，向导可协助安装 |
+Linux 的两种安装方式都可以完全在终端完成，不需要浏览器或手动下载发行文件。Windows 使用发行页的单文件 EXE。
+
+| 环境         | 安装方式                                                         | 运行要求                                      |
+| ------------ | ---------------------------------------------------------------- | --------------------------------------------- |
+| Linux Docker | 在 Bash 终端运行下方一行安装命令                                 | Docker Engine 与 Compose v2，向导可协助安装   |
+| Linux Lite   | 在终端下载 Lite 包、核对 `SHA256SUMS`，解压后 `bash launcher.sh` | Node.js `24.22.1`（24.x）或 `>=26.12.1`       |
+| Windows x64  | 从发行页下载并双击 `Nowluma.exe`，在浏览器进入控制台             | 已内置运行环境，无需安装 Node、.NET 或 Docker |
 
 ```bash
-bash deploy/install.sh --docker
+bash <(curl -qfsSL --proto =https https://nowluma.github.io/NowLuma/install.sh || echo 'exit 1')
 ```
 
-上面的命令从完整源码目录构建。若已有目标版本的 Docker Hub 镜像，请按[部署指南](deploy/README.md)运行镜像安装向导。
+向导默认只把控制台发布到本机回环，远程访问用 SSH 隧道；公网模式必须显式选择并确认风险，只发布控制台，机器人端口保持回环。向导本身不需要 root shell，只有 Docker 相关命令按需提权。Docker 安装完成后用 `nowluma` 管理服务；Linux Lite 的终端步骤见[原生安装](https://nowluma.github.io/NowLuma/zh/install-native.html#linux-lite)。
+
+若要从完整源码目录构建，运行 `bash deploy/install.sh --docker`；镜像部署的细节见[部署指南](deploy/README.md)。
 
 默认通过本机或 SSH 隧道访问：控制台与 QQ 桌面 **5099**、机器人 HTTP **3000**、WebSocket **3001**。
 
@@ -51,12 +55,18 @@ Windows 启动器可使用本机 QQ；已有可用的 Linux Docker 引擎时，�
 ## 运行与数据
 
 ```bash
-bash deploy/manage.sh start       # 启动
-bash deploy/manage.sh restart     # 重启并检查状态
-bash deploy/manage.sh stop        # 停止，保留数据
-bash deploy/manage.sh logs        # 查看日志
-bash deploy/manage.sh doctor      # 部署诊断
+nowluma                     # 数字菜单
+nowluma start               # 启动
+nowluma restart             # 重启并检查状态
+nowluma stop                # 停止，保留数据
+nowluma logs                # 查看日志
+nowluma doctor              # 部署诊断
+nowluma pull                # 拉取已保存版本
+nowluma update              # 重新应用已保存版本
+nowluma update 2.5.1        # 拉取并切换到指定版本
 ```
+
+`nowluma` 由安装向导为当前用户注册；非 root 且无法写入系统路径时，把 `~/.local/bin` 加入 `PATH`。旧安装没有这个命令，继续使用 `bash deploy/manage.sh start`（同样支持 `stop`、`restart`、`logs`、`doctor`、`pull`、`update`），或重跑安装命令并选择原安装目录。
 
 程序设置、消息与媒体、日志分别保存在 `config/`、`data/`、`logs/`。Docker 另外完整保留 QQ 的 `/home/nowluma` 用户目录；升级时同时保留程序数据卷和 QQ HOME 卷。
 

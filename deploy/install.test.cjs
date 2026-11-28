@@ -39,7 +39,7 @@ function fixture(options = {}) {
     'id',
     'if [[ $NON_ROOT == 1 && ${SUDO_TEST_ROOT:-0} != 1 ]]; then echo 1000; else echo 0; fi',
   );
-  script('sudo', 'printf "sudo %s\\n" "$*" >> "$TEST_LOG"; export SUDO_TEST_ROOT=1; exec "$@"');
+  script('sudo', 'printf "sudo %s\\n" "$*" >> "$TEST_LOG"; unset NOWLUMA_IMAGE; export SUDO_TEST_ROOT=1; exec "$@"');
   script(
     'systemctl',
     `printf "systemctl %s\\n" "$*" >> "$TEST_LOG"
@@ -72,13 +72,20 @@ fi
 if [[ $1 == compose && $2 == version && ( -f $COMPOSE_MISSING ||
   $ROOTLESS_COMPOSE_ONLY == 1 && \${SUDO_TEST_ROOT:-0} != 1 ) ]]; then exit 1; fi
 if [[ $1 == compose && $2 == -f ]]; then
-  printf 'image %s\\n' "\${NOWLUMA_IMAGE-}" >> "$TEST_LOG"
+  env_file=.env
+  if [[ $4 == --env-file ]]; then env_file=$5; fi
+  selected=\${NOWLUMA_IMAGE:-$(awk -F= '$1 == "NOWLUMA_IMAGE" { print $2 }' "$env_file")}
+  printf 'image %s\\n' "\${selected:-nowluma:local}" >> "$TEST_LOG"
   if [[ $* == *' -f - up '* ]]; then cat >> "$TEST_LOG"; fi
 fi
 if [[ $* == *' pull '* && $FAIL_PULL == 1 ]]; then echo 'manifest unknown' >&2; exit 1; fi
-if [[ $1 == pull && $2 == docker.io/wsxyt/nowluma:latest ]]; then
+if [[ $* == 'pull wsxyt/nowluma:latest' ]]; then
   if [[ $FAIL_PULL == 1 ]]; then echo 'proxyconnect tcp: no route to host' >&2; exit 1; fi
-  if [[ $PULL_DIGEST != '' ]]; then printf 'Digest: %s\\n' "$PULL_DIGEST"; fi
+  echo 'pull layer progress'
+fi
+if [[ $* == 'image inspect '* ]]; then
+  echo 'other/repository@sha256:ignore'
+  if [[ $PULL_DIGEST != '' ]]; then printf 'docker.io/wsxyt/nowluma@%s\\n' "$PULL_DIGEST"; fi
 fi
 if [[ $* == *' up '* && $FAIL_START == 1 ]]; then exit 1; fi
 if [[ $* == *' logs '* && $* != *--follow* && $NO_INITIAL != 1 ]]; then echo 'initial credentials: user=admin password=0123456789abcdef'; fi
@@ -134,6 +141,7 @@ source "$installer" "$@"
     PATH: `${posix(bin)}:/usr/bin:/bin`,
     HOME: posix(path.join(root, 'home')),
     TMPDIR: posix(root),
+    NOWLUMA_BIN_DIR: posix(bin),
     TEST_BIN: posix(bin),
     TEST_LOG: posix(log),
     DOCKER_MISSING: posix(missing),
@@ -350,7 +358,9 @@ test('non-root Docker access uses sudo and reports working daily commands', () =
     const result = f.run('2\n\n\n\n\n\n');
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.match(result.calls, /sudo docker info/);
-    assert.match(result.stdout, /sudo bash deploy\/manage.sh/);
+    const doctor = f.runBash(['-c', 'cd / && nowluma doctor']);
+    assert.equal(doctor.status, 0, doctor.stderr);
+    assert.match(doctor.calls, /sudo docker compose .* healthcheck|sudo docker compose .*nowluma-healthcheck/);
   }));
 
 test('asks before starting a stopped Docker daemon and checks it again', () =>
@@ -400,16 +410,17 @@ test('the documented short command pins latest and reuses the pin without asking
     const directory = path.join(target, 'deploy');
     assert.deepEqual(fs.readdirSync(directory).sort(), ['.env', 'docker-compose.yml', 'manage.sh']);
     const settings = path.join(directory, '.env');
-    const pinned = `docker.io/wsxyt/nowluma@${f.env.PULL_DIGEST}`;
+    const pinned = `wsxyt/nowluma@${f.env.PULL_DIGEST}`;
     const before = fs.readFileSync(settings, 'utf8');
-    assert.match(before, /^NOWLUMA_IMAGE=docker\.io\/wsxyt\/nowluma@sha256:[a-f0-9]{64}$/m);
+    assert.match(before, /^NOWLUMA_IMAGE=wsxyt\/nowluma@sha256:[a-f0-9]{64}$/m);
     assert.ok(before.includes(`NOWLUMA_IMAGE=${pinned}\n`));
     if (process.platform !== 'win32') assert.equal(fs.statSync(settings).mode & 0o777, 0o600);
     assert.deepEqual(
       [...result.calls.matchAll(/^curl .*?(https:\/\/\S+)/gm)].map((match) => match[1]),
       ['install.sh', 'docker-compose.yml', 'manage.sh'].map((file) => `https://nowluma.github.io/NowLuma/${file}`),
     );
-    assert.match(result.calls, /^docker pull docker\.io\/wsxyt\/nowluma:latest$/m);
+    assert.match(result.calls, /^docker pull wsxyt\/nowluma:latest$/m);
+    assert.match(result.stdout, /pull layer progress/);
     assert.ok(result.calls.includes(`image ${pinned}\n`));
     assert.match(result.calls, / up -d --no-build --pull never --wait/);
     assert.doesNotMatch(result.calls, /compose .* pull /);
@@ -460,7 +471,7 @@ test('a failed first pull leaves the directory ready to retry with another versi
     const result = f.cloud(`2\n${posix(target)}\n\n\n\n\n\n`, ['--version', '2.5.0-rc.1']);
     assert.equal(result.status, 3);
     assert.match(result.stderr, /manifest unknown/);
-    assert.match(result.stderr, /Could not pull docker\.io\/wsxyt\/nowluma:2\.5\.0-rc\.1/);
+    assert.match(result.stderr, /Could not pull wsxyt\/nowluma:2\.5\.0-rc\.1/);
     assert.doesNotMatch(result.stdout, /Nowluma is running/);
     assert.doesNotMatch(result.calls, /--build| up | down /);
     assert.deepEqual(fs.readdirSync(target), []);
@@ -470,7 +481,7 @@ test('a failed first pull leaves the directory ready to retry with another versi
     assert.equal(retry.status, 0, retry.stderr + retry.stdout);
     assert.equal(retry.calls.match(/ pull nowluma/g)?.length, 1);
     assert.match(retry.calls, / pull nowluma[\s\S]* up -d --no-build --pull never --wait/);
-    assert.match(fs.readFileSync(path.join(target, 'deploy', '.env'), 'utf8'), /NOWLUMA_IMAGE=docker\.io\/wsxyt\/nowluma:2\.5\.0-rc\.2\n/);
+    assert.match(fs.readFileSync(path.join(target, 'deploy', '.env'), 'utf8'), /NOWLUMA_IMAGE=wsxyt\/nowluma:2\.5\.0-rc\.2\n/);
   }));
 
 test('a new directory cannot replace another Nowluma deployment on the same daemon', () =>
@@ -540,4 +551,68 @@ test('daily published commands reuse the saved image, settings and QQ HOME witho
       assert.ok(compose.includes(`- ${mapping}\n`));
     assert.match(compose, /- SYS_PTRACE/);
     assert.doesNotMatch(compose, /^\s+build:|\bprivileged:/m);
+  }));
+
+test('public access requires confirmation and publishes only the console', () =>
+  using({}, (f) => {
+    const settings = path.join(f.deploy, '.env');
+    const declined = f.run('2\n3\n\n');
+    assert.equal(declined.status, 0);
+    assert.equal(fs.existsSync(settings), false);
+    assert.doesNotMatch(declined.calls, / up /);
+    const accepted = f.run('2\n3\ny\n\n\n\n\n');
+    assert.equal(accepted.status, 0, accepted.stderr);
+    const config = fs.readFileSync(settings, 'utf8');
+    assert.match(config, /^BIND_ADDRESS=127\.0\.0\.1$/m);
+    assert.match(config, /^WEBUI_BIND_ADDRESS=0\.0\.0\.0$/m);
+    assert.match(accepted.stdout, /HTTPS.*firewall/);
+  }));
+
+test('the registered menu works from another directory and an explicit update only persists after health', () =>
+  using({ nonRoot: true }, (f) => {
+    const target = path.join(f.root, 'console install');
+    const setup = f.cloud(`2\n${posix(target)}\n\n\n\n\n\n`, ['--version', '2.5.0-rc.1']);
+    assert.equal(setup.status, 0, setup.stderr);
+    const menu = f.runBash(['-c', 'cd / && nowluma'], 'invalid\n5\n0\n');
+    assert.equal(menu.status, 0, menu.stderr);
+    assert.match(menu.stdout, /5\. Diagnostics/);
+    assert.match(menu.calls, /nowluma-healthcheck/);
+    const settings = path.join(target, 'deploy', '.env');
+    const before = fs.readFileSync(settings, 'utf8');
+    f.env.FAIL_PULL = '1';
+    const pull = f.runBash(['-c', 'nowluma update 2.5.1']);
+    assert.equal(pull.status, 3, pull.stderr);
+    assert.doesNotMatch(pull.calls, / up /);
+    assert.equal(fs.readFileSync(settings, 'utf8'), before);
+    f.env.FAIL_PULL = '0';
+    f.env.FAIL_START = '1';
+    const failed = f.runBash(['-c', 'nowluma update 2.5.1']);
+    assert.notEqual(failed.status, 0);
+    assert.equal(fs.readFileSync(settings, 'utf8'), before);
+    f.env.FAIL_START = '0';
+    const updated = f.runBash(['-c', 'nowluma update 2.5.1']);
+    assert.equal(updated.status, 0, updated.stderr);
+    assert.match(updated.calls, / pull nowluma[\s\S]* up .*--wait/);
+    assert.match(updated.calls, / up -d .*--wait[^\n]*\nimage wsxyt\/nowluma:2\.5\.1\n/);
+    assert.equal(fs.readFileSync(settings, 'utf8'), before.replace('wsxyt/nowluma:2.5.0-rc.1', 'wsxyt/nowluma:2.5.1'));
+  }));
+
+test('registering a legacy installation preserves its scripts and the old manager can read the upgraded pin', () =>
+  using({}, (f) => {
+    const target = path.join(f.root, 'rc2');
+    const directory = path.join(target, 'deploy');
+    fs.mkdirSync(directory, { recursive: true });
+    const originalManager = '#!/usr/bin/env bash\n# Retained legacy file\n';
+    fs.writeFileSync(path.join(directory, 'manage.sh'), originalManager);
+    fs.copyFileSync(path.join(f.deploy, 'docker-compose.yml'), path.join(directory, 'docker-compose.yml'));
+    const settings = path.join(directory, '.env');
+    const originalSettings = `NOWLUMA_IMAGE=${image}\nCUSTOM=preserved\n`;
+    fs.writeFileSync(settings, originalSettings);
+    const reinstall = f.cloud(`2\n${posix(target)}\n`);
+    assert.equal(reinstall.status, 0, reinstall.stderr);
+    assert.equal(fs.readFileSync(settings, 'utf8'), originalSettings);
+    const update = f.runBash(['-c', 'cd / && nowluma update 2.5.1']);
+    assert.equal(update.status, 0, update.stderr);
+    assert.equal(fs.readFileSync(settings, 'utf8'), originalSettings.replace('2.5.0-rc.1', '2.5.1'));
+    assert.equal(fs.readFileSync(path.join(directory, 'manage.sh'), 'utf8'), originalManager);
   }));

@@ -24,14 +24,15 @@ tutorial: troubleshooting
 先运行：
 
 ```bash
-bash deploy/manage.sh doctor
-bash deploy/manage.sh logs
+nowluma doctor
+nowluma logs
 ```
 
-原生运行时，检查启动终端和 `logs/`。
+旧安装没有 `nowluma` 命令时，改用 `bash deploy/manage.sh doctor` 和 `bash deploy/manage.sh logs`。原生运行时，检查启动终端和 `logs/`。
 
 ## 登录与控制台
 
+- **`nowluma` 命令不存在**：旧安装或尚未注册；重跑安装命令并选择原安装目录，或继续用 `bash deploy/manage.sh`；非 root 安装时把 `~/.local/bin` 加入 `PATH`，该目录不可用时用 `NOWLUMA_BIN_DIR` 指定其他目录后重跑向导。
 - **一直「初始化中…」**：服务未启动、端口冲突或 `/api/` 被代理改写；检查进程、端口与代理。
 - **「登录失败」**：确认输入的是控制台访问密码，不是 QQ 密码；2FA 开启时还要验证码或恢复码。
 - **「协议状态加载失败」**：控制台无法确认说明文档状态，不会放行。检查 `/api/agreements`、反向代理与服务器时间，再「重新加载」。
@@ -79,6 +80,7 @@ bash deploy/manage.sh logs
 - **配置损坏**：程序会报错并保留原文件；从备份恢复，不要用默认值覆盖。
 - **重启后要扫码**：在 QQ 窗口完成验证。
 - **升级后账号消失**：确认卷/目录仍被挂载、UID 一致、没有 `down -v`。
+- **更新后仍是旧版本**：`nowluma update` 只重新应用已保存镜像；切换版本要显式运行 `nowluma update 2.5.1`。新版本启动失败时 `.env` 保留旧镜像，运行 `nowluma start` 恢复并查看 `nowluma logs`。
 
 ## 页面与外观
 

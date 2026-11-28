@@ -63,11 +63,9 @@ export function SettingsPage() {
 
     return (
         <div className="cp-page cp-settings">
-            <header className="border-b border-border pb-4">
-                <h2 className="text-lg font-semibold tracking-tight">
-                    {t('控制台偏好', 'Console preferences')}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+            <header className="cp-document-header">
+                <h2 className="cp-page-heading">{t('控制台偏好', 'Console preferences')}</h2>
+                <p className="cp-lede">
                     {t('外观、数据与服务设置。', 'Appearance, data, and service settings.')}
                 </p>
             </header>

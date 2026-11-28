@@ -66,7 +66,12 @@ export type TotpBeginResult =
 export type TotpConfirmResult =
     { success: true; recoveryCodes: string[] } | { success: false; message: string };
 
-export type ChangePasswordResult = { success: boolean; message?: string };
+export type ChangePasswordResult = {
+    success: boolean;
+    message?: string;
+    /** A rotated session for the browser that completed the password change. */
+    token?: string;
+};
 
 export interface AgreementDoc {
     id: 'eula' | 'privacy';
@@ -328,7 +333,7 @@ export interface ApiClient {
 
     // ---- update check ----
     update: {
-        /** Advisory check for a newer stable release. Read-only — never downloads. */
+        /** Advisory check on the running build's release channel. Never downloads. */
         check(force?: boolean): Promise<UpdateInfo>;
         status(): Promise<UpdateStatus>;
         sources(): Promise<{ config: UpdateSourceConfig }>;

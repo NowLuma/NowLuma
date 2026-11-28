@@ -1,4 +1,4 @@
-import { updateDirectory } from '../src/update/files';
+import { applyPendingUpdate, readManifest, updateDirectory } from '../src/update/files';
 import { EventEmitter } from 'node:events';
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -88,6 +88,27 @@ describe('update service', () => {
         });
         expect(() => service.start(version)).toThrow('正式版本');
         expect(download).not.toHaveBeenCalled();
+    });
+
+    it('installs the next numerical RC after restart but never stages an older suffix', async () => {
+        const current = '2.5.0-rc.9';
+        const next = '2.5.0-rc.10';
+        await releaseFixture(root, current);
+        const download = vi.fn(async (directory: string, version: string, target: string) => {
+            await releaseFixture(path.join(directory, 'payload'), version, target);
+            await writeFile(path.join(directory, 'archive'), 'archive');
+        });
+        const service = await createUpdateService(root, current, { download, isContainer: false });
+        expect(() => service.start('2.5.0-rc.8')).toThrow();
+        expect(download).not.toHaveBeenCalled();
+        service.start(next);
+        await vi.waitFor(() =>
+            expect(service.status()).toMatchObject({ phase: 'ready', version: next }),
+        );
+        expect((await readManifest(root)).version).toBe(current);
+        service.restart();
+        expect(await applyPendingUpdate(root)).toBe(next);
+        expect((await readManifest(root)).version).toBe(next);
     });
 
     it('downloads stable versions with build metadata without dropping the tag suffix', async () => {

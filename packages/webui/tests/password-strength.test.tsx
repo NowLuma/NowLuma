@@ -287,22 +287,25 @@ function formHarness(checkStrength: ComponentProps<typeof ChangePasswordForm>['c
 describe('ChangePasswordForm server validation and normalized display', () => {
     it('keeps the entered password and strength result when switching languages', async () => {
         const checkStrength = vi.fn(async () => ({
-            rules: [{ id: 'length', label: '长度不少于 10 位', ok: true }],
+            rules: [
+                { id: 'length', label: '长度不少于 10 位', ok: true },
+                { id: 'upper', label: '包含大写字母', ok: false, optional: true },
+            ],
             valid: true,
         }));
         const form = formHarness(checkStrength);
-        form.input(DEMO_NEW_PASSWORD);
+        form.input('lowercase7');
         await vi.advanceTimersByTimeAsync(180);
         expect(form.actions()).toMatchObject({ canSubmit: true, submitLabel: '保存新密码' });
 
         language.current = 'en';
         expect(form.field('cpw-new').props).toMatchObject({
             label: 'New password',
-            value: DEMO_NEW_PASSWORD,
+            value: 'lowercase7',
         });
         expect(form.field('cpw-confirm').props).toMatchObject({
             label: 'Confirm new password',
-            value: DEMO_NEW_PASSWORD,
+            value: 'lowercase7',
         });
         expect(form.actions()).toMatchObject({ canSubmit: true, submitLabel: 'Save new password' });
         expect(
@@ -311,7 +314,7 @@ describe('ChangePasswordForm server validation and normalized display', () => {
             ),
         ).toBe(true);
         await vi.advanceTimersByTimeAsync(180);
-        expect(checkStrength).toHaveBeenCalledExactlyOnceWith(DEMO_NEW_PASSWORD);
+        expect(checkStrength).toHaveBeenCalledExactlyOnceWith('lowercase7');
     });
 
     it('keeps server validity distinct from heuristic strength and preserves the 180 ms debounce', async () => {
