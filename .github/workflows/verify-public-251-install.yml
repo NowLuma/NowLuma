@@ -1,0 +1,92 @@
+name: Public 2.5.1 Linux installation
+on:
+  push:
+    branches: [verify/public-251-install]
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [fresh, upgrade]
+    env:
+      SCENARIO: ${{ matrix.scenario }}
+      PAGES: https://nowluma.github.io/NowLuma
+      RELEASE: https://github.com/NowLuma/NowLuma/releases/download/v2.5.1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: v2.5.1
+          persist-credentials: false
+      - name: Install from Pages and exercise the registered management CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf -- "$dir"' EXIT
+          export NOWLUMA_BIN_DIR="$dir/bin" XDG_CONFIG_HOME="$dir/xdg" DOCKER_CONFIG="$dir/docker"
+          export PATH="$NOWLUMA_BIN_DIR:$PATH"
+          unset DOCKER_AUTH_CONFIG
+          mkdir "$DOCKER_CONFIG"
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=nowluma)"
+          mirrors=$(docker info --format '{{json .RegistryConfig.Mirrors}}')
+          for file in install.sh manage.sh docker-compose.yml; do
+            curl -qfsSL --proto =https --proto-redir =https --max-time 30 "$PAGES/$file" -o "$dir/$file"
+            cmp "deploy/$file" "$dir/$file"
+          done
+          cd "$dir"
+          asset=nowluma-ghcr-linux-x64-2.5.1.txt
+          for file in "$asset" SHA256SUMS; do
+            curl -qfsSL --proto =https --proto-redir =https --max-time 30 -O "$RELEASE/$file"
+          done
+          awk -v name="$asset" '$2 == name' SHA256SUMS | sha256sum --check --strict
+          grep -Fxq 'image: ghcr.io/nowluma/nowluma:2.5.1' "$asset"
+          digest=$(awk '$1 == "digest:" {print $2}' "$asset")
+          [[ $digest =~ ^sha256:[a-f0-9]{64}$ ]]
+          public_install() {
+            local log=$1; shift
+            if ! bash <(curl -qfsSL --proto =https "$PAGES/install.sh" || echo 'exit 1') "$@" > "$log" 2>&1; then
+              grep -Ei 'failed|error|invalid|denied' "$log" | grep -Eiv 'password|credentials|token' >&2 || true
+              return 1
+            fi
+          }
+          version=2.5.1; args=()
+          if [[ $SCENARIO == upgrade ]]; then version=2.5.0-rc.2; args=(--version "$version"); fi
+          printf '%s\n' 2 "$dir/installed" '' '' '' '' '' | public_install first.log "${args[@]}"
+          settings="$dir/installed/deploy/.env"
+          compose=(docker compose --env-file "$settings" -f "$dir/installed/deploy/docker-compose.yml")
+          healthy() {
+            local container
+            container=$("${compose[@]}" ps -q nowluma)
+            test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy
+            test "$(docker exec "$container" node -p "require('/app/release.json').version")" = "$1"
+            test "$("${compose[@]}" port nowluma 5099)" = 127.0.0.1:5099
+            curl -qfsS --max-time 10 http://127.0.0.1:5099/robots.txt -o /dev/null
+          }
+          healthy "$version"
+          grep -Fxq BIND_ADDRESS=127.0.0.1 "$settings"
+          test "$(command -v nowluma)" = "$NOWLUMA_BIN_DIR/nowluma"
+          printf '5\n0\n' | nowluma > menu.log
+          grep -Fq '5. Diagnostics' menu.log
+          grep -Fq 'HOME=/home/nowluma' menu.log
+          cp "$settings" before.env
+          if [[ $SCENARIO == fresh ]]; then
+            grep -Fxq "NOWLUMA_IMAGE=wsxyt/nowluma@$digest" "$settings"
+            printf '%s\n' 2 "$dir/installed" | public_install rerun.log
+            cmp before.env "$settings"
+          else
+            grep -Fxq 'NOWLUMA_IMAGE=wsxyt/nowluma:2.5.0-rc.2' "$settings"
+            "${compose[@]}" exec -T --user 1000:1000 nowluma sh -c 'printf retained > /app/data/upgrade-marker'
+            nowluma update 2.5.1
+            sed 's/^NOWLUMA_IMAGE=.*/NOWLUMA_IMAGE=wsxyt\/nowluma:2.5.1/' before.env | cmp - "$settings"
+            test "$("${compose[@]}" exec -T --user 1000:1000 nowluma cat /app/data/upgrade-marker)" = retained
+          fi
+          healthy 2.5.1
+          nowluma doctor
+          test "$mirrors" = "$(docker info --format '{{json .RegistryConfig.Mirrors}}')"
+          nowluma stop
+          printf 'Verified %s via public Pages, anonymous Docker, loopback health and nowluma CLI.\n' "$SCENARIO"
